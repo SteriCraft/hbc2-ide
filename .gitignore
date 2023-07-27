@@ -1,0 +1,22 @@
+# ignore all logs
+.log
+
+# Push only "Documentation/", "HBC-2_IDE" and "Logisim"
+Rom dump/
+Software/
+Youtube/
+Blog/
+
+# ignore "IDE dev time.txt"
+/IDE dev time.txt
+
+# ignore "Logisim/TTL HBC2"
+Logisim/TTL HBC2/
+
+# ignore files from "HBC-2_IDE"
+HBC-2_IDE/Debug/
+HBC-2_IDE/MinSizeRel/
+HBC-2_IDE/Profile/
+HBC-2_IDE/Release/
+HBC-2_IDE/RelWithDebInfo/
+HBC-2_IDE/mainwindow.ui

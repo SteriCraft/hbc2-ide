@@ -1,0 +1,27 @@
+=== Specifications ===
+- Color text mode
+  |- 42 by 24 characters screen (252 * 192 pixels)
+  |- 6*8 px characters
+  |- 2 bytes per character (2,016 bytes, ~2kB)
+  |- First byte: 4 bits for background color, 4 bits for character color
+  |- Second byte: ASCII code
+  |- 16 colors palette
+
+- Color pixel mode
+  |- 256px * 192px screen (49,152 pixels)
+  |- 4 bits per pixel, 2 pixels per byte (24,576 bytes, 24kB)
+  |- 16 colors palette
+
+=== Ports ===
+0: DATA_0
+1: DATA_1
+2: POS_X
+3: POS_Y
+4: CMD
+
+=== Commands ===
+0: NOP
+1: WRITE
+2: READ
+3: SWITCH_PIXEL_MODE
+4: SWITCH_TEXT_MODE

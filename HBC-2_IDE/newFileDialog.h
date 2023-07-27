@@ -1,0 +1,5 @@
+
+#ifndef NEWFILEDIALOG_H
+#define NEWFILEDIALOG_H
+
+#endif // NEWFILEDIALOG_H

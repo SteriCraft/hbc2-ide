@@ -1,0 +1,14 @@
+<RCC>
+    <qresource prefix="/icons">
+        <file>res/newFileIcon.png</file>
+        <file>res/newFolderIcon.png</file>
+        <file>res/deleteItemIcon.png</file>
+        <file>res/openFileIcon.png</file>
+        <file>res/saveAllFilesIcon.png</file>
+        <file>res/saveFileIcon.png</file>
+        <file>res/quitIcon.png</file>
+        <file>res/assembleIcon.png</file>
+        <file>res/binaryOutputIcon.png</file>
+        <file>res/runIcon.png</file>
+    </qresource>
+</RCC>

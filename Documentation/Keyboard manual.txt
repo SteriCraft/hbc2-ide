@@ -1,0 +1,10 @@
+When a key is pressed, the keyboard sends two interrupts.
+
+The first code is the key code.
+
+The second code is :
+0x0E if the key is pressed,
+0x0F if the key is released.
+
+Technically speaking, the IOD chip stores the second interrupt, so that the CPU can
+get the data later, after managing the key code.

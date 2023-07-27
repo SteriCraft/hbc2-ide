@@ -1,0 +1,12 @@
+=== Interruption matérielle ===
+
+-> IOD place le port I/O sur le bus d'adresse
+-> IOD place la donnée de l'interruption sur le bus de données
+-> CPU sauvegarde le registre I sur la pile
+-> CPU enregistre la donnée de l'interruption dans le registre I
+-> Lors d'IRT, le registre I est récupéré sur la pile
+
+=== Interruption logicielle ===
+
+-> Le registre I n'est pas sauvegardé
+-> Soin donné au programmeur de gérer les informations via la RAM

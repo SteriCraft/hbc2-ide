@@ -1,0 +1,16 @@
+-- Logisim --
+-> Update instructions manual, timing diagram incorrect (cycle length and design)
+-> If software interrupt, IRT shouldn't retrieve register I from stack
+-> INT
+-> POP and PSH must impact the carry flag as overflow signal (limit 0xFF)
+-> CALL must throw overflow flag if the stack is full and not be executed
+   -> stack value limit for CALL = 0xFC
+-> interrupts must not be executed if the stack is full
+   -> stack value limit for interruptions = 0xFB (because of I register)
+-> HLT must set the interrupt flag
+-> Interrupt handling must clear halt flag
+-> SUB operation throws carry if b > a
+-> Address the issue with external and internal data bus
+-> Update documentation with new behaviors included above
+-> Set "end" µinstr on everything that means nothing to the CPU
+-> inc and dec just after full adder opcode in ALU (modify µopcode)
