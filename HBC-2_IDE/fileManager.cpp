@@ -75,6 +75,16 @@ void CustomFile::setContent(QString content)
 
 
 // === FILE MANAGER CLASS ===
+FileManager* FileManager::m_singleton = nullptr;
+
+FileManager* FileManager::getInstance()
+{
+    if (m_singleton == nullptr)
+        m_singleton = new FileManager();
+
+    return m_singleton;
+}
+
 FileManager::FileManager() {}
 
 FileManager::~FileManager()

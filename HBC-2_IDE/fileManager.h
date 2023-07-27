@@ -33,10 +33,13 @@ private:
     QString m_content;
 };
 
-class FileManager
+class FileManager // SINGLETON
 {
+    static FileManager *m_singleton;
+
 public:
-    FileManager();
+    static FileManager* getInstance();
+
     ~FileManager();
 
     CustomFile* newFile();
@@ -75,6 +78,8 @@ public:
     QList<QString> getNonExistingFilesList();
 
 private:
+    FileManager();
+
     QVector<CustomFile*> m_files;
 };
 

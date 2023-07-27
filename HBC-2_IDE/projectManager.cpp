@@ -345,6 +345,16 @@ QString Project::str()
 
 
 // === PROJECT MANAGER CLASS ===
+ProjectManager* ProjectManager::m_singleton = nullptr;
+
+ProjectManager* ProjectManager::getInstance(QWidget *parent)
+{
+    if (m_singleton == nullptr)
+        m_singleton = new ProjectManager(parent);
+
+    return m_singleton;
+}
+
 ProjectManager::ProjectManager(QWidget *parent) : QTreeWidget(parent)
 {
     setMinimumWidth(PROJECT_MAN_MIN_HEIGHT);

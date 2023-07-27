@@ -52,7 +52,7 @@
     <message>
         <location filename="mainwindow.cpp" line="80"/>
         <location filename="mainwindow.cpp" line="603"/>
-        <location filename="mainwindow.cpp" line="949"/>
+        <location filename="mainwindow.cpp" line="947"/>
         <source>Open file</source>
         <translation>Ouvrir un fichier</translation>
     </message>
@@ -124,7 +124,7 @@
     </message>
     <message>
         <location filename="mainwindow.cpp" line="134"/>
-        <location filename="mainwindow.cpp" line="998"/>
+        <location filename="mainwindow.cpp" line="996"/>
         <source>Add existing directory</source>
         <translation>Ajouter un répertoire existant</translation>
     </message>
@@ -271,116 +271,116 @@ Voulez-vous le recharger ?</translation>
         <translation>Voulez-vous enregistrer &quot;</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="882"/>
+        <location filename="mainwindow.cpp" line="880"/>
         <source>Add new file to project</source>
         <translation>Ajouter un nouveau fichier au projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="882"/>
-        <location filename="mainwindow.cpp" line="1076"/>
+        <location filename="mainwindow.cpp" line="880"/>
+        <location filename="mainwindow.cpp" line="1074"/>
         <source>New file name:</source>
         <translation>Nom du nouveau fichier :</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="896"/>
+        <location filename="mainwindow.cpp" line="894"/>
         <source>File already exists</source>
         <translation>Ce fichier existe déjà</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="896"/>
+        <location filename="mainwindow.cpp" line="894"/>
         <source>This file already exists in this project directory.</source>
         <translation>Ce fichier existe déjà dans le répertoire du projet.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="904"/>
+        <location filename="mainwindow.cpp" line="902"/>
         <source>File creation error</source>
         <translation>Error à la création du fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="904"/>
+        <location filename="mainwindow.cpp" line="902"/>
         <source>The new file couldn&apos;t be created.</source>
         <translation>Le nouveau fichier n&apos;a pas pu être créé.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="912"/>
+        <location filename="mainwindow.cpp" line="910"/>
         <source>Invalid file name</source>
         <translation>Nom de fichier invalide</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="912"/>
+        <location filename="mainwindow.cpp" line="910"/>
         <source>A new file must have a name.</source>
         <translation>Un nouveau fichier doit avoir un nom.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="922"/>
+        <location filename="mainwindow.cpp" line="920"/>
         <source>Add new directory to project</source>
         <oldsource>Add new folder to project</oldsource>
         <translation>Ajouter un nouveau répertoire au projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="922"/>
+        <location filename="mainwindow.cpp" line="920"/>
         <source>New directory name:</source>
         <translation>Nom du nouveau répertoire :</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="940"/>
+        <location filename="mainwindow.cpp" line="938"/>
         <source>Invalid directory name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="940"/>
+        <location filename="mainwindow.cpp" line="938"/>
         <source>A new directory must have a name.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="966"/>
-        <location filename="mainwindow.cpp" line="978"/>
+        <location filename="mainwindow.cpp" line="964"/>
+        <location filename="mainwindow.cpp" line="976"/>
         <source>File opening error</source>
         <translation>Erreur à l&apos;ouverture du fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="966"/>
-        <location filename="mainwindow.cpp" line="978"/>
+        <location filename="mainwindow.cpp" line="964"/>
+        <location filename="mainwindow.cpp" line="976"/>
         <source>The file couldn&apos;t be opened.</source>
         <translation>Le fichier n&apos;a pas pu être ouvert.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1004"/>
+        <location filename="mainwindow.cpp" line="1002"/>
         <source>Invalid directory</source>
         <translation>Répertoire invalide</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1004"/>
+        <location filename="mainwindow.cpp" line="1002"/>
         <source>The new directory must be inside the project directory.</source>
         <translation>Le nouveau répertoire doit être dans le répertoire du projet.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1076"/>
+        <location filename="mainwindow.cpp" line="1074"/>
         <source>Rename file</source>
         <translation>Renommer un fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1099"/>
+        <location filename="mainwindow.cpp" line="1097"/>
         <source>Confirm</source>
         <translation>Confirmation</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1099"/>
+        <location filename="mainwindow.cpp" line="1097"/>
         <source>Do you really want to remove this file or folder from the project?</source>
         <translation>Voulez-vous vraiment retirer ce fichier ou ce répertoire du projet ?</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1101"/>
+        <location filename="mainwindow.cpp" line="1099"/>
         <source>Remove from disk</source>
         <translation>Supprimer du disque</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1102"/>
+        <location filename="mainwindow.cpp" line="1100"/>
         <source>Remove from project only</source>
         <translation>Retirer du projet uniquement</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1103"/>
+        <location filename="mainwindow.cpp" line="1101"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>
@@ -388,12 +388,12 @@ Voulez-vous le recharger ?</translation>
 <context>
     <name>ProjectManager</name>
     <message>
-        <location filename="projectManager.cpp" line="416"/>
+        <location filename="projectManager.cpp" line="426"/>
         <source>Files or folders missing</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="projectManager.cpp" line="416"/>
+        <location filename="projectManager.cpp" line="426"/>
         <source>Files or folders of this project are missing.
 
 They have been removed from the project file.</source>

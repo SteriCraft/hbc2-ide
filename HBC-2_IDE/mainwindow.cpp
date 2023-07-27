@@ -17,8 +17,8 @@ MainWindow::MainWindow(QWidget *parent)
 
     defaultEditorFont = QFont("Consolas");
 
-    m_fileManager = new FileManager();
-    m_projectManager = new ProjectManager(this);
+    m_fileManager = FileManager::getInstance();
+    m_projectManager = ProjectManager::getInstance(this);
     m_assembler = nullptr;
 
     setupMenuBar();
@@ -29,7 +29,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_recentSave = false;
     m_closeCount = 0;
 
-    m_assembler = new Assembler(m_consoleOutput); // Has to be called after "setupWidgets()"
+    m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -854,11 +854,9 @@ void MainWindow::showBinaryAction()
 {
     const QByteArray &data = m_assembler->getBinaryData();
 
-    BinaryExplorer *binaryOutputDialog = new BinaryExplorer(data, this);
+    BinaryExplorer *binaryOutputDialog = BinaryExplorer::getInstance(data, this);
 
     binaryOutputDialog->show();
-
-    binaryOutputDialog->isActiveWindow();
 }
 
 

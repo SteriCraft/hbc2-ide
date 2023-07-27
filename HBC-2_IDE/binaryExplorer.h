@@ -10,15 +10,19 @@
 #define BINARY_DIALOG_WIDTH 610
 #define BINARY_DIALOG_HEIGHT 600
 
-class BinaryExplorer : public QDialog
+class BinaryExplorer : public QDialog // SINGLETON
 {
     Q_OBJECT
 
+    static BinaryExplorer *m_singleton;
+
 public:
-    BinaryExplorer(const QByteArray data, QWidget *parent = nullptr);
+    static BinaryExplorer* getInstance(const QByteArray data, QWidget *parent = nullptr);
     ~BinaryExplorer();
 
 private:
+    BinaryExplorer(const QByteArray data, QWidget *parent = nullptr);
+
     QHexEdit *m_hexEditor;
 };
 

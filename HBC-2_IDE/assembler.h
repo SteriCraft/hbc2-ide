@@ -65,16 +65,20 @@ struct RoutineBlock
     unsigned originLineNb;
 };
 
-class Assembler
+class Assembler // SINGLETON
 {
+    static Assembler *m_singleton;
+
     public:
-        Assembler(Console *consoleOutput);
+        static Assembler* getInstance(Console *consoleOutput);
 
         bool isBinaryReady();
         QByteArray getBinaryData();
         bool assembleProject(Project *p);
 
     private:
+        Assembler(Console *consoleOutput);
+
         // Methods
         TokenFile retrieveContent(QString filePath);
         void logError();

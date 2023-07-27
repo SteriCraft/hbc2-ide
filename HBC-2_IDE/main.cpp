@@ -4,8 +4,6 @@
 #include "mainwindow.h"
 
 // === TODOS ===
-// -> Check every destructor to delete every pointer
-// -> Make every that needs it a singleton
 // -> Check C++ code tips, tricks and conventions
 // -> Rename option hasn't been implemented yet
 // -> Only show one binary output window at a time

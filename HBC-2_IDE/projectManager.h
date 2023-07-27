@@ -71,12 +71,15 @@ class Project
         ProjectItem *m_topItem;
 };
 
-class ProjectManager : public QTreeWidget
+class ProjectManager : public QTreeWidget // SINGLETON
 {
     Q_OBJECT
 
+        static ProjectManager *m_singleton;
+
     public:
-        ProjectManager(QWidget *parent);
+        static ProjectManager* getInstance(QWidget *parent);
+
         ~ProjectManager();
 
         bool newProject(QString path, bool toLoad = false);
@@ -92,6 +95,8 @@ class ProjectManager : public QTreeWidget
         Project* getCurrentProject();
 
     private:
+        ProjectManager(QWidget *parent);
+
         ProjectItem* openProjectFile(QString path); // Returns project mainNode (nullptr if error)
         bool readProjectItemXML(QDomNode xmlNode, ProjectItem* topProjectNode);
         bool saveProjectFile(Project* p);

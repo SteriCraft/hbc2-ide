@@ -1,5 +1,15 @@
 #include "binaryExplorer.h"
 
+BinaryExplorer* BinaryExplorer::m_singleton = nullptr;
+
+BinaryExplorer* BinaryExplorer::getInstance(const QByteArray data, QWidget *parent)
+{
+    if (m_singleton == nullptr)
+        m_singleton = new BinaryExplorer(data, parent);
+
+    return m_singleton;
+}
+
 BinaryExplorer::BinaryExplorer(const QByteArray data, QWidget *parent) : QDialog(parent)
 {
     m_hexEditor = new QHexEdit(this);

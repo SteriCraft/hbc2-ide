@@ -1,5 +1,15 @@
 #include "assembler.h"
 
+Assembler* Assembler::m_singleton = nullptr;
+
+Assembler* Assembler::getInstance(Console *consoleOutput)
+{
+    if (m_singleton == nullptr)
+        m_singleton = new Assembler(consoleOutput);
+
+    return m_singleton;
+}
+
 Assembler::Assembler(Console *consoleOutput)
 {
     m_consoleOutput = consoleOutput;
