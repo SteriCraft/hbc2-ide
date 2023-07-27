@@ -18,148 +18,148 @@
     <message>
         <location filename="mainwindow.ui" line="35"/>
         <location filename="Debug/HBC-2_IDE_autogen/include/ui_mainwindow.h" line="61"/>
-        <location filename="mainwindow.cpp" line="101"/>
+        <location filename="mainwindow.cpp" line="103"/>
         <source>Quit</source>
         <translation>Quitter</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="13"/>
+        <location filename="mainwindow.cpp" line="16"/>
         <source>Status Bar</source>
         <translation>Barre de statut</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="65"/>
+        <location filename="mainwindow.cpp" line="67"/>
         <source>File</source>
         <translation>Fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="67"/>
-        <location filename="mainwindow.cpp" line="550"/>
+        <location filename="mainwindow.cpp" line="69"/>
+        <location filename="mainwindow.cpp" line="552"/>
         <source>New project</source>
         <translation>Nouveau projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="70"/>
+        <location filename="mainwindow.cpp" line="72"/>
         <source>New file</source>
         <translation>Nouveau fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="75"/>
-        <location filename="mainwindow.cpp" line="581"/>
+        <location filename="mainwindow.cpp" line="77"/>
+        <location filename="mainwindow.cpp" line="583"/>
         <source>Open project</source>
         <translation>Ouvrir un projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="78"/>
-        <location filename="mainwindow.cpp" line="601"/>
-        <location filename="mainwindow.cpp" line="945"/>
+        <location filename="mainwindow.cpp" line="80"/>
+        <location filename="mainwindow.cpp" line="603"/>
+        <location filename="mainwindow.cpp" line="949"/>
         <source>Open file</source>
         <translation>Ouvrir un fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="83"/>
+        <location filename="mainwindow.cpp" line="85"/>
         <source>Save current file</source>
         <translation>Enregistrer le fichier en cours</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="86"/>
+        <location filename="mainwindow.cpp" line="88"/>
         <source>Save all</source>
         <translation>Enregistrer tous les fichiers</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="91"/>
+        <location filename="mainwindow.cpp" line="93"/>
         <source>Close current project</source>
         <translation>Fermer le projet en cours</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="93"/>
+        <location filename="mainwindow.cpp" line="95"/>
         <source>Close current file</source>
         <translation>Fermer le fichier en cours</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="96"/>
+        <location filename="mainwindow.cpp" line="98"/>
         <source>Close all files</source>
         <translation>Fermer tous les fichiers</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="105"/>
+        <location filename="mainwindow.cpp" line="107"/>
         <source>Assembler</source>
         <translation>Assembleur</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="107"/>
+        <location filename="mainwindow.cpp" line="109"/>
         <source>Assemble</source>
         <translation>Assembler</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="110"/>
+        <location filename="mainwindow.cpp" line="112"/>
         <source>Run</source>
         <translation>Exécuter</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="115"/>
+        <location filename="mainwindow.cpp" line="117"/>
         <source>Show binary output</source>
         <translation>Voir la sortie binaire</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="120"/>
+        <location filename="mainwindow.cpp" line="122"/>
         <source>Set as active project</source>
         <translation>Définir comme projet actif</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="123"/>
+        <location filename="mainwindow.cpp" line="125"/>
         <source>Add new file</source>
         <translation>Ajouter un nouveau fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="126"/>
+        <location filename="mainwindow.cpp" line="128"/>
         <source>Add new directory</source>
         <oldsource>Add new folder</oldsource>
         <translation>Ajouter un nouveau répertoire</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="129"/>
+        <location filename="mainwindow.cpp" line="131"/>
         <source>Add existing file</source>
         <translation>Ajouter un fichier existant</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="132"/>
-        <location filename="mainwindow.cpp" line="994"/>
+        <location filename="mainwindow.cpp" line="134"/>
+        <location filename="mainwindow.cpp" line="998"/>
         <source>Add existing directory</source>
         <translation>Ajouter un répertoire existant</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="135"/>
+        <location filename="mainwindow.cpp" line="137"/>
         <source>Expand</source>
         <translation>Développer</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="138"/>
+        <location filename="mainwindow.cpp" line="140"/>
         <source>Collapse</source>
         <translation>Réduire</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="141"/>
+        <location filename="mainwindow.cpp" line="143"/>
         <source>Open</source>
         <translation>Ouvrir</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="144"/>
+        <location filename="mainwindow.cpp" line="146"/>
         <source>Rename</source>
         <translation>Renommer</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="147"/>
+        <location filename="mainwindow.cpp" line="149"/>
         <source>Remove from project</source>
         <translation>Retirer du projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="150"/>
+        <location filename="mainwindow.cpp" line="152"/>
         <source>Show in explorer</source>
         <translation>Voir dans l&apos;explorateur de fichiers</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="153"/>
+        <location filename="mainwindow.cpp" line="155"/>
         <source>Close</source>
         <translation>Fermer</translation>
     </message>
@@ -168,17 +168,17 @@
         <translation type="vanished">Assembler le projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="166"/>
+        <location filename="mainwindow.cpp" line="168"/>
         <source>Console output</source>
         <translation>Console</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="210"/>
+        <location filename="mainwindow.cpp" line="212"/>
         <source>Keep a non existing file</source>
         <translation>Conserver un fichier non existant</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="210"/>
+        <location filename="mainwindow.cpp" line="212"/>
         <source> no longer exists.
 
 Do you wish to keep it in the editor?</source>
@@ -187,12 +187,12 @@ Do you wish to keep it in the editor?</source>
 Voulez-vous le conserver dans l&apos;éditeur ?</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="239"/>
+        <location filename="mainwindow.cpp" line="241"/>
         <source>Reload</source>
         <translation>Recharger</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="239"/>
+        <location filename="mainwindow.cpp" line="241"/>
         <source> has been modified by another program.
 
 Do you wish to reload?</source>
@@ -201,186 +201,186 @@ Do you wish to reload?</source>
 Voulez-vous le recharger ?</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="247"/>
+        <location filename="mainwindow.cpp" line="249"/>
         <source>Unable to reload &quot;</source>
         <translation>Impossbile de recharger &quot;</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="500"/>
+        <location filename="mainwindow.cpp" line="502"/>
         <source>Unsaved files</source>
         <translation>Fichiers non enregistrés</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="500"/>
+        <location filename="mainwindow.cpp" line="502"/>
         <source>Do you want to save modified files?</source>
         <translation>Voulez-vous enregistrer les fichiers modifiés ?</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="556"/>
+        <location filename="mainwindow.cpp" line="558"/>
         <source>Unable to create project</source>
         <translation>Impossible de créer un projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="556"/>
+        <location filename="mainwindow.cpp" line="558"/>
         <source>Error during creation of the project.</source>
         <translation>Erreur durant la création du projet.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="587"/>
+        <location filename="mainwindow.cpp" line="589"/>
         <source>Unable to open project</source>
         <translation>Impossible d&apos;ouvrir un projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="587"/>
+        <location filename="mainwindow.cpp" line="589"/>
         <source>Invalid project file.</source>
         <translation>Fichier de projet invalide.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="617"/>
+        <location filename="mainwindow.cpp" line="619"/>
         <source>Unable to open file</source>
         <translation>Impossible d&apos;ouvrir un fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="662"/>
-        <location filename="mainwindow.cpp" line="697"/>
+        <location filename="mainwindow.cpp" line="664"/>
+        <location filename="mainwindow.cpp" line="699"/>
         <source>Save as</source>
         <translation>Enregistrer sous</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="672"/>
+        <location filename="mainwindow.cpp" line="674"/>
         <source>Unable to save &quot;</source>
         <translation>Impossible d&apos;enregistrer &quot;</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="707"/>
+        <location filename="mainwindow.cpp" line="709"/>
         <source>Unable to save files</source>
         <translation>Impossible d&apos;enregistrer les fichiers</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="729"/>
-        <location filename="mainwindow.cpp" line="762"/>
-        <location filename="mainwindow.cpp" line="800"/>
+        <location filename="mainwindow.cpp" line="731"/>
+        <location filename="mainwindow.cpp" line="764"/>
+        <location filename="mainwindow.cpp" line="802"/>
         <source>Save file</source>
         <translation>Enregistrer un fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="729"/>
-        <location filename="mainwindow.cpp" line="762"/>
-        <location filename="mainwindow.cpp" line="800"/>
+        <location filename="mainwindow.cpp" line="731"/>
+        <location filename="mainwindow.cpp" line="764"/>
+        <location filename="mainwindow.cpp" line="802"/>
         <source>Do you want to save &quot;</source>
         <translation>Voulez-vous enregistrer &quot;</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="878"/>
+        <location filename="mainwindow.cpp" line="882"/>
         <source>Add new file to project</source>
         <translation>Ajouter un nouveau fichier au projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="878"/>
-        <location filename="mainwindow.cpp" line="1072"/>
+        <location filename="mainwindow.cpp" line="882"/>
+        <location filename="mainwindow.cpp" line="1076"/>
         <source>New file name:</source>
         <translation>Nom du nouveau fichier :</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="892"/>
+        <location filename="mainwindow.cpp" line="896"/>
         <source>File already exists</source>
         <translation>Ce fichier existe déjà</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="892"/>
+        <location filename="mainwindow.cpp" line="896"/>
         <source>This file already exists in this project directory.</source>
         <translation>Ce fichier existe déjà dans le répertoire du projet.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="900"/>
+        <location filename="mainwindow.cpp" line="904"/>
         <source>File creation error</source>
         <translation>Error à la création du fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="900"/>
+        <location filename="mainwindow.cpp" line="904"/>
         <source>The new file couldn&apos;t be created.</source>
         <translation>Le nouveau fichier n&apos;a pas pu être créé.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="908"/>
+        <location filename="mainwindow.cpp" line="912"/>
         <source>Invalid file name</source>
         <translation>Nom de fichier invalide</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="908"/>
+        <location filename="mainwindow.cpp" line="912"/>
         <source>A new file must have a name.</source>
         <translation>Un nouveau fichier doit avoir un nom.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="918"/>
+        <location filename="mainwindow.cpp" line="922"/>
         <source>Add new directory to project</source>
         <oldsource>Add new folder to project</oldsource>
         <translation>Ajouter un nouveau répertoire au projet</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="918"/>
+        <location filename="mainwindow.cpp" line="922"/>
         <source>New directory name:</source>
         <translation>Nom du nouveau répertoire :</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="936"/>
+        <location filename="mainwindow.cpp" line="940"/>
         <source>Invalid directory name</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="936"/>
+        <location filename="mainwindow.cpp" line="940"/>
         <source>A new directory must have a name.</source>
         <translation type="unfinished"></translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="962"/>
-        <location filename="mainwindow.cpp" line="974"/>
+        <location filename="mainwindow.cpp" line="966"/>
+        <location filename="mainwindow.cpp" line="978"/>
         <source>File opening error</source>
         <translation>Erreur à l&apos;ouverture du fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="962"/>
-        <location filename="mainwindow.cpp" line="974"/>
+        <location filename="mainwindow.cpp" line="966"/>
+        <location filename="mainwindow.cpp" line="978"/>
         <source>The file couldn&apos;t be opened.</source>
         <translation>Le fichier n&apos;a pas pu être ouvert.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1000"/>
+        <location filename="mainwindow.cpp" line="1004"/>
         <source>Invalid directory</source>
         <translation>Répertoire invalide</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1000"/>
+        <location filename="mainwindow.cpp" line="1004"/>
         <source>The new directory must be inside the project directory.</source>
         <translation>Le nouveau répertoire doit être dans le répertoire du projet.</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1072"/>
+        <location filename="mainwindow.cpp" line="1076"/>
         <source>Rename file</source>
         <translation>Renommer un fichier</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1095"/>
+        <location filename="mainwindow.cpp" line="1099"/>
         <source>Confirm</source>
         <translation>Confirmation</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1095"/>
+        <location filename="mainwindow.cpp" line="1099"/>
         <source>Do you really want to remove this file or folder from the project?</source>
         <translation>Voulez-vous vraiment retirer ce fichier ou ce répertoire du projet ?</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1097"/>
+        <location filename="mainwindow.cpp" line="1101"/>
         <source>Remove from disk</source>
         <translation>Supprimer du disque</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1098"/>
+        <location filename="mainwindow.cpp" line="1102"/>
         <source>Remove from project only</source>
         <translation>Retirer du projet uniquement</translation>
     </message>
     <message>
-        <location filename="mainwindow.cpp" line="1099"/>
+        <location filename="mainwindow.cpp" line="1103"/>
         <source>Cancel</source>
         <translation>Annuler</translation>
     </message>

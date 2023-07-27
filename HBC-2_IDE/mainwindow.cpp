@@ -8,6 +8,9 @@ MainWindow::MainWindow(QWidget *parent)
     ui->setupUi(this);
 
     // Init
+    loadIcons();
+
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
     setObjectName("MainWindow");
     resize(WINDOW_WIDTH, WINDOW_HEIGHT);
     statusBar()->showMessage(tr("Status Bar"));
@@ -18,7 +21,6 @@ MainWindow::MainWindow(QWidget *parent)
     m_projectManager = new ProjectManager(this);
     m_assembler = nullptr;
 
-    loadIcons();
     setupMenuBar();
     setupWidgets();
     setupLayout();

@@ -10,5 +10,6 @@
         <file>res/assembleIcon.png</file>
         <file>res/binaryOutputIcon.png</file>
         <file>res/runIcon.png</file>
+        <file>res/logo.png</file>
     </qresource>
 </RCC>
