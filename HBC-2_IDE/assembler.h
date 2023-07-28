@@ -17,7 +17,7 @@ struct Error
 {
     QString originFilePath;
     unsigned int originLineNb;
-    ErrorType type;
+    Assembly::ErrorType type;
     std::string additionalInfo;
 };
 
@@ -41,7 +41,7 @@ struct Variable
     MemoryRange range;
     std::vector<Token> values;
     uint16_t size; // Size is not a function determined by range data, because some definition miss an address at first
-    DataType type;
+    Assembly::DataType type;
 
     QString originFile;
     unsigned originLineNb;

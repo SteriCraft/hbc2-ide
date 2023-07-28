@@ -42,6 +42,10 @@ set(PROJECT_SOURCES
         emulator.h
         cpu.cpp
         cpu.h
+        motherboard.cpp
+        motherboard.h
+        ram.cpp
+        ram.h
         mainwindow.ui
         res.qrc
 )

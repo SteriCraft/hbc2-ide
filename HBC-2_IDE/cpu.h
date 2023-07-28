@@ -3,7 +3,6 @@
 
 #include <QString>
 
-
 namespace CPU
 {
     #define CPU_REGISTER_NB 8
@@ -16,6 +15,7 @@ namespace CPU
     #define ADDRMODE_MASK   0x03C00000
     #define R1_MASK         0x00380000
     #define R2_MASK         0x00070000
+    #define R3_MASK         0x00000700
     #define V1_MASK         0x0000FF00
     #define V2_MASK         0x000000FF
     #define VX_MASK         0x0000FFFF
@@ -40,18 +40,19 @@ namespace CPU
                           RAMREG_IMMREG = 4, REG16 = 5, IMM16 = 6, IMM8 = 7 };
 }
 
+class HbcMotherboard;
 
 // Code
-class hbcCpu // SINGLETON
+class HbcCpu // SINGLETON
 {
-    static hbcCpu *m_singleton;
+    static HbcCpu *m_singleton;
 
 public:
-    static hbcCpu* getInstance();
+    static HbcCpu* getInstance(HbcMotherboard *motherboard);
     void tick(); // Executes one instruction completely
 
 private:
-    hbcCpu();
+    HbcCpu(HbcMotherboard *motherboard);
     void init();
 
     void fetch();
@@ -72,12 +73,17 @@ private:
 
     CPU::Register m_register1Index;
     CPU::Register m_register2Index;
+    CPU::Register m_register3Index;
 
     uint8_t m_v1;
     uint8_t m_v2;
     uint16_t m_vX;
 
     uint8_t m_operationCache;
+    uint8_t m_dataCache;
+    uint16_t m_addressCache;
+
+    HbcMotherboard *m_motherboard;
 };
 
 #endif // CPU_H

@@ -1,40 +1,45 @@
-#include "cpu.h"
+#include "motherboard.h"
 
-hbcCpu* hbcCpu::m_singleton = nullptr;
+HbcCpu* HbcCpu::m_singleton = nullptr;
 
 
 // PUBLIC
-hbcCpu* hbcCpu::getInstance()
+HbcCpu* HbcCpu::getInstance(HbcMotherboard *motherboard)
 {
     if (m_singleton == nullptr)
-        m_singleton = new hbcCpu();
+        m_singleton = new HbcCpu(motherboard);
 
     return m_singleton;
 }
 
-void hbcCpu::tick()
+void HbcCpu::tick()
 {
     // TODO
     // Interruption management
 
-    fetch();
+    if (!m_flags[(int)CPU::Flags::HALT])
+    {
+        fetch();
 
-    execute();
+        execute();
 
-    if (!m_jumpOccured)
-        m_programCounter += INSTRUCTION_SIZE;
-    else
-        m_jumpOccured = false;
+        if (!m_jumpOccured)
+            m_programCounter += INSTRUCTION_SIZE;
+        else
+            m_jumpOccured = false;
+    }
 }
 
 
 // PRIVATE
-hbcCpu::hbcCpu()
+HbcCpu::HbcCpu(HbcMotherboard *motherboard)
 {
+    m_motherboard = motherboard;
+
     init();
 }
 
-void hbcCpu::init()
+void HbcCpu::init()
 {
     for (unsigned int i(0); i < CPU_REGISTER_NB; i++)
         m_registers[i] = 0x00;
@@ -53,31 +58,39 @@ void hbcCpu::init()
 
     m_register1Index = CPU::Register::A;
     m_register2Index = CPU::Register::A;
+    m_register3Index = CPU::Register::A;
 
     m_v1 = 0x00;
     m_v2 = 0x00;
     m_vX = 0x0000;
 
     m_operationCache = 0x00;
+    m_dataCache = 0x00;
+    m_addressCache = 0x0000;
 }
 
-void hbcCpu::fetch()
+void HbcCpu::fetch()
 {
-    // TODO
     // Draw instruction from memory
+    m_instructionRegister =  ((uint32_t)m_motherboard->readRam(m_programCounter))     << 24;
+    m_instructionRegister += ((uint32_t)m_motherboard->readRam(m_programCounter + 1)) << 16;
+    m_instructionRegister += ((uint32_t)m_motherboard->readRam(m_programCounter + 2)) << 8;
+    m_instructionRegister +=            m_motherboard->readRam(m_programCounter + 3);
 
+    // Analyse instruction
     m_opcode = (CPU::InstrOpcode)((m_instructionRegister & OPCODE_MASK) >> 26);
     m_addressingMode = (CPU::AddrMode)((m_instructionRegister & ADDRMODE_MASK) >> 22);
 
     m_register1Index = (CPU::Register)((m_instructionRegister & R1_MASK) >> 19);
     m_register2Index = (CPU::Register)((m_instructionRegister & R2_MASK) >> 16);
+    m_register2Index = (CPU::Register)((m_instructionRegister & R3_MASK) >> 8);
 
     m_v1 = (m_instructionRegister & V1_MASK) >> 8;
     m_v2 = m_instructionRegister & V2_MASK;
     m_vX = m_instructionRegister & VX_MASK;
 }
 
-void hbcCpu::execute()
+void HbcCpu::execute()
 {
     // TODO
     // Modify flags when affected by instruction
@@ -86,57 +99,104 @@ void hbcCpu::execute()
     switch (m_opcode)
     {
         case CPU::InstrOpcode::ADC:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] += m_registers[(int)m_register2Index] + 1;
+                m_operationCache = m_registers[(int)m_register1Index] + m_registers[(int)m_register2Index] + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_registers[(int)m_register2Index] + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
-                m_registers[(int)m_register1Index] += m_v1 + 1;
+                m_operationCache += m_registers[(int)m_register1Index] + m_v1 + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_v1 + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
+
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_registers[(int)m_register1Index] + m_dataCache + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_dataCache + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::ADD:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] += m_registers[(int)m_register2Index];
+                m_operationCache += m_registers[(int)m_register1Index] + m_registers[(int)m_register2Index];
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_registers[(int)m_register2Index]) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
-                m_registers[(int)m_register1Index] += m_v1;
+                m_operationCache += m_registers[(int)m_register1Index] + m_v1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_v1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_registers[(int)m_register1Index] + m_dataCache;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + m_dataCache) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::AND:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] &= m_registers[(int)m_register2Index];
+                m_operationCache = m_registers[(int)m_register1Index] & m_registers[(int)m_register2Index];
+
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
-                m_registers[(int)m_register1Index] &= m_v1;
+                m_operationCache = m_registers[(int)m_register1Index] & m_v1;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_registers[(int)m_register1Index] &= m_dataCache;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             break;
 
-        case CPU::InstrOpcode::CAL:
+        case CPU::InstrOpcode::CAL: // TODO
         case CPU::InstrOpcode::CLC:
             if (m_addressingMode == CPU::AddrMode::NONE)
                 m_flags[(int)CPU::Flags::CARRY] = false;
@@ -173,20 +233,64 @@ void hbcCpu::execute()
             break;
 
         case CPU::InstrOpcode::CMP:
-        case CPU::InstrOpcode::DEC:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index]--;
+                m_flags[(int)CPU::Flags::SUPERIOR] = m_registers[(int)m_register1Index] >  m_registers[(int)m_register2Index];
+                m_flags[(int)CPU::Flags::EQUAL] =    m_registers[(int)m_register1Index] == m_registers[(int)m_register2Index];
+                m_flags[(int)CPU::Flags::INFERIOR] = m_registers[(int)m_register1Index] <  m_registers[(int)m_register2Index];
+                // TODO : Update documentation because flag ZERO don't get updated
+                // TODO : Update document because it's not flag "I" (interrupt) but "F" (inferior) that gets updated
+            }
+            else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
+            {
+                m_flags[(int)CPU::Flags::SUPERIOR] = m_registers[(int)m_register1Index] >  m_v1;
+                m_flags[(int)CPU::Flags::EQUAL] =    m_registers[(int)m_register1Index] == m_v1;
+                m_flags[(int)CPU::Flags::INFERIOR] = m_registers[(int)m_register1Index] <  m_v1;
+            }
+            else if (m_addressingMode == CPU::AddrMode::RAMREG_IMMREG)
+            {
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+                m_dataCache = m_motherboard->readRam(m_addressCache);
+
+                m_flags[(int)CPU::Flags::SUPERIOR] = m_registers[(int)m_register3Index] >  m_dataCache;
+                m_flags[(int)CPU::Flags::EQUAL]    = m_registers[(int)m_register3Index] == m_dataCache;
+                m_flags[(int)CPU::Flags::INFERIOR] = m_registers[(int)m_register3Index] <  m_dataCache;
+            }
+            break;
+
+        case CPU::InstrOpcode::DEC:
+            if (m_addressingMode == CPU::AddrMode::REG)
+            {
+                m_operationCache = m_registers[(int)m_register1Index] - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG16)
             {
-                // Retrieve data from ram
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+                m_dataCache = m_motherboard->readRam(m_addressCache);
+                m_operationCache = m_dataCache - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_dataCache - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_motherboard->writeRam(m_addressCache, m_operationCache);
             }
             else if (m_addressingMode == CPU::AddrMode::IMM16)
             {
-                // Retrieve data from ram
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_dataCache - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_dataCache - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_motherboard->writeRam(m_vX, m_operationCache);
             }
             break;
 
@@ -194,27 +298,46 @@ void hbcCpu::execute()
             m_flags[(int)CPU::Flags::CARRY] = true;
             break;
 
-        case CPU::InstrOpcode::IN:
-        case CPU::InstrOpcode::OUT:
+        case CPU::InstrOpcode::IN: // TODO
+        case CPU::InstrOpcode::OUT: // TODO
         case CPU::InstrOpcode::INC:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index]++;
+                m_operationCache = m_registers[(int)m_register1Index] + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG16)
             {
-                // Retrieve data from ram
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+                m_dataCache = m_motherboard->readRam(m_addressCache);
+                m_operationCache = m_dataCache + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_dataCache + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_motherboard->writeRam(m_addressCache, m_operationCache);
             }
             else if (m_addressingMode == CPU::AddrMode::IMM16)
             {
-                // Retrieve data from ram
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_dataCache + 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_dataCache + 1) > 0xFF;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_motherboard->writeRam(m_vX, m_operationCache);
             }
             break;
 
-        case CPU::InstrOpcode::INT:
-        case CPU::InstrOpcode::IRT:
+        case CPU::InstrOpcode::INT: // TODO
+        case CPU::InstrOpcode::IRT: // TODO
         case CPU::InstrOpcode::JMC:
             if (m_flags[(int)CPU::Flags::CARRY])
             {
@@ -262,63 +385,123 @@ void hbcCpu::execute()
             break;
 
         case CPU::InstrOpcode::STR:
+            if (m_addressingMode == CPU::AddrMode::REG_RAM)
+            {
+                m_motherboard->writeRam(m_vX, m_registers[(int)m_register1Index]);
+            }
+            else if (m_addressingMode == CPU::AddrMode::RAMREG_IMMREG)
+            {
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+                m_motherboard->writeRam(m_addressCache, m_registers[(int)m_register3Index]);
+            }
+            break;
+
         case CPU::InstrOpcode::LOD:
+            if (m_addressingMode == CPU::AddrMode::REG_RAM)
+            {
+                m_registers[(int)m_register1Index] = m_motherboard->readRam(m_vX);
+            }
+            else if (m_addressingMode == CPU::AddrMode::RAMREG_IMMREG)
+            {
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+                m_registers[(int)m_register3Index] = m_motherboard->readRam(m_addressCache);
+            }
+            break;
+
         case CPU::InstrOpcode::MOV:
+            if (m_addressingMode == CPU::AddrMode::REG)
+            {
+                m_registers[(int)m_register1Index] = m_registers[(int)m_register2Index];
+            }
+            else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
+            {
+                m_registers[(int)m_register1Index] = m_v1;
+            }
+            break;
+
         case CPU::InstrOpcode::NOT:
-            m_registers[(int)m_register1Index] = ~m_registers[(int)m_register1Index];
+            if (m_addressingMode == CPU::AddrMode::REG)
+            {
+                m_registers[(int)m_register1Index] = ~m_registers[(int)m_register1Index];
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
+            }
+            else if (m_addressingMode == CPU::AddrMode::IMM16)
+            {
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = ~m_dataCache;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_motherboard->writeRam(m_vX, m_operationCache);
+            }
             break;
 
         case CPU::InstrOpcode::OR:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
                 m_registers[(int)m_register1Index] |= m_registers[(int)m_register2Index];
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
                 m_registers[(int)m_register1Index] |= m_v1;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
-            }
-        case CPU::InstrOpcode::POP:
-        case CPU::InstrOpcode::PSH:
-        case CPU::InstrOpcode::RET:
-        case CPU::InstrOpcode::SHL:
-            // Implement flag consequence
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_registers[(int)m_register1Index] |= m_dataCache;
 
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
+            }
+        case CPU::InstrOpcode::POP: // TODO
+        case CPU::InstrOpcode::PSH: // TODO
+        case CPU::InstrOpcode::RET: // TODO
+        case CPU::InstrOpcode::SHL:
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] = m_registers[(int)m_register1Index] << 1;
+                m_operationCache = m_registers[(int)m_register1Index] << 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = m_registers[(int)m_register1Index] & 0x80;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::ASR:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
                 m_operationCache = m_registers[(int)m_register1Index] >> 1;
+                m_operationCache |= m_registers[(int)m_register1Index] & 0x80; // Keeps sign flag
 
-                if ((m_registers[(int)m_register1Index] & 0x80) == 0x80) // If sign flag is set...
-                {
-                    m_operationCache |= (0x01 << 7); // ...sets the sign flag
-                }
-
-                // Implement flag consequence
+                m_flags[(int)CPU::Flags::CARRY] = m_registers[(int)m_register1Index] & 0x01;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
 
                 m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::SHR:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] = m_registers[(int)m_register1Index] >> 1;
+                m_operationCache = m_registers[(int)m_register1Index] >> 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = m_registers[(int)m_register1Index] & 0x01;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                // TODO update documentation because negative flag would never be set by a right shift
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
@@ -358,53 +541,95 @@ void hbcCpu::execute()
             break;
 
         case CPU::InstrOpcode::SUB:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] -= m_registers[(int)m_register2Index];
+                m_operationCache = m_registers[(int)m_register1Index] - m_registers[(int)m_register2Index];
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_registers[(int)m_register2Index]) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
-                m_registers[(int)m_register1Index] -= m_v1;
+                m_operationCache = m_registers[(int)m_register1Index] - m_v1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_v1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_registers[(int)m_register1Index] - m_dataCache;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_v1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::SBB:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
-                m_registers[(int)m_register1Index] -= m_registers[(int)m_register2Index] - 1;
+                m_operationCache = m_registers[(int)m_register1Index] - m_registers[(int)m_register2Index] - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_registers[(int)m_register2Index] - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
-                m_registers[(int)m_register1Index] -= m_v1 - 1;
+                m_operationCache = m_registers[(int)m_register1Index] - m_v1 - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_v1 - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_operationCache = m_registers[(int)m_register1Index] - m_dataCache - 1;
+
+                m_flags[(int)CPU::Flags::CARRY] = ((int)m_registers[(int)m_register1Index] - m_v1 - 1) < 0;
+                m_flags[(int)CPU::Flags::ZERO] = m_operationCache == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_operationCache & 0x80;
+
+                m_registers[(int)m_register1Index] = m_operationCache;
             }
             break;
 
         case CPU::InstrOpcode::XOR:
-            // Implement flag consequence
-
             if (m_addressingMode == CPU::AddrMode::REG)
             {
                 m_registers[(int)m_register1Index] ^= m_registers[(int)m_register2Index];
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_IMM8)
             {
                 m_registers[(int)m_register1Index] ^= m_v1;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             else if (m_addressingMode == CPU::AddrMode::REG_RAM)
             {
-                // Retrieve data from memory
+                m_dataCache = m_motherboard->readRam(m_vX);
+                m_registers[(int)m_register1Index] ^= m_dataCache;
+
+                m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
+                m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
             break;
 
@@ -413,11 +638,11 @@ void hbcCpu::execute()
     }
 }
 
-void hbcCpu::jump()
+void HbcCpu::jump()
 {
     if (m_addressingMode == CPU::AddrMode::REG16)
     {
-            m_programCounter = ((uint16_t)m_registers[m_register1Index] << 8) + m_registers[m_register2Index];
+            m_programCounter = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
             m_jumpOccured = true;
     }
     else if (m_addressingMode == CPU::AddrMode::IMM16)

@@ -51,7 +51,7 @@ bool Assembler::assembleProject(Project *p)
 
     m_error.originFilePath = "";
     m_error.originLineNb = 0;
-    m_error.type = ErrorType::NONE;
+    m_error.type = Assembly::ErrorType::NONE;
     m_error.additionalInfo = "";
 
     m_finalFile.m_lines.clear();
@@ -74,7 +74,7 @@ bool Assembler::assembleProject(Project *p)
     {
         m_tokenFiles.push_back(retrieveContent(m_filesPaths[i]));
 
-        if (m_error.type == ErrorType::FILE_NOT_READ)
+        if (m_error.type == Assembly::ErrorType::FILE_NOT_READ)
         {
             m_consoleOutput->log("Assembly failed");
             m_consoleOutput->returnLine();
@@ -327,7 +327,7 @@ TokenFile Assembler::retrieveContent(QString filePath)
     {
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
-        m_error.type = ErrorType::FILE_NOT_READ;
+        m_error.type = Assembly::ErrorType::FILE_NOT_READ;
         m_error.additionalInfo = "";
     }
 
@@ -340,7 +340,7 @@ void Assembler::logError()
         m_consoleOutput->log("Error line " + std::to_string(m_error.originLineNb) + " of file "
                              + QFileInfo(m_error.originFilePath).fileName().toStdString());
 
-    m_consoleOutput->log(errStr[(int)m_error.type] + m_error.additionalInfo);
+    m_consoleOutput->log(Assembly::errStr[(int)m_error.type] + m_error.additionalInfo);
     m_consoleOutput->returnLine();
 }
 
@@ -488,7 +488,7 @@ bool Assembler::convertToTokens(TokenFile &f)
             {
                 m_error.originFilePath = tLine->m_originFilePath;
                 m_error.originLineNb = tLine->m_originLineNb;
-                m_error.type = ErrorType::EXPECT_EXPR;
+                m_error.type = Assembly::ErrorType::EXPECT_EXPR;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -503,7 +503,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 {
                     m_error.originFilePath = tLine->m_originFilePath;
                     m_error.originLineNb = tLine->m_originLineNb;
-                    m_error.type = ErrorType::EXPECT_EXPR;
+                    m_error.type = Assembly::ErrorType::EXPECT_EXPR;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -522,7 +522,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 {
                     m_error.originFilePath = tLine->m_originFilePath;
                     m_error.originLineNb = tLine->m_originLineNb;
-                    m_error.type = ErrorType::EXPECT_EXPR;
+                    m_error.type = Assembly::ErrorType::EXPECT_EXPR;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -541,7 +541,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 {
                     m_error.originFilePath = tLine->m_originFilePath;
                     m_error.originLineNb = tLine->m_originLineNb;
-                    m_error.type = ErrorType::EXPECT_EXPR;
+                    m_error.type = Assembly::ErrorType::EXPECT_EXPR;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -558,7 +558,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 {
                     m_error.originFilePath = tLine->m_originFilePath;
                     m_error.originLineNb = tLine->m_originLineNb;
-                    m_error.type = ErrorType::INVAL_EXPR;
+                    m_error.type = Assembly::ErrorType::INVAL_EXPR;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -570,7 +570,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 {
                     m_error.originFilePath = tLine->m_originFilePath;
                     m_error.originLineNb = tLine->m_originLineNb;
-                    m_error.type = ErrorType::MISSING_TERM_CHAR;
+                    m_error.type = Assembly::ErrorType::MISSING_TERM_CHAR;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -583,7 +583,7 @@ bool Assembler::convertToTokens(TokenFile &f)
                 t = nextQuote + 1;
             }
 
-            if (newToken.getErr() != ErrorType::NONE)
+            if (newToken.getErr() != Assembly::ErrorType::NONE)
             {
                 m_error.originFilePath = tLine->m_originFilePath;
                 m_error.originLineNb = tLine->m_originLineNb;
@@ -611,16 +611,16 @@ bool Assembler::listDefines(TokenFile &f)
     // Validity pass
     for (unsigned int i(0); i < f.m_lines.size(); i++)
     {
-        toProcess = f.m_lines[i].m_tokens[0].getType() == TokenType::DEFINE;
+        toProcess = f.m_lines[i].m_tokens[0].getType() == Assembly::TokenType::DEFINE;
 
         // Use of define elsewhere than on first token
         for (unsigned int j(1); j < f.m_lines[i].m_tokens.size(); j++)
         {
-            if (f.m_lines[i].m_tokens[j].getType() == TokenType::DEFINE)
+            if (f.m_lines[i].m_tokens[j].getType() == Assembly::TokenType::DEFINE)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::INVAL_DEF;
+                m_error.type = Assembly::ErrorType::INVAL_DEF;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -635,7 +635,7 @@ bool Assembler::listDefines(TokenFile &f)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::DEF_ARG_NB;
+                m_error.type = Assembly::ErrorType::DEF_ARG_NB;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -643,11 +643,11 @@ bool Assembler::listDefines(TokenFile &f)
             }
 
             // Variable to replace not set
-            if (f.m_lines[i].m_tokens[1].getType() != TokenType::VAR)
+            if (f.m_lines[i].m_tokens[1].getType() != Assembly::TokenType::VAR)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::DEF_VAR_MISS;
+                m_error.type = Assembly::ErrorType::DEF_VAR_MISS;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -669,7 +669,7 @@ bool Assembler::listDefines(TokenFile &f)
                 {
                     m_error.originFilePath = f.m_lines[i].m_originFilePath;
                     m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                    m_error.type = ErrorType::DEF_ALREADY_EXIST;
+                    m_error.type = Assembly::ErrorType::DEF_ALREADY_EXIST;
                     m_error.additionalInfo = "\"" + QFileInfo(m_defToProcess[j].fileWhereDefined).fileName().toStdString()
                                              + "\"" + " at line " + std::to_string(m_defToProcess[j].lineNbWhereDefined);
 
@@ -707,11 +707,11 @@ bool Assembler::processDefines()
                     {
                         toCheckTk->setStr(m_defToProcess[i].replacementStr);
 
-                        if (toCheckTk->getErr() != ErrorType::NONE)
+                        if (toCheckTk->getErr() != Assembly::ErrorType::NONE)
                         {
                             m_error.originFilePath = m_tokenFiles[f].m_lines[l].m_originFilePath;
                             m_error.originLineNb = m_tokenFiles[f].m_lines[l].m_originLineNb;
-                            m_error.type = ErrorType::DEF_REPLAC_ERR;
+                            m_error.type = Assembly::ErrorType::DEF_REPLAC_ERR;
                             m_error.additionalInfo = "\"" + QFileInfo(m_defToProcess[i].fileWhereDefined).fileName().toStdString()
                                                      + "\"" + " at line " + std::to_string(m_defToProcess[i].lineNbWhereDefined);
 
@@ -736,7 +736,7 @@ bool Assembler::processIncludes()
     {
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
-        m_error.type = ErrorType::NO_MAIN_FILE;
+        m_error.type = Assembly::ErrorType::NO_MAIN_FILE;
         logError();
 
         return false;
@@ -768,16 +768,16 @@ bool Assembler::processIncludesInFile(TokenFile &f)
         fileToInclude = "";
         tokenFileToInclude = nullptr;
 
-        toProcess = f.m_lines[i].m_tokens[0].getType() == TokenType::INCLUDE;
+        toProcess = f.m_lines[i].m_tokens[0].getType() == Assembly::TokenType::INCLUDE;
 
         // Use of include elsewhere than on first token
         for (unsigned int j(1); j < f.m_lines[i].m_tokens.size(); j++)
         {
-            if (f.m_lines[i].m_tokens[j].getType() == TokenType::INCLUDE)
+            if (f.m_lines[i].m_tokens[j].getType() == Assembly::TokenType::INCLUDE)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::INVAL_INC;
+                m_error.type = Assembly::ErrorType::INVAL_INC;
                 m_error.additionalInfo = "";
                 return false;
             }
@@ -791,17 +791,17 @@ bool Assembler::processIncludesInFile(TokenFile &f)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::INC_ARG_NB;
+                m_error.type = Assembly::ErrorType::INC_ARG_NB;
                 m_error.additionalInfo = "";
                 return false;
             }
 
             // String indicating the name of the file to include
-            if (f.m_lines[i].m_tokens[1].getType() != TokenType::STRING)
+            if (f.m_lines[i].m_tokens[1].getType() != Assembly::TokenType::STRING)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::INC_FILE_NAME_MISS;
+                m_error.type = Assembly::ErrorType::INC_FILE_NAME_MISS;
                 m_error.additionalInfo = "";
                 return false;
             }
@@ -815,7 +815,7 @@ bool Assembler::processIncludesInFile(TokenFile &f)
                 {
                     m_error.originFilePath = f.m_lines[i].m_originFilePath;
                     m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                    m_error.type = ErrorType::CIRC_DEPENDENCY;
+                    m_error.type = Assembly::ErrorType::CIRC_DEPENDENCY;
                     m_error.additionalInfo = "\"" + fileToInclude.toStdString() + "\"";
                     return false;
                 }
@@ -828,7 +828,7 @@ bool Assembler::processIncludesInFile(TokenFile &f)
             {
                 m_error.originFilePath = f.m_lines[i].m_originFilePath;
                 m_error.originLineNb = f.m_lines[i].m_originLineNb;
-                m_error.type = ErrorType::FILE_NOT_FOUND;
+                m_error.type = Assembly::ErrorType::FILE_NOT_FOUND;
                 m_error.additionalInfo = "\"" + fileToInclude.toStdString() + "\" can't be found";
                 return false;
             }
@@ -887,19 +887,19 @@ bool Assembler::listVariables()
             var.name = line->m_tokens[1].getVariableName();
             var.type = line->getDataType();
 
-            if (line->getDataType() == DataType::SINGLE_VALUE_DEFINED)
+            if (line->getDataType() == Assembly::DataType::SINGLE_VALUE_DEFINED)
             {
                 var.values.push_back(line->m_tokens[3]);
 
                 var.size = 1;
             }
-            else if (line->getDataType() == DataType::SINGLE_VALUE_UNDEFINED)
+            else if (line->getDataType() == Assembly::DataType::SINGLE_VALUE_UNDEFINED)
             {
                 var.values.push_back(line->m_tokens[2]);
 
                 var.size = 1;
             }
-            else if (line->getDataType() == DataType::MULTIPLE_VALUES_DEFINED)
+            else if (line->getDataType() == Assembly::DataType::MULTIPLE_VALUES_DEFINED)
             {
                 for (unsigned int j(3); j < line->m_tokens.size(); j++)
                 {
@@ -908,7 +908,7 @@ bool Assembler::listVariables()
 
                 var.size = (uint16_t)line->m_tokens.size() - 3;
             }
-            else if (line->getDataType() == DataType::MULTIPLE_VALUES_UNDEFINED)
+            else if (line->getDataType() == Assembly::DataType::MULTIPLE_VALUES_UNDEFINED)
             {
                 for (unsigned int j(2); j < line->m_tokens.size(); j++)
                 {
@@ -917,7 +917,7 @@ bool Assembler::listVariables()
 
                 var.size = (uint16_t)line->m_tokens.size() - 2;
             }
-            else if (line->getDataType() == DataType::STRING_DEFINED)
+            else if (line->getDataType() == Assembly::DataType::STRING_DEFINED)
             {
                 for (unsigned int j(3); j < line->m_tokens.size(); j++)
                 {
@@ -941,7 +941,7 @@ bool Assembler::listVariables()
             var.originFile = m_finalFile.m_lines[i].m_originFilePath;
             var.originLineNb = m_finalFile.m_lines[i].m_originLineNb;
 
-            if (line->getDataType() == DataType::STRING_DEFINED || line->getDataType() == DataType::SINGLE_VALUE_DEFINED || line->getDataType() == DataType::MULTIPLE_VALUES_DEFINED)
+            if (line->getDataType() == Assembly::DataType::STRING_DEFINED || line->getDataType() == Assembly::DataType::SINGLE_VALUE_DEFINED || line->getDataType() == Assembly::DataType::MULTIPLE_VALUES_DEFINED)
             {
                 var.range.begin = line->m_tokens[2].getAddress();
                 var.range.end = var.range.begin + var.size - 1;
@@ -953,7 +953,7 @@ bool Assembler::listVariables()
                     {
                         m_error.originFilePath = var.originFile;
                         m_error.originLineNb = var.originLineNb;
-                        m_error.type = ErrorType::DATA_OVERLAP;
+                        m_error.type = Assembly::ErrorType::DATA_OVERLAP;
                         m_error.additionalInfo = m_definedVars[j].name + "\"";
 
                         logError();
@@ -983,7 +983,7 @@ bool Assembler::listVariables()
         {
             m_error.originFilePath = m_definedVars[i].originFile;
             m_error.originLineNb = m_definedVars[i].originLineNb;
-            m_error.type = ErrorType::DATA_MEM_USE;
+            m_error.type = Assembly::ErrorType::DATA_MEM_USE;
             m_error.additionalInfo = "";
 
             logError();
@@ -1016,7 +1016,7 @@ bool Assembler::calculateMemoryUsage()
     {
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
-        m_error.type = ErrorType::MEM_SIZE;
+        m_error.type = Assembly::ErrorType::MEM_SIZE;
         m_error.additionalInfo = " / " + std::to_string(MEMORY_SIZE) + " bytes";
 
         logError();
@@ -1046,7 +1046,7 @@ bool Assembler::constructRoutineBlocks()
             {
                 m_error.originFilePath = line->m_originFilePath;
                 m_error.originLineNb = line->m_originLineNb;
-                m_error.type = ErrorType::INSTR_ALONE;
+                m_error.type = Assembly::ErrorType::INSTR_ALONE;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -1067,7 +1067,7 @@ bool Assembler::constructRoutineBlocks()
                     {
                         m_error.originFilePath = line->m_originFilePath;
                         m_error.originLineNb = line->m_originLineNb;
-                        m_error.type = ErrorType::LABEL_MEM_USE;
+                        m_error.type = Assembly::ErrorType::LABEL_MEM_USE;
                         m_error.additionalInfo = "";
 
                         logError();
@@ -1095,7 +1095,7 @@ bool Assembler::constructRoutineBlocks()
                 {
                     m_error.originFilePath = line->m_originFilePath;
                     m_error.originLineNb = line->m_originLineNb;
-                    m_error.type = ErrorType::LABEL_ALREADY_USED;
+                    m_error.type = Assembly::ErrorType::LABEL_ALREADY_USED;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -1110,7 +1110,7 @@ bool Assembler::constructRoutineBlocks()
                 {
                     m_error.originFilePath = line->m_originFilePath;
                     m_error.originLineNb = line->m_originLineNb;
-                    m_error.type = ErrorType::LABEL_ALREADY_USED;
+                    m_error.type = Assembly::ErrorType::LABEL_ALREADY_USED;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -1148,7 +1148,7 @@ bool Assembler::constructRoutineBlocks()
             {
                 m_error.originFilePath = line->m_originFilePath;
                 m_error.originLineNb = line->m_originLineNb;
-                m_error.type = ErrorType::LABEL_MEM_USE;
+                m_error.type = Assembly::ErrorType::LABEL_MEM_USE;
                 m_error.additionalInfo = "";
 
                 logError();
@@ -1178,7 +1178,7 @@ bool Assembler::constructRoutineBlocks()
                 {
                     m_error.originFilePath = m_definedRoutineBlocks[i].originFile;
                     m_error.originLineNb = m_definedRoutineBlocks[i].originLineNb;
-                    m_error.type = ErrorType::ROUTINE_OVERLAP;
+                    m_error.type = Assembly::ErrorType::ROUTINE_OVERLAP;
                     m_error.additionalInfo = m_definedRoutineBlocks[j].labelName + "\"";
 
                     logError();
@@ -1197,7 +1197,7 @@ bool Assembler::constructRoutineBlocks()
             {
                 m_error.originFilePath = m_definedVars[j].originFile;
                 m_error.originLineNb = m_definedVars[j].originLineNb;
-                m_error.type = ErrorType::DATA_OVERWRITES_INSTR;
+                m_error.type = Assembly::ErrorType::DATA_OVERWRITES_INSTR;
                 m_error.additionalInfo = m_definedRoutineBlocks[i].labelName + "\", try automatic data address calculation";
 
                 logError();
@@ -1221,7 +1221,7 @@ bool Assembler::constructRoutineBlocks()
     {
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
-        m_error.type = ErrorType::START_ROUTINE_MISSING;
+        m_error.type = Assembly::ErrorType::START_ROUTINE_MISSING;
         m_error.additionalInfo = "";
 
         logError();
@@ -1291,7 +1291,7 @@ bool Assembler::findFreeMemorySpaces()
                 {
                     m_error.originFilePath = "";
                     m_error.originLineNb = 0;
-                    m_error.type = ErrorType::SPLIT_MEM;
+                    m_error.type = Assembly::ErrorType::SPLIT_MEM;
                     m_error.additionalInfo = "";
 
                     logError();
@@ -1341,7 +1341,7 @@ bool Assembler::calculateRoutineBlocksAddresses()
         {
             m_error.originFilePath = "";
             m_error.originLineNb = 0;
-            m_error.type = ErrorType::MEM_USE;
+            m_error.type = Assembly::ErrorType::MEM_USE;
             m_error.additionalInfo = "";
 
             logError();
@@ -1390,7 +1390,7 @@ bool Assembler::calculateVariablesAddresses()
         {
             m_error.originFilePath = "";
             m_error.originLineNb = 0;
-            m_error.type = ErrorType::MEM_USE;
+            m_error.type = Assembly::ErrorType::MEM_USE;
             m_error.additionalInfo = "";
 
             logError();
@@ -1418,7 +1418,7 @@ bool Assembler::replaceVariablesByAddresses()
 
             for (unsigned int t(0); t < line->m_tokens.size(); t++)
             {
-                if (line->m_tokens[t].getType() == TokenType::VAR)
+                if (line->m_tokens[t].getType() == Assembly::TokenType::VAR)
                 {
                     // Search for equivalent variable
                     found = false;
@@ -1451,7 +1451,7 @@ bool Assembler::replaceVariablesByAddresses()
                     {
                         m_error.originFilePath = line->m_originFilePath;
                         m_error.originLineNb = line->m_originLineNb;
-                        m_error.type = ErrorType::UNKNOWN_VARIABLE;
+                        m_error.type = Assembly::ErrorType::UNKNOWN_VARIABLE;
                         m_error.additionalInfo = "";
 
                         logError();
@@ -1502,11 +1502,11 @@ bool Assembler::convertDataToBinary()
 {
     for (unsigned int i(0); i < m_definedVars.size(); i++)
     {
-        if (m_definedVars[i].type == DataType::SINGLE_VALUE_DEFINED || m_definedVars[i].type == DataType::SINGLE_VALUE_UNDEFINED)
+        if (m_definedVars[i].type == Assembly::DataType::SINGLE_VALUE_DEFINED || m_definedVars[i].type == Assembly::DataType::SINGLE_VALUE_UNDEFINED)
         {
             m_finalBinary[m_definedVars[i].range.begin] = m_definedVars[i].values[0].getValue();
         }
-        else if (m_definedVars[i].type == DataType::STRING_DEFINED || m_definedVars[i].type == DataType::STRING_UNDEFINED)
+        else if (m_definedVars[i].type == Assembly::DataType::STRING_DEFINED || m_definedVars[i].type == Assembly::DataType::STRING_UNDEFINED)
         {
             std::string str = m_definedVars[i].values[0].getStr();
 
@@ -1539,7 +1539,7 @@ bool Assembler::saveBinaryToFile()
 
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
-        m_error.type = ErrorType::BIN_FILE_OPEN;
+        m_error.type = Assembly::ErrorType::BIN_FILE_OPEN;
         m_error.additionalInfo = "";
 
         logError();
@@ -1664,15 +1664,15 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
     // Populate arguments with addressing mode
     switch (line->m_instr.m_addrMode)
     {
-    case AddrMode::NONE: // INS
+    case Assembly::AddrMode::NONE: // INS
         // No argument to populate
         break;
 
-    case AddrMode::REG: // INS r | INS r, r
-        if (line->m_instr.m_opcode == InstrOpcode::DEC || line->m_instr.m_opcode == InstrOpcode::INC
-         || line->m_instr.m_opcode == InstrOpcode::NOT || line->m_instr.m_opcode == InstrOpcode::POP
-         || line->m_instr.m_opcode == InstrOpcode::PSH || line->m_instr.m_opcode == InstrOpcode::SHL
-         || line->m_instr.m_opcode == InstrOpcode::ASR || line->m_instr.m_opcode == InstrOpcode::SHR)
+    case Assembly::AddrMode::REG: // INS r | INS r, r
+        if (line->m_instr.m_opcode == Assembly::InstrOpcode::DEC || line->m_instr.m_opcode == Assembly::InstrOpcode::INC
+         || line->m_instr.m_opcode == Assembly::InstrOpcode::NOT || line->m_instr.m_opcode == Assembly::InstrOpcode::POP
+         || line->m_instr.m_opcode == Assembly::InstrOpcode::PSH || line->m_instr.m_opcode == Assembly::InstrOpcode::SHL
+         || line->m_instr.m_opcode == Assembly::InstrOpcode::ASR || line->m_instr.m_opcode == Assembly::InstrOpcode::SHR)
         {
             r1 = (uint8_t)line->m_tokens[1].getRegister();
         }
@@ -1683,13 +1683,13 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         }
         break;
 
-    case AddrMode::REG_IMM8: // INS r, 0xXX
+    case Assembly::AddrMode::REG_IMM8: // INS r, 0xXX
         r1 = (uint8_t)line->m_tokens[1].getRegister();
         v1 = line->m_tokens[2].getValue();
         break;
 
-    case AddrMode::REG_RAM: // INS r, $0xXXXX
-        if (line->m_instr.m_opcode == InstrOpcode::STR) // str $0xXXXX, r | $0xXXXX <- r
+    case Assembly::AddrMode::REG_RAM: // INS r, $0xXXXX
+        if (line->m_instr.m_opcode == Assembly::InstrOpcode::STR) // str $0xXXXX, r | $0xXXXX <- r
         {
             r1 = (uint8_t)line->m_tokens[2].getRegister();
             vx = line->m_tokens[1].getAddress();
@@ -1703,8 +1703,8 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         useVx = true;
         break;
 
-    case AddrMode::RAMREG_IMMREG: // INS r, [rr]
-        if (line->m_instr.m_opcode == InstrOpcode::STR) // str [rr], r | [rr] <- r
+    case Assembly::AddrMode::RAMREG_IMMREG: // INS r, [rr]
+        if (line->m_instr.m_opcode == Assembly::InstrOpcode::STR) // str [rr], r | [rr] <- r
         {
             r1 = (uint8_t)line->m_tokens[1].getConcatRegs().msReg;
             r2 = (uint8_t)line->m_tokens[1].getConcatRegs().lsReg;
@@ -1722,18 +1722,18 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         useR3 = true;
         break;
 
-    case AddrMode::REG16: // INS r, 0xXX
+    case Assembly::AddrMode::REG16: // INS r, 0xXX
         r1 = (uint8_t)line->m_tokens[1].getConcatRegs().msReg;
         r2 = (uint8_t)line->m_tokens[1].getConcatRegs().lsReg;
         break;
 
-    case AddrMode::IMM16: // INS 0xXXXX
+    case Assembly::AddrMode::IMM16: // INS 0xXXXX
         vx = line->m_tokens[1].getAddress();
 
         useVx = true;
         break;
 
-    case AddrMode::IMM8: // INS 0xXX
+    case Assembly::AddrMode::IMM8: // INS 0xXX
         v1 = line->m_tokens[1].getValue();
         break;
     }
