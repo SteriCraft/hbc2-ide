@@ -1529,7 +1529,7 @@ bool Assembler::convertDataToBinary()
 
 bool Assembler::saveBinaryToFile()
 {
-    QString filePath = QFileInfo(m_finalFile.m_filePath).path() + "/" + m_finalFile.m_fileName + ".bin";
+    QString filePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
 
     QFile file(filePath);
 

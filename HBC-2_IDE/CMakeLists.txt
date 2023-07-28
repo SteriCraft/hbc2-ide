@@ -38,6 +38,10 @@ set(PROJECT_SOURCES
         qhexedit.h
         binaryExplorer.cpp
         binaryExplorer.h
+        emulator.cpp
+        emulator.h
+        cpu.cpp
+        cpu.h
         mainwindow.ui
         res.qrc
 )
