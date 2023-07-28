@@ -2,6 +2,7 @@
 #define CPU_H
 
 #include <QString>
+#include <QDebug>
 
 namespace CPU
 {
@@ -59,6 +60,8 @@ private:
     void execute();
 
     void jump();
+    bool pop(uint8_t &data); // Returns true if stack underflows
+    bool push(uint8_t data); // Returns true if stack overflows
 
     uint8_t m_registers[CPU_REGISTER_NB];
     bool m_flags[FLAGS_NB];
@@ -67,6 +70,7 @@ private:
     bool m_jumpOccured;
     uint16_t m_programCounter;
     uint8_t m_stackPointer;
+    bool m_stackIsFull;
 
     CPU::InstrOpcode m_opcode;
     CPU::AddrMode m_addressingMode;

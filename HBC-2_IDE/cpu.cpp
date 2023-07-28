@@ -52,6 +52,7 @@ void HbcCpu::init()
     m_jumpOccured = false;
     m_programCounter = 0x0000;
     m_stackPointer = 0x00;
+    m_stackIsFull = false;
 
     m_opcode = CPU::InstrOpcode::NOP;
     m_addressingMode = CPU::AddrMode::NONE;
@@ -196,7 +197,29 @@ void HbcCpu::execute()
             }
             break;
 
-        case CPU::InstrOpcode::CAL: // TODO
+        case CPU::InstrOpcode::CAL:
+            if (m_addressingMode == CPU::AddrMode::REG16)
+            {
+                m_addressCache = ((uint16_t)m_registers[(int)m_register1Index] << 8) + m_registers[(int)m_register2Index];
+
+                push((uint8_t)(m_programCounter >> 8));     // MSB
+                push((uint8_t)(m_programCounter & 0x00FF)); // LSB
+
+                m_programCounter = m_addressCache;
+
+                m_jumpOccured = true;
+            }
+            else if (m_addressingMode == CPU::AddrMode::IMM16)
+            {
+                push((uint8_t)(m_programCounter >> 8));     // MSB
+                push((uint8_t)(m_programCounter & 0x00FF)); // LSB
+
+                m_programCounter = m_vX;
+
+                m_jumpOccured = true;
+            }
+            break;
+
         case CPU::InstrOpcode::CLC:
             if (m_addressingMode == CPU::AddrMode::NONE)
                 m_flags[(int)CPU::Flags::CARRY] = false;
@@ -462,9 +485,36 @@ void HbcCpu::execute()
                 m_flags[(int)CPU::Flags::ZERO] = m_registers[(int)m_register1Index] == 0x00;
                 m_flags[(int)CPU::Flags::NEGATIVE] = m_registers[(int)m_register1Index] & 0x80;
             }
-        case CPU::InstrOpcode::POP: // TODO
-        case CPU::InstrOpcode::PSH: // TODO
-        case CPU::InstrOpcode::RET: // TODO
+            break;
+
+        case CPU::InstrOpcode::POP:
+            if (m_addressingMode == CPU::AddrMode::REG)
+            {
+                pop(m_registers[(int)m_register1Index]);
+            }
+            break;
+
+        case CPU::InstrOpcode::PSH:
+            if (m_addressingMode == CPU::AddrMode::REG)
+            {
+                push(m_registers[(int)m_register1Index]);
+            }
+            break;
+        case CPU::InstrOpcode::RET:
+            if (m_addressingMode == CPU::AddrMode::NONE)
+            {
+                pop(m_dataCache); // LSB
+                m_addressCache = m_dataCache;
+
+                pop(m_dataCache); // MSB
+                m_addressCache += m_dataCache << 8;
+
+                m_programCounter = m_addressCache;
+
+                m_jumpOccured = true;
+            }
+            break;
+
         case CPU::InstrOpcode::SHL:
             if (m_addressingMode == CPU::AddrMode::REG)
             {
@@ -649,5 +699,39 @@ void HbcCpu::jump()
     {
             m_programCounter = m_vX;
             m_jumpOccured = true;
+    }
+}
+
+bool HbcCpu::pop(uint8_t &data)
+{
+    if (m_stackPointer == 0x00)
+    {
+        m_flags[(int)CPU::Flags::CARRY] = true;
+    }
+    else
+    {
+        m_stackPointer--;
+        m_stackIsFull = false;
+
+        data = m_motherboard->readRam(m_stackPointer);
+    }
+}
+
+bool HbcCpu::push(uint8_t data)
+{
+    if (m_stackIsFull)
+    {
+        m_flags[(int)CPU::Flags::CARRY] = true;
+
+        return true;
+    }
+    else
+    {
+        m_motherboard->writeRam(m_stackPointer, data);
+
+        m_stackPointer++;
+        m_stackIsFull = m_stackPointer == 0x00;
+
+        return false;
     }
 }
