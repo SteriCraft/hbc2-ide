@@ -12,6 +12,37 @@ HbcCpu* HbcCpu::getInstance(HbcMotherboard *motherboard)
     return m_singleton;
 }
 
+void HbcCpu::init()
+{
+    for (unsigned int i(0); i < CPU_REGISTER_NB; i++)
+        m_registers[i] = 0x00;
+
+    for (unsigned int i(0); i < FLAGS_NB; i++)
+        m_flags[i] = (i == (int)CPU::Flags::INTERRUPT) ? true : false; // Interrupt flag up by default
+
+    m_instructionRegister = 0x00000000;
+
+    m_jumpOccured = false;
+    m_programCounter = CPU_START_ADDRESS;
+    m_stackPointer = 0x00;
+    m_stackIsFull = false;
+
+    m_opcode = CPU::InstrOpcode::NOP;
+    m_addressingMode = CPU::AddrMode::NONE;
+
+    m_register1Index = CPU::Register::A;
+    m_register2Index = CPU::Register::A;
+    m_register3Index = CPU::Register::A;
+
+    m_v1 = 0x00;
+    m_v2 = 0x00;
+    m_vX = 0x0000;
+
+    m_operationCache = 0x00;
+    m_dataCache = 0x00;
+    m_addressCache = 0x0000;
+}
+
 void HbcCpu::tick()
 {
     // TODO
@@ -37,37 +68,6 @@ HbcCpu::HbcCpu(HbcMotherboard *motherboard)
     m_motherboard = motherboard;
 
     init();
-}
-
-void HbcCpu::init()
-{
-    for (unsigned int i(0); i < CPU_REGISTER_NB; i++)
-        m_registers[i] = 0x00;
-
-    for (unsigned int i(0); i < FLAGS_NB; i++)
-        m_flags[i] = (i == (int)CPU::Flags::INTERRUPT) ? true : false; // Interrupt flag up by default
-
-    m_instructionRegister = 0x00000000;
-
-    m_jumpOccured = false;
-    m_programCounter = 0x0000;
-    m_stackPointer = 0x00;
-    m_stackIsFull = false;
-
-    m_opcode = CPU::InstrOpcode::NOP;
-    m_addressingMode = CPU::AddrMode::NONE;
-
-    m_register1Index = CPU::Register::A;
-    m_register2Index = CPU::Register::A;
-    m_register3Index = CPU::Register::A;
-
-    m_v1 = 0x00;
-    m_v2 = 0x00;
-    m_vX = 0x0000;
-
-    m_operationCache = 0x00;
-    m_dataCache = 0x00;
-    m_addressCache = 0x0000;
 }
 
 void HbcCpu::fetch()
@@ -707,6 +707,8 @@ bool HbcCpu::pop(uint8_t &data)
     if (m_stackPointer == 0x00)
     {
         m_flags[(int)CPU::Flags::CARRY] = true;
+
+        return true;
     }
     else
     {
@@ -714,6 +716,8 @@ bool HbcCpu::pop(uint8_t &data)
         m_stackIsFull = false;
 
         data = m_motherboard->readRam(m_stackPointer);
+
+        return false;
     }
 }
 

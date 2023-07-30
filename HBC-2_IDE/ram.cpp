@@ -22,6 +22,23 @@ uint8_t HbcRam::read(uint16_t address)
     return m_memory[address];
 }
 
+bool HbcRam::setContent(QByteArray data)
+{
+    if (data.size() == RAM_SIZE)
+    {
+        for (unsigned int i(0); i < data.size(); i++)
+        {
+            m_memory[i] = data[i];
+        }
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
+}
+
 
 // PRIVATE
 HbcRam::HbcRam()

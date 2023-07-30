@@ -12,6 +12,11 @@ HbcMotherboard* HbcMotherboard::getInstance()
     return m_singleton;
 }
 
+void HbcMotherboard::tick()
+{
+    m_cpu->tick();
+}
+
 void HbcMotherboard::writeRam(uint16_t address, uint8_t data)
 {
     m_ram->write(address, data);
@@ -20,6 +25,22 @@ void HbcMotherboard::writeRam(uint16_t address, uint8_t data)
 uint8_t HbcMotherboard::readRam(uint16_t address)
 {
     return m_ram->read(address);
+}
+
+bool HbcMotherboard::init(QByteArray data)
+{
+    if (data.size() == RAM_SIZE)
+    {
+        m_ram->setContent(data);
+
+        m_cpu->init();
+
+        return true;
+    }
+    else
+    {
+        return false;
+    }
 }
 
 

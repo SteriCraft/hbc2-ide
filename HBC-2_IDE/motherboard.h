@@ -11,8 +11,12 @@ class HbcMotherboard // SINGLETON
 public:
     static HbcMotherboard* getInstance();
 
+    void tick();
+
     void writeRam(uint16_t address, uint8_t data);
     uint8_t readRam(uint16_t address);
+
+    bool init(QByteArray data);
 
 private:
     HbcMotherboard();

@@ -6,6 +6,8 @@
 
 namespace CPU
 {
+    #define CPU_START_ADDRESS 0x0300
+
     #define CPU_REGISTER_NB 8
     enum class Register { A = 0, B = 1, C = 2, D = 3, I = 4, J = 5, X = 6, Y = 7 };
 
@@ -50,11 +52,12 @@ class HbcCpu // SINGLETON
 
 public:
     static HbcCpu* getInstance(HbcMotherboard *motherboard);
+
+    void init();
     void tick(); // Executes one instruction completely
 
 private:
     HbcCpu(HbcMotherboard *motherboard);
-    void init();
 
     void fetch();
     void execute();
