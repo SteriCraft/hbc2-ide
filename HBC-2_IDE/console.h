@@ -4,6 +4,7 @@
 
 #include <QTime>
 #include <QTextEdit>
+#include <QMutex>
 
 #define CONSOLE_HEIGHT 200
 
@@ -21,6 +22,8 @@ class Console : public QTextEdit
 
     private:
         QTime time;
+
+        QMutex m_lock;
 };
 
 #endif // CONSOLE_H

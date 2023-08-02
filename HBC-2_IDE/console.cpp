@@ -10,9 +10,13 @@ Console::Console(QWidget *parent) : QTextEdit(parent)
 
 void Console::log(QString line)
 {
+    m_lock.lock();
+
     time = QTime::currentTime();
 
     append("[" + time.toString("hh:mm:ss") + "]: " + line + "");
+
+    m_lock.unlock();
 }
 
 void Console::log(std::string line)
@@ -32,5 +36,9 @@ void Console::log()
 
 void Console::returnLine()
 {
+    m_lock.lock();
+
     append("");
+
+    m_lock.unlock();
 }

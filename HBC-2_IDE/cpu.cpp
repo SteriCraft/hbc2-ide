@@ -47,6 +47,7 @@ void HbcCpu::tick()
 {
     // TODO
     // Interruption management
+    qDebug() << "CPU tick";
 
     if (!m_flags[(int)CPU::Flags::HALT])
     {
@@ -96,6 +97,8 @@ void HbcCpu::execute()
     // TODO
     // Modify flags when affected by instruction
     // Implement addressing modes
+
+    qDebug() << "Executing instruction " << (int)m_opcode;
 
     switch (m_opcode)
     {

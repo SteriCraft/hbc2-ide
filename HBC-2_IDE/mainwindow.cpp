@@ -1,6 +1,8 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 
+#include "binaryExplorer.h"
+
 MainWindow::MainWindow(QWidget *parent)
     : QMainWindow(parent)
     , ui(new Ui::MainWindow)
@@ -20,6 +22,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_fileManager = FileManager::getInstance();
     m_projectManager = ProjectManager::getInstance(this);
     m_assembler = nullptr;
+    m_emulator = nullptr;
 
     setupMenuBar();
     setupWidgets();
@@ -30,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_closeCount = 0;
 
     m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
+    m_emulator = HbcEmulator::getInstance(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -43,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete m_emulator;
     delete ui;
 }
 
@@ -109,8 +114,14 @@ void MainWindow::setupMenuBar()
     m_assembleAction = m_assemblerMenu->addAction(*m_assembleIcon, tr("Assemble"), this, &MainWindow::assembleAction);
     m_assembleAction->setShortcut(QKeySequence(Qt::Key_F5));
 
-    m_runAction = m_assemblerMenu->addAction(*m_runIcon, tr("Run"));
-    m_runAction->setShortcut(QKeySequence(Qt::Key_F6));
+    m_runEmulatorAction = m_assemblerMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F6));
+
+    m_stepEmulatorAction = m_assemblerMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
+
+    m_pauseEmulatorAction = m_assemblerMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
+
+    m_stopEmulatorAction = m_assemblerMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
 
     m_assemblerMenu->addSeparator();
 
@@ -192,7 +203,7 @@ void MainWindow::setupLayout()
 }
 
 
-// === SIGNALS ===
+// === SLOTS ===
 void MainWindow::onTabSelect()
 {
     updateWinTabMenu();
@@ -483,6 +494,11 @@ void MainWindow::onItemDoubleClick(QTreeWidgetItem* item)
     }
 }
 
+void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
+{
+    updateEmulatorActions(newState);
+}
+
 void MainWindow::onClose()
 {
     closeEvent(nullptr);
@@ -492,6 +508,8 @@ void MainWindow::closeEvent(QCloseEvent *event)
 {
     if (m_closeCount++ >= 1)
             return;
+
+    stopEmulatorAction();
 
     bool unsavedFiles(m_fileManager->areThereUnsavedFiles());
     bool toClose(false);
@@ -859,6 +877,33 @@ void MainWindow::showBinaryAction()
     binaryOutputDialog->show();
 }
 
+void MainWindow::runEmulatorAction()
+{
+    const QByteArray &data = m_assembler->getBinaryData();
+
+    if (m_emulator->getState() == Emulator::State::NOT_INITIALIZED)
+    {
+        m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
+    }
+
+    m_emulator->runCmd();
+}
+
+void MainWindow::stepEmulatorAction()
+{
+    m_emulator->stepCmd();
+}
+
+void MainWindow::pauseEmulatorAction()
+{
+    m_emulator->pauseCmd();
+}
+
+void MainWindow::stopEmulatorAction()
+{
+    m_emulator->stopCmd();
+}
+
 
 // === PROJECT ITEM RIGHT-CLICK MENU ACTIONS ===
 void MainWindow::setActiveProjectActionRC()
@@ -1200,7 +1245,20 @@ void MainWindow::updateWinTabMenu()
     m_closeFileAction->setEnabled(m_assemblyEditor->count() > 0);
     m_closeAllAction->setEnabled(m_assemblyEditor->count() > 0);
 
-    m_assembleAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
+    // Assembler and emulator update
+    if (m_emulator == nullptr)
+    {
+        m_assembleAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
+
+        m_runEmulatorAction->setEnabled(false);
+        m_stepEmulatorAction->setEnabled(false);
+        m_pauseEmulatorAction->setEnabled(false);
+        m_stopEmulatorAction->setEnabled(false);
+    }
+    else
+    {
+        updateEmulatorActions(m_emulator->getState());
+    }
 
     if (m_assembler == nullptr)
         m_showBinOutputAction->setEnabled(false);
@@ -1231,6 +1289,30 @@ void MainWindow::updateWinTabMenu()
     }
 
     m_saveAllAction->setEnabled(m_fileManager->areThereUnsavedFiles());
+}
+
+void MainWindow::updateEmulatorActions(Emulator::State newState)
+{
+    if (newState == Emulator::State::NOT_INITIALIZED)
+    {
+        m_assembleAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
+    }
+    else
+    {
+        m_assembleAction->setEnabled(false);
+    }
+
+    if (m_projectManager->getCurrentProject() != nullptr)
+    {
+        m_runEmulatorAction->setEnabled(newState == Emulator::State::PAUSED
+                                     || newState == Emulator::State::NOT_INITIALIZED);
+    }
+    else
+        m_runEmulatorAction->setEnabled(false);
+
+    m_stepEmulatorAction->setEnabled(newState  == Emulator::State::PAUSED);
+    m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
+    m_stopEmulatorAction->setEnabled(newState  != Emulator::State::NOT_INITIALIZED);
 }
 
 int MainWindow::getEditorIndex(CustomFile *file)

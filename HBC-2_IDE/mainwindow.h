@@ -16,7 +16,7 @@
 
 #include "customizedEditor.h"
 #include "assembler.h"
-#include "binaryExplorer.h"
+#include "emulator.h"
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -46,6 +46,8 @@ private slots:
     void onItemSelectChanged();
     void onItemRightClick(const QPoint &pos);
     void onItemDoubleClick(QTreeWidgetItem* item);
+    // Emulator status change
+    void onEmulatorStatusChanged(Emulator::State newState);
 
 protected:
     void closeEvent(QCloseEvent *event) override;
@@ -62,6 +64,7 @@ private:
     void closeProject(Project *p);
     void updateWinTabMenu();
 
+    void updateEmulatorActions(Emulator::State newState);
     int getEditorIndex(CustomFile *file);
     int getEditorIndex(QString fileName);
     CustomizedCodeEditor* getCCE(QWidget *w);
@@ -84,6 +87,10 @@ private:
     // Assembly actions
     void assembleAction();
     void showBinaryAction();
+    void runEmulatorAction();
+    void stepEmulatorAction();
+    void pauseEmulatorAction();
+    void stopEmulatorAction();
     // Project item right-click menu actions
     void setActiveProjectActionRC();
     void addNewFileActionRC();
@@ -123,7 +130,10 @@ private:
     QAction *m_closeAllAction;
     QMenu *m_assemblerMenu;
     QAction *m_assembleAction;
-    QAction *m_runAction;
+    QAction *m_runEmulatorAction;
+    QAction *m_stepEmulatorAction;
+    QAction *m_pauseEmulatorAction;
+    QAction *m_stopEmulatorAction;
     QAction *m_showBinOutputAction;
     QAction *m_quitAction;
     // Project Manager right-click menu
@@ -161,6 +171,7 @@ private:
 
     // Tools
     Assembler *m_assembler;
+    HbcEmulator *m_emulator;
 
     QFont defaultEditorFont;
     QWidget *m_window;

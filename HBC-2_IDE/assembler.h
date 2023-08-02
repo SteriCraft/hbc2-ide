@@ -139,7 +139,6 @@ class Assembler // SINGLETON
         std::vector<RoutineBlock> m_undefinedRoutineBlocks;
         std::vector<RoutineBlock> m_definedRoutineBlocks;
 
-        //quint8 m_finalBinary[MEMORY_SIZE];
         QByteArray m_finalBinary;
         bool m_binaryReady;
 

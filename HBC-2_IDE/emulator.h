@@ -1,63 +1,72 @@
 #ifndef EMULATOR_H
 #define EMULATOR_H
 
-#include <thread>
-#include <mutex>
-#include <QElapsedTimer>
+#include <QThread>
+#include <QMutex>
 
 #include "motherboard.h"
 #include "console.h"
 
 namespace Emulator
 {
-    enum class State { STOPPED = 0, RUNNING = 1, PAUSED = 2 };
-    enum class Command { STOP = 0, RUN = 1, STEP = 2, PAUSE = 3, EXIT = 4};
+    enum class State { RUNNING = 1, PAUSED = 2, NOT_INITIALIZED = 3 };
+    enum class Command { RUN = 0, STEP = 1, PAUSE = 2, STOP = 3, CLOSE = 4, NONE = 5};
 
     struct Status
     {
-        std::mutex m_lock;
+        QMutex m_lock;
 
         State m_state;
         Command m_command;
 
-        bool isBinarySet() { return m_initialBinary.size() == RAM_SIZE; }
+        std::string m_projectName;
         QByteArray m_initialBinary;
     };
 
     struct Computer {
-        std::mutex m_lock;
+        QMutex m_lock;
 
         HbcMotherboard *m_motherboard;
     };
 }
 
-class HbcEmulator // SINGLETON
+class MainWindow;
+
+class HbcEmulator : public QThread // SINGLETON
 {
+    Q_OBJECT
+
     static HbcEmulator *m_singleton;
 
-    void mainLoop();
+public:
+    static HbcEmulator* getInstance(MainWindow *mainWin, Console *consoleOutput);
+    ~HbcEmulator();
+
+    void run() override; // Thread loop
 
     bool runCmd();
+    bool stepCmd();
     bool pauseCmd();
-    bool stopCmd();
-    void exitCmd();
+    bool stopCmd(); // Difference with "pause" is that it reinits the computer
 
-    bool setInitialBinaryData(QByteArray data, std::string projectName);
-    bool setInitialBinaryData(QByteArray data, QString projectName);
+    bool loadProject(QByteArray data, std::string projectName);
+    bool loadProject(QByteArray data, QString projectName);
 
     Emulator::State getState();
 
-public:
-    static HbcEmulator* getInstance(Console *consoleOutput);
+signals:
+    void statusChanged(Emulator::State newState);
 
 private:
-    HbcEmulator(Console *consoleOutput);
+    HbcEmulator(MainWindow *mainWin, Console *consoleOutput);
 
-    std::string m_projectName;
+    void checkStatusChange();
+
     Emulator::Status m_status;
     Emulator::Computer m_computer;
 
     Console *m_consoleOutput;
+    MainWindow *m_mainWindow;
 };
 
 #endif // EMULATOR_H
