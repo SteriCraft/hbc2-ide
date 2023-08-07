@@ -1,28 +1,25 @@
 #ifndef MOTHERBOARD_H
 #define MOTHERBOARD_H
 
+#include <QMutex>
+
 #include "cpu.h"
 #include "ram.h"
 
-class HbcMotherboard // SINGLETON
+struct HbcMotherboard
 {
-    static HbcMotherboard *m_singleton;
-
-public:
-    static HbcMotherboard* getInstance();
-
-    void tick();
-
-    void writeRam(uint16_t address, uint8_t data);
-    uint8_t readRam(uint16_t address);
-
-    bool init(QByteArray data);
-
-private:
-    HbcMotherboard();
-
-    HbcCpu *m_cpu;
-    HbcRam *m_ram;
+    HbcCpu m_cpu;
+    HbcRam m_ram;
 };
+
+namespace Motherboard
+{
+    void tick(HbcMotherboard &motherboard);
+
+    void writeRam(HbcMotherboard &motherboard, uint16_t address, uint8_t data);
+    uint8_t readRam(HbcMotherboard &motherboard, uint16_t address);
+
+    bool init(HbcMotherboard &motherboard, QByteArray data);
+}
 
 #endif // MOTHERBOARD_H

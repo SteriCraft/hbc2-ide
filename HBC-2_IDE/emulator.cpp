@@ -13,31 +13,38 @@ HbcEmulator* HbcEmulator::getInstance(MainWindow *mainWin, Console *consoleOutpu
 
 HbcEmulator::~HbcEmulator()
 {
-    m_status.m_lock.lock();
-    m_status.m_command = Emulator::Command::CLOSE;
-    m_status.m_lock.unlock();
+    if (isRunning())
+    {
+        m_status.m_lock.lock();
+        m_status.m_command = Emulator::Command::CLOSE_APP;
+        m_status.m_lock.unlock();
 
-    wait(); // Waits until the thread finishes
+        wait();
+
+        m_consoleOutput->log("Emulator stopped");
+    }
 }
 
 void HbcEmulator::run()
 {
-    m_computer.m_lock.lock();
-
     bool stop = false;
     Emulator::State currentStatus = Emulator::State::PAUSED;
 
     QElapsedTimer timer;
     timer.start();
 
+    qDebug() << "[EMULATOR]: Start";
+
+    m_computer.m_lock.lock();
+
     while (!stop)
     {
         if (currentStatus == Emulator::State::RUNNING)
         {
-            m_computer.m_motherboard->tick();
+            Motherboard::tick(m_computer.m_motherboard);
         }
 
-        if (timer.elapsed() == 100) // in ms
+        if (timer.elapsed() >= 100) // in ms
         {
             m_status.m_lock.lock();
 
@@ -46,16 +53,18 @@ void HbcEmulator::run()
                 case Emulator::Command::RUN:
                     m_status.m_state = Emulator::State::RUNNING;
                     m_status.m_command = Emulator::Command::NONE;
+                    currentStatus = m_status.m_state;
                     emit statusChanged(m_status.m_state);
 
                     qDebug() << "[EMULATOR]: Full speed mode";
                     break;
 
                 case Emulator::Command::STEP:
-                    m_computer.m_motherboard->tick();
+                    Motherboard::tick(m_computer.m_motherboard);
 
                     m_status.m_state = Emulator::State::PAUSED;
                     m_status.m_command = Emulator::Command::NONE;
+                    currentStatus = m_status.m_state;
                     emit statusChanged(m_status.m_state);
 
                     qDebug() << "[EMULATOR]: Step forward";
@@ -64,22 +73,23 @@ void HbcEmulator::run()
                 case Emulator::Command::PAUSE:
                     m_status.m_state = Emulator::State::PAUSED;
                     m_status.m_command = Emulator::Command::NONE;
+                    currentStatus = m_status.m_state;
                     emit statusChanged(m_status.m_state);
 
                     qDebug() << "[EMULATOR]: Pause";
                     break;
 
-                case Emulator::Command::STOP:
+                case Emulator::Command::CLOSE:
                     m_status.m_state = Emulator::State::NOT_INITIALIZED;
                     m_status.m_command = Emulator::Command::NONE;
                     emit statusChanged(m_status.m_state);
 
-                    //m_computer.m_motherboard->init(m_status.m_initialBinary);
-                    qDebug() << "[EMULATOR]: Stop";
+                    stop = true;
+                    qDebug() << "[EMULATOR]: Close";
                     break;
 
-                case Emulator::Command::CLOSE:
-                    m_status.m_state = Emulator::State::PAUSED;
+                case Emulator::Command::CLOSE_APP:
+                    m_status.m_state = Emulator::State::NOT_INITIALIZED;
                     m_status.m_command = Emulator::Command::NONE;
 
                     stop = true;
@@ -186,7 +196,7 @@ bool HbcEmulator::stopCmd()
     if (getState() != Emulator::State::NOT_INITIALIZED)
     {
         m_status.m_lock.lock();
-        m_status.m_command = Emulator::Command::STOP;
+        m_status.m_command = Emulator::Command::CLOSE;
         m_status.m_lock.unlock();
 
         success = true;
@@ -203,15 +213,13 @@ bool HbcEmulator::loadProject(QByteArray data, std::string projectName)
 
     if (getState() == Emulator::State::NOT_INITIALIZED)
     {
-        if (data.size() == RAM_SIZE)
+        if (data.size() == MEMORY_SIZE)
         {
-            m_status.m_lock.lock();
-
-            m_status.m_initialBinary = data;
             m_status.m_projectName = projectName;
             m_status.m_state = Emulator::State::PAUSED;
 
-            m_status.m_lock.unlock();
+            Motherboard::init(m_computer.m_motherboard, data);
+            start();
 
             success = true;
         }
@@ -247,15 +255,13 @@ Emulator::State HbcEmulator::getState()
 // PRIVATE
 HbcEmulator::HbcEmulator(MainWindow *mainWin, Console* consoleOutput)
 {
+    // Emulator settings
     m_status.m_state = Emulator::State::NOT_INITIALIZED;
-
     m_status.m_projectName = "";
-    m_computer.m_motherboard = HbcMotherboard::getInstance();
 
+    // Qt settings
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;
 
     connect(this, SIGNAL(statusChanged(Emulator::State)), m_mainWindow, SLOT(onEmulatorStatusChanged(Emulator::State)), Qt::ConnectionType::BlockingQueuedConnection);
-
-    start(); // Executes override "run()"
 }

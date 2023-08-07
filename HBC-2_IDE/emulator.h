@@ -5,12 +5,13 @@
 #include <QMutex>
 
 #include "motherboard.h"
+//#include "monitor.h"
 #include "console.h"
 
 namespace Emulator
 {
     enum class State { RUNNING = 1, PAUSED = 2, NOT_INITIALIZED = 3 };
-    enum class Command { RUN = 0, STEP = 1, PAUSE = 2, STOP = 3, CLOSE = 4, NONE = 5};
+    enum class Command { RUN = 0, STEP = 1, PAUSE = 2, CLOSE = 4, CLOSE_APP = 5, NONE = 6};
 
     struct Status
     {
@@ -20,13 +21,12 @@ namespace Emulator
         Command m_command;
 
         std::string m_projectName;
-        QByteArray m_initialBinary;
     };
 
     struct Computer {
         QMutex m_lock;
 
-        HbcMotherboard *m_motherboard;
+        HbcMotherboard m_motherboard;
     };
 }
 
@@ -44,6 +44,7 @@ public:
 
     void run() override; // Thread loop
 
+    // Emulator commands
     bool runCmd();
     bool stepCmd();
     bool pauseCmd();

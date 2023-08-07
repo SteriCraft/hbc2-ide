@@ -4,8 +4,8 @@
 #include <QPainter>
 #include <QScrollBar>
 
-#include "qhexedit.h"
 #include <algorithm>
+#include "qhexedit.h"
 
 
 // ********************************************************************** Constructor, destructor

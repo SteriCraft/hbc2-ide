@@ -1,34 +1,22 @@
 #include "ram.h"
 
-HbcRam* HbcRam::m_singleton = nullptr;
-
-
-// PUBLIC
-HbcRam* HbcRam::getInstance()
+void Ram::write(HbcRam &ram, uint16_t address, uint8_t data)
 {
-    if (m_singleton == nullptr)
-        m_singleton = new HbcRam();
-
-    return m_singleton;
+    ram.m_memory[address] = data;
 }
 
-void HbcRam::write(uint16_t address, uint8_t data)
+uint8_t Ram::read(HbcRam &ram, uint16_t address)
 {
-    m_memory[address] = data;
+    return ram.m_memory[address];
 }
 
-uint8_t HbcRam::read(uint16_t address)
+bool Ram::setContent(HbcRam &ram, QByteArray data)
 {
-    return m_memory[address];
-}
-
-bool HbcRam::setContent(QByteArray data)
-{
-    if (data.size() == RAM_SIZE)
+    if (data.size() == MEMORY_SIZE)
     {
         for (unsigned int i(0); i < data.size(); i++)
         {
-            m_memory[i] = data[i];
+            ram.m_memory[i] = data[i];
         }
 
         return true;
@@ -36,15 +24,5 @@ bool HbcRam::setContent(QByteArray data)
     else
     {
         return false;
-    }
-}
-
-
-// PRIVATE
-HbcRam::HbcRam()
-{
-    for (unsigned int i(0); i < RAM_SIZE; i++)
-    {
-        m_memory[i] = 0x00;
     }
 }

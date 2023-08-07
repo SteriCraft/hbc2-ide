@@ -9,10 +9,10 @@ set(CMAKE_AUTORCC ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Xml)
-find_package(Qt${QT_VERSION_MAJOR} COMPONENTS LinguistTools REQUIRED COMPONENTS Widgets Xml)
+find_package(QT NAMES Qt6 Qt5 REQUIRED COMPONENTS Widgets Xml OpenGLWidgets)
+find_package(Qt${QT_VERSION_MAJOR} COMPONENTS LinguistTools REQUIRED COMPONENTS Widgets Xml OpenGLWidgets)
+find_package(OpenGL REQUIRED)
 qt_create_translation(QM_FILES ${CMAKE_SOURCE_DIR} fr_lang.ts)
-#configure_file(${QM_FILES} ${CMAKE_SOURCE_DIR} COPYONLY)
 
 set(PROJECT_SOURCES
         main.cpp
@@ -46,6 +46,9 @@ set(PROJECT_SOURCES
         motherboard.h
         ram.cpp
         ram.h
+        #monitor.cpp
+        #monitor.h
+        cpuDetails.h
         mainwindow.ui
         res.qrc
 )
@@ -75,7 +78,9 @@ else()
     endif()
 endif()
 
-target_link_libraries(HBC-2_IDE PRIVATE Qt${QT_VERSION_MAJOR}::Widgets Qt6::Xml)
+target_link_libraries(HBC-2_IDE PRIVATE
+    Qt${QT_VERSION_MAJOR}::Widgets Qt6::Xml Qt6::OpenGLWidgets Qt6::OpenGL ${OPENGL_LIBRARIES}
+)
 
 set_target_properties(HBC-2_IDE PROPERTIES
     MACOSX_BUNDLE_GUI_IDENTIFIER my.example.com

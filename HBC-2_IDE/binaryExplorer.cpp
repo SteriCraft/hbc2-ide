@@ -24,10 +24,10 @@ BinaryExplorer::BinaryExplorer(const QByteArray data, QWidget *parent) : QDialog
 
     m_hexEditor->setHexFontColor(QColor(190, 192, 194));
 
+    m_hexEditor->setReadOnly(true);
+
     setFixedWidth(BINARY_DIALOG_WIDTH);
     setFixedHeight(BINARY_DIALOG_WIDTH);
-
-    m_hexEditor->setReadOnly(true);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(m_hexEditor);

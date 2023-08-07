@@ -1,39 +1,26 @@
 #include "motherboard.h"
 
-HbcMotherboard* HbcMotherboard::m_singleton = nullptr;
-
-
-// PUBLIC
-HbcMotherboard* HbcMotherboard::getInstance()
+void Motherboard::tick(HbcMotherboard &motherboard)
 {
-    if (m_singleton == nullptr)
-        m_singleton = new HbcMotherboard();
-
-    return m_singleton;
+    Cpu::tick(motherboard.m_cpu);
 }
 
-void HbcMotherboard::tick()
+void Motherboard::writeRam(HbcMotherboard &motherboard, uint16_t address, uint8_t data)
 {
-    m_cpu->tick();
+    Ram::write(motherboard.m_ram, address, data);
 }
 
-void HbcMotherboard::writeRam(uint16_t address, uint8_t data)
+uint8_t Motherboard::readRam(HbcMotherboard &motherboard, uint16_t address)
 {
-    m_ram->write(address, data);
+    return Ram::read(motherboard.m_ram, address);
 }
 
-uint8_t HbcMotherboard::readRam(uint16_t address)
+bool Motherboard::init(HbcMotherboard &motherboard, QByteArray data)
 {
-    return m_ram->read(address);
-}
-
-bool HbcMotherboard::init(QByteArray data)
-{
-    if (data.size() == RAM_SIZE)
+    if (data.size() == MEMORY_SIZE)
     {
-        m_ram->setContent(data);
-
-        m_cpu->init();
+        Ram::setContent(motherboard.m_ram, data);
+        Cpu::init(motherboard.m_cpu, &motherboard);
 
         return true;
     }
@@ -41,11 +28,4 @@ bool HbcMotherboard::init(QByteArray data)
     {
         return false;
     }
-}
-
-
-// PRIVATE
-HbcMotherboard::HbcMotherboard()
-{
-    m_cpu = HbcCpu::getInstance(this);
 }

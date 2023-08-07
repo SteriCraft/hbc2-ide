@@ -5,24 +5,19 @@
 #include <QByteArray>
 #include <QDebug>
 
-#define RAM_SIZE 0x10000 // 65'536 bytes
+#include "cpuDetails.h"
 
-class HbcRam // SINGLETON
+struct HbcRam
 {
-    static HbcRam *m_singleton;
-
-public:
-    static HbcRam* getInstance();
-
-    void write(uint16_t address, uint8_t data);
-    uint8_t read(uint16_t address);
-
-    bool setContent(QByteArray data);
-
-private:
-    HbcRam();
-
-    uint8_t m_memory[RAM_SIZE];
+    uint8_t m_memory[MEMORY_SIZE];
 };
+
+namespace Ram
+{
+    void write(HbcRam &ram, uint16_t address, uint8_t data);
+    uint8_t read(HbcRam &ram, uint16_t address);
+
+    bool setContent(HbcRam &ram, QByteArray data);
+}
 
 #endif // RAM_H

@@ -1,4 +1,3 @@
-
 #ifndef ASSEMBLER_H
 #define ASSEMBLER_H
 
@@ -7,11 +6,6 @@
 #include "console.h"
 #include "projectManager.h"
 #include "token.h"
-
-#define NO_ADDRESS 0
-#define PROGRAM_START_ADDRESS 0x0300
-#define MEMORY_SIZE 0x10000 // 65'536 bytes
-#define INSTRUCTION_SIZE 4
 
 struct Error
 {

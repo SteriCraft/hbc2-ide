@@ -27,7 +27,6 @@ class QMenuBar;
 QT_END_NAMESPACE
 
 class MainWindow : public QMainWindow
-
 {
     Q_OBJECT
 
@@ -87,10 +86,12 @@ private:
     // Assembly actions
     void assembleAction();
     void showBinaryAction();
+    // Emulator actions
     void runEmulatorAction();
     void stepEmulatorAction();
     void pauseEmulatorAction();
     void stopEmulatorAction();
+    void plugMonitorPeripheral();
     // Project item right-click menu actions
     void setActiveProjectActionRC();
     void addNewFileActionRC();
@@ -136,6 +137,9 @@ private:
     QAction *m_stopEmulatorAction;
     QAction *m_showBinOutputAction;
     QAction *m_quitAction;
+    QMenu *m_emulatorMenu;
+    QMenu *m_emulatorPeripheralsMenu;
+    QAction *m_monitorToggle;
     // Project Manager right-click menu
     QAction *m_setActiveProjectActionRC;
     QAction *m_addNewFileActionRC;

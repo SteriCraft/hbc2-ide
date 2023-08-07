@@ -114,19 +114,28 @@ void MainWindow::setupMenuBar()
     m_assembleAction = m_assemblerMenu->addAction(*m_assembleIcon, tr("Assemble"), this, &MainWindow::assembleAction);
     m_assembleAction->setShortcut(QKeySequence(Qt::Key_F5));
 
-    m_runEmulatorAction = m_assemblerMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F6));
-
-    m_stepEmulatorAction = m_assemblerMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
-
-    m_pauseEmulatorAction = m_assemblerMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
-
-    m_stopEmulatorAction = m_assemblerMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
-
-    m_assemblerMenu->addSeparator();
-
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
     m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F10));
+
+    // - Emulator menu -
+    m_emulatorMenu = menuBar()->addMenu(tr("Emulator"));
+
+    m_runEmulatorAction = m_emulatorMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F6));
+
+    m_stepEmulatorAction = m_emulatorMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
+
+    m_pauseEmulatorAction = m_emulatorMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
+
+    m_stopEmulatorAction = m_emulatorMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
+
+    m_emulatorMenu->addSeparator();
+
+    m_emulatorPeripheralsMenu = m_emulatorMenu->addMenu(tr("Peripherals"));
+
+    m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheral);
+    m_monitorToggle->setCheckable(true);
+    m_monitorToggle->setChecked(true);
 
 
     // === Project Manager right-click actions ===
@@ -902,6 +911,18 @@ void MainWindow::pauseEmulatorAction()
 void MainWindow::stopEmulatorAction()
 {
     m_emulator->stopCmd();
+}
+
+void MainWindow::plugMonitorPeripheral()
+{
+    /*if (m_emulator->isMonitorPlugged())
+    {
+        m_emulator->unplugMonitor();
+    }
+    else
+    {
+        m_emulator->plugInMonitor();
+    }*/
 }
 
 
