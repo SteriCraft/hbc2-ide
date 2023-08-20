@@ -1,4 +1,5 @@
-#include "mainWindow.h"
+#include "mainwindow.h"
+#include "monitor.h"
 
 HbcEmulator* HbcEmulator::m_singleton = nullptr;
 
@@ -35,13 +36,11 @@ void HbcEmulator::run()
 
     qDebug() << "[EMULATOR]: Start";
 
-    m_computer.m_lock.lock();
-
     while (!stop)
     {
         if (currentStatus == Emulator::State::RUNNING)
         {
-            Motherboard::tick(m_computer.m_motherboard);
+            tickComputer();
         }
 
         if (timer.elapsed() >= 100) // in ms
@@ -60,7 +59,7 @@ void HbcEmulator::run()
                     break;
 
                 case Emulator::Command::STEP:
-                    Motherboard::tick(m_computer.m_motherboard);
+                    tickComputer();
 
                     m_status.m_state = Emulator::State::PAUSED;
                     m_status.m_command = Emulator::Command::NONE;
@@ -84,6 +83,12 @@ void HbcEmulator::run()
                     m_status.m_command = Emulator::Command::NONE;
                     emit statusChanged(m_status.m_state);
 
+                    for (unsigned int i(0); i < m_computer.m_peripherals.size(); i++)
+                    {
+                        if (m_computer.m_peripherals[i] != nullptr)
+                            delete m_computer.m_peripherals[i];
+                    }
+
                     stop = true;
                     qDebug() << "[EMULATOR]: Close";
                     break;
@@ -91,6 +96,12 @@ void HbcEmulator::run()
                 case Emulator::Command::CLOSE_APP:
                     m_status.m_state = Emulator::State::NOT_INITIALIZED;
                     m_status.m_command = Emulator::Command::NONE;
+
+                    for (unsigned int i(0); i < m_computer.m_peripherals.size(); i++)
+                    {
+                        if (m_computer.m_peripherals[i] != nullptr)
+                            delete m_computer.m_peripherals[i];
+                    }
 
                     stop = true;
                     qDebug() << "[EMULATOR]: Close";
@@ -104,8 +115,6 @@ void HbcEmulator::run()
             timer.restart();
         }
     }
-
-    m_computer.m_lock.unlock();
 }
 
 bool HbcEmulator::runCmd()
@@ -120,8 +129,6 @@ bool HbcEmulator::runCmd()
         m_status.m_lock.unlock();
 
         success = true;
-
-        m_consoleOutput->log("Emulator runs at full speed");
     }
     else if (currentState == Emulator::State::RUNNING)
     {
@@ -147,8 +154,6 @@ bool HbcEmulator::stepCmd()
         m_status.m_lock.unlock();
 
         success = true;
-
-        m_consoleOutput->log("Emulator steps forward");
     }
     else if (currentState == Emulator::State::RUNNING)
     {
@@ -174,8 +179,6 @@ bool HbcEmulator::pauseCmd()
         m_status.m_lock.unlock();
 
         success = true;
-
-        m_consoleOutput->log("Emulator paused");
     }
     else if (currentState == Emulator::State::PAUSED)
     {
@@ -200,8 +203,6 @@ bool HbcEmulator::stopCmd()
         m_status.m_lock.unlock();
 
         success = true;
-
-        m_consoleOutput->log("Emulator stopped");
     }
 
     return success;
@@ -217,6 +218,14 @@ bool HbcEmulator::loadProject(QByteArray data, std::string projectName)
         {
             m_status.m_projectName = projectName;
             m_status.m_state = Emulator::State::PAUSED;
+
+            m_computer.m_peripherals.clear();
+            // TODO : Plug in peripherals
+
+            if (m_status.m_plugMonitor)
+            {
+                m_computer.m_peripherals.push_back(new HbcMonitor(&m_computer.m_motherboard.m_iod, m_consoleOutput));
+            }
 
             Motherboard::init(m_computer.m_motherboard, data);
             start();
@@ -239,6 +248,11 @@ bool HbcEmulator::loadProject(QByteArray data, std::string projectName)
 bool HbcEmulator::loadProject(QByteArray data, QString projectName)
 {
     return loadProject(data, projectName.toStdString());
+}
+
+void HbcEmulator::setMonitorPlugged(bool monitor)
+{
+    m_status.m_plugMonitor = monitor;
 }
 
 Emulator::State HbcEmulator::getState()
@@ -264,4 +278,14 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console* consoleOutput)
     m_mainWindow = mainWin;
 
     connect(this, SIGNAL(statusChanged(Emulator::State)), m_mainWindow, SLOT(onEmulatorStatusChanged(Emulator::State)), Qt::ConnectionType::BlockingQueuedConnection);
+}
+
+void HbcEmulator::tickComputer()
+{
+    Motherboard::tick(m_computer.m_motherboard);
+
+    for (unsigned int i(0); i < m_computer.m_peripherals.size(); i++)
+    {
+        m_computer.m_peripherals[i]->tick();
+    }
 }

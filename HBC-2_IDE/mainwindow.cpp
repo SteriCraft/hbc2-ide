@@ -133,7 +133,7 @@ void MainWindow::setupMenuBar()
 
     m_emulatorPeripheralsMenu = m_emulatorMenu->addMenu(tr("Peripherals"));
 
-    m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheral);
+    m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheralAction);
     m_monitorToggle->setCheckable(true);
     m_monitorToggle->setChecked(true);
 
@@ -913,16 +913,9 @@ void MainWindow::stopEmulatorAction()
     m_emulator->stopCmd();
 }
 
-void MainWindow::plugMonitorPeripheral()
+void MainWindow::plugMonitorPeripheralAction()
 {
-    /*if (m_emulator->isMonitorPlugged())
-    {
-        m_emulator->unplugMonitor();
-    }
-    else
-    {
-        m_emulator->plugInMonitor();
-    }*/
+    m_emulator->setMonitorPlugged(m_monitorToggle->isChecked());
 }
 
 
@@ -1334,6 +1327,8 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     m_stepEmulatorAction->setEnabled(newState  == Emulator::State::PAUSED);
     m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
     m_stopEmulatorAction->setEnabled(newState  != Emulator::State::NOT_INITIALIZED);
+
+    m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED);
 }
 
 int MainWindow::getEditorIndex(CustomFile *file)

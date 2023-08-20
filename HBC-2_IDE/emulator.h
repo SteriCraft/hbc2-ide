@@ -5,7 +5,7 @@
 #include <QMutex>
 
 #include "motherboard.h"
-//#include "monitor.h"
+#include "peripheral.h"
 #include "console.h"
 
 namespace Emulator
@@ -20,13 +20,14 @@ namespace Emulator
         State m_state;
         Command m_command;
 
+        bool m_plugMonitor;
+
         std::string m_projectName;
     };
 
     struct Computer {
-        QMutex m_lock;
-
         HbcMotherboard m_motherboard;
+        std::vector<HbcPeripheral*> m_peripherals;
     };
 }
 
@@ -48,10 +49,12 @@ public:
     bool runCmd();
     bool stepCmd();
     bool pauseCmd();
-    bool stopCmd(); // Difference with "pause" is that it reinits the computer
+    bool stopCmd();
 
     bool loadProject(QByteArray data, std::string projectName);
     bool loadProject(QByteArray data, QString projectName);
+
+    void setMonitorPlugged(bool monitor);
 
     Emulator::State getState();
 
@@ -61,6 +64,7 @@ signals:
 private:
     HbcEmulator(MainWindow *mainWin, Console *consoleOutput);
 
+    void tickComputer();
     void checkStatusChange();
 
     Emulator::Status m_status;

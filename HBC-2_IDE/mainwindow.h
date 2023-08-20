@@ -91,7 +91,7 @@ private:
     void stepEmulatorAction();
     void pauseEmulatorAction();
     void stopEmulatorAction();
-    void plugMonitorPeripheral();
+    void plugMonitorPeripheralAction();
     // Project item right-click menu actions
     void setActiveProjectActionRC();
     void addNewFileActionRC();

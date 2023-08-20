@@ -4,18 +4,21 @@
 #include <cinttypes>
 #include <QByteArray>
 #include <QDebug>
+#include <QMutex>
 
-#include "cpuDetails.h"
+#include "computerDetails.h"
 
 struct HbcRam
 {
-    uint8_t m_memory[MEMORY_SIZE];
+    QMutex m_lock;
+
+    Byte m_memory[MEMORY_SIZE];
 };
 
 namespace Ram
 {
-    void write(HbcRam &ram, uint16_t address, uint8_t data);
-    uint8_t read(HbcRam &ram, uint16_t address);
+    void write(HbcRam &ram, Word address, Byte data);
+    Byte read(HbcRam &ram, Word address);
 
     bool setContent(HbcRam &ram, QByteArray data);
 }

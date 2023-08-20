@@ -1664,15 +1664,15 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
     // Populate arguments with addressing mode
     switch (line->m_instr.m_addrMode)
     {
-    case CPU::AddressingMode::NONE: // INS
+    case Computer::AddressingMode::NONE: // INS
         // No argument to populate
         break;
 
-    case CPU::AddressingMode::REG: // INS r | INS r, r
-        if (line->m_instr.m_opcode == CPU::InstructionOpcode::DEC || line->m_instr.m_opcode == CPU::InstructionOpcode::INC
-         || line->m_instr.m_opcode == CPU::InstructionOpcode::NOT || line->m_instr.m_opcode == CPU::InstructionOpcode::POP
-         || line->m_instr.m_opcode == CPU::InstructionOpcode::PSH || line->m_instr.m_opcode == CPU::InstructionOpcode::SHL
-         || line->m_instr.m_opcode == CPU::InstructionOpcode::ASR || line->m_instr.m_opcode == CPU::InstructionOpcode::SHR)
+    case Computer::AddressingMode::REG: // INS r | INS r, r
+        if (line->m_instr.m_opcode == Computer::InstructionOpcode::DEC || line->m_instr.m_opcode == Computer::InstructionOpcode::INC
+         || line->m_instr.m_opcode == Computer::InstructionOpcode::NOT || line->m_instr.m_opcode == Computer::InstructionOpcode::POP
+         || line->m_instr.m_opcode == Computer::InstructionOpcode::PSH || line->m_instr.m_opcode == Computer::InstructionOpcode::SHL
+         || line->m_instr.m_opcode == Computer::InstructionOpcode::ASR || line->m_instr.m_opcode == Computer::InstructionOpcode::SHR)
         {
             r1 = (uint8_t)line->m_tokens[1].getRegister();
         }
@@ -1683,13 +1683,13 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         }
         break;
 
-    case CPU::AddressingMode::REG_IMM8: // INS r, 0xXX
+    case Computer::AddressingMode::REG_IMM8: // INS r, 0xXX
         r1 = (uint8_t)line->m_tokens[1].getRegister();
         v1 = line->m_tokens[2].getValue();
         break;
 
-    case CPU::AddressingMode::REG_RAM: // INS r, $0xXXXX
-        if (line->m_instr.m_opcode == CPU::InstructionOpcode::STR) // str $0xXXXX, r | $0xXXXX <- r
+    case Computer::AddressingMode::REG_RAM: // INS r, $0xXXXX
+        if (line->m_instr.m_opcode == Computer::InstructionOpcode::STR) // str $0xXXXX, r | $0xXXXX <- r
         {
             r1 = (uint8_t)line->m_tokens[2].getRegister();
             vx = line->m_tokens[1].getAddress();
@@ -1703,8 +1703,8 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         useVx = true;
         break;
 
-    case CPU::AddressingMode::RAMREG_IMMREG: // INS r, [rr]
-        if (line->m_instr.m_opcode == CPU::InstructionOpcode::STR) // str [rr], r | [rr] <- r
+    case Computer::AddressingMode::RAMREG_IMMREG: // INS r, [rr]
+        if (line->m_instr.m_opcode == Computer::InstructionOpcode::STR) // str [rr], r | [rr] <- r
         {
             r1 = (uint8_t)line->m_tokens[1].getConcatRegs().msReg;
             r2 = (uint8_t)line->m_tokens[1].getConcatRegs().lsReg;
@@ -1722,18 +1722,18 @@ uint32_t Assembler::getBinaryFromTokenLine(TokenLine* line)
         useR3 = true;
         break;
 
-    case CPU::AddressingMode::REG16: // INS r, 0xXX
+    case Computer::AddressingMode::REG16: // INS r, 0xXX
         r1 = (uint8_t)line->m_tokens[1].getConcatRegs().msReg;
         r2 = (uint8_t)line->m_tokens[1].getConcatRegs().lsReg;
         break;
 
-    case CPU::AddressingMode::IMM16: // INS 0xXXXX
+    case Computer::AddressingMode::IMM16: // INS 0xXXXX
         vx = line->m_tokens[1].getAddress();
 
         useVx = true;
         break;
 
-    case CPU::AddressingMode::IMM8: // INS 0xXX
+    case Computer::AddressingMode::IMM8: // INS 0xXX
         v1 = line->m_tokens[1].getValue();
         break;
     }

@@ -1,5 +1,6 @@
 #include <QApplication>
 #include <QTranslator>
+#include <QStyleFactory>
 
 #include "mainwindow.h"
 
@@ -17,8 +18,9 @@ int main(int argc, char *argv[])
             qDebug() << "French translation file loaded successfuly";
     }
 
-    a.installTranslator(&translator);
-    a.setStyle("fusion");
+    //a.installTranslator(&translator);
+    //a.setStyle("Fusion");
+    a.setStyle(QStyleFactory::create("Fusion"));
 
     MainWindow w;
 

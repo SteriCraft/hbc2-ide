@@ -34,12 +34,12 @@ Assembly::TokenType Token::getType()
     return m_type;
 }
 
-CPU::InstructionOpcode Token::getInstructionOpcode()
+Computer::InstructionOpcode Token::getInstructionOpcode()
 {
     return m_instructionOpcode;
 }
 
-CPU::Register Token::getRegister()
+Computer::Register Token::getRegister()
 {
     return m_reg;
 }
@@ -84,7 +84,7 @@ std::string Token::print()
     switch (m_type)
     {
         case Assembly::TokenType::INSTR:
-            return "Instruction " + CPU::instrStrArr[(int)m_instructionOpcode];
+            return "Instruction " + Computer::instrStrArr[(int)m_instructionOpcode];
 
         case Assembly::TokenType::DEFINE:
             return "Define keyword";
@@ -111,10 +111,10 @@ std::string Token::print()
             return "Address " + std::to_string((int)m_address);
 
         case Assembly::TokenType::REG:
-            return "Register " + CPU::regStrArr[(int)m_reg];
+            return "Register " + Computer::regStrArr[(int)m_reg];
 
         case Assembly::TokenType::CONCATREG:
-            return "Concatenated registers [" + CPU::regStrArr[(int)m_concatReg.msReg] + "<<" + CPU::regStrArr[(int)m_concatReg.lsReg] + "]";
+            return "Concatenated registers [" + Computer::regStrArr[(int)m_concatReg.msReg] + "<<" + Computer::regStrArr[(int)m_concatReg.lsReg] + "]";
 
         case Assembly::TokenType::STRING:
             return "String \"" + m_str + "\"";
@@ -166,9 +166,9 @@ bool Token::identifyInstruction()
 {
     for (unsigned int i(0); i < INSTRUCTIONS_NB; i++)
     {
-        if (m_str == CPU::instrStrArr[i])
+        if (m_str == Computer::instrStrArr[i])
         {
-            m_instructionOpcode = ( CPU::InstructionOpcode)i;
+            m_instructionOpcode = ( Computer::InstructionOpcode)i;
             return true;
         }
     }
@@ -204,9 +204,9 @@ void Token::analyseArgument()
         {
             for (unsigned int i(0); i < REGISTERS_NB; i++)
             {
-                if (m_str == CPU::regStrArr[i])
+                if (m_str == Computer::regStrArr[i])
                 {
-                    m_reg = (CPU::Register)i;
+                    m_reg = (Computer::Register)i;
                     m_type = Assembly::TokenType::REG;
                     return;
                 }
@@ -345,7 +345,7 @@ void Token::analyseArgument()
 
                             for (unsigned int i(0); i < REGISTERS_NB; i++)
                             {
-                                if (m_str[1] == CPU::regStrArr[i][0])
+                                if (m_str[1] == Computer::regStrArr[i][0])
                                 {
                                     msReg = i;
                                     break;
@@ -354,7 +354,7 @@ void Token::analyseArgument()
 
                             for (unsigned int i(0); i < REGISTERS_NB; i++)
                             {
-                                if (m_str[2] == CPU::regStrArr[i][0])
+                                if (m_str[2] == Computer::regStrArr[i][0])
                                 {
                                     lsReg = i;
                                     break;
@@ -363,8 +363,8 @@ void Token::analyseArgument()
 
                             if (msReg != -1 && lsReg != -1)
                             {
-                                m_concatReg.msReg = (CPU::Register)msReg;
-                                m_concatReg.lsReg = (CPU::Register)lsReg;
+                                m_concatReg.msReg = (Computer::Register)msReg;
+                                m_concatReg.lsReg = (Computer::Register)lsReg;
                                 m_type = Assembly::TokenType::CONCATREG;
                             }
                             else
@@ -475,16 +475,16 @@ bool TokenLine::checkValidity()
 
         switch (m_instr.m_opcode)
         {
-        case  CPU::InstructionOpcode::NOP:
+        case  Computer::InstructionOpcode::NOP:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::ADC:
+        case  Computer::InstructionOpcode::ADC:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -495,15 +495,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -511,7 +511,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::ADD:
+        case  Computer::InstructionOpcode::ADD:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -522,15 +522,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -538,7 +538,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::AND:
+        case  Computer::InstructionOpcode::AND:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -549,15 +549,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -565,18 +565,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::CAL:
+        case  Computer::InstructionOpcode::CAL:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -584,70 +584,70 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::CLC:
+        case  Computer::InstructionOpcode::CLC:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLE:
+        case  Computer::InstructionOpcode::CLE:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLI:
+        case  Computer::InstructionOpcode::CLI:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLN:
+        case  Computer::InstructionOpcode::CLN:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLS:
+        case  Computer::InstructionOpcode::CLS:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLZ:
+        case  Computer::InstructionOpcode::CLZ:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CLF:
+        case  Computer::InstructionOpcode::CLF:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::CMP:
+        case  Computer::InstructionOpcode::CMP:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -658,15 +658,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::RAMREG_IMMREG;
+                m_instr.m_addrMode = Computer::AddressingMode::RAMREG_IMMREG;
             }
             else
             {
@@ -674,22 +674,22 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::DEC:
+        case  Computer::InstructionOpcode::DEC:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -697,23 +697,23 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::HLT:
+        case  Computer::InstructionOpcode::HLT:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::IN:
+        case  Computer::InstructionOpcode::IN:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG && arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -721,14 +721,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::OUT:
+        case  Computer::InstructionOpcode::OUT:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG && arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -736,22 +736,22 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::INC:
+        case  Computer::InstructionOpcode::INC:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -759,14 +759,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::INT:
+        case  Computer::InstructionOpcode::INT:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::DECVAL || arg1 == Assembly::TokenType::HEXVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM8;
             }
             else
             {
@@ -774,27 +774,27 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::IRT:
+        case  Computer::InstructionOpcode::IRT:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::JMC:
+        case  Computer::InstructionOpcode::JMC:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -802,18 +802,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JME:
+        case  Computer::InstructionOpcode::JME:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -821,18 +821,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JMN:
+        case  Computer::InstructionOpcode::JMN:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -840,18 +840,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JMP:
+        case  Computer::InstructionOpcode::JMP:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -859,18 +859,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JMS:
+        case  Computer::InstructionOpcode::JMS:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -878,18 +878,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JMZ:
+        case  Computer::InstructionOpcode::JMZ:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -897,18 +897,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::JMF:
+        case  Computer::InstructionOpcode::JMF:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG16;
+                m_instr.m_addrMode = Computer::AddressingMode::REG16;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -916,7 +916,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::STR:
+        case  Computer::InstructionOpcode::STR:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -927,11 +927,11 @@ bool TokenLine::checkValidity()
             }
             else if (arg1 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::RAMREG_IMMREG;
+                m_instr.m_addrMode = Computer::AddressingMode::RAMREG_IMMREG;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -939,7 +939,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::LOD:
+        case  Computer::InstructionOpcode::LOD:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -950,11 +950,11 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::CONCATREG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::RAMREG_IMMREG;
+                m_instr.m_addrMode = Computer::AddressingMode::RAMREG_IMMREG;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -962,7 +962,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::MOV:
+        case  Computer::InstructionOpcode::MOV:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -973,11 +973,11 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else
             {
@@ -985,18 +985,18 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::NOT:
+        case  Computer::InstructionOpcode::NOT:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg1 == Assembly::TokenType::ADDRESS || arg1 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::IMM16;
+                m_instr.m_addrMode = Computer::AddressingMode::IMM16;
             }
             else
             {
@@ -1004,7 +1004,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::OR:
+        case  Computer::InstructionOpcode::OR:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -1015,15 +1015,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -1031,14 +1031,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::POP:
+        case  Computer::InstructionOpcode::POP:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -1046,14 +1046,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::PSH:
+        case  Computer::InstructionOpcode::PSH:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -1061,23 +1061,23 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::RET:
+        case  Computer::InstructionOpcode::RET:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::SHL:
+        case  Computer::InstructionOpcode::SHL:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -1085,14 +1085,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::ASR:
+        case  Computer::InstructionOpcode::ASR:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -1100,14 +1100,14 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::SHR:
+        case  Computer::InstructionOpcode::SHR:
             if (argsNb != 1)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
             else if (arg1 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else
             {
@@ -1115,70 +1115,70 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::STC:
+        case  Computer::InstructionOpcode::STC:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STE:
+        case  Computer::InstructionOpcode::STE:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STI:
+        case  Computer::InstructionOpcode::STI:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STN:
+        case  Computer::InstructionOpcode::STN:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STS:
+        case  Computer::InstructionOpcode::STS:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STZ:
+        case  Computer::InstructionOpcode::STZ:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::STF:
+        case  Computer::InstructionOpcode::STF:
             if (argsNb > 0)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
             }
 
-            m_instr.m_addrMode = CPU::AddressingMode::NONE;
+            m_instr.m_addrMode = Computer::AddressingMode::NONE;
             break;
 
-        case  CPU::InstructionOpcode::SUB:
+        case  Computer::InstructionOpcode::SUB:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -1189,15 +1189,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -1205,7 +1205,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::SBB:
+        case  Computer::InstructionOpcode::SBB:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -1216,15 +1216,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {
@@ -1232,7 +1232,7 @@ bool TokenLine::checkValidity()
             }
             break;
 
-        case  CPU::InstructionOpcode::XOR:
+        case  Computer::InstructionOpcode::XOR:
             if (argsNb != 2)
             {
                 m_err = Assembly::ErrorType::INSTR_ARG_NB;
@@ -1243,15 +1243,15 @@ bool TokenLine::checkValidity()
             }
             else if (arg2 == Assembly::TokenType::REG)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG;
+                m_instr.m_addrMode = Computer::AddressingMode::REG;
             }
             else if (arg2 == Assembly::TokenType::HEXVAL || arg2 == Assembly::TokenType::DECVAL)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_IMM8;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_IMM8;
             }
             else if (arg2 == Assembly::TokenType::ADDRESS || arg2 == Assembly::TokenType::VAR)
             {
-                m_instr.m_addrMode = CPU::AddressingMode::REG_RAM;
+                m_instr.m_addrMode = Computer::AddressingMode::REG_RAM;
             }
             else
             {

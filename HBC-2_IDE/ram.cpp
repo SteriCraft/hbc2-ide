@@ -1,23 +1,33 @@
 #include "ram.h"
 
-void Ram::write(HbcRam &ram, uint16_t address, uint8_t data)
+void Ram::write(HbcRam &ram, Word address, Byte data)
 {
+    ram.m_lock.lock();
     ram.m_memory[address] = data;
+    ram.m_lock.unlock();
 }
 
-uint8_t Ram::read(HbcRam &ram, uint16_t address)
+Byte Ram::read(HbcRam &ram, Word address)
 {
-    return ram.m_memory[address];
+    Byte valueRead;
+
+    ram.m_lock.lock();
+    valueRead = ram.m_memory[address];
+    ram.m_lock.unlock();
+
+    return valueRead;
 }
 
 bool Ram::setContent(HbcRam &ram, QByteArray data)
 {
     if (data.size() == MEMORY_SIZE)
     {
+        ram.m_lock.lock();
         for (unsigned int i(0); i < data.size(); i++)
         {
             ram.m_memory[i] = data[i];
         }
+        ram.m_lock.unlock();
 
         return true;
     }

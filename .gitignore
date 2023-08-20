@@ -8,3 +8,10 @@ Blog/
 
 # ignore files from "HBC-2_IDE"
 HBC-2_IDE/mainwindow.ui
+
+# ignore build directories from "HBC-2_IDE"
+HBC-2_IDE/build-HBC-2_IDE-Desktop-Debug
+HBC-2_IDE/build-HBC-2_IDE-Desktop-MinSizeRel
+HBC-2_IDE/build-HBC-2_IDE-Desktop-Profile
+HBC-2_IDE/build-HBC-2_IDE-Desktop-Release
+HBC-2_IDE/build-HBC-2_IDE-Desktop-RelWithDebInfo

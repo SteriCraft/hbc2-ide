@@ -5,7 +5,7 @@
 #include <QString>
 #include <QDebug>
 
-#include "cpuDetails.h"
+#include "computerDetails.h"
 
 namespace Assembly
 {
@@ -15,13 +15,13 @@ namespace Assembly
                           SINGLE_VALUE_UNDEFINED, MULTIPLE_VALUES_UNDEFINED, STRING_UNDEFINED };
 
     struct Instruction {
-        CPU::InstructionOpcode m_opcode;
-        CPU::AddressingMode m_addrMode;
+        Computer::InstructionOpcode m_opcode;
+        Computer::AddressingMode m_addrMode;
     };
 
     struct ConcatReg {
-        CPU::Register msReg;
-        CPU::Register lsReg;
+        Computer::Register msReg;
+        Computer::Register lsReg;
     };
 
     enum class ErrorType { NONE, CIRC_DEPENDENCY, INVAL_EXPR, MISSING_TERM_CHAR, EXPECT_EXPR, INVAL_LABEL,
@@ -71,8 +71,8 @@ class Token // General items containing the string represented
         void setAsAddress(uint16_t address);
 
         Assembly::TokenType getType();
-        CPU::InstructionOpcode getInstructionOpcode();
-        CPU::Register getRegister();
+        Computer::InstructionOpcode getInstructionOpcode();
+        Computer::Register getRegister();
         Assembly::ConcatReg getConcatRegs();
         uint8_t getValue();
         uint16_t getAddress();
@@ -99,8 +99,8 @@ class Token // General items containing the string represented
         // Attributes
         Assembly::TokenType m_type;
 
-        CPU::InstructionOpcode m_instructionOpcode;
-        CPU::Register m_reg;
+        Computer::InstructionOpcode m_instructionOpcode;
+        Computer::Register m_reg;
         Assembly::ConcatReg m_concatReg;
         uint8_t m_value;
         uint16_t m_address;
