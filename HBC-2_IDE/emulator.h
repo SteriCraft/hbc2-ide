@@ -21,14 +21,17 @@ namespace Emulator
 
         State state;
         Command command;
-
         FrequencyTarget frequencyTarget;
+
+        bool useMonitor;
 
         std::string projectName;
     };
 
     struct Computer {
         HbcMotherboard motherboard;
+
+        HbcMonitor *monitor;
         std::vector<HbcPeripheral*> peripherals;
 
         QByteArray initialRamData;
@@ -55,8 +58,11 @@ class HbcEmulator : public QThread
         bool loadProject(QByteArray initialRamData, std::string projectName);
         bool loadProject(QByteArray initialRamData, QString projectName);
 
+        void useMonitor(bool enable);
+
         Emulator::State getState();
         Emulator::FrequencyTarget getFrequencyTarget();
+        HbcMonitor* getHbcMonitor();
 
         void setFrequencyTarget(Emulator::FrequencyTarget target);
 

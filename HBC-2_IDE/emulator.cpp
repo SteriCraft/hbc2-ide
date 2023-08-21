@@ -104,8 +104,12 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
             m_computer.initialRamData = initialRamData;
 
             m_computer.peripherals.clear();
-            // TODO : Plug in peripherals
-            m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
+
+            if (m_status.useMonitor)
+            {
+                m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
+                m_computer.monitor = dynamic_cast<HbcMonitor*>(m_computer.peripherals.back());
+            }
 
             initComputer();
 
@@ -132,6 +136,11 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
     return loadProject(initialRamData, projectName.toStdString());
 }
 
+void HbcEmulator::useMonitor(bool enable)
+{
+    m_status.useMonitor = enable;
+}
+
 Emulator::State HbcEmulator::getState()
 {
     Emulator::State currentState;
@@ -154,6 +163,12 @@ Emulator::FrequencyTarget HbcEmulator::getFrequencyTarget()
     return frequencyTarget;
 }
 
+HbcMonitor* HbcEmulator::getHbcMonitor()
+{
+    return m_computer.monitor;
+}
+
+
 void HbcEmulator::setFrequencyTarget(Emulator::FrequencyTarget target)
 {
     m_status.mutex.lock();
@@ -167,6 +182,7 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
     m_status.state = Emulator::State::NOT_INITIALIZED;
     m_status.command = Emulator::Command::NONE;
     m_status.frequencyTarget = Emulator::FrequencyTarget::MHZ_2; // Default
+    m_status.useMonitor = true;
 
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;

@@ -15,7 +15,6 @@ MainWindow::MainWindow(QWidget *parent)
     setWindowIcon(QIcon(":/icons/res/logo.png"));
     setObjectName("MainWindow");
     resize(WINDOW_WIDTH, WINDOW_HEIGHT);
-    statusBar()->showMessage(tr("Status Bar"));
 
     defaultEditorFont = QFont("Consolas");
 
@@ -34,6 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
     m_emulator = HbcEmulator::getInstance(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
+    m_monitorDialog = nullptr;
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -47,6 +47,7 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
+    delete m_monitorDialog;
     delete m_emulator;
     delete ui;
 }
@@ -578,6 +579,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     if (m_closeCount++ >= 1)
             return;
 
+    qDebug() << "gonna close the emulator";
     stopEmulatorAction();
 
     bool unsavedFiles(m_fileManager->areThereUnsavedFiles());
@@ -951,6 +953,12 @@ void MainWindow::showBinaryAction()
 
 void MainWindow::runEmulatorAction()
 {
+    if (m_monitorToggle->isChecked())
+    {
+        m_monitorDialog = new MonitorDialog(m_emulator->getHbcMonitor());
+        m_monitorDialog->show();
+    }
+
     m_emulator->runCmd();
 }
 
@@ -966,6 +974,8 @@ void MainWindow::pauseEmulatorAction()
 
 void MainWindow::stopEmulatorAction()
 {
+    delete m_monitorDialog;
+
     m_emulator->stopCmd();
 }
 
@@ -979,11 +989,12 @@ void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)
     m_5kmzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_5);
     m_10mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_10);
     m_20mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_20);
+    m_maxFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::FASTEST);
 }
 
 void MainWindow::plugMonitorPeripheralAction()
 {
-    //m_emulator->setMonitorPlugged(m_monitorToggle->isChecked());
+    m_emulator->useMonitor(m_monitorToggle->isChecked());
 }
 
 

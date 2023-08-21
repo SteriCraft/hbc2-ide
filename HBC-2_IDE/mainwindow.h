@@ -183,9 +183,10 @@ private:
     FileManager *m_fileManager;
     ProjectManager *m_projectManager;
 
-    // Tools
+    // Others
     Assembler *m_assembler;
     HbcEmulator *m_emulator;
+    MonitorDialog *m_monitorDialog;
 
     QFont defaultEditorFont;
     QWidget *m_window;

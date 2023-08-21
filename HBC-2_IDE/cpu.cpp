@@ -81,11 +81,6 @@ void Cpu::tick(HbcCpu &cpu)
                 cpu.m_jumpOccured = true;
 
                 cpu.m_currentState = Computer::CpuState::INSTRUCTION_EXEC;
-
-                qDebug() << Qt::hex << "[CPU]: INT port: " << cpu.m_motherboard->m_addressBus;
-                qDebug() << Qt::hex << "[CPU]: INT data: " << cpu.m_motherboard->m_dataBus;
-                qDebug() << Qt::hex << "[CPU]: IVT address: " << ivtAddress;
-                qDebug() << Qt::hex << "[CPU]: Jump address: " << cpu.m_programCounter;
             }
             break;
     }
