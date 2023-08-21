@@ -56,6 +56,8 @@ class HbcEmulator : public QThread
         Emulator::State getState();
         Emulator::FrequencyTarget getFrequencyTarget();
 
+        void setFrequencyTarget(Emulator::FrequencyTarget target);
+
     signals:
         void statusChanged(Emulator::State newState);
         void tickCountSent(int countIn100Ms);

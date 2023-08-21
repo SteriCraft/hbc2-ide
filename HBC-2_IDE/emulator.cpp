@@ -157,12 +157,19 @@ Emulator::FrequencyTarget HbcEmulator::getFrequencyTarget()
     return frequencyTarget;
 }
 
+void HbcEmulator::setFrequencyTarget(Emulator::FrequencyTarget target)
+{
+    m_status.mutex.lock();
+    m_status.frequencyTarget = target;
+    m_status.mutex.unlock();
+}
+
 // PRIVATE
 HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
 {
     m_status.state = Emulator::State::NOT_INITIALIZED;
     m_status.command = Emulator::Command::NONE;
-    m_status.frequencyTarget = Emulator::FrequencyTarget::FASTEST; // Default
+    m_status.frequencyTarget = Emulator::FrequencyTarget::MHZ_2; // Default
 
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;

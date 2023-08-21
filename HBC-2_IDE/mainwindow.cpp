@@ -131,6 +131,38 @@ void MainWindow::setupMenuBar()
 
     m_emulatorMenu->addSeparator();
 
+    m_emulatorFrequencyMenu = m_emulatorMenu->addMenu(tr("CPU frequency"));
+
+    m_100khzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("100 KHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::KHZ_100));
+    m_100khzFrequencyToggle->setCheckable(true);
+    m_100khzFrequencyToggle->setChecked(false);
+
+    m_1mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("1 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_1));
+    m_1mhzFrequencyToggle->setCheckable(true);
+    m_1mhzFrequencyToggle->setChecked(false);
+
+    m_2mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("2 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_2));
+    m_2mhzFrequencyToggle->setCheckable(true);
+    m_2mhzFrequencyToggle->setChecked(true); // 2 MHz default frequency, as specified in the HBC-2 documentation
+
+    m_5kmzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("5 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_5));
+    m_5kmzFrequencyToggle->setCheckable(true);
+    m_5kmzFrequencyToggle->setChecked(false);
+
+    m_10mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("10 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_10));
+    m_10mhzFrequencyToggle->setCheckable(true);
+    m_10mhzFrequencyToggle->setChecked(false);
+
+    m_20mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("20 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_20));
+    m_20mhzFrequencyToggle->setCheckable(true);
+    m_20mhzFrequencyToggle->setChecked(false);
+
+    m_maxFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("Fastest"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::FASTEST));
+    m_maxFrequencyToggle->setCheckable(true);
+    m_maxFrequencyToggle->setChecked(false);
+
+    m_emulatorMenu->addSeparator();
+
     m_emulatorPeripheralsMenu = m_emulatorMenu->addMenu(tr("Peripherals"));
 
     m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheralAction);
@@ -935,6 +967,18 @@ void MainWindow::pauseEmulatorAction()
 void MainWindow::stopEmulatorAction()
 {
     m_emulator->stopCmd();
+}
+
+void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)
+{
+    m_emulator->setFrequencyTarget(target);
+
+    m_100khzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::KHZ_100);
+    m_1mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_1);
+    m_2mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_2);
+    m_5kmzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_5);
+    m_10mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_10);
+    m_20mhzFrequencyToggle->setChecked(target == Emulator::FrequencyTarget::MHZ_20);
 }
 
 void MainWindow::plugMonitorPeripheralAction()
