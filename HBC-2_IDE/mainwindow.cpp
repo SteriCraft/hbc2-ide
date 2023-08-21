@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_closeCount = 0;
 
     m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
-    m_emulator = new HbcEmulator(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
+    m_emulator = HbcEmulator::getInstance(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
