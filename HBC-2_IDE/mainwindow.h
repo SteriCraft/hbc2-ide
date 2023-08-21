@@ -45,8 +45,9 @@ private slots:
     void onItemSelectChanged();
     void onItemRightClick(const QPoint &pos);
     void onItemDoubleClick(QTreeWidgetItem* item);
-    // Emulator status change
+    // Emulator signals
     void onEmulatorStatusChanged(Emulator::State newState);
+    void onTickCountReceived(int countIn100Ms);
 
 protected:
     void closeEvent(QCloseEvent *event) override;

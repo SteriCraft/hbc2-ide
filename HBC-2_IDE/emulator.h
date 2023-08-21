@@ -53,6 +53,7 @@ class HbcEmulator : public QThread
 
     signals:
         void statusChanged(Emulator::State newState);
+        void tickCountSent(int countIn100Ms);
 
     private:
         HbcEmulator(MainWindow *mainWin, Console *consoleOutput);

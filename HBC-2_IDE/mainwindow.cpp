@@ -508,6 +508,34 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     updateEmulatorActions(newState);
 }
 
+void MainWindow::onTickCountReceived(int countIn100Ms)
+{
+    QString frequencyStr(tr("CPU frequency: "));
+
+    if (countIn100Ms > 10000000)
+    {
+        frequencyStr += QString::number(countIn100Ms / 1000000);
+        frequencyStr += "MHz";
+    }
+    else if (countIn100Ms > 1000000) // With 2 decimal digits
+    {
+        frequencyStr += QString::number((float)(countIn100Ms / 10000) / 100);
+        frequencyStr += "MHz";
+    }
+    else if (countIn100Ms > 1000)
+    {
+        frequencyStr += QString::number(countIn100Ms / 1000);
+        frequencyStr += "KHz";
+    }
+    else
+    {
+        frequencyStr += QString::number(countIn100Ms);
+        frequencyStr += "Hz";
+    }
+
+    statusBar()->showMessage(frequencyStr);
+}
+
 void MainWindow::onClose()
 {
     closeEvent(nullptr);

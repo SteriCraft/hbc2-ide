@@ -156,6 +156,7 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
     m_mainWindow = mainWin;
 
     connect(this, SIGNAL(statusChanged(Emulator::State)), m_mainWindow, SLOT(onEmulatorStatusChanged(Emulator::State)), Qt::ConnectionType::BlockingQueuedConnection);
+    connect(this, SIGNAL(tickCountSent(int)), m_mainWindow, SLOT(onTickCountReceived(int)), Qt::ConnectionType::BlockingQueuedConnection);
 
     start(); // Threads always idling
 }
@@ -164,11 +165,11 @@ void HbcEmulator::run()
 {
     bool stop(false);
     Emulator::State currentState(getState());
-    QElapsedTimer timer;
+    QElapsedTimer frequencyTimer, commandsTimer;
 
     int ticks(0);
 
-    timer.start();
+    commandsTimer.start();
     while (!stop)
     {
         if (currentState == Emulator::State::RUNNING)
@@ -176,20 +177,27 @@ void HbcEmulator::run()
             tickComputer();
 
             ticks++;
+
+            if (frequencyTimer.elapsed() >= 1000) // in ms
+            {
+                emit tickCountSent(ticks);
+                ticks = 0;
+
+                frequencyTimer.restart();
+            }
         }
 
-        if (timer.elapsed() >= 100) // in ms
+        if (commandsTimer.elapsed() >= 100) // in ms
         {
             m_status.mutex.lock();
-
-            // emit signal for ticks number
-            ticks = 0;
 
             if (m_status.command == Emulator::Command::RUN)
             {
                 m_status.state = Emulator::State::RUNNING;
                 m_status.command = Emulator::Command::NONE;
                 emit statusChanged(m_status.state);
+
+                frequencyTimer.restart();
 
                 m_consoleOutput->log("Emulator running");
             }
@@ -230,7 +238,7 @@ void HbcEmulator::run()
             currentState = m_status.state;
             m_status.mutex.unlock();
 
-            timer.restart();
+            commandsTimer.restart();
         }
     }
 }
