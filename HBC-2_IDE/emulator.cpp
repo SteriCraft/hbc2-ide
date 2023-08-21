@@ -146,11 +146,23 @@ Emulator::State HbcEmulator::getState()
     return currentState;
 }
 
+Emulator::FrequencyTarget HbcEmulator::getFrequencyTarget()
+{
+    Emulator::FrequencyTarget frequencyTarget;
+
+    m_status.mutex.lock();
+    frequencyTarget = m_status.frequencyTarget;
+    m_status.mutex.unlock();
+
+    return frequencyTarget;
+}
+
 // PRIVATE
 HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
 {
     m_status.state = Emulator::State::NOT_INITIALIZED;
     m_status.command = Emulator::Command::NONE;
+    m_status.frequencyTarget = Emulator::FrequencyTarget::FASTEST; // Default
 
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;
@@ -165,19 +177,43 @@ void HbcEmulator::run()
 {
     bool stop(false);
     Emulator::State currentState(getState());
-    QElapsedTimer frequencyTimer, commandsTimer;
+    Emulator::FrequencyTarget frequencyTarget(getFrequencyTarget());
 
-    int ticks(0);
+    QElapsedTimer frequencyTimer, commandsTimer, frequencyTargetTimer;
+
+    int ticks(0), targetTicks(0);
 
     commandsTimer.start();
+    frequencyTargetTimer.start();
     while (!stop)
     {
+        // --- EXECUTION ---
         if (currentState == Emulator::State::RUNNING)
         {
-            tickComputer();
+            // --- CPU SPEED CONTROL ---
+            if (frequencyTarget == Emulator::FrequencyTarget::FASTEST)
+            {
+                tickComputer();
+                ticks++;
+            }
+            else
+            {
+                if (frequencyTargetTimer.elapsed() >= 5)
+                {
+                    targetTicks = 0;
+                    frequencyTargetTimer.restart();
+                }
 
-            ticks++;
+                if (targetTicks <= ((int)frequencyTarget / 200))
+                {
+                    tickComputer();
 
+                    ticks++;
+                    targetTicks++;
+                }
+            }
+
+            // --- CPU SPEED DISPLAY ---
             if (frequencyTimer.elapsed() >= 1000) // in ms
             {
                 emit tickCountSent(ticks);
@@ -187,9 +223,12 @@ void HbcEmulator::run()
             }
         }
 
+        // --- COMMANDS CHECKS ---
         if (commandsTimer.elapsed() >= 100) // in ms
         {
             m_status.mutex.lock();
+
+            frequencyTarget = m_status.frequencyTarget;
 
             if (m_status.command == Emulator::Command::RUN)
             {
@@ -198,6 +237,7 @@ void HbcEmulator::run()
                 emit statusChanged(m_status.state);
 
                 frequencyTimer.restart();
+                frequencyTargetTimer.restart();
 
                 m_consoleOutput->log("Emulator running");
             }
@@ -221,9 +261,9 @@ void HbcEmulator::run()
             {
                 m_status.state = Emulator::State::READY;
                 m_status.command = Emulator::Command::NONE;
-                emit statusChanged(m_status.state); // TODO : Buttons didn't change
+                emit statusChanged(m_status.state);
 
-                // REINIT computer
+                // TODO: REINIT computer
 
                 m_consoleOutput->log("Emulator stopped");
             }

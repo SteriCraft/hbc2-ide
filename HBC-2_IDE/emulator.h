@@ -12,6 +12,8 @@ namespace Emulator
 {
     enum class State { NOT_INITIALIZED = 0, READY = 1, RUNNING = 2, PAUSED = 3 };
     enum class Command { NONE = 0, RUN = 1, STEP = 2, PAUSE = 3, STOP = 4, CLOSE = 5 };
+    enum class FrequencyTarget { KHZ_100 = 100000, MHZ_1 = 1000000, MHZ_2 = 2000000,
+                                 MHZ_5 = 5000000, MHZ_10 = 10000000, MHZ_20 = 20000000, FASTEST = 0 };
 
     struct Status
     {
@@ -19,6 +21,8 @@ namespace Emulator
 
         State state;
         Command command;
+
+        FrequencyTarget frequencyTarget;
 
         std::string projectName;
     };
@@ -50,6 +54,7 @@ class HbcEmulator : public QThread
         bool loadProject(QByteArray data, QString projectName);
 
         Emulator::State getState();
+        Emulator::FrequencyTarget getFrequencyTarget();
 
     signals:
         void statusChanged(Emulator::State newState);
