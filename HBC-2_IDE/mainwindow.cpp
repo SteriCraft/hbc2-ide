@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
     m_closeCount = 0;
 
     m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
-    m_emulator = HbcEmulator::getInstance(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
+    m_emulator = new HbcEmulator(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -855,7 +855,7 @@ void MainWindow::closeAllAction()
 }
 
 
-// === ASSEMBLY ACTIONS ===
+// === ASSEMBLY AND EMULATOR ACTIONS ===
 void MainWindow::assembleAction()
 {
     QList<QString> impactedFilesNames = m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList();
@@ -874,6 +874,9 @@ void MainWindow::assembleAction()
 
     m_assembler->assembleProject(m_projectManager->getCurrentProject());
 
+    const QByteArray &data = m_assembler->getBinaryData();
+    m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
+
     updateWinTabMenu();
 }
 
@@ -888,13 +891,6 @@ void MainWindow::showBinaryAction()
 
 void MainWindow::runEmulatorAction()
 {
-    const QByteArray &data = m_assembler->getBinaryData();
-
-    if (m_emulator->getState() == Emulator::State::NOT_INITIALIZED)
-    {
-        m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
-    }
-
     m_emulator->runCmd();
 }
 
@@ -915,7 +911,7 @@ void MainWindow::stopEmulatorAction()
 
 void MainWindow::plugMonitorPeripheralAction()
 {
-    m_emulator->setMonitorPlugged(m_monitorToggle->isChecked());
+    //m_emulator->setMonitorPlugged(m_monitorToggle->isChecked());
 }
 
 
@@ -1307,28 +1303,26 @@ void MainWindow::updateWinTabMenu()
 
 void MainWindow::updateEmulatorActions(Emulator::State newState)
 {
-    if (newState == Emulator::State::NOT_INITIALIZED)
+    if (m_projectManager->getCurrentProject() != nullptr)
     {
-        m_assembleAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
+        m_assembleAction->setEnabled(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
+
+        m_runEmulatorAction->setEnabled(newState == Emulator::State::READY || newState == Emulator::State::PAUSED);
+        m_stepEmulatorAction->setEnabled(newState == Emulator::State::PAUSED);
+        m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
+        m_stopEmulatorAction->setEnabled(newState == Emulator::State::RUNNING || newState == Emulator::State::PAUSED);
     }
     else
     {
         m_assembleAction->setEnabled(false);
-    }
 
-    if (m_projectManager->getCurrentProject() != nullptr)
-    {
-        m_runEmulatorAction->setEnabled(newState == Emulator::State::PAUSED
-                                     || newState == Emulator::State::NOT_INITIALIZED);
-    }
-    else
         m_runEmulatorAction->setEnabled(false);
+        m_stepEmulatorAction->setEnabled(false);
+        m_pauseEmulatorAction->setEnabled(false);
+        m_stopEmulatorAction->setEnabled(false);
+    }
 
-    m_stepEmulatorAction->setEnabled(newState  == Emulator::State::PAUSED);
-    m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
-    m_stopEmulatorAction->setEnabled(newState  != Emulator::State::NOT_INITIALIZED);
-
-    m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED);
+    m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
 }
 
 int MainWindow::getEditorIndex(CustomFile *file)

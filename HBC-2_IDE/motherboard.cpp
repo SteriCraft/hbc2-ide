@@ -4,7 +4,7 @@ void Motherboard::tick(HbcMotherboard &motherboard)
 {
     //qDebug() << "[MB]: tick";
     //Cpu::tick(motherboard.m_cpu);
-    Iod::tick(motherboard.m_iod);
+    //Iod::tick(motherboard.m_iod);
 }
 
 void Motherboard::writeRam(HbcMotherboard &motherboard, uint16_t address, uint8_t data)

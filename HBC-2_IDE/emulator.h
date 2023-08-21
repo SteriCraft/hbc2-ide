@@ -4,30 +4,76 @@
 #include <QThread>
 #include <QMutex>
 
-#include "motherboard.h"
-#include "peripheral.h"
+//#include "motherboard.h"
+//#include "peripheral.h"
 #include "console.h"
 
 namespace Emulator
 {
-    enum class State { RUNNING = 1, PAUSED = 2, NOT_INITIALIZED = 3 };
-    enum class Command { RUN = 0, STEP = 1, PAUSE = 2, CLOSE = 4, CLOSE_APP = 5, NONE = 6};
+    enum class State { NOT_INITIALIZED = 0, READY = 1, RUNNING = 2, PAUSED = 3 };
+    enum class Command { NONE = 0, RUN = 1, STEP = 2, PAUSE = 3, STOP = 4, CLOSE = 5 };
 
     struct Status
     {
-        QMutex m_lock;
+        QMutex mutex;
 
-        State m_state;
-        Command m_command;
+        State state;
+        Command command;
 
-        bool m_plugMonitor;
+        std::string projectName;
+    };
+}
 
-        std::string m_projectName;
+class MainWindow;
+
+class HbcEmulator : public QThread
+{
+    Q_OBJECT
+
+    public:
+        HbcEmulator(MainWindow *mainWin, Console *consoleOutput);
+        ~HbcEmulator();
+
+        bool runCmd();
+        bool stepCmd();
+        bool pauseCmd();
+        bool stopCmd();
+
+        bool loadProject(QByteArray data, std::string projectName);
+        bool loadProject(QByteArray data, QString projectName);
+
+        Emulator::State getState();
+
+    signals:
+        void statusChanged(Emulator::State newState);
+
+    private:
+        void run() override;
+
+        Emulator::Status m_status;
+
+        Console *m_consoleOutput;
+        MainWindow *m_mainWindow;
+};
+
+/*namespace Emulator
+{
+    enum class State { NOT_INITIALIZED = 0, READY = 1, RUNNING = 2, PAUSED = 3 };
+    enum class Command { RUN = 0, PAUSE = 1, STEP = 2, STOP = 3, CLOSE = 4};
+
+    struct Status
+    {
+        QMutex mutex;
+
+        State state;
+        Command command;
+
+        std::string projectName;
     };
 
     struct Computer {
-        HbcMotherboard m_motherboard;
-        std::vector<HbcPeripheral*> m_peripherals;
+        HbcMotherboard motherboard;
+        std::vector<HbcPeripheral*> peripherals;
     };
 }
 
@@ -43,18 +89,13 @@ public:
     static HbcEmulator* getInstance(MainWindow *mainWin, Console *consoleOutput);
     ~HbcEmulator();
 
-    void run() override; // Thread loop
-
     // Emulator commands
     bool runCmd();
     bool stepCmd();
     bool pauseCmd();
     bool stopCmd();
 
-    bool loadProject(QByteArray data, std::string projectName);
-    bool loadProject(QByteArray data, QString projectName);
-
-    void setMonitorPlugged(bool monitor);
+    void closeEmulator(bool appClosed);
 
     Emulator::State getState();
 
@@ -62,16 +103,13 @@ signals:
     void statusChanged(Emulator::State newState);
 
 private:
-    HbcEmulator(MainWindow *mainWin, Console *consoleOutput);
+    HbcEmulator(Console *consoleOutput);
 
-    void tickComputer();
-    void checkStatusChange();
+    void run() override; // Thread loop
 
     Emulator::Status m_status;
-    Emulator::Computer m_computer;
 
     Console *m_consoleOutput;
-    MainWindow *m_mainWindow;
-};
+};*/
 
 #endif // EMULATOR_H
