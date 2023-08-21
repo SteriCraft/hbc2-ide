@@ -25,7 +25,9 @@
 #define V1_MASK             0x0000FF00
 #define V2_MASK             0x000000FF
 #define VX_MASK             0x0000FFFF
-#define INTERRUPT_PORT_MASK 0x00FF
+#define INTERRUPT_PORT_MASK     0x00FF
+
+#define IVT_START_ADDRESS 0x0100
 
 using Byte = uint8_t;
 using Word = uint16_t;

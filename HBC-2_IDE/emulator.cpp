@@ -92,25 +92,22 @@ bool HbcEmulator::stopCmd()
     return success;
 }
 
-bool HbcEmulator::loadProject(QByteArray data, std::string projectName)
+bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName)
 {
     bool success = false;
 
     if (getState() == Emulator::State::NOT_INITIALIZED || getState() == Emulator::State::READY)
     {
-        if (data.size() == MEMORY_SIZE)
+        if (initialRamData.size() == MEMORY_SIZE)
         {
             m_status.projectName = projectName;
+            m_computer.initialRamData = initialRamData;
 
             m_computer.peripherals.clear();
             // TODO : Plug in peripherals
+            m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
 
-            //if (m_status.plugMonitor)
-            //{
-            //m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
-            //}
-
-            Motherboard::init(m_computer.motherboard, data);
+            initComputer();
 
             m_status.state = Emulator::State::READY;
             success = true;
@@ -130,9 +127,9 @@ bool HbcEmulator::loadProject(QByteArray data, std::string projectName)
     return success;
 }
 
-bool HbcEmulator::loadProject(QByteArray data, QString projectName)
+bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
 {
-    return loadProject(data, projectName.toStdString());
+    return loadProject(initialRamData, projectName.toStdString());
 }
 
 Emulator::State HbcEmulator::getState()
@@ -270,7 +267,7 @@ void HbcEmulator::run()
                 m_status.command = Emulator::Command::NONE;
                 emit statusChanged(m_status.state);
 
-                // TODO: REINIT computer
+                initComputer();
 
                 m_consoleOutput->log("Emulator stopped");
             }
@@ -287,6 +284,16 @@ void HbcEmulator::run()
 
             commandsTimer.restart();
         }
+    }
+}
+
+void HbcEmulator::initComputer()
+{
+    Motherboard::init(m_computer.motherboard, m_computer.initialRamData);
+
+    for (unsigned int i(0); i < m_computer.peripherals.size(); i++)
+    {
+        m_computer.peripherals[i]->init();
     }
 }
 

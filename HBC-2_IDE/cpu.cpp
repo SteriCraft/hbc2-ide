@@ -74,11 +74,18 @@ void Cpu::tick(HbcCpu &cpu)
                 cpu.m_flags[(int)Computer::Flags::INTERRUPT] = false;
                 cpu.m_flags[(int)Computer::Flags::HALT] = false;
 
-                cpu.m_programCounter = (Word)Motherboard::readRam(*cpu.m_motherboard, cpu.m_motherboard->m_addressBus & 0x00FF) << 8;
-                cpu.m_programCounter += Motherboard::readRam(*cpu.m_motherboard, (cpu.m_motherboard->m_addressBus + 1) & 0x00FF);
+                Word ivtAddress(IVT_START_ADDRESS + (cpu.m_motherboard->m_addressBus & INTERRUPT_PORT_MASK) * 2);
+
+                cpu.m_programCounter = (Word)Motherboard::readRam(*cpu.m_motherboard, ivtAddress) << 8;
+                cpu.m_programCounter += Motherboard::readRam(*cpu.m_motherboard, ivtAddress + 1);
                 cpu.m_jumpOccured = true;
 
                 cpu.m_currentState = Computer::CpuState::INSTRUCTION_EXEC;
+
+                qDebug() << Qt::hex << "[CPU]: INT port: " << cpu.m_motherboard->m_addressBus;
+                qDebug() << Qt::hex << "[CPU]: INT data: " << cpu.m_motherboard->m_dataBus;
+                qDebug() << Qt::hex << "[CPU]: IVT address: " << ivtAddress;
+                qDebug() << Qt::hex << "[CPU]: Jump address: " << cpu.m_programCounter;
             }
             break;
     }

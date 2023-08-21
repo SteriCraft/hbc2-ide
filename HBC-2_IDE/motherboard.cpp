@@ -2,9 +2,8 @@
 
 void Motherboard::tick(HbcMotherboard &motherboard)
 {
-    //qDebug() << "[MB]: tick";
-    //Cpu::tick(motherboard.m_cpu);
-    //Iod::tick(motherboard.m_iod);
+    Cpu::tick(motherboard.m_cpu);
+    Iod::tick(motherboard.m_iod);
 }
 
 void Motherboard::writeRam(HbcMotherboard &motherboard, uint16_t address, uint8_t data)
@@ -19,6 +18,12 @@ uint8_t Motherboard::readRam(HbcMotherboard &motherboard, uint16_t address)
 
 bool Motherboard::init(HbcMotherboard &motherboard, QByteArray data)
 {
+    motherboard.m_addressBus = 0;
+    motherboard.m_dataBus = 0;
+
+    motherboard.m_int = false;
+    motherboard.m_inr = false;
+
     if (data.size() == MEMORY_SIZE)
     {
         Ram::setContent(motherboard.m_ram, data);

@@ -5,7 +5,7 @@
 #include <QMutex>
 
 #include "motherboard.h"
-#include "peripheral.h"
+#include "monitor.h"
 #include "console.h"
 
 namespace Emulator
@@ -30,6 +30,8 @@ namespace Emulator
     struct Computer {
         HbcMotherboard motherboard;
         std::vector<HbcPeripheral*> peripherals;
+
+        QByteArray initialRamData;
     };
 }
 
@@ -50,8 +52,8 @@ class HbcEmulator : public QThread
         bool pauseCmd();
         bool stopCmd();
 
-        bool loadProject(QByteArray data, std::string projectName);
-        bool loadProject(QByteArray data, QString projectName);
+        bool loadProject(QByteArray initialRamData, std::string projectName);
+        bool loadProject(QByteArray initialRamData, QString projectName);
 
         Emulator::State getState();
         Emulator::FrequencyTarget getFrequencyTarget();
@@ -66,6 +68,8 @@ class HbcEmulator : public QThread
         HbcEmulator(MainWindow *mainWin, Console *consoleOutput);
 
         void run() override;
+
+        void initComputer();
         void tickComputer();
 
         Emulator::Status m_status;

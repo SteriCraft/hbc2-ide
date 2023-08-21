@@ -4,16 +4,10 @@
 #include <cinttypes>
 #include <vector>
 
+#include "iod.h"
 #include "console.h"
 
 struct HbcMotherboard;
-struct HbcIod;
-
-struct PortConnexion
-{
-    unsigned int m_portId;
-    uint8_t *m_portData;
-};
 
 class HbcPeripheral
 {
@@ -21,15 +15,14 @@ class HbcPeripheral
         HbcPeripheral(HbcIod *iod, Console *consoleOutput);
         virtual ~HbcPeripheral() = 0;
 
-        // TODO : Implement monitor with a separate thread
-
+        virtual void init() = 0;
         virtual void tick() = 0;
 
     protected:
-        bool sendData(uint8_t portId, uint8_t data);
-        bool readData(uint8_t portId, uint8_t &data);
+        bool sendData(Iod::PortSocket socket, Byte data);
+        Byte readData(Iod::PortSocket socket);
 
-        std::vector<PortConnexion> m_ports;
+        std::vector<Iod::PortSocket> m_sockets;
         HbcIod *m_iod;
         Console *m_consoleOutput;
 };

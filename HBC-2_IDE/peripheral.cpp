@@ -2,7 +2,7 @@
 
 HbcPeripheral::HbcPeripheral(HbcIod *iod, Console *consoleOutput)
 {
-    m_ports.clear();
+    m_sockets.clear();
 
     m_iod = iod;
     m_consoleOutput = consoleOutput;
@@ -11,14 +11,13 @@ HbcPeripheral::HbcPeripheral(HbcIod *iod, Console *consoleOutput)
 HbcPeripheral::~HbcPeripheral()
 { }
 
-bool HbcPeripheral::sendData(uint8_t portId, uint8_t data)
+bool HbcPeripheral::sendData(Iod::PortSocket socket, Byte data)
 {
-    for (unsigned int i(0); i < m_ports.size(); i++)
+    for (unsigned int i(0); i < m_sockets.size(); i++)
     {
-        if (m_ports[i].m_portId == portId)
+        if (m_sockets[i].portId == socket.portId)
         {
-            *m_ports[i].m_portData = data;
-
+            *m_sockets[i].portDataPointer = data;
             return true;
         }
     }
@@ -26,17 +25,18 @@ bool HbcPeripheral::sendData(uint8_t portId, uint8_t data)
     return false;
 }
 
-bool HbcPeripheral::readData(uint8_t portId, uint8_t &data)
+Byte HbcPeripheral::readData(Iod::PortSocket socket)
 {
-    for (unsigned int i(0); i < m_ports.size(); i++)
-    {
-        if (m_ports[i].m_portId == portId)
-        {
-            data = *m_ports[i].m_portData;
+    Byte data(0x00);
 
-            return true;
+    for (unsigned int i(0); i < m_sockets.size(); i++)
+    {
+        if (m_sockets[i].portId == socket.portId)
+        {
+            data = *m_sockets[i].portDataPointer;
+            break;
         }
     }
 
-    return false;
+    return data;
 }

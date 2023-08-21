@@ -8,8 +8,8 @@ void Iod::init(HbcIod &iod, HbcMotherboard *mb)
 
     for (unsigned int i(0); i < PORTS_NB; i++)
     {
-        iod.m_ports[i].first = 0x00;
-        iod.m_ports[i].second = 0x00;
+        iod.m_ports[i].peripheralId = 0x00;
+        iod.m_ports[i].data = 0x00;
     }
 
     while (iod.m_interruptsQueue.size() > 0)
@@ -21,7 +21,9 @@ void Iod::tick(HbcIod &iod)
     if (!iod.m_motherboard->m_inr)
     {
         iod.m_motherboard->m_int = iod.m_interruptsQueue.size() > 0;
-        qDebug() << "[IOD]: Interrupt(s) pending";
+
+        if (iod.m_motherboard->m_int)
+            qDebug() << "[IOD]: Interrupt(s) pending";
     }
     else
     {
@@ -39,21 +41,34 @@ void Iod::tick(HbcIod &iod)
 
 Byte Iod::getPortData(HbcIod &iod, Byte portId)
 {
-    return iod.m_ports[portId].second;
+    return iod.m_ports[portId].data;
 }
 
 void Iod::setPortData(HbcIod &iod, Byte portId, Byte data)
 {
-    iod.m_ports[portId].second = data;
+    iod.m_ports[portId].data = data;
 }
 
-std::vector<std::pair<unsigned int, Byte*>> Iod::requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested)
+void Iod::triggerInterrupt(HbcIod &iod, Byte peripheralFirstPortID)
 {
-    std::vector<std::pair<unsigned int, Byte*>> portsPointers;
+    if (iod.m_interruptsQueue.size() < INTERRUPT_QUEUE_SIZE) // If the queue is full, any interrupt is discarded
+    {
+        Iod::Interrupt newInterrupt;
+
+        newInterrupt.portId = peripheralFirstPortID;
+        newInterrupt.data = iod.m_ports[peripheralFirstPortID].data;
+
+        iod.m_interruptsQueue.push(newInterrupt);
+    }
+}
+
+std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested)
+{
+    std::vector<PortSocket> sockets;
 
     for (unsigned int i(0); i < PORTS_NB; i++)
     {
-        if (iod.m_ports[i].first == 0) // No peripheral plugged
+        if (iod.m_ports[i].peripheralId == 0) // No peripheral plugged
         {
             if (PORTS_NB - i >= nbPortsRequested)
             {
@@ -61,14 +76,14 @@ std::vector<std::pair<unsigned int, Byte*>> Iod::requestPortsConnexions(HbcIod &
 
                 for (unsigned int j(0); j < nbPortsRequested; j++)
                 {
-                    std::pair<unsigned int, Byte*> portConnexionInfo;
+                    PortSocket newSocket;
 
-                    portConnexionInfo.first = i + j;
-                    portConnexionInfo.second = &iod.m_ports[i + j].second;
+                    newSocket.portId = i + j;
+                    newSocket.portDataPointer = &iod.m_ports[i + j].data;
 
-                    portsPointers.push_back(portConnexionInfo);
+                    sockets.push_back(newSocket);
 
-                    iod.m_ports[i + j].first = iod.m_nbPeripheralsPlugged;
+                    iod.m_ports[i + j].peripheralId = iod.m_nbPeripheralsPlugged;
                 }
             }
 
@@ -76,5 +91,5 @@ std::vector<std::pair<unsigned int, Byte*>> Iod::requestPortsConnexions(HbcIod &
         }
     }
 
-    return portsPointers;
+    return sockets;
 }

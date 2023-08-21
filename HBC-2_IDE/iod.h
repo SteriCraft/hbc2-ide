@@ -5,21 +5,38 @@
 
 #include "computerDetails.h"
 
+#define INTERRUPT_QUEUE_SIZE 256
+
 struct HbcMotherboard;
 
-struct Interrupt
+namespace Iod
 {
-    Byte portId;
-    Byte data;
-};
+    struct Interrupt
+    {
+        Byte portId;
+        Byte data;
+    };
+
+    struct PortSocket
+    {
+        unsigned int portId;
+        uint8_t *portDataPointer;
+    };
+
+    struct Port
+    {
+        unsigned int peripheralId;
+        Byte data;
+    };
+}
 
 struct HbcIod
 {
     HbcMotherboard *m_motherboard;
 
     unsigned int m_nbPeripheralsPlugged;
-    std::pair<unsigned int, Byte> m_ports[PORTS_NB]; // <PeripheralId, data>
-    std::queue<Interrupt> m_interruptsQueue;
+    Iod::Port m_ports[PORTS_NB]; // <PeripheralId, data>
+    std::queue<Iod::Interrupt> m_interruptsQueue;
 };
 
 namespace Iod
@@ -28,10 +45,12 @@ namespace Iod
 
     void tick(HbcIod &iod);
 
-    Byte getPortData(HbcIod &iod, Byte portId);
+    Byte getPortData(HbcIod &iod, Byte portId); // Intended to be used by the processor only
     void setPortData(HbcIod &iod, Byte portId, Byte data);
 
-    std::vector<std::pair<unsigned int, Byte*>> requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested); // <PortId, data pointer>
+    void triggerInterrupt(HbcIod &iod, Byte peripheralFirstPortID);
+
+    std::vector<PortSocket> requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested);
 }
 
 #endif // IOD_H
