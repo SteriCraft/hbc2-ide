@@ -19,8 +19,8 @@ int main(int argc, char *argv[])
     }
 
     //a.installTranslator(&translator);
-    //a.setStyle("Fusion");
-    a.setStyle(QStyleFactory::create("Fusion"));
+    //a.setStyle("fusion");
+    //a.setStyle(QStyleFactory::create("fusion"));
 
     MainWindow w;
 

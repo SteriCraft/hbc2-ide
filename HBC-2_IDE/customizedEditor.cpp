@@ -1,35 +1,5 @@
 #include "customizedEditor.h"
 
-/* REGEX
- * Detecting comments: ;[^\n]*                  OK
- * Detecting label: \B:\w+(?!\S)                OK
- *
- * Preprocessor directives keyword list:
- * (?<=\s|^)\.include(?!\S)                     OK
- * (?<=\s|^)\.define(?!\S)                      OK
- *
- * Data keyword:
- * (?<=\s|^)\.data(?!\S)                        OK
- *
- * Instruction keyword (ADD example):
- * (?<=\s|^)add(?!\S)                           OK
- *
- * Hexadecimal values:
- * (?<=\s|^)0[xX][0-9a-fA-F]+(?!\S)             OK
- *
- * Addresses:
- * (?<=\s|^),?\$0[xX][0-9a-fA-F]+,?(?!\S)       OK
- *
- * Quotes:
- * \".+\"                                       OK
- *
- * Registers:
- * (?<=\s|^),?[abcdijxy],?(?!\S)                OK
- *
- * Concatenated registers:
- * (?<=\s|^),?\[[abcdijxy]+\],?(?!\S)           OK
- * */
-
 // SYNTAX HIGHLIGHTER CLASS
 SyntaxHighlighter::SyntaxHighlighter(QTextDocument *parent) : QSyntaxHighlighter(parent)
 {
@@ -289,6 +259,8 @@ CustomizedCodeEditor::CustomizedCodeEditor(CustomFile *file, QString fileName, Q
 
     connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(updateLineNumberAreaWidth(int)));
     connect(this, SIGNAL(updateRequest(QRect,int)), this, SLOT(updateLineNumberArea(QRect,int)));
+
+    setStyleSheet("QPlainTextEdit {background-color: rgb(14, 14, 14); color:white; }");
 
     updateLineNumberAreaWidth(0);
 
