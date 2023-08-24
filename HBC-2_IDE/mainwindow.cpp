@@ -13,9 +13,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
     //setObjectName("MainWindow");
     resize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    defaultEditorFont = QFont("Consolas"); // TODO: Check if this works on GNU/Linux
-    // Probably not because Consolas is not part of system fonts
-    // See how to use custom fonts from res.qrc
+    defaultEditorFont = QFont("Monospace", 10);
 
     m_configManager = ConfigManager::getInstance();
     m_fileManager = FileManager::getInstance();
