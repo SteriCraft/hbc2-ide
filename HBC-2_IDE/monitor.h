@@ -64,6 +64,7 @@ class HbcMonitor : public HbcPeripheral
         Monitor::Mode m_mode;
 };
 
+class MainWindow;
 class MonitorThread;
 
 class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
@@ -77,6 +78,12 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
         ~MonitorWidget();
 
         void updateBuffer();
+
+    signals:
+        void closed();
+
+    protected:
+        void closeEvent(QCloseEvent *event) override;
 
     private:
         explicit MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput);

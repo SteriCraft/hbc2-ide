@@ -580,6 +580,11 @@ void MainWindow::onTickCountReceived(int countIn100Ms)
     statusBar()->showMessage(frequencyStr);
 }
 
+void MainWindow::onMonitorClosed()
+{
+    stopEmulatorAction();
+}
+
 void MainWindow::onClose()
 {
     closeEvent(nullptr);
@@ -970,6 +975,8 @@ void MainWindow::runEmulatorAction()
     {
         m_monitor = MonitorWidget::getInstance(m_emulator->getHbcMonitor(), m_consoleOutput);
         m_monitor->show();
+
+        connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
     }
 
     m_emulator->runCmd();

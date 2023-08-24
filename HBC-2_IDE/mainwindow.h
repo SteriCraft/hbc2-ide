@@ -48,6 +48,7 @@ private slots:
     // Emulator signals
     void onEmulatorStatusChanged(Emulator::State newState);
     void onTickCountReceived(int countIn100Ms);
+    void onMonitorClosed();
 
 protected:
     void closeEvent(QCloseEvent *event) override;

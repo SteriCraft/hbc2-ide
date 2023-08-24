@@ -4,7 +4,10 @@
 #include <QDebug>
 #include <QVBoxLayout>
 #include <QIcon>
+#include <QCloseEvent>
 #include <QRandomGenerator>
+
+//#include "mainWindow.h"
 
 
 // HbcMonitor class
@@ -189,6 +192,19 @@ void MonitorWidget::updateBuffer()
 
     setBuffer(m_pixelBuffer);
     update();
+}
+
+void MonitorWidget::closeEvent(QCloseEvent *event)
+{
+    if (event->spontaneous())
+    {
+        emit closed();
+        QWidget::closeEvent(event);
+    }
+    else
+    {
+        QWidget::closeEvent(event);
+    }
 }
 
 // PRIVATE
