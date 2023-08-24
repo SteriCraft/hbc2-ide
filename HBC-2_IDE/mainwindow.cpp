@@ -2,6 +2,8 @@
 #include "./ui_mainwindow.h"
 #include "binaryExplorer.h"
 
+#include <QDesktopServices>
+
 MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainWindow)
 {
     ui->setupUi(this);
@@ -1321,9 +1323,21 @@ void MainWindow::openPathInFileExplorerActionRC()
         return;
 
     dirPath = getItemPath(m_pointedItem);
+
+#if defined(Q_OS_WIN32)
     dirPath = QDir::toNativeSeparators(dirPath);
 
     QProcess::startDetached("explorer.exe", QStringList{"/select", ",", dirPath});
+#elif defined(Q_OS_LINUX)
+    QFileInfo info(dirPath);
+
+    if (info.isFile())
+        dirPath = info.absolutePath();
+
+    qDebug() << dirPath;
+
+    QDesktopServices::openUrl(QUrl::fromLocalFile(dirPath));
+#endif
 }
 
 void MainWindow::closeProjectActionRC()
