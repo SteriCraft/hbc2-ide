@@ -10,12 +10,14 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
     loadIcons();
 
     setWindowIcon(QIcon(":/icons/res/logo.png"));
-    setObjectName("MainWindow");
+    //setObjectName("MainWindow");
     resize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
-    defaultEditorFont = QFont("Consolas");
+    defaultEditorFont = QFont("Consolas"); // TODO: Check if this works on GNU/Linux
+    // Probably not because Consolas is not part of system fonts
+    // See how to use custom fonts from res.qrc
 
-    m_config = Configuration::getInstance();
+    m_configManager = ConfigManager::getInstance();
     m_fileManager = FileManager::getInstance();
     m_projectManager = ProjectManager::getInstance(this);
     m_assembler = nullptr;
@@ -52,7 +54,7 @@ MainWindow::~MainWindow()
     }
 
     delete m_emulator;
-    delete m_config;
+    delete m_configManager;
     delete ui;
 }
 
@@ -64,10 +66,11 @@ void MainWindow::loadIcons()
     m_openFileIcon = new QIcon(":/icons/res/openFileIcon.png");
     m_saveFileIcon = new QIcon(":/icons/res/saveFileIcon.png");
     m_saveAllFilesIcon = new QIcon(":/icons/res/saveAllFilesIcon.png");
+    m_settingsIcon = new QIcon(":/icons/res/settingsIcon.png");
+    m_quitIcon = new QIcon(":/icons/res/quitIcon.png");
     m_assembleIcon = new QIcon(":/icons/res/assembleIcon.png");
     m_runIcon = new QIcon(":/icons/res/runIcon.png");
     m_binaryOutputIcon = new QIcon(":/icons/res/binaryOutputIcon.png");
-    m_quitIcon = new QIcon(":/icons/res/quitIcon.png");
 }
 
 void MainWindow::setupMenuBar()
@@ -107,6 +110,10 @@ void MainWindow::setupMenuBar()
 
     m_closeAllAction = m_fileMenu->addAction(tr("Close all files"), this, &MainWindow::closeAllAction);
     m_closeAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W));
+
+    m_fileMenu->addSeparator();
+
+    m_settingsAction = m_fileMenu->addAction(*m_settingsIcon, tr("Settings"), this, &MainWindow::settingsAction);
 
     m_fileMenu->addSeparator();
 
@@ -172,13 +179,13 @@ void MainWindow::setupMenuBar()
 
     m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheralAction);
     m_monitorToggle->setCheckable(true);
-    m_monitorToggle->setChecked(m_config->getMonitorPlugged());
+    m_monitorToggle->setChecked(m_configManager->getMonitorPlugged());
 
     m_emulatorMenu->addSeparator();
 
     m_startPausedToggle = m_emulatorMenu->addAction(tr("Start paused"), this, &MainWindow::startPausedAction);
     m_startPausedToggle->setCheckable(true);
-    m_startPausedToggle->setChecked(m_config->getStartEmulatorPaused());
+    m_startPausedToggle->setChecked(m_configManager->getStartEmulatorPaused());
 
 
     // === Project Manager right-click actions ===
@@ -697,7 +704,7 @@ void MainWindow::newFileAction()
 
 void MainWindow::openProjectAction()
 {
-    QString projectPath = QFileDialog::getOpenFileName(this, tr("Open project"), m_config->getDefaultProjectsPath(), "HBC-2 Project file (*.hcp)");
+    QString projectPath = QFileDialog::getOpenFileName(this, tr("Open project"), m_configManager->getDefaultProjectsPath(), "HBC-2 Project file (*.hcp)");
 
     if (!projectPath.isEmpty())
     {
@@ -717,7 +724,7 @@ void MainWindow::openProjectAction()
 
 void MainWindow::openFileAction()
 {
-    QString filePath = QFileDialog::getOpenFileName(this, tr("Open file"), m_config->getDefaultProjectsPath(), "HBC-2 source code (*.has)");
+    QString filePath = QFileDialog::getOpenFileName(this, tr("Open file"), m_configManager->getDefaultProjectsPath(), "HBC-2 source code (*.has)");
 
     openFile(filePath);
 }
@@ -778,7 +785,7 @@ void MainWindow::saveFileAction(CustomFile *file)
         pathToAdd = true;
 
         // Save as dialog
-        filePath = QFileDialog::getSaveFileName(this, tr("Save as"), m_config->getDefaultProjectsPath() + "/" + file->getName(), "HBC-2 Source code (*.has)");
+        filePath = QFileDialog::getSaveFileName(this, tr("Save as"), m_configManager->getDefaultProjectsPath() + "/" + file->getName(), "HBC-2 Source code (*.has)");
 
         if (filePath.isEmpty())
             return;
@@ -813,7 +820,7 @@ bool MainWindow::saveAllAction()
 
     for (unsigned int i(0); i < nonExistingFiles.count(); i++)
     {
-        filePath = QFileDialog::getSaveFileName(this, tr("Save as"), m_config->getDefaultProjectsPath() + "/" + nonExistingFiles[i], "HBC-2 Source code (*.has)");
+        filePath = QFileDialog::getSaveFileName(this, tr("Save as"), m_configManager->getDefaultProjectsPath() + "/" + nonExistingFiles[i], "HBC-2 Source code (*.has)");
 
         if (filePath.isEmpty())
             return false;
@@ -942,6 +949,12 @@ void MainWindow::closeAllAction()
 
         i--;
     }
+}
+
+void MainWindow::settingsAction()
+{
+    m_settingsDialog = new SettingsDialog(m_configManager, this);
+    m_settingsDialog->show();
 }
 
 

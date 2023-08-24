@@ -1,5 +1,7 @@
 #include "binaryExplorer.h"
 
+#include <QIcon>
+
 BinaryExplorer* BinaryExplorer::m_singleton = nullptr;
 
 BinaryExplorer* BinaryExplorer::getInstance(const QByteArray data, QWidget *parent)
@@ -12,6 +14,9 @@ BinaryExplorer* BinaryExplorer::getInstance(const QByteArray data, QWidget *pare
 
 BinaryExplorer::BinaryExplorer(const QByteArray data, QWidget *parent) : QDialog(parent)
 {
+    setWindowTitle(tr("Binary viewer"));
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+
     m_hexEditor = new QHexEdit(this);
 
     m_hexEditor->setData(data);

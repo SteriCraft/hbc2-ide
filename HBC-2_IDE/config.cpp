@@ -5,36 +5,38 @@
 #include <QTextStream>
 #include <QDebug>
 
-Configuration* Configuration::m_singleton = nullptr;
+
+// ConfigManager class
+ConfigManager* ConfigManager::m_singleton = nullptr;
 
 // PUBLIC
-Configuration* Configuration::getInstance()
+ConfigManager* ConfigManager::getInstance()
 {
     if (m_singleton == nullptr)
-        m_singleton = new Configuration();
+        m_singleton = new ConfigManager();
 
     return m_singleton;
 }
 
-Configuration::~Configuration()
+ConfigManager::~ConfigManager()
 {
     saveConfigFile();
     m_singleton = nullptr;
 }
 
-void Configuration::setStartEmulatorPaused(bool paused)
+void ConfigManager::setStartEmulatorPaused(bool paused)
 {
     m_settings.startEmulatorPaused = paused;
     saveConfigFile();
 }
 
-void Configuration::setMonitorPlugged(bool plugged)
+void ConfigManager::setMonitorPlugged(bool plugged)
 {
     m_settings.monitorPlugged = plugged;
     saveConfigFile();
 }
 
-bool Configuration::setDefaultProjectsPath(QString defaultPath)
+bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
 {
     if (defaultPath.isEmpty())
         return false;
@@ -45,23 +47,23 @@ bool Configuration::setDefaultProjectsPath(QString defaultPath)
     return true;
 }
 
-bool Configuration::getStartEmulatorPaused()
+bool ConfigManager::getStartEmulatorPaused()
 {
     return m_settings.startEmulatorPaused;
 }
 
-bool Configuration::getMonitorPlugged()
+bool ConfigManager::getMonitorPlugged()
 {
     return m_settings.monitorPlugged;
 }
 
-QString Configuration::getDefaultProjectsPath()
+QString ConfigManager::getDefaultProjectsPath()
 {
     return m_settings.defaultProjectsPath;
 }
 
 // PRIVATE
-Configuration::Configuration()
+ConfigManager::ConfigManager()
 {
     QString configFilePath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/config.cfg");
     QFile configFile(configFilePath);
@@ -111,7 +113,7 @@ Configuration::Configuration()
     }
 }
 
-bool Configuration::saveConfigFile()
+bool ConfigManager::saveConfigFile()
 {
     QString configFilePath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/config.cfg");
     QFile configFile(configFilePath);
@@ -136,4 +138,46 @@ bool Configuration::saveConfigFile()
     }
 
     return false;
+}
+
+
+// SettingsDialog class
+SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : QDialog(parent)
+{
+    setWindowTitle(tr("Settings"));
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    // Editor settings
+    QGroupBox *editorSettingsGroupBox = new QGroupBox(tr("Editor"), this);
+
+    m_defaultPathLineEdit = new QLineEdit(this);
+    m_defaultPathLineEdit->setText(configManager->getDefaultProjectsPath());
+
+    QVBoxLayout *editorSettingsLayout = new QVBoxLayout;
+    editorSettingsLayout->addWidget(m_defaultPathLineEdit);
+    editorSettingsGroupBox->setLayout(editorSettingsLayout);
+
+
+    // Emulator settings
+    QGroupBox *emulatorSettingsGroupBox = new QGroupBox(tr("Emulator"), this);
+
+    m_startPausedCheckBox = new QCheckBox(tr("Start the emulator paused"), this);
+    m_startPausedCheckBox->setChecked(configManager->getStartEmulatorPaused());
+
+    m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), this);
+    m_plugMonitorCheckBox->setChecked(configManager->getMonitorPlugged());
+
+    QVBoxLayout *emulatorSettingsLayout = new QVBoxLayout;
+    emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
+    emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
+    emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
+
+
+    QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addWidget(editorSettingsGroupBox);
+    mainLayout->addWidget(emulatorSettingsGroupBox);
+
+    setLayout(mainLayout);
+
+    // Ok, default, cancel buttons
 }

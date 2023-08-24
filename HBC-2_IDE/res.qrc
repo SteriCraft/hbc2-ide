@@ -11,6 +11,7 @@
         <file>res/binaryOutputIcon.png</file>
         <file>res/runIcon.png</file>
         <file>res/logo.png</file>
+        <file>res/settingsIcon.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>res/charMap.png</file>

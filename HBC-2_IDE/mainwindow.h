@@ -86,6 +86,7 @@ private:
     void closeCurrentFileAction();
     void closeFileAction(CustomFile *file, int tabIndex, bool discardAnyway = false);
     void closeAllAction();
+    void settingsAction();
     // Assembly actions
     void assembleAction();
     void showBinaryAction();
@@ -134,15 +135,16 @@ private:
     QAction *m_closeProjectAction;
     QAction *m_closeFileAction;
     QAction *m_closeAllAction;
+    QAction *m_settingsAction;
+    QAction *m_quitAction;
     QMenu *m_assemblerMenu;
     QAction *m_assembleAction;
+    QAction *m_showBinOutputAction;
+    QMenu *m_emulatorMenu;
     QAction *m_runEmulatorAction;
     QAction *m_stepEmulatorAction;
     QAction *m_pauseEmulatorAction;
     QAction *m_stopEmulatorAction;
-    QAction *m_showBinOutputAction;
-    QAction *m_quitAction;
-    QMenu *m_emulatorMenu;
     QMenu *m_emulatorFrequencyMenu;
     QAction *m_100khzFrequencyToggle;
     QAction *m_1mhzFrequencyToggle;
@@ -175,10 +177,11 @@ private:
     QIcon *m_openFileIcon;
     QIcon *m_saveFileIcon;
     QIcon *m_saveAllFilesIcon;
-    QIcon *m_assembleIcon;
-    QIcon *m_runIcon;
-    QIcon *m_binaryOutputIcon;
+    QIcon *m_settingsIcon;
     QIcon *m_quitIcon;
+    QIcon *m_assembleIcon;
+    QIcon *m_binaryOutputIcon;
+    QIcon *m_runIcon;
 
     // Widgets
     QLabel *m_statusBarLabel;
@@ -192,7 +195,10 @@ private:
     Assembler *m_assembler;
     HbcEmulator *m_emulator;
     MonitorWidget *m_monitor;
-    Configuration *m_config;
+    ConfigManager *m_configManager;
+
+    // Dialogs
+    SettingsDialog *m_settingsDialog;
 
     QFont defaultEditorFont;
     QWidget *m_window;
