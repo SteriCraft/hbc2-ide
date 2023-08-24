@@ -222,6 +222,9 @@ void MainWindow::setupMenuBar()
 
 void MainWindow::setupWidgets()
 {
+    m_statusBarLabel = new QLabel(this);
+    statusBar()->addPermanentWidget(m_statusBarLabel);
+
     // Assembly editor
     m_assemblyEditor = new QTabWidget(this);
     m_assemblyEditor->setTabsClosable(true);
@@ -577,7 +580,7 @@ void MainWindow::onTickCountReceived(int countIn100Ms)
         frequencyStr += "Hz";
     }
 
-    statusBar()->showMessage(frequencyStr);
+    setStatusBarMessage(frequencyStr);
 }
 
 void MainWindow::onMonitorClosed()
@@ -1411,6 +1414,11 @@ void MainWindow::updateWinTabMenu()
     }
 
     m_saveAllAction->setEnabled(m_fileManager->areThereUnsavedFiles());
+}
+
+void MainWindow::setStatusBarMessage(QString message)
+{
+    m_statusBarLabel->setText(message);
 }
 
 void MainWindow::updateEmulatorActions(Emulator::State newState)

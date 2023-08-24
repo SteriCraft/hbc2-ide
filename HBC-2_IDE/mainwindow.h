@@ -64,7 +64,7 @@ private:
     void closeAssociatedTabs(ProjectItem* item);
     void closeProject(Project *p);
     void updateWinTabMenu();
-
+    void setStatusBarMessage(QString message);
     void updateEmulatorActions(Emulator::State newState);
     int getEditorIndex(CustomFile *file);
     int getEditorIndex(QString fileName);
@@ -180,6 +180,7 @@ private:
     QIcon *m_quitIcon;
 
     // Widgets
+    QLabel *m_statusBarLabel;
     QTabWidget *m_assemblyEditor;
     QLabel *m_consoleLabel;
     Console *m_consoleOutput;
