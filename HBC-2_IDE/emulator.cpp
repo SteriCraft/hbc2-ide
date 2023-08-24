@@ -25,7 +25,22 @@ bool HbcEmulator::runCmd()
     Emulator::State currentState(getState());
     bool success(false);
 
-    if (currentState == Emulator::State::READY || currentState == Emulator::State::PAUSED)
+    if (currentState == Emulator::State::READY)
+    {
+        m_status.mutex.lock();
+        if (m_status.startPaused)
+        {
+            m_status.command = Emulator::Command::PAUSE;
+        }
+        else
+        {
+            m_status.command = Emulator::Command::RUN;
+        }
+        m_status.mutex.unlock();
+
+        success = true;
+    }
+    else if (currentState == Emulator::State::PAUSED)
     {
         m_status.mutex.lock();
         m_status.command = Emulator::Command::RUN;
@@ -139,6 +154,11 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
 void HbcEmulator::useMonitor(bool enable)
 {
     m_status.useMonitor = enable;
+}
+
+void HbcEmulator::setStartPaused(bool enable)
+{
+    m_status.startPaused = enable;
 }
 
 Emulator::State HbcEmulator::getState()

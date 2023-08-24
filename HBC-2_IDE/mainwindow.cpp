@@ -170,6 +170,12 @@ void MainWindow::setupMenuBar()
     m_monitorToggle->setCheckable(true);
     m_monitorToggle->setChecked(true);
 
+    m_emulatorMenu->addSeparator();
+
+    m_startPausedToggle = m_emulatorMenu->addAction(tr("Start paused"), this, &MainWindow::startPausedAction);
+    m_startPausedToggle->setCheckable(true);
+    m_startPausedToggle->setChecked(true);
+
 
     // === Project Manager right-click actions ===
     m_setActiveProjectActionRC = new QAction(tr("Set as active project"), this);
@@ -579,7 +585,6 @@ void MainWindow::closeEvent(QCloseEvent *event)
     if (m_closeCount++ >= 1)
             return;
 
-    qDebug() << "gonna close the emulator";
     stopEmulatorAction();
 
     bool unsavedFiles(m_fileManager->areThereUnsavedFiles());
@@ -953,9 +958,12 @@ void MainWindow::showBinaryAction()
 
 void MainWindow::runEmulatorAction()
 {
+    plugMonitorPeripheralAction();
+    startPausedAction();
+
     if (m_monitorToggle->isChecked())
     {
-        m_monitorDialog = new MonitorDialog(m_emulator->getHbcMonitor());
+        m_monitorDialog = new MonitorDialog(m_emulator->getHbcMonitor(), m_consoleOutput);
         m_monitorDialog->show();
     }
 
@@ -995,6 +1003,11 @@ void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)
 void MainWindow::plugMonitorPeripheralAction()
 {
     m_emulator->useMonitor(m_monitorToggle->isChecked());
+}
+
+void MainWindow::startPausedAction()
+{
+    m_emulator->setStartPaused(m_startPausedToggle->isChecked());
 }
 
 
@@ -1406,6 +1419,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     }
 
     m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
+    m_startPausedToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
 }
 
 int MainWindow::getEditorIndex(CustomFile *file)

@@ -9,12 +9,11 @@
 
 #include "peripheral.h"
 
-#define SCREEN_PORTS_NB 5
-
 namespace Monitor
 {
-    enum class Ports { DATA_0 = 0, DATA_1 = 1, POS_X = 2, POS_Y = 3, CMD = 4 };
-    enum class Commands { NOP = 0, WRITE = 1, READ = 2, SWITCH_TO_PIXEL_MODE = 3, SWITCH_TO_TEXT_MODE = 4 };
+    enum class Port { DATA_0 = 0, DATA_1 = 1, POS_X = 2, POS_Y = 3, CMD = 4 };
+    enum class Command { NOP = 0, WRITE = 1, READ = 2, SWITCH_TO_PIXEL_MODE = 3, SWITCH_TO_TEXT_MODE = 4 };
+    enum class Mode { PIXEL = 0, TEXT = 1 };
 
     enum class Color { BLACK = 0,    BLUE,           GREEN,         CYAN,
                        RED,          MAGENTA,        BROWN_COLOR,   LIGHT_GRAY,
@@ -22,9 +21,22 @@ namespace Monitor
                        BRIGHT_RED,   BRIGHT_MAGENTA, BRIGHT_YELLOW, WHITE };
 
     const QRgb colorArray[] = { qRgb(  0,   0,   0), qRgb(  0,   0, 170), qRgb(  0, 170,   0), qRgb(  0, 170, 170),
-                               qRgb(170,   0,   0), qRgb(170,   0, 170), qRgb(170,  85,   0), qRgb(170,  70, 170),
-                               qRgb( 85,  85,  85), qRgb( 85,  85, 255), qRgb( 85, 255,  85), qRgb( 85, 255, 255),
-                               qRgb(255,  85,  85), qRgb(255,  85, 255), qRgb(255, 255,  85), qRgb(255, 255, 255)};
+                                qRgb(170,   0,   0), qRgb(170,   0, 170), qRgb(170,  85,   0), qRgb(170,  70, 170),
+                                qRgb( 85,  85,  85), qRgb( 85,  85, 255), qRgb( 85, 255,  85), qRgb( 85, 255, 255),
+                                qRgb(255,  85,  85), qRgb(255,  85, 255), qRgb(255, 255,  85), qRgb(255, 255, 255)};
+
+    struct CharData
+    {
+        Byte colors;
+        Byte ascii;
+    };
+
+    struct VideoData
+    {
+        QMutex mutex;
+        CharData textBuffer[TEXT_MODE_BUFFER_SIZE];
+        Byte pixelBuffer[PIXEL_MODE_BUFFER_SIZE];
+    };
 
     struct Status
     {
@@ -42,11 +54,14 @@ class HbcMonitor : public HbcPeripheral
         void init() override;
         void tick() override;
 
-        uint32_t* getPixelBuffer();
+        Monitor::CharData* getTextBuffer();
+        Byte* getPixelBuffer();
+        Monitor::Mode getMode();
 
     private:
-        QMutex m_mutex;
-        uint32_t *m_pixelBuffer;
+        Monitor::VideoData m_videoData;
+
+        Monitor::Mode m_mode;
 };
 
 class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
@@ -77,14 +92,21 @@ class MonitorDialog : public QDialog, public QThread
     //Q_OBJECT
 
     public:
-        MonitorDialog(HbcMonitor *hbcMonitor, QWidget *parent = nullptr);
+        MonitorDialog(HbcMonitor *hbcMonitor, Console *consoleOutput, QWidget *parent = nullptr);
         ~MonitorDialog();
 
         void run() override; // Thread loop
 
     private:
+        void convertToPixelBuffer(Monitor::CharData *textBuffer);
+        void convertToPixelBuffer(Byte *pixelBuffer);
+
         MonitorWidget *m_monitorWidget;
         HbcMonitor *m_hbcMonitor;
+
+        QImage m_font;
+        std::vector<bool*> m_charMap;
+        uint32_t *m_pixelBuffer;
 
         Monitor::Status m_status;
 };

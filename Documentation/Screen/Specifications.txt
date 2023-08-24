@@ -3,7 +3,7 @@
   |- 42 by 24 characters screen (252 * 192 pixels)
   |- 6*8 px characters
   |- 2 bytes per character (2,016 bytes, ~2kB)
-  |- First byte: 4 bits for background color, 4 bits for character color
+  |- First byte: 4 bits for background color (MSB), 4 bits for character color (LSB)
   |- Second byte: ASCII code
   |- 16 colors palette
 
@@ -25,3 +25,12 @@
 2: READ
 3: SWITCH_TO_PIXEL_MODE
 4: SWITCH_TO_TEXT_MODE
+
+=== ERRORS ===
+Returns 0x00 on READ command if requested position is invalid
+
+=== ASCII CHARS ===
+95 displayable characters
+Starting at ASCII code 0x20 (32)
+
+ !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_'abcdefghijklmnopqrstuvwxyz{|}~

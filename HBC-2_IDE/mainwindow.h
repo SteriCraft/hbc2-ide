@@ -94,6 +94,7 @@ private:
     void stopEmulatorAction();
     void setFrequencyTargetAction(Emulator::FrequencyTarget target);
     void plugMonitorPeripheralAction();
+    void startPausedAction();
     // Project item right-click menu actions
     void setActiveProjectActionRC();
     void addNewFileActionRC();
@@ -150,6 +151,7 @@ private:
     QAction *m_maxFrequencyToggle;
     QMenu *m_emulatorPeripheralsMenu;
     QAction *m_monitorToggle;
+    QAction *m_startPausedToggle;
     // Project Manager right-click menu
     QAction *m_setActiveProjectActionRC;
     QAction *m_addNewFileActionRC;

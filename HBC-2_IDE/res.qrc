@@ -12,4 +12,7 @@
         <file>res/runIcon.png</file>
         <file>res/logo.png</file>
     </qresource>
+    <qresource prefix="/font">
+        <file>res/charMap.png</file>
+    </qresource>
 </RCC>

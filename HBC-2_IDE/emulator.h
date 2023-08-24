@@ -24,6 +24,7 @@ namespace Emulator
         FrequencyTarget frequencyTarget;
 
         bool useMonitor;
+        bool startPaused;
 
         std::string projectName;
     };
@@ -59,6 +60,7 @@ class HbcEmulator : public QThread
         bool loadProject(QByteArray initialRamData, QString projectName);
 
         void useMonitor(bool enable);
+        void setStartPaused(bool enable);
 
         Emulator::State getState();
         Emulator::FrequencyTarget getFrequencyTarget();
