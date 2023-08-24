@@ -9,6 +9,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QGroupBox>
+#include <QPushButton>
 
 struct ConfigurationSettings
 {

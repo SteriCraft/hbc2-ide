@@ -10,7 +10,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
     loadIcons();
 
     setWindowIcon(QIcon(":/icons/res/logo.png"));
-    //setObjectName("MainWindow");
     resize(WINDOW_WIDTH, WINDOW_HEIGHT);
 
     defaultEditorFont = QFont("Monospace", 10);

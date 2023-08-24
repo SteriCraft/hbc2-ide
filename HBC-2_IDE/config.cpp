@@ -173,11 +173,14 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
 
 
+    QPushButton *closeButton = new QPushButton(tr("Close"), this);
+
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(editorSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
+    mainLayout->addWidget(closeButton);
 
     setLayout(mainLayout);
 
-    // Ok, default, cancel buttons
+    connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
