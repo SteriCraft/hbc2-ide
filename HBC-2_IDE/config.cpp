@@ -144,17 +144,26 @@ bool ConfigManager::saveConfigFile()
 // SettingsDialog class
 SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : QDialog(parent)
 {
+    m_configManager = configManager;
+
     setWindowTitle(tr("Settings"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     // Editor settings
     QGroupBox *editorSettingsGroupBox = new QGroupBox(tr("Editor"), this);
 
-    m_defaultPathLineEdit = new QLineEdit(this);
-    m_defaultPathLineEdit->setText(configManager->getDefaultProjectsPath());
+    QLabel *defaultProjectsPathLabel = new QLabel(tr("Projects directory"), this);
+    QPushButton *browseProjectsPath = new QPushButton(tr("Browse"), this);
+    m_defaultProjectsPathLineEdit = new QLineEdit(this);
+    m_defaultProjectsPathLineEdit->setText(configManager->getDefaultProjectsPath());
+    m_defaultProjectsPathLineEdit->setMinimumWidth(250);
+    QHBoxLayout *defaultProjectsPathLayout = new QHBoxLayout;
+    defaultProjectsPathLayout->addWidget(m_defaultProjectsPathLineEdit);
+    defaultProjectsPathLayout->addWidget(browseProjectsPath);
 
     QVBoxLayout *editorSettingsLayout = new QVBoxLayout;
-    editorSettingsLayout->addWidget(m_defaultPathLineEdit);
+    editorSettingsLayout->addWidget(defaultProjectsPathLabel);
+    editorSettingsLayout->addLayout(defaultProjectsPathLayout);
     editorSettingsGroupBox->setLayout(editorSettingsLayout);
 
 
@@ -182,5 +191,40 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
     setLayout(mainLayout);
 
+    // Connections
+    connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
+    connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
+    connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
+    connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(defaultProjectsPathChanged()));
+
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+}
+
+void SettingsDialog::startPausedChanged()
+{
+    m_configManager->setStartEmulatorPaused(m_startPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::plugMonitorChanged()
+{
+    m_configManager->setMonitorPlugged(m_plugMonitorCheckBox->isChecked());
+}
+
+void SettingsDialog::browseProjectsPathClicked()
+{
+    QString newDefaultProjectsPath = QFileDialog::getExistingDirectory(this, tr("Select new projects directory"), m_configManager->getDefaultProjectsPath(), QFileDialog::ShowDirsOnly);
+
+    m_defaultProjectsPathLineEdit->setText(newDefaultProjectsPath);
+}
+
+void SettingsDialog::defaultProjectsPathChanged()
+{
+    if (m_defaultProjectsPathLineEdit->text().isEmpty())
+    {
+        QMessageBox::warning(this, tr("Invalid projects directory"), tr("The projects directory cannot be empty")); // Cannot be empty
+    }
+    else
+    {
+        m_configManager->setDefaultProjectsPath(m_defaultProjectsPathLineEdit->text());
+    }
 }

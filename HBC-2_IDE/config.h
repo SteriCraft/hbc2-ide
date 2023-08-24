@@ -10,6 +10,8 @@
 #include <QLabel>
 #include <QGroupBox>
 #include <QPushButton>
+#include <QFileDialog>
+#include <QMessageBox>
 
 struct ConfigurationSettings
 {
@@ -48,8 +50,14 @@ class SettingsDialog : public QDialog
     public:
         SettingsDialog(ConfigManager *configManager, QWidget *parent = nullptr);
 
+    private slots:
+        void startPausedChanged();
+        void plugMonitorChanged();
+        void browseProjectsPathClicked();
+        void defaultProjectsPathChanged();
+
     private:
-        QLineEdit *m_defaultPathLineEdit;
+        QLineEdit *m_defaultProjectsPathLineEdit;
 
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;
