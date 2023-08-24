@@ -64,50 +64,56 @@ class HbcMonitor : public HbcPeripheral
         Monitor::Mode m_mode;
 };
 
+class MonitorThread;
+
 class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
 
-    public:
-        explicit MonitorWidget(QWidget *parent = nullptr);
+    static MonitorWidget *m_singleton;
 
-        void setSize(unsigned int width, unsigned int height);
-        void setBuffer(const uint32_t *pixelBuffer);
+    public:
+        static MonitorWidget* getInstance(HbcMonitor *hbcMonitor, Console *consoleOutput);
+        ~MonitorWidget();
+
+        void updateBuffer();
 
     private:
+        explicit MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput);
+
+        void setSize(unsigned int width, unsigned int height);
+        void setBuffer(uint32_t *pixelBuffer);
+
         void initializeGL() override;
         void resizeGL(int w, int h) override;
         void paintGL() override;
+
+        void convertToPixelBuffer(Monitor::CharData *textBuffer);
+        void convertToPixelBuffer(Byte *pixelBuffer);
+
+        HbcMonitor *m_hbcMonitor;
+        QImage m_font;
+        std::vector<bool*> m_charMap;
+        MonitorThread *m_thread;
 
         unsigned int m_width;
         unsigned int m_height;
 
         GLuint m_texture;
 
-        const uint32_t *m_pixelBuffer;
+        uint32_t *m_pixelBuffer;
 };
 
-class MonitorDialog : public QDialog, public QThread
+class MonitorThread : public QThread
 {
-    //Q_OBJECT
-
     public:
-        MonitorDialog(HbcMonitor *hbcMonitor, Console *consoleOutput, QWidget *parent = nullptr);
-        ~MonitorDialog();
+        MonitorThread(MonitorWidget *monitor);
+        ~MonitorThread();
 
-        void run() override; // Thread loop
+        void run() override;
 
     private:
-        void convertToPixelBuffer(Monitor::CharData *textBuffer);
-        void convertToPixelBuffer(Byte *pixelBuffer);
-
-        MonitorWidget *m_monitorWidget;
-        HbcMonitor *m_hbcMonitor;
-
-        QImage m_font;
-        std::vector<bool*> m_charMap;
-        uint32_t *m_pixelBuffer;
-
+        MonitorWidget *m_monitor;
         Monitor::Status m_status;
 };
 

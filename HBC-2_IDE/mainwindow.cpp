@@ -33,7 +33,7 @@ MainWindow::MainWindow(QWidget *parent)
 
     m_assembler = Assembler::getInstance(m_consoleOutput); // Has to be called after "setupWidgets()"
     m_emulator = HbcEmulator::getInstance(this, m_consoleOutput); // Because it needs m_consoleOutput to be initialized
-    m_monitorDialog = nullptr;
+    m_monitor = nullptr;
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -47,7 +47,12 @@ MainWindow::MainWindow(QWidget *parent)
 
 MainWindow::~MainWindow()
 {
-    delete m_monitorDialog;
+    if (m_monitor != nullptr)
+    {
+        delete m_monitor;
+        m_monitor = nullptr;
+    }
+
     delete m_emulator;
     delete ui;
 }
@@ -963,8 +968,8 @@ void MainWindow::runEmulatorAction()
 
     if (m_monitorToggle->isChecked())
     {
-        m_monitorDialog = new MonitorDialog(m_emulator->getHbcMonitor(), m_consoleOutput);
-        m_monitorDialog->show();
+        m_monitor = MonitorWidget::getInstance(m_emulator->getHbcMonitor(), m_consoleOutput);
+        m_monitor->show();
     }
 
     m_emulator->runCmd();
@@ -982,7 +987,11 @@ void MainWindow::pauseEmulatorAction()
 
 void MainWindow::stopEmulatorAction()
 {
-    delete m_monitorDialog;
+    if (m_monitor != nullptr)
+    {
+        delete m_monitor;
+        m_monitor = nullptr;
+    }
 
     m_emulator->stopCmd();
 }

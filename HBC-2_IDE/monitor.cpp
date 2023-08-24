@@ -3,6 +3,8 @@
 
 #include <QDebug>
 #include <QVBoxLayout>
+#include <QIcon>
+#include <QRandomGenerator>
 
 
 // HbcMonitor class
@@ -43,6 +45,10 @@ void HbcMonitor::tick()
 {
     Monitor::Command command = (Monitor::Command)*m_sockets[(int)Monitor::Port::CMD].portDataPointer;
     int index;
+
+    index = QRandomGenerator::global()->generate() % TEXT_MODE_BUFFER_SIZE;
+    m_videoData.textBuffer[index].ascii = (QRandomGenerator::global()->generate() % (127 - 31)) + 32;
+    m_videoData.textBuffer[index].colors = ((QRandomGenerator::global()->generate() % 16) << 4)+ (QRandomGenerator::global()->generate() % 16);
 
     // Check command
     if (command != Monitor::Command::NOP)
@@ -152,7 +158,41 @@ Monitor::Mode HbcMonitor::getMode()
 
 
 // MonitorWidget class
-MonitorWidget::MonitorWidget(QWidget *parent) : QOpenGLWidget(parent)
+MonitorWidget* MonitorWidget::m_singleton = nullptr;
+
+// PUBLIC
+MonitorWidget* MonitorWidget::getInstance(HbcMonitor *hbcMonitor, Console *consoleOutput)
+{
+    if (m_singleton == nullptr)
+        m_singleton = new MonitorWidget(hbcMonitor, consoleOutput);
+
+    return m_singleton;
+}
+
+MonitorWidget::~MonitorWidget()
+{
+    delete m_thread;
+
+    m_singleton = nullptr;
+}
+
+void MonitorWidget::updateBuffer()
+{
+    if (m_hbcMonitor->getMode() == Monitor::Mode::TEXT)
+    {
+        convertToPixelBuffer(m_hbcMonitor->getTextBuffer());
+    }
+    else // PIXELS
+    {
+        convertToPixelBuffer(m_hbcMonitor->getPixelBuffer());
+    }
+
+    setBuffer(m_pixelBuffer);
+    update();
+}
+
+// PRIVATE
+MonitorWidget::MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput) : QOpenGLWidget(nullptr)
 {
     m_width = 0;
     m_height = 0;
@@ -161,18 +201,52 @@ MonitorWidget::MonitorWidget(QWidget *parent) : QOpenGLWidget(parent)
 
     setSize(MONITOR_WIDTH, MONITOR_HEIGHT);
 
-    // Using a temporary buffer because the final pixel buffer is constant
-    uint32_t* tempPxBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
+    m_pixelBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
     for (unsigned int x(0); x < MONITOR_WIDTH; x++)
     {
         for (unsigned int y(0); y < MONITOR_HEIGHT; y++)
         {
-            tempPxBuffer[x + y * MONITOR_WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
+            m_pixelBuffer[x + y * MONITOR_WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
         }
     }
-    m_pixelBuffer = tempPxBuffer;
+
+    m_hbcMonitor = hbcMonitor;
+
+    m_font.load(":/font/res/charMap.png");
+
+    m_charMap.clear();
+    if (!m_font.isNull())
+    {
+        if (m_font.width() == (DISPLAYABLE_CHARS * CHARACTER_WIDTH) && m_font.height() == CHARACTER_HEIGHT)
+        {
+            for (unsigned int i(0); i < DISPLAYABLE_CHARS; i++)
+            {
+                bool *newChar(new bool[CHARACTER_WIDTH * CHARACTER_HEIGHT]);
+
+                for (unsigned int x(0); x < CHARACTER_WIDTH; x++)
+                {
+                    for (unsigned int y(0); y < CHARACTER_HEIGHT; y++)
+                    {
+                        newChar[x + y * CHARACTER_WIDTH] = m_font.pixel(x + i * CHARACTER_WIDTH, y) == Monitor::colorArray[(int)Monitor::Color::WHITE];
+                    }
+                }
+
+                m_charMap.push_back(newChar);
+            }
+        }
+        else
+        {
+            consoleOutput->log("Couldn't load character map for the emulator");
+            consoleOutput->returnLine();
+        }
+    }
+
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     update();
+
+    m_thread = new MonitorThread(this);
+    m_thread->start();
 }
 
 void MonitorWidget::setSize(unsigned int width, unsigned int height)
@@ -181,7 +255,7 @@ void MonitorWidget::setSize(unsigned int width, unsigned int height)
     m_height = height;
 }
 
-void MonitorWidget::setBuffer(const uint32_t *pixelBuffer)
+void MonitorWidget::setBuffer(uint32_t *pixelBuffer)
 {
     m_pixelBuffer = pixelBuffer;
 }
@@ -241,110 +315,7 @@ void MonitorWidget::paintGL()
     glEnd();
 }
 
-
-// MonitorDialog class
-MonitorDialog::MonitorDialog(HbcMonitor *hbcMonitor, Console *consoleOutput, QWidget *parent) : QDialog(parent)
-{
-    m_monitorWidget = new MonitorWidget(this);
-    m_hbcMonitor = hbcMonitor;
-
-    m_font.load(":/font/res/charMap.png");
-
-    m_charMap.clear();
-    if (!m_font.isNull())
-    {
-        if (m_font.width() == (DISPLAYABLE_CHARS * CHARACTER_WIDTH) && m_font.height() == CHARACTER_HEIGHT)
-        {
-            for (unsigned int i(0); i < DISPLAYABLE_CHARS; i++)
-            {
-                bool *newChar(new bool[CHARACTER_WIDTH * CHARACTER_HEIGHT]);
-
-                for (unsigned int x(0); x < CHARACTER_WIDTH; x++)
-                {
-                    for (unsigned int y(0); y < CHARACTER_HEIGHT; y++)
-                    {
-                        newChar[x + y * CHARACTER_WIDTH] = m_font.pixel(x + i * CHARACTER_WIDTH, y) == Monitor::colorArray[(int)Monitor::Color::WHITE];
-                    }
-                }
-
-                m_charMap.push_back(newChar);
-            }
-        }
-        else
-        {
-            consoleOutput->log("Couldn't load character map for the emulator");
-            consoleOutput->returnLine();
-        }
-    }
-
-    // Pixel buffer init
-    m_pixelBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
-    for (unsigned int x(0); x < MONITOR_WIDTH; x++)
-    {
-        for (unsigned int y(0); y < MONITOR_HEIGHT; y++)
-        {
-            m_pixelBuffer[x + y * MONITOR_WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
-        }
-    }
-
-    setFixedWidth(MONITOR_WINDOW_WIDTH);
-    setFixedHeight(MONITOR_WINDOW_HEIGHT);
-
-    m_status.stopCmd = false;
-
-    QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(m_monitorWidget);
-    setLayout(mainLayout);
-
-    start();
-}
-
-MonitorDialog::~MonitorDialog()
-{
-    m_monitorWidget->close();
-
-    m_status.mutex.lock();
-    m_status.stopCmd = true;
-    m_status.mutex.unlock();
-
-    wait();
-
-    qDebug() << "[MONITOR]: Closed";
-}
-
-void MonitorDialog::run()
-{
-    bool stop(false);
-
-    QElapsedTimer fpsTargetTimer;
-
-    fpsTargetTimer.start();
-    while (!stop)
-    {
-        if (fpsTargetTimer.elapsed() >= 1000.f / FPS_TARGET) // in ms
-        {
-            fpsTargetTimer.restart();
-
-            if (m_hbcMonitor->getMode() == Monitor::Mode::TEXT)
-            {
-                convertToPixelBuffer(m_hbcMonitor->getTextBuffer());
-            }
-            else // PIXELS
-            {
-                convertToPixelBuffer(m_hbcMonitor->getPixelBuffer());
-            }
-
-            m_monitorWidget->setBuffer(m_pixelBuffer);
-            m_monitorWidget->update();
-
-            m_status.mutex.lock();
-            stop = m_status.stopCmd;
-            m_status.mutex.unlock();
-        }
-    }
-}
-
-void MonitorDialog::convertToPixelBuffer(Monitor::CharData *textBuffer)
+void MonitorWidget::convertToPixelBuffer(Monitor::CharData *textBuffer)
 {
     Byte asciiCode, colors;
     int index;
@@ -391,7 +362,7 @@ void MonitorDialog::convertToPixelBuffer(Monitor::CharData *textBuffer)
     }
 }
 
-void MonitorDialog::convertToPixelBuffer(Byte *pixelBuffer)
+void MonitorWidget::convertToPixelBuffer(Byte *pixelBuffer)
 {
     int index;
 
@@ -402,6 +373,44 @@ void MonitorDialog::convertToPixelBuffer(Byte *pixelBuffer)
             index = x + y * MONITOR_WIDTH;
 
             m_pixelBuffer[index] = Monitor::colorArray[pixelBuffer[index]];
+        }
+    }
+}
+
+// MonitorThread class
+MonitorThread::MonitorThread(MonitorWidget *monitor)
+{
+    m_monitor = monitor;
+    m_status.stopCmd = false;
+}
+
+MonitorThread::~MonitorThread()
+{
+    m_status.mutex.lock();
+    m_status.stopCmd = true;
+    m_status.mutex.unlock();
+
+    wait();
+}
+
+void MonitorThread::run()
+{
+    bool stop(false);
+
+    QElapsedTimer fpsTargetTimer;
+
+    fpsTargetTimer.start();
+    while (!stop)
+    {
+        if (fpsTargetTimer.elapsed() >= 1000.f / FPS_TARGET) // in ms
+        {
+            fpsTargetTimer.restart();
+
+            m_monitor->updateBuffer();
+
+            m_status.mutex.lock();
+            stop = m_status.stopCmd;
+            m_status.mutex.unlock();
         }
     }
 }

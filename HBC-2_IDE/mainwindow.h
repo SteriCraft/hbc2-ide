@@ -188,7 +188,7 @@ private:
     // Others
     Assembler *m_assembler;
     HbcEmulator *m_emulator;
-    MonitorDialog *m_monitorDialog;
+    MonitorWidget *m_monitor;
 
     QFont defaultEditorFont;
     QWidget *m_window;
