@@ -557,30 +557,41 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
 
 void MainWindow::onTickCountReceived(int countIn100Ms)
 {
-    QString frequencyStr(tr("CPU frequency: "));
+    QString statusBarStr(tr("CPU frequency: "));
 
     if (countIn100Ms > 10000000)
     {
-        frequencyStr += QString::number(countIn100Ms / 1000000);
-        frequencyStr += "MHz";
+        statusBarStr += QString::number(countIn100Ms / 1000000);
+        statusBarStr += "MHz";
     }
     else if (countIn100Ms > 1000000) // With 2 decimal digits
     {
-        frequencyStr += QString::number((float)(countIn100Ms / 10000) / 100);
-        frequencyStr += "MHz";
+        statusBarStr += QString::number((float)(countIn100Ms / 10000) / 100);
+        statusBarStr += "MHz";
     }
-    else if (countIn100Ms > 1000)
+    else if (countIn100Ms > 10000)
     {
-        frequencyStr += QString::number(countIn100Ms / 1000);
-        frequencyStr += "KHz";
+        statusBarStr += QString::number(countIn100Ms / 1000);
+        statusBarStr += "KHz";
+    }
+    else if (countIn100Ms > 1000) // With 2 decimal digits
+    {
+        statusBarStr += QString::number((float)(countIn100Ms / 10) / 100);
+        statusBarStr += "KHz";
     }
     else
     {
-        frequencyStr += QString::number(countIn100Ms);
-        frequencyStr += "Hz";
+        statusBarStr += QString::number(countIn100Ms);
+        statusBarStr += "Hz";
     }
 
-    setStatusBarMessage(frequencyStr);
+    if (m_monitor != nullptr)
+    {
+        statusBarStr += " | FPS: ";
+        statusBarStr += QString::number(m_monitor->getFPS());
+    }
+
+    setStatusBarMessage(statusBarStr);
 }
 
 void MainWindow::onMonitorClosed()
@@ -1004,6 +1015,8 @@ void MainWindow::stopEmulatorAction()
     }
 
     m_emulator->stopCmd();
+
+    setStatusBarMessage("");
 }
 
 void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)

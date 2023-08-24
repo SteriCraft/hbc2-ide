@@ -1529,8 +1529,15 @@ bool Assembler::convertDataToBinary()
 
 bool Assembler::saveBinaryToFile()
 {
-    QString filePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
+    QString romDirectoryPath(QFileInfo(m_finalFile.m_filePath).path() + "/rom/");
+    QDir romDirectory(romDirectoryPath);
 
+    if (!romDirectory.exists())
+    {
+        romDirectory.mkpath(romDirectoryPath);
+    }
+
+    QString filePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
     QFile file(filePath);
 
     if (!file.open(QIODevice::WriteOnly))

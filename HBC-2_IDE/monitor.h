@@ -41,6 +41,9 @@ namespace Monitor
     struct Status
     {
         QMutex mutex;
+
+        QElapsedTimer fpsCountTimer;
+        int fpsCount;
         bool stopCmd;
     };
 }
@@ -78,6 +81,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
         ~MonitorWidget();
 
         void updateBuffer();
+        int getFPS();
 
     signals:
         void closed();
@@ -118,6 +122,7 @@ class MonitorThread : public QThread
         ~MonitorThread();
 
         void run() override;
+        int getFPS();
 
     private:
         MonitorWidget *m_monitor;

@@ -194,6 +194,11 @@ void MonitorWidget::updateBuffer()
     update();
 }
 
+int MonitorWidget::getFPS()
+{
+    return m_thread->getFPS();
+}
+
 void MonitorWidget::closeEvent(QCloseEvent *event)
 {
     if (event->spontaneous())
@@ -398,6 +403,7 @@ MonitorThread::MonitorThread(MonitorWidget *monitor)
 {
     m_monitor = monitor;
     m_status.stopCmd = false;
+    m_status.fpsCount = 0;
 }
 
 MonitorThread::~MonitorThread()
@@ -416,6 +422,7 @@ void MonitorThread::run()
     QElapsedTimer fpsTargetTimer;
 
     fpsTargetTimer.start();
+    m_status.fpsCountTimer.start();
     while (!stop)
     {
         if (fpsTargetTimer.elapsed() >= 1000.f / FPS_TARGET) // in ms
@@ -427,6 +434,24 @@ void MonitorThread::run()
             m_status.mutex.lock();
             stop = m_status.stopCmd;
             m_status.mutex.unlock();
+
+            m_status.fpsCount++;
         }
     }
+}
+
+int MonitorThread::getFPS()
+{
+    int fpsCount;
+
+    m_status.mutex.lock();
+
+    fpsCount = m_status.fpsCount / (1000.f / m_status.fpsCountTimer.elapsed());
+    m_status.fpsCount = 0;
+
+    m_status.fpsCountTimer.restart();
+
+    m_status.mutex.unlock();
+
+    return fpsCount;
 }
