@@ -29,6 +29,8 @@ add_executable(HBC-2_IDE
   commands.cpp
   commands.h
   computerDetails.h
+  config.cpp
+  config.h
   console.cpp
   console.h
   cpu.cpp

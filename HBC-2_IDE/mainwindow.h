@@ -17,6 +17,7 @@
 #include "customizedEditor.h"
 #include "assembler.h"
 #include "emulator.h"
+#include "config.h"
 
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
@@ -191,6 +192,7 @@ private:
     Assembler *m_assembler;
     HbcEmulator *m_emulator;
     MonitorWidget *m_monitor;
+    Configuration *m_config;
 
     QFont defaultEditorFont;
     QWidget *m_window;
