@@ -184,12 +184,14 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
+
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(editorSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
     mainLayout->addWidget(closeButton);
 
     setLayout(mainLayout);
+
 
     // Connections
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));

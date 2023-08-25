@@ -19,6 +19,8 @@
 #include "emulator.h"
 #include "config.h"
 
+#define IDE_VERSION QString("0.1")
+
 #define WINDOW_WIDTH 1280
 #define WINDOW_HEIGHT 720
 
@@ -98,6 +100,7 @@ private:
     void setFrequencyTargetAction(Emulator::FrequencyTarget target);
     void plugMonitorPeripheralAction();
     void startPausedAction();
+    void openAboutDialogAction();
     // Project item right-click menu actions
     void setActiveProjectActionRC();
     void addNewFileActionRC();
@@ -203,6 +206,14 @@ private:
     QFont defaultEditorFont;
     QWidget *m_window;
     Ui::MainWindow *ui;
+};
+
+class AboutDialog : public QDialog
+{
+    Q_OBJECT
+
+    public:
+        AboutDialog(QWidget *parent = nullptr);
 };
 
 #endif // MAINWINDOW_H

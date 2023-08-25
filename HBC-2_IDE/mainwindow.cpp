@@ -186,6 +186,8 @@ void MainWindow::setupMenuBar()
     m_startPausedToggle->setCheckable(true);
     m_startPausedToggle->setChecked(m_configManager->getStartEmulatorPaused());
 
+    menuBar()->addAction(tr("About"), this, &MainWindow::openAboutDialogAction);
+
 
     // === Project Manager right-click actions ===
     m_setActiveProjectActionRC = new QAction(tr("Set as active project"), this);
@@ -1055,6 +1057,13 @@ void MainWindow::startPausedAction()
     m_emulator->setStartPaused(m_startPausedToggle->isChecked());
 }
 
+void MainWindow::openAboutDialogAction()
+{
+    AboutDialog *about = new AboutDialog(this);
+
+    about->show();
+}
+
 
 // === PROJECT ITEM RIGHT-CLICK MENU ACTIONS ===
 void MainWindow::setActiveProjectActionRC()
@@ -1532,4 +1541,57 @@ int MainWindow::findTab(CustomFile *file)
     }
 
     return -1;
+}
+
+
+// AboutDialog class
+AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
+{
+    setWindowTitle(tr("About"));
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    QLabel *ideIcon = new QLabel(this);
+    ideIcon->setPixmap(QIcon(":/icons/res/logo.png").pixmap(QSize(128,128)));
+
+    QLabel *aboutText1 = new QLabel(this);
+    aboutText1->setTextFormat(Qt::RichText);
+    aboutText1->setText("<b>Home Brew Computer 2</b>");
+
+    QLabel *aboutText2 = new QLabel(this);
+    aboutText2->setTextFormat(Qt::RichText);
+    aboutText2->setText("<b>" + tr("Integrated Development Environment") + "</b>");
+
+    QLabel *version = new QLabel(this);
+    version->setText(tr("Version ") + IDE_VERSION);
+
+    QLabel *author = new QLabel(this);
+    author->setText(tr("Created by ") + "Gianni Leclercq");
+
+    QLabel *githubUrl = new QLabel(this);
+    githubUrl->setTextFormat(Qt::RichText);
+    githubUrl->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    githubUrl->setOpenExternalLinks(true);
+    githubUrl->setText("<a href=\"https://github.com/SteriCraft/hbc2-ide\">" + tr("Github repository") + "</a>");
+
+    QPushButton *closeButton = new QPushButton(tr("Close"), this);
+
+
+    QVBoxLayout *textLayout = new QVBoxLayout;
+    textLayout->addWidget(aboutText1);
+    textLayout->addWidget(aboutText2);
+    textLayout->addWidget(version);
+    textLayout->addWidget(author);
+    textLayout->addWidget(githubUrl);
+
+    QHBoxLayout *widgetLayout = new QHBoxLayout;
+    widgetLayout->addWidget(ideIcon);
+    widgetLayout->addLayout(textLayout);
+
+    QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addLayout(widgetLayout);
+    mainLayout->addWidget(closeButton);
+
+    setLayout(mainLayout);
+
+    connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
