@@ -1277,19 +1277,34 @@ void MainWindow::renameItemActionRC()
 
     bool ok;
     QString newName = QInputDialog::getText(this, tr("Rename file"), tr("New file name:"), QLineEdit::Normal, m_pointedItem->getName(), &ok);
+    QString oldName(m_pointedItem->getName());
+    bool tabClosed(false);
 
     if (ok && !newName.isEmpty())
     {
-        if (m_pointedItem->isFolder())
+        if (!newName.contains(".has"))
+            newName += ".has";
+
+        if (!m_pointedItem->isFolder())
         {
-            // Rename the item and all children path
+            for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
+            {
+                CustomizedCodeEditor *tab(getCCE(m_assemblyEditor->widget(i)));
+
+                if (tab->getFileName() == oldName)
+                {
+                    closeFileAction(tab->getFile(), i); // Automatically asks to save the file if needed
+                    tabClosed = true;
+                    break;
+                }
+            }
         }
-        else
+
+        m_pointedItem->rename(newName, getItemPath(m_pointedItem)); // Updates its paths and those of its children
+
+        if (tabClosed)
         {
-            // Rename item
-            // If associated tab is opened
-            // -> Rename it
-            // -> Look for the CustomFile* and change its path (check for "fileChanged being trigerred"
+            openFile(getItemPath(m_pointedItem));
         }
     }
 }

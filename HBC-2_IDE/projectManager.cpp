@@ -127,6 +127,33 @@ QList<QString> ProjectItem::getFilesPaths(QString projectPath)
     return paths;
 }
 
+bool ProjectItem::rename(QString newName, QString currentFullPath)
+{
+    if (!m_name.isEmpty())
+    {
+        QFileInfo pathInfo(m_path);
+        QFileInfo fullPathInfo(currentFullPath);
+
+        m_name = newName;
+        setText(0, m_name);
+
+        QString newPath = pathInfo.absolutePath() + "/" + newName;
+        QString newFullPath = fullPathInfo.absolutePath() + "/" + newName;
+
+        QFile::rename(currentFullPath, newFullPath);
+        m_path = newPath;
+
+        if (m_isFolder)
+        {
+            // Update children paths recursively
+        }
+
+        return true;
+    }
+
+    return false;
+}
+
 QString ProjectItem::str(int tab)
 {
     QString result("");

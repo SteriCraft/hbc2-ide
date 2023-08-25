@@ -36,6 +36,8 @@ class ProjectItem : public QTreeWidgetItem
         bool isPartOf(ProjectItem* item);
         QList<QString> getFilesPaths(QString projectPath);
 
+        bool rename(QString newName, QString currentFullPath);
+
         QString str(int tab = -1);
 
     private:
