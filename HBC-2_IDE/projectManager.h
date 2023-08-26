@@ -63,15 +63,20 @@ class Project
         QString getName();
         QString getDirPath();
         QString getPath();
+        bool getAssembled();
         ProjectItem* getTopItem();
         bool isPartOf(ProjectItem* item);
         QList<QString> getFilesPaths();
+        QList<QString> getFilesNames();
+
+        void setAssembled(bool assembled);
 
         QString str();
 
     private:
         QString m_name;
         QString m_path;
+        bool m_assembled;
 
         ProjectItem *m_topItem;
 };
@@ -96,7 +101,6 @@ class ProjectManager : public QTreeWidget // SINGLETON
         ItemType getItemSelectType();
         ItemType getItemType(ProjectItem* item);
         Project* getParentProject(ProjectItem* item);
-        QString getFirstProjectName();
         Project* getCurrentProject();
 
     private:

@@ -349,9 +349,15 @@ void MainWindow::onFileChanged(QString filePath)
 void MainWindow::onTextChanged()
 {
     CustomizedCodeEditor *editor = qobject_cast<CustomizedCodeEditor*>(sender());
+    Project *associatedProject(editor->getFile()->getAssociatedProject());
 
     editor->getFile()->setContent(editor->toPlainText());
     editor->getFile()->setSaved(false);
+
+    if (associatedProject != nullptr)
+    {
+        associatedProject->setAssembled(false);
+    }
 
     updateWinTabMenu();
 }
@@ -606,6 +612,11 @@ void MainWindow::onMonitorClosed()
     stopEmulatorAction();
 }
 
+void MainWindow::dontShowAgainReassemblyWarnings()
+{
+    m_configManager->setDismissReassemblyWarnings(true);
+}
+
 void MainWindow::onClose()
 {
     closeEvent(nullptr);
@@ -716,7 +727,7 @@ void MainWindow::openProjectAction()
         }
         else
         {
-            openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has");
+            openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
 
             updateWinTabMenu();
         }
@@ -730,7 +741,7 @@ void MainWindow::openFileAction()
     openFile(filePath);
 }
 
-void MainWindow::openFile(QString filePath)
+void MainWindow::openFile(QString filePath, Project *associatedProject)
 {
     QString errorStr;
     CustomFile *openedFile;
@@ -764,6 +775,8 @@ void MainWindow::openFile(QString filePath)
 
             m_assemblyEditor->addTab(newEditor, newEditor->getFileName());
             m_assemblyEditor->setCurrentIndex(m_assemblyEditor->addTab(newEditor, newEditor->getFileName()));
+
+            openedFile->setAssociatedProject(associatedProject);
 
             m_observer.addPath(filePath);
         }
@@ -998,17 +1011,40 @@ void MainWindow::runEmulatorAction()
     plugMonitorPeripheralAction();
     startPausedAction();
 
-    // Check if code rewritten since
-
-    if (m_monitorToggle->isChecked())
+    if (!m_projectManager->getCurrentProject()->getAssembled())
     {
-        m_monitor = MonitorWidget::getInstance(m_emulator->getHbcMonitor(), m_consoleOutput);
-        m_monitor->show();
+        if (!m_configManager->getDismissReassemblyWarnings())
+        {
+            QMessageBox *info = new QMessageBox(QMessageBox::Icon::Information, tr("Project not assembled"), tr("The project is not assembled and will be now."), QMessageBox::StandardButton::Ok, this);
+            QCheckBox *dontShowAgain = new QCheckBox(tr("Don't show this again"), info);
+            info->setCheckBox(dontShowAgain);
+            connect(dontShowAgain, SIGNAL(clicked()), this, SLOT(dontShowAgainReassemblyWarnings()));
 
-        connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+            info->exec();
+        }
+
+        assembleAction();
     }
 
-    m_emulator->runCmd();
+    if (!m_projectManager->getCurrentProject()->getAssembled())
+    {
+        if (!m_configManager->getDismissReassemblyWarnings())
+        {
+            QMessageBox::information(this, tr("Project assembly failed"), tr("Emulator could not be run because errors occurred during reassembly."));
+        }
+    }
+    else
+    {
+        if (m_monitorToggle->isChecked())
+        {
+            m_monitor = MonitorWidget::getInstance(m_emulator->getHbcMonitor(), m_consoleOutput);
+            m_monitor->show();
+
+            connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+        }
+
+        m_emulator->runCmd();
+    }
 }
 
 void MainWindow::stepEmulatorAction()
@@ -1579,14 +1615,20 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
     QLabel *version = new QLabel(this);
     version->setText(tr("Version ") + IDE_VERSION);
 
-    QLabel *author = new QLabel(this);
-    author->setText(tr("Created by ") + "Gianni Leclercq");
+    QLabel *licence = new QLabel(this);
+    licence->setTextFormat(Qt::RichText);
+    licence->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    licence->setOpenExternalLinks(true);
+    licence->setText("<a href=\"https://www.gnu.org/licenses/gpl-3.0.html#license-text\">" + tr("Licence GPL 3.0") + "</a>");
 
     QLabel *githubUrl = new QLabel(this);
     githubUrl->setTextFormat(Qt::RichText);
     githubUrl->setTextInteractionFlags(Qt::TextBrowserInteraction);
     githubUrl->setOpenExternalLinks(true);
     githubUrl->setText("<a href=\"https://github.com/SteriCraft/hbc2-ide\">" + tr("Github repository") + "</a>");
+
+    QLabel *author = new QLabel(this);
+    author->setText(tr("Created by ") + "Gianni Leclercq");
 
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
@@ -1595,8 +1637,9 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
     textLayout->addWidget(aboutText1);
     textLayout->addWidget(aboutText2);
     textLayout->addWidget(version);
-    textLayout->addWidget(author);
+    textLayout->addWidget(licence);
     textLayout->addWidget(githubUrl);
+    textLayout->addWidget(author);
 
     QHBoxLayout *widgetLayout = new QHBoxLayout;
     widgetLayout->addWidget(ideIcon);

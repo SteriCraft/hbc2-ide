@@ -292,6 +292,7 @@ bool Assembler::assembleProject(Project *p)
     m_consoleOutput->returnLine();
 
     m_binaryReady = true;
+    p->setAssembled(true);
 
     return true;
 }

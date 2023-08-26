@@ -203,6 +203,7 @@ Project::Project(QString name, QString path, ProjectItem* mainNode)
 {
     m_name = name;
     m_path = path;
+    m_assembled = false;
 
     if (mainNode == nullptr)
     {
@@ -364,6 +365,11 @@ QString Project::getPath()
     return m_path;
 }
 
+bool Project::getAssembled()
+{
+    return m_assembled;
+}
+
 ProjectItem* Project::getTopItem()
 {
     return m_topItem;
@@ -380,6 +386,16 @@ bool Project::isPartOf(ProjectItem* item)
 QList<QString> Project::getFilesPaths()
 {
     return m_topItem->getFilesPaths(getDirPath());
+}
+
+QList<QString> Project::getFilesNames()
+{
+    return m_topItem->getFilesNamesList();
+}
+
+void Project::setAssembled(bool assembled)
+{
+    m_assembled = assembled;
 }
 
 QString Project::str()
@@ -620,14 +636,6 @@ Project* ProjectManager::getParentProject(ProjectItem* item)
     }
 
     return nullptr;
-}
-
-QString ProjectManager::getFirstProjectName()
-{
-    if (m_projects.count() > 0)
-        return m_projects[0]->getName();
-
-    return "";
 }
 
 Project* ProjectManager::getCurrentProject()

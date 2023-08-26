@@ -24,6 +24,8 @@ ConfigManager::~ConfigManager()
     m_singleton = nullptr;
 }
 
+// GETTERS
+// Emulator settings
 void ConfigManager::setStartEmulatorPaused(bool paused)
 {
     m_settings.startEmulatorPaused = paused;
@@ -36,6 +38,13 @@ void ConfigManager::setMonitorPlugged(bool plugged)
     saveConfigFile();
 }
 
+void ConfigManager::setDismissReassemblyWarnings(bool dismiss)
+{
+    m_settings.dismissReassemblyWarnings = dismiss;
+    saveConfigFile();
+}
+
+// IDE settings
 bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
 {
     if (defaultPath.isEmpty())
@@ -47,6 +56,8 @@ bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
     return true;
 }
 
+// SETTERS
+// Emulator settings
 bool ConfigManager::getStartEmulatorPaused()
 {
     return m_settings.startEmulatorPaused;
@@ -57,6 +68,12 @@ bool ConfigManager::getMonitorPlugged()
     return m_settings.monitorPlugged;
 }
 
+bool ConfigManager::getDismissReassemblyWarnings()
+{
+    return m_settings.dismissReassemblyWarnings;
+}
+
+// IDE settings
 QString ConfigManager::getDefaultProjectsPath()
 {
     return m_settings.defaultProjectsPath;
@@ -93,6 +110,10 @@ ConfigManager::ConfigManager()
                     else if (key == "MONITOR_PLUGGED")
                     {
                         m_settings.monitorPlugged = (value == "TRUE");
+                    }
+                    else if (key == "DISMISS_REASSEMBLY_WARNINGS")
+                    {
+                        m_settings.dismissReassemblyWarnings = (value == "TRUE");
                     }
                     else if (key == "DEFAULT_PROJECT_PATH")
                     {
@@ -132,6 +153,7 @@ bool ConfigManager::saveConfigFile()
 
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
+        out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
         out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
 
         return true;
@@ -149,8 +171,8 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     setWindowTitle(tr("Settings"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
-    // Editor settings
-    QGroupBox *editorSettingsGroupBox = new QGroupBox(tr("Editor"), this);
+    // IDE settings
+    QGroupBox *ideSettingsGroupBox = new QGroupBox(tr("Editor"), this);
 
     QLabel *defaultProjectsPathLabel = new QLabel(tr("Projects directory"), this);
     QPushButton *browseProjectsPath = new QPushButton(tr("Browse"), this);
@@ -161,10 +183,10 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     defaultProjectsPathLayout->addWidget(m_defaultProjectsPathLineEdit);
     defaultProjectsPathLayout->addWidget(browseProjectsPath);
 
-    QVBoxLayout *editorSettingsLayout = new QVBoxLayout;
-    editorSettingsLayout->addWidget(defaultProjectsPathLabel);
-    editorSettingsLayout->addLayout(defaultProjectsPathLayout);
-    editorSettingsGroupBox->setLayout(editorSettingsLayout);
+    QVBoxLayout *ideSettingsLayout = new QVBoxLayout;
+    ideSettingsLayout->addWidget(defaultProjectsPathLabel);
+    ideSettingsLayout->addLayout(defaultProjectsPathLayout);
+    ideSettingsGroupBox->setLayout(ideSettingsLayout);
 
 
     // Emulator settings
@@ -176,9 +198,13 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), this);
     m_plugMonitorCheckBox->setChecked(configManager->getMonitorPlugged());
 
+    m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running emulator with a non assembled project"), this);
+    m_dismissReassemblyWarningsCheckBox->setChecked(configManager->getDismissReassemblyWarnings());
+
     QVBoxLayout *emulatorSettingsLayout = new QVBoxLayout;
     emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
     emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
+    emulatorSettingsLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
     emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
 
 
@@ -186,7 +212,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(editorSettingsGroupBox);
+    mainLayout->addWidget(ideSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
     mainLayout->addWidget(closeButton);
 
@@ -196,6 +222,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     // Connections
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
+    connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
     connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
     connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(defaultProjectsPathChanged()));
 
@@ -210,6 +237,11 @@ void SettingsDialog::startPausedChanged()
 void SettingsDialog::plugMonitorChanged()
 {
     m_configManager->setMonitorPlugged(m_plugMonitorCheckBox->isChecked());
+}
+
+void SettingsDialog::dismissReassemblyWarningsChanged()
+{
+    m_configManager->setDismissReassemblyWarnings(m_dismissReassemblyWarningsCheckBox->isChecked());
 }
 
 void SettingsDialog::browseProjectsPathClicked()

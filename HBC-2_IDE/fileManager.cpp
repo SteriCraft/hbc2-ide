@@ -53,6 +53,11 @@ QString CustomFile::getContent()
     return m_content;
 }
 
+Project* CustomFile::getAssociatedProject()
+{
+    return m_associatedProject;
+}
+
 void CustomFile::setPath(QString path)
 {
     m_path = path;
@@ -71,6 +76,11 @@ void CustomFile::setReloaded(bool reloaded)
 void CustomFile::setContent(QString content)
 {
     m_content = content;
+}
+
+void CustomFile::setAssociatedProject(Project *associatedProject)
+{
+    m_associatedProject = associatedProject;
 }
 
 
