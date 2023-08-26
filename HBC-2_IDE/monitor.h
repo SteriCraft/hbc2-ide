@@ -77,7 +77,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
     static MonitorWidget *m_singleton;
 
     public:
-        static MonitorWidget* getInstance(HbcMonitor *hbcMonitor, Console *consoleOutput);
+        static MonitorWidget* getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput);
         ~MonitorWidget();
 
         void updateBuffer();
@@ -90,7 +90,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
         void closeEvent(QCloseEvent *event) override;
 
     private:
-        explicit MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput);
+        explicit MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput);
 
         void setSize(unsigned int width, unsigned int height);
         void setBuffer(uint32_t *pixelBuffer);

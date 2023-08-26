@@ -18,6 +18,8 @@ HbcEmulator::~HbcEmulator()
     m_status.mutex.unlock();
 
     wait();
+
+    m_singleton = nullptr;
 }
 
 bool HbcEmulator::runCmd()

@@ -164,10 +164,10 @@ Monitor::Mode HbcMonitor::getMode()
 MonitorWidget* MonitorWidget::m_singleton = nullptr;
 
 // PUBLIC
-MonitorWidget* MonitorWidget::getInstance(HbcMonitor *hbcMonitor, Console *consoleOutput)
+MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput)
 {
     if (m_singleton == nullptr)
-        m_singleton = new MonitorWidget(hbcMonitor, consoleOutput);
+        m_singleton = new MonitorWidget(projectName, hbcMonitor, consoleOutput);
 
     return m_singleton;
 }
@@ -213,7 +213,7 @@ void MonitorWidget::closeEvent(QCloseEvent *event)
 }
 
 // PRIVATE
-MonitorWidget::MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput) : QOpenGLWidget(nullptr)
+MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput) : QOpenGLWidget(nullptr)
 {
     m_width = 0;
     m_height = 0;
@@ -262,6 +262,7 @@ MonitorWidget::MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput) : Q
         }
     }
 
+    setWindowTitle(projectName + " - HBC-2 Monitor");
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     update();

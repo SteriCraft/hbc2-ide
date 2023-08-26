@@ -1037,7 +1037,7 @@ void MainWindow::runEmulatorAction()
     {
         if (m_monitorToggle->isChecked())
         {
-            m_monitor = MonitorWidget::getInstance(m_emulator->getHbcMonitor(), m_consoleOutput);
+            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_consoleOutput);
             m_monitor->show();
 
             connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
@@ -1108,6 +1108,9 @@ void MainWindow::setActiveProjectActionRC()
         return;
 
     m_projectManager->selectProject(m_pointedItem->getName());
+
+    delete m_emulator;
+    m_emulator = HbcEmulator::getInstance(this, m_consoleOutput);
 
     updateWinTabMenu();
 }
