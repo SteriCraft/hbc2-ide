@@ -110,6 +110,8 @@ class ProjectManager : public QTreeWidget // SINGLETON
         bool checkProjectFiles(ProjectItem* mainNode, QString path);
         bool updateProjectFiles(ProjectItem* node, QString path); // Removes files and folders from project if they don't exist
 
+        void expandAll(ProjectItem *item);
+
         QVector<Project*> m_projects;
         Project* m_currentProject;
 

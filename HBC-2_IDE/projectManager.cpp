@@ -469,11 +469,11 @@ bool ProjectManager::newProject(QString path, bool toLoad)
     m_currentProject = newProject;
     newProject->getTopItem()->setFont(0, boldFont);
 
-    expandItem(newProject->getTopItem());
-
     // Updating project's tree
     if (!updateProjectFiles(newProject->getTopItem(), newProject->getDirPath()))
         QMessageBox::warning(this, tr("Files or folders missing"), tr("Files or folders of this project are missing.\n\nThey have been removed from the project file."));
+
+    expandAll(newProject->getTopItem());
 
     // Saving the project file
     saveProjectFile(newProject);
@@ -862,4 +862,14 @@ bool ProjectManager::updateProjectFiles(ProjectItem* node, QString projectPath)
     }
 
     return allExist;
+}
+
+void ProjectManager::expandAll(ProjectItem *item)
+{
+    expandItem(item);
+
+    for (unsigned int i(0); i < item->childCount(); i++)
+    {
+        expandAll(dynamic_cast<ProjectItem*>(item->child(i)));
+    }
 }
