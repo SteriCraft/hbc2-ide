@@ -34,9 +34,12 @@ class ProjectItem : public QTreeWidgetItem
         bool isFolder();
         bool isMainNode();
         bool isPartOf(ProjectItem* item);
-        QList<QString> getFilesPaths(QString projectPath);
+        QList<QString> getFilesPaths(QString projectPath = "");
+
+        bool setPath(QString newPath);
 
         bool rename(QString newName, QString currentFullPath);
+        void renameInChildrenPaths(QString newParentName);
 
         QString str(int tab = -1);
 

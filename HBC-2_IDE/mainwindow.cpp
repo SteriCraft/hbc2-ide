@@ -1282,11 +1282,11 @@ void MainWindow::renameItemActionRC()
 
     if (ok && !newName.isEmpty())
     {
-        if (!newName.contains(".has"))
-            newName += ".has";
-
         if (!m_pointedItem->isFolder())
         {
+            if (!newName.contains(".has"))
+                newName += ".has";
+
             for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
             {
                 CustomizedCodeEditor *tab(getCCE(m_assemblyEditor->widget(i)));
