@@ -5,6 +5,11 @@
 Rom dump/
 Youtube/
 Blog/
+Documentation/doxygen_working_dir
+Logisim/
+
+# ignore code line counter script
+codeLinesNumbers.sh
 
 # ignore files from "HBC-2_IDE"
 HBC-2_IDE/mainwindow.ui
