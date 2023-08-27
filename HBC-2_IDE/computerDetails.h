@@ -1,64 +1,53 @@
 #ifndef COMPUTERDETAILS_H
 #define COMPUTERDETAILS_H
 
+/*!
+ * \file computerDetails.h
+ * \brief Constants, structures and enumerations according to the computer specifications.
+ * \author Gianni Leclercq
+ * \version 0.1
+ * \date 27/08/2023
+ */
 #include <string>
-
-// RAM SETTINGS
-#define MEMORY_SIZE 0x10000 // 65'536 bytes
-
-// CPU SETTINGS
-#define ADDRESS_NOT_SET 0x0000
-#define PROGRAM_START_ADDRESS 0x0300
-
-#define REGISTERS_NB 8
-#define FLAGS_NB 8
-
-#define INSTRUCTIONS_NB 48
-#define INSTRUCTION_SIZE 4 // In bytes
-#define ADDRESSING_MODES_NB 8
-
-#define OPCODE_MASK         0xFC000000
-#define ADDRMODE_MASK       0x03C00000
-#define R1_MASK             0x00380000
-#define R2_MASK             0x00070000
-#define R3_MASK             0x00000700
-#define V1_MASK             0x0000FF00
-#define V2_MASK             0x000000FF
-#define VX_MASK             0x0000FFFF
-#define INTERRUPT_PORT_MASK     0x00FF
-
-// IOD SETTINGS
-#define PORTS_NB 256
-#define IVT_START_ADDRESS 0x0100
-
-// SCREEN SETTINGS
-#define MONITOR_WIDTH 256
-#define MONITOR_HEIGHT 192
-#define PIXEL_SCALE 4
-
-#define MONITOR_WINDOW_WIDTH (MONITOR_WIDTH * PIXEL_SCALE + 22)
-#define MONITOR_WINDOW_HEIGHT (MONITOR_HEIGHT * PIXEL_SCALE + 22)
-
-#define CHARACTER_WIDTH 6
-#define CHARACTER_HEIGHT 8
-#define TEXT_MODE_COLUMNS 42
-#define TEXT_MODE_ROWS 24
-
-#define SCREEN_PORTS_NB 5
-#define PIXEL_MODE_BUFFER_SIZE (MONITOR_WIDTH * MONITOR_HEIGHT)
-#define TEXT_MODE_BUFFER_SIZE (TEXT_MODE_COLUMNS * TEXT_MODE_ROWS)
-
-#define DISPLAYABLE_CHARS 95
-
-#define FPS_TARGET 60
-#define COLORS_NB 16
+#include <QMutex>
 
 using Byte = uint8_t;
 using Word = uint16_t;
 using Dword = uint32_t;
 
-namespace Computer
+/*!
+ * \namespace Cpu
+ *
+ * Central Processing Unit specifications.<br>
+ * Find more info in the CPU documentation.
+ */
+namespace Cpu
 {
+    constexpr int IVT_START_ADDRESS = 0x0100; //!< IVT: Interrupt Vector Table
+
+    constexpr int PROGRAM_START_ADDRESS = 0x0300; //!< More info in the CPU documentation
+
+    constexpr int REGISTERS_NB = 8; //!< More info in the CPU documentation
+    constexpr int FLAGS_NB = 8; //!< More info in the CPU documentation
+
+    constexpr int INSTRUCTIONS_NB = 48; //!< More info in the CPU documentation
+    constexpr int INSTRUCTION_SIZE = 4; //!< In bytes
+    constexpr int ADDRESSING_MODES_NB = 8; //!< More info in the CPU documentation
+
+    constexpr int OPCODE_MASK         = 0xFC000000; //!< <b>111111</b> 0000 000 000 00000000 00000000
+    constexpr int ADDRMODE_MASK       = 0x03C00000; //!< 000000 <b>1111</b> 000 000 00000000 00000000
+    constexpr int R1_MASK             = 0x00380000; //!< 000000 0000 <b>111</b> 000 00000000 00000000
+    constexpr int R2_MASK             = 0x00070000; //!< 000000 0000 000 <b>111</b> 00000000 00000000
+    constexpr int R3_MASK             = 0x00000700; //!< 000000 0000 000 000 00000<b>111</b> 00000000
+    constexpr int V1_MASK             = 0x0000FF00; //!< 000000 0000 000 000 <b>11111111</b> 00000000
+    constexpr int V2_MASK             = 0x000000FF; //!< 000000 0000 000 000 00000000 <b>11111111</b>
+    constexpr int VX_MASK             = 0x0000FFFF; //!< 000000 0000 000 000 <b>11111111 11111111</b>
+    constexpr int INTERRUPT_PORT_MASK     = 0x00FF; //!< 00000000 <b>11111111</b>
+
+    /*!
+     * \enum Register
+     * \brief See Cpu::REGISTERS_NB
+     */
     enum class Register { A = 0, B = 1, C = 2, D = 3, I = 4, J = 5, X = 6, Y = 7 };
     const std::string regStrArr[] = { "a", "b", "c", "d", "i", "j", "x", "y" };
 
@@ -80,7 +69,61 @@ namespace Computer
     enum class AddressingMode { NONE = 0, REG = 1, REG_IMM8 = 2, REG_RAM = 3,
                                 RAMREG_IMMREG = 4, REG16 = 5, IMM16 = 6, IMM8 = 7 };
 
-    enum class CpuState { INSTRUCTION_EXEC = 0, INTERRUPT_MANAGEMENT };
+    enum class CpuState { INSTRUCTION_EXEC = 0, INTERRUPT_MANAGEMENT = 1 };
 }
+
+/*!
+ * \namespace Ram
+ *
+ * Random Access Memory specifications.<br>
+ * Find more info in the CPU documentation.
+ */
+namespace Ram
+{
+    constexpr int MEMORY_SIZE = 0x10000; //!< 65,536 bytes
+}
+
+/*!
+ * \namespace Iod
+ *
+ * Input/Output Device specifications.<br>
+ * Find more info in the CPU documentation.
+ */
+namespace Iod
+{
+    constexpr int INTERRUPT_QUEUE_SIZE = 256;
+    constexpr int PORTS_NB = 256;
+
+    /*!
+     * \struct Interrupt
+     * \brief Stores informations describing an interrupt (a software interrupt results in <i>data = 0x00</i>).
+     */
+    struct Interrupt
+    {
+        Byte portId;
+        Byte data;
+    };
+
+    /*!
+     * \struct PortSocket
+     * \brief Used by peripherals to access Iod ports.
+     */
+    struct PortSocket
+    {
+        unsigned int portId; //!< Specified by HbcIod when ports are requested by peripherals
+        uint8_t *portDataPointer; //!< Leads to Port.data
+    };
+
+    /*!
+     * \struct Port
+     * \brief Used by HbcIod to store port information, accessed by peripherals through PortSocket.
+     */
+    struct Port
+    {
+        unsigned int peripheralId; //!< HbcIod stores informations about connected peripherals
+        Byte data; //!< Where PortSocket.portDataPointer leads to
+    };
+}
+
 
 #endif // COMPUTERDETAILS_H

@@ -1,6 +1,53 @@
 #ifndef QHEXEDIT_H
 #define QHEXEDIT_H
 
+/*!
+ * \file qhexedit.h
+ * \brief QHexEdit is a binary editor widget for Qt.
+ * \author Winfried Simon and contributors
+ * \version 0.8.9
+ * \date 03/07/2020
+ *
+ * <h2>Licensing information</h2>
+ * The HBC-2 IDE uses a hexadecimal data viewer widget made by Winfried Simon.
+ * This code can be copied in the HBC-2 IDE project (which is under GPL v3) according to <a href="https://www.gnu.org/licenses/gpl-faq.html#AllCompatibility">this compatibility matrix</a>.
+ * The code has been slightly modified to suit lisibility given how data is represented in HBC-2's memory (and some color changes).
+ *
+ * Find the project at <a href="https://github.com/Simsys/qhexedit2">this Github repository</a>
+ *
+ * <h2>Description by the author</h2>
+ * QHexEdit is a hex editor widget written in C++ for the Qt (Qt4, Qt5) framework.
+ * It is a simple editor for binary data, just like QPlainTextEdit is for text
+ * data. There are sip configuration files included, so it is easy to create
+ * bindings for PyQt and you can use this widget also in python 2 and 3.
+
+ * QHexEdit takes the data of a QByteArray (setData()) and shows it. You can use
+ * the mouse or the keyboard to navigate inside the widget. If you hit the keys
+ * (0..9, a..f) you will change the data. Changed data is highlighted and can be
+ * accessed via data().
+ *
+ * Normally QHexEdit works in the overwrite mode. You can set overwrite mode(false)
+ * and insert data. In this case the size of data() increases. It is also possible
+ * to delete bytes (del or backspace), here the size of data decreases.
+ *
+ * You can select data with keyboard hits or mouse movements. The copy-key will
+ * copy the selected data into the clipboard. The cut-key copies also but deletes
+ * it afterwards. In overwrite mode, the paste function overwrites the content of
+ * the (does not change the length) data. In insert mode, clipboard data will be
+ * inserted. The clipboard content is expected in ASCII Hex notation. Unknown
+ * characters will be ignored.
+ *
+ * QHexEdit comes with undo/redo functionality. All changes can be undone, by
+ * pressing the undo-key (usually ctr-z). They can also be redone afterwards.
+ * The undo/redo framework is cleared, when setData() sets up a new
+ * content for the editor. You can search data inside the content with indexOf()
+ * and lastIndexOf(). The replace() function is to change located subdata. This
+ * 'replaced' data can also be undone by the undo/redo framework.
+ *
+ * QHexEdit is based on QIODevice, that's why QHexEdit can handle big amounts of
+ * data. The size of edited data can be more then two gigabytes without any
+ * restrictions.
+ */
 #include <QAbstractScrollArea>
 #include <QPen>
 #include <QBrush>
@@ -16,45 +63,9 @@
 #define QHEXEDIT_API
 #endif
 
-/** \mainpage
-QHexEdit is a binary editor widget for Qt.
-
-\version Version 0.8.9
-\image html qhexedit.png
-*/
-
-
-/** QHexEdit is a hex editor widget written in C++ for the Qt (Qt4, Qt5) framework.
-It is a simple editor for binary data, just like QPlainTextEdit is for text
-data. There are sip configuration files included, so it is easy to create
-bindings for PyQt and you can use this widget also in python 2 and 3.
-
-QHexEdit takes the data of a QByteArray (setData()) and shows it. You can use
-the mouse or the keyboard to navigate inside the widget. If you hit the keys
-(0..9, a..f) you will change the data. Changed data is highlighted and can be
-accessed via data().
-
-Normally QHexEdit works in the overwrite mode. You can set overwrite mode(false)
-and insert data. In this case the size of data() increases. It is also possible
-to delete bytes (del or backspace), here the size of data decreases.
-
-You can select data with keyboard hits or mouse movements. The copy-key will
-copy the selected data into the clipboard. The cut-key copies also but deletes
-it afterwards. In overwrite mode, the paste function overwrites the content of
-the (does not change the length) data. In insert mode, clipboard data will be
-inserted. The clipboard content is expected in ASCII Hex notation. Unknown
-characters will be ignored.
-
-QHexEdit comes with undo/redo functionality. All changes can be undone, by
-pressing the undo-key (usually ctr-z). They can also be redone afterwards.
-The undo/redo framework is cleared, when setData() sets up a new
-content for the editor. You can search data inside the content with indexOf()
-and lastIndexOf(). The replace() function is to change located subdata. This
-'replaced' data can also be undone by the undo/redo framework.
-
-QHexEdit is based on QIODevice, that's why QHexEdit can handle big amounts of
-data. The size of edited data can be more then two gigabytes without any
-restrictions.
+/**
+ * <b>WARNING:</b> This code was copied from a project by Winfried Simon and its contributors.
+ * See qhexedit.h file documentation for licensing information.
 */
 class QHEXEDIT_API QHexEdit : public QAbstractScrollArea
 {

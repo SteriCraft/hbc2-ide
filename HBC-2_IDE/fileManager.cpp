@@ -58,9 +58,17 @@ Project* CustomFile::getAssociatedProject()
     return m_associatedProject;
 }
 
-void CustomFile::setPath(QString path)
+bool CustomFile::setPath(QString path)
 {
-    m_path = path;
+    QFileInfo info(path);
+
+    if (info.isFile())
+    {
+        m_path = path;
+        return true;
+    }
+
+    return false;
 }
 
 void CustomFile::setSaved(bool saved)
@@ -207,7 +215,12 @@ bool FileManager::reloadFile(QString fileName, QString &errorStr)
 {
     CustomFile *changedFile(getFile(fileName));
 
-    return reloadFile(changedFile, errorStr);
+    if (changedFile != nullptr)
+    {
+        return reloadFile(changedFile, errorStr);
+    }
+
+    return false;
 }
 
 bool FileManager::closeFile(CustomFile *file)
@@ -240,12 +253,18 @@ void FileManager::setFileContent(CustomFile* file, QString content)
     file->setSaved(false);
 }
 
-void FileManager::setFileContent(QString fileName, QString content)
+bool FileManager::setFileContent(QString fileName, QString content)
 {
     CustomFile *file = getFile(fileName);
 
     if (file != nullptr)
+    {
         setFileContent(file, content);
+
+        return true;
+    }
+
+    return false;
 }
 
 void FileManager::setFilePath(CustomFile* file, QString filePath)
@@ -253,9 +272,17 @@ void FileManager::setFilePath(CustomFile* file, QString filePath)
     file->setPath(filePath);
 }
 
-void FileManager::setFilePath(QString fileName, QString filePath)
+bool FileManager::setFilePath(QString fileName, QString filePath)
 {
-    setFilePath(getFile(fileName), filePath);
+    CustomFile *file = getFile(fileName);
+
+    if (file != nullptr)
+    {
+        setFilePath(getFile(fileName), filePath);
+        return true;
+    }
+
+    return false;
 }
 
 void FileManager::setFileUnsaved(CustomFile* file)
@@ -263,19 +290,17 @@ void FileManager::setFileUnsaved(CustomFile* file)
     file->setSaved(false);
 }
 
-void FileManager::setFileUnsaved(QString fileName)
+bool FileManager::setFileUnsaved(QString fileName)
 {
-    setFileUnsaved(getFile(fileName));
-}
+    CustomFile *file = getFile(fileName);
 
-void FileManager::resetFileReloadFlag(CustomFile *file)
-{
-    file->setReloaded(false);
-}
+    if (file != nullptr)
+    {
+        setFileUnsaved(getFile(fileName));
+        return true;
+    }
 
-void FileManager::resetFileReloadFlag(QString fileName)
-{
-    resetFileReloadFlag(getFile(fileName));
+    return false;
 }
 
 QString FileManager::getFileContent(CustomFile *file)
@@ -285,7 +310,14 @@ QString FileManager::getFileContent(CustomFile *file)
 
 QString FileManager::getFileContent(QString fileName)
 {
-    return getFileContent(getFile(fileName));
+    CustomFile* file(getFile(fileName));
+
+    if (file != nullptr)
+    {
+        return getFileContent(file);
+    }
+
+    return "";
 }
 
 bool FileManager::exists(CustomFile *file)

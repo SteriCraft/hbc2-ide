@@ -1,0 +1,12 @@
+<map id="Emulator::Computer" name="Emulator::Computer">
+<area shape="rect" id="node1" title="Stores the computer information for the emulator (only used in the emulator thread)" alt="" coords="221,363,375,389"/>
+<area shape="rect" id="node2" href="$class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="131,273,228,300"/>
+<area shape="rect" id="node3" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="108,184,221,211"/>
+<area shape="rect" id="node4" href="$class_console.html" title="A console widget to show events and provide information to the user." alt="" coords="10,95,85,121"/>
+<area shape="rect" id="node5" title=" " alt="" coords="5,5,89,32"/>
+<area shape="rect" id="node6" href="$struct_hbc_iod.html" title="Stores the Iod state." alt="" coords="239,95,306,121"/>
+<area shape="rect" id="node8" href="$struct_hbc_motherboard.html" title="Stores the Motherboard state." alt="" coords="283,184,414,211"/>
+<area shape="rect" id="node7" href="$struct_iod_1_1_port.html" title="Used by HbcIod to store port information, accessed by peripherals through PortSocket." alt="" coords="235,5,311,32"/>
+<area shape="rect" id="node10" href="$struct_hbc_cpu.html" title="Stores the Cpu state." alt="" coords="282,273,354,300"/>
+<area shape="rect" id="node9" href="$struct_hbc_ram.html" title="Stores the Ram state." alt="" coords="450,95,527,121"/>
+</map>

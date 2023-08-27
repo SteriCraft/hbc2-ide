@@ -1,0 +1,7 @@
+<map id="HbcMotherboard" name="HbcMotherboard">
+<area shape="rect" id="node1" title="Stores the Motherboard state." alt="" coords="243,95,374,121"/>
+<area shape="rect" id="node3" href="$struct_hbc_iod.html" title="Stores the Iod state." alt="" coords="98,184,165,211"/>
+<area shape="rect" id="node5" href="$struct_hbc_cpu.html" title="Stores the Cpu state." alt="" coords="381,184,453,211"/>
+<area shape="rect" id="node2" href="$struct_hbc_ram.html" title="Stores the Ram state." alt="" coords="270,5,347,32"/>
+<area shape="rect" id="node4" href="$struct_iod_1_1_port.html" title="Used by HbcIod to store port information, accessed by peripherals through PortSocket." alt="" coords="5,95,81,121"/>
+</map>

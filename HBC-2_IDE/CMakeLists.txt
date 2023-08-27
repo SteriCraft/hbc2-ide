@@ -22,8 +22,8 @@ add_executable(HBC-2_IDE
   main.cpp
   assembler.cpp
   assembler.h
-  binaryExplorer.cpp
-  binaryExplorer.h
+  binaryViewer.cpp
+  binaryViewer.h
   chunks.cpp
   chunks.h
   commands.cpp
@@ -57,6 +57,8 @@ add_executable(HBC-2_IDE
   qhexedit.h
   ram.cpp
   ram.h
+  realTimeClock.cpp
+  realTimeClock.h
   token.cpp
   token.h
   mainwindow.ui

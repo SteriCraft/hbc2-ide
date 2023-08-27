@@ -7,8 +7,7 @@
 #include <QCloseEvent>
 #include <QRandomGenerator>
 
-//#include "mainWindow.h"
-
+using namespace Monitor;
 
 // HbcMonitor class
 HbcMonitor::HbcMonitor(HbcIod *iod, Console *consoleOutput) : HbcPeripheral(iod, consoleOutput)

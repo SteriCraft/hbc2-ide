@@ -1,29 +1,40 @@
-#ifndef BINARYEXPLORER_H
-#define BINARYEXPLORER_H
+#ifndef BINARYVIEWER_H
+#define BINARYVIEWER_H
 
 #include <QDialog>
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
-
 #include "qhexedit.h"
 
 #define BINARY_DIALOG_WIDTH 610
 #define BINARY_DIALOG_HEIGHT 600
 
-class BinaryExplorer : public QDialog // SINGLETON
+/*!
+ * \class BinaryViewer
+ * \brief Singleton of the binary viewer
+ *
+ * QDialog showing the current binary output for a given project.
+ */
+class BinaryViewer : public QDialog // SINGLETON
 {
     Q_OBJECT
 
-    static BinaryExplorer *m_singleton;
+    static BinaryViewer *m_singleton;
 
-public:
-    static BinaryExplorer* getInstance(const QByteArray data, QWidget *parent = nullptr);
-    ~BinaryExplorer();
+    public:
+        /*!
+         * <i><b>SINGLETON:</b></i> Call this to instanciate the object (the constructor is private).
+         *
+         * \param data Binary data to display
+         * \param parent Pointer to the parent QWidget
+         */
+        static BinaryViewer* getInstance(const QByteArray data, QWidget *parent = nullptr);
+        ~BinaryViewer();
 
-private:
-    BinaryExplorer(const QByteArray data, QWidget *parent = nullptr);
+    private:
+        BinaryViewer(const QByteArray data, QWidget *parent = nullptr);
 
-    QHexEdit *m_hexEditor;
+        QHexEdit *m_hexEditor;
 };
 
-#endif // BINARYEXPLORER_H
+#endif // BINARYVIEWER_H

@@ -1,6 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include "binaryExplorer.h"
+#include "binaryViewer.h"
 
 #include <QDesktopServices>
 
@@ -30,7 +30,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
     m_recentSave = false;
     m_closeCount = 0;
 
-    m_assembler = Assembler::getInstance(m_consoleOutput);
+    m_assembler = Assembly::Assembler::getInstance(m_consoleOutput);
     m_emulator = HbcEmulator::getInstance(this, m_consoleOutput);
     m_monitor = nullptr;
 
@@ -382,9 +382,9 @@ void MainWindow::onItemRightClick(const QPoint &pos)
     // Preparing actions
     QMenu rightClickMenu(this);
 
-    switch (m_projectManager->getItemType(m_pointedItem))
+    switch (m_projectManager->getProjectItemType(m_pointedItem))
     {
-        case ItemType::ProjectName:
+        case ProjectItem::Type::ProjectName:
             // Project item right-click menu
             // -> Set as active project (if pointed project isn't the active one)
             // -> Separator
@@ -425,7 +425,7 @@ void MainWindow::onItemRightClick(const QPoint &pos)
             rightClickMenu.addAction(m_closeProjectActionRC);
             break;
 
-        case ItemType::MandatoryFolder:
+        case ProjectItem::Type::MandatoryFolder:
             // Mandatory folder right-click menu
             // -> Add new file
             // -> Add new directory
@@ -461,7 +461,7 @@ void MainWindow::onItemRightClick(const QPoint &pos)
             rightClickMenu.addAction(m_openPathInFileExplorerActionRC);
             break;
 
-        case ItemType::MandatoryFile:
+        case ProjectItem::Type::MandatoryFile:
             // Mandatory file right-click menu
             // -> Open
             // -> Separator
@@ -474,7 +474,7 @@ void MainWindow::onItemRightClick(const QPoint &pos)
             rightClickMenu.addAction(m_openPathInFileExplorerActionRC);
             break;
 
-        case ItemType::Folder:
+        case ProjectItem::Type::Folder:
             // Non mandatory folder right-click menu
             // -> Add new file
             // -> Add new directory
@@ -518,7 +518,7 @@ void MainWindow::onItemRightClick(const QPoint &pos)
             rightClickMenu.addAction(m_openPathInFileExplorerActionRC);
             break;
 
-        case ItemType::File:
+        case ProjectItem::Type::File:
             // Non mandatory file right-click menu
             // -> Open
             // -> Rename
@@ -546,7 +546,7 @@ void MainWindow::onItemDoubleClick(QTreeWidgetItem* item)
 {
     ProjectItem* i = dynamic_cast<ProjectItem*>(item);
 
-    if (m_projectManager->getItemType(i) == ItemType::File || m_projectManager->getItemType(i) == ItemType::MandatoryFile)
+    if (m_projectManager->getProjectItemType(i) == ProjectItem::Type::File || m_projectManager->getProjectItemType(i) == ProjectItem::Type::MandatoryFile)
     {
         QString filePath = m_projectManager->getParentProject(i)->getDirPath() + i->getPath();
 
@@ -1001,9 +1001,9 @@ void MainWindow::showBinaryAction()
 {
     const QByteArray &data = m_assembler->getBinaryData();
 
-    BinaryExplorer *binaryOutputDialog = BinaryExplorer::getInstance(data, this);
+    BinaryViewer *binaryViewerDialog = BinaryViewer::getInstance(data, this);
 
-    binaryOutputDialog->show();
+    binaryViewerDialog->show();
 }
 
 void MainWindow::runEmulatorAction()

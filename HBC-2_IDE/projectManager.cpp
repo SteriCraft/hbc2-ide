@@ -177,26 +177,6 @@ void ProjectItem::renameInChildrenPaths(QString newParentName)
     }
 }
 
-QString ProjectItem::str(int tab)
-{
-    QString result("");
-    QFileInfo info(m_path);
-
-    if (!isMainNode())
-    {
-        for (int i(0); i < tab; i++) { result += " "; }
-        result += (m_isFolder) ? "Folder " : "File ";
-        result += "\"" + info.fileName() + "\" (path: " + m_path + ")\n";
-    }
-
-    for (int i(0); i < this->childCount(); i++)
-    {
-        result += dynamic_cast<ProjectItem*>(this->child(i))->str();
-    }
-
-    return result;
-}
-
 
 // === PROJECT CLASS ===
 Project::Project(QString name, QString path, ProjectItem* mainNode)
@@ -398,17 +378,6 @@ void Project::setAssembled(bool assembled)
     m_assembled = assembled;
 }
 
-QString Project::str()
-{
-    QString result("");
-
-    result += "\n--- Project " + m_name + " ---\n";
-    result += "Path: " + m_path + "\n\n";
-    result += m_topItem->str();
-
-    return result;
-}
-
 
 // === PROJECT MANAGER CLASS ===
 ProjectManager* ProjectManager::m_singleton = nullptr;
@@ -423,8 +392,8 @@ ProjectManager* ProjectManager::getInstance(QWidget *parent)
 
 ProjectManager::ProjectManager(QWidget *parent) : QTreeWidget(parent)
 {
-    setMinimumWidth(PROJECT_MAN_MIN_HEIGHT);
-    setMaximumWidth(PROJECT_MAN_MAX_HEIGHT);
+    setMinimumWidth(PROJECT_MANAGER_MIN_HEIGHT);
+    setMaximumWidth(PROJECT_MANAGER_MAX_HEIGHT);
 
     setHeaderLabel("Projects");
 
@@ -545,9 +514,6 @@ bool ProjectManager::closeProject(Project* p)
     {
         if (m_projects[i] == p)
         {
-            // TODO : Close all editor tabs associated to this project (maybe in mainWindow.cpp, before calling this)
-            //        Ensures files to be saved on disk
-
             saveProjectFile(p);
             delete p;
 
@@ -596,35 +562,35 @@ bool ProjectManager::removeCurrentItem()
     return true;
 }
 
-ItemType ProjectManager::getItemSelectType()
+ProjectItem::Type ProjectManager::getProjectItemSelectedType()
 {
     if (selectedItems().isEmpty() || selectedItems().count() > 1)
     {
-        return ItemType::None;
+        return ProjectItem::Type::None;
     }
 
     ProjectItem* selectedItem = dynamic_cast<ProjectItem*>(selectedItems()[0]);
 
-    return getItemType(selectedItem);
+    return getProjectItemType(selectedItem);
 }
 
-ItemType ProjectManager::getItemType(ProjectItem* item)
+ProjectItem::Type ProjectManager::getProjectItemType(ProjectItem* item)
 {
     if (item == nullptr)
-        return ItemType::None;
+        return ProjectItem::Type::None;
 
     if (item->isMainNode())
-        return ItemType::ProjectName;
+        return ProjectItem::Type::ProjectName;
     else if (item->getName() == "Source files" || item->getName() == "Libraries")
     {
-        return ItemType::MandatoryFolder;
+        return ProjectItem::Type::MandatoryFolder;
     }
     else if (item->getName() == "main.has")
-        return ItemType::MandatoryFile;
+        return ProjectItem::Type::MandatoryFile;
     else if (item->isFolder())
-        return ItemType::Folder;
+        return ProjectItem::Type::Folder;
     else
-        return ItemType::File;
+        return ProjectItem::Type::File;
 }
 
 Project* ProjectManager::getParentProject(ProjectItem* item)

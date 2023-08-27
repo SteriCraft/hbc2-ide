@@ -1,0 +1,4 @@
+<map id="HbcMonitor" name="HbcMonitor">
+<area shape="rect" id="node1" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="13,80,111,107"/>
+<area shape="rect" id="node2" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="5,5,119,32"/>
+</map>

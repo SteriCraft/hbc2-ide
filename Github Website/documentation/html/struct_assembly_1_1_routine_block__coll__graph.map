@@ -1,0 +1,4 @@
+<map id="Assembly::RoutineBlock" name="Assembly::RoutineBlock">
+<area shape="rect" id="node1" title="Stores informations describing a routine (name, instructions, size and range)." alt="" coords="10,95,189,121"/>
+<area shape="rect" id="node2" href="$struct_assembly_1_1_memory_range.html" title="First and last address (inclusive)." alt="" coords="5,5,193,32"/>
+</map>

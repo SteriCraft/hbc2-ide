@@ -115,7 +115,7 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
 
     if (getState() == Emulator::State::NOT_INITIALIZED || getState() == Emulator::State::READY)
     {
-        if (initialRamData.size() == MEMORY_SIZE)
+        if (initialRamData.size() == Ram::MEMORY_SIZE)
         {
             m_status.projectName = projectName;
             m_computer.initialRamData = initialRamData;

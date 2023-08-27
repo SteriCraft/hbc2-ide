@@ -1,18 +1,18 @@
-#include "binaryExplorer.h"
+#include "binaryViewer.h"
 
 #include <QIcon>
 
-BinaryExplorer* BinaryExplorer::m_singleton = nullptr;
+BinaryViewer* BinaryViewer::m_singleton = nullptr;
 
-BinaryExplorer* BinaryExplorer::getInstance(const QByteArray data, QWidget *parent)
+BinaryViewer* BinaryViewer::getInstance(const QByteArray data, QWidget *parent)
 {
     if (m_singleton == nullptr)
-        m_singleton = new BinaryExplorer(data, parent);
+        m_singleton = new BinaryViewer(data, parent);
 
     return m_singleton;
 }
 
-BinaryExplorer::BinaryExplorer(const QByteArray data, QWidget *parent) : QDialog(parent)
+BinaryViewer::BinaryViewer(const QByteArray data, QWidget *parent) : QDialog(parent)
 {
     setWindowTitle(tr("Binary viewer"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
@@ -39,7 +39,7 @@ BinaryExplorer::BinaryExplorer(const QByteArray data, QWidget *parent) : QDialog
     setLayout(mainLayout);
 }
 
-BinaryExplorer::~BinaryExplorer()
+BinaryViewer::~BinaryViewer()
 {
     delete m_hexEditor;
 }

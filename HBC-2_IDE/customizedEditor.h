@@ -1,6 +1,13 @@
 #ifndef CUSTOMIZEDEDITOR_H
 #define CUSTOMIZEDEDITOR_H
 
+/*!
+ * \file customizedEditor.h
+ * \brief Specialized QPlainTextEdit for the HBC-2 assembly language
+ * \author Gianni Leclercq
+ * \version 0.1
+ * \date 27/08/2023
+ */
 #include <QWidget>
 #include <QPlainTextEdit>
 #include <QPainter>
@@ -8,10 +15,16 @@
 #include <QSyntaxHighlighter>
 #include <QRegularExpression>
 #include <QTextCharFormat>
-
 #include "fileManager.h"
 
-// SYNTAX HIGHLIGHTER CLASS
+/*!
+ * \class SyntaxHightlighter
+ * \brief Tool used to highlight and/or color text with regular expressions
+ *
+ * Derived from the <a href="https://doc.qt.io/qt-6/qtwidgets-richtext-syntaxhighlighter-example.html">Syntax Highlighter example</a> in the Qt Documentation.
+ * ChatGPT was used here to obtain useful regular expression.<br>
+ * Special thanks to Thibaut De La Chapelle for his help with regular expressions.
+ */
 class SyntaxHighlighter : public QSyntaxHighlighter
 {
     Q_OBJECT
@@ -29,7 +42,6 @@ class SyntaxHighlighter : public QSyntaxHighlighter
             QTextCharFormat format;
         };
         QList<HighlightingRule> highlightingRules;
-
 
         QTextCharFormat instrFormat;
         QTextCharFormat defIncFormat;

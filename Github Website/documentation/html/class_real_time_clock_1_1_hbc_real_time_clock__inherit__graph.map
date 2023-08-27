@@ -1,0 +1,4 @@
+<map id="RealTimeClock::HbcRealTimeClock" name="RealTimeClock::HbcRealTimeClock">
+<area shape="rect" id="node1" title="Derived from HbcPeripheral, represents the RTC device." alt="" coords="5,80,220,121"/>
+<area shape="rect" id="node2" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="56,5,169,32"/>
+</map>

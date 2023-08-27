@@ -1,0 +1,4 @@
+<map id="Monitor::VideoData" name="Monitor::VideoData">
+<area shape="rect" id="node1" title="Stores buffers for all video modes." alt="" coords="5,95,153,121"/>
+<area shape="rect" id="node2" href="$struct_monitor_1_1_char_data.html" title="Stores a character information." alt="" coords="9,5,150,32"/>
+</map>

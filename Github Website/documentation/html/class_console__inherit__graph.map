@@ -1,0 +1,4 @@
+<map id="Console" name="Console">
+<area shape="rect" id="node1" title="A console widget to show events and provide information to the user." alt="" coords="10,80,85,107"/>
+<area shape="rect" id="node2" title=" " alt="" coords="5,5,89,32"/>
+</map>

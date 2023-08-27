@@ -1,3 +1,13 @@
+/** \mainpage
+ * Home Brew Computer 2 - Integrated Development Environment
+ *
+ * <a href="https://github.com/SteriCraft/hbc2-ide">Github repository of the project</a><br>
+ * <a href="https://www.gnu.org/licenses/gpl-3.0.txt">Licence information</a>
+ *
+ * \version Version 0.1
+ * \author Gianni Leclercq
+ * \date 27/08/2023
+ */
 #include <QApplication>
 #include <QTranslator>
 #include <QStyleFactory>

@@ -1,0 +1,9 @@
+<map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/console.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/console.h">
+<area shape="rect" id="node1" title="Console widget for the IDE." alt="" coords="83,5,255,61"/>
+<area shape="rect" id="node2" href="$assembler_8h.html" title="The assembler that procudes binary for the HBC&#45;2 based on its custom assembly language." alt="" coords="5,317,184,373"/>
+<area shape="rect" id="node4" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="209,317,381,373"/>
+<area shape="rect" id="node5" href="$peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="207,109,385,165"/>
+<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="97,421,292,477"/>
+<area shape="rect" id="node6" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="209,213,381,269"/>
+<area shape="rect" id="node7" href="$real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="405,213,611,269"/>
+</map>

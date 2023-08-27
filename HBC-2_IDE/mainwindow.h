@@ -1,7 +1,13 @@
-
 #ifndef MAINWINDOW_H
 #define MAINWINDOW_H
 
+/*!
+ * \file mainwindow.h
+ * \brief Creates and manages the IDE main window
+ * \author Gianni Leclercq
+ * \version 0.1
+ * \date 27/08/2023
+ */
 #include <QMainWindow>
 #include <QVBoxLayout>
 #include <QHBoxLayout>
@@ -13,7 +19,6 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QDirIterator>
-
 #include "customizedEditor.h"
 #include "assembler.h"
 #include "emulator.h"
@@ -21,14 +26,14 @@
 
 #define IDE_VERSION QString("0.1")
 
-#define WINDOW_WIDTH 1280
-#define WINDOW_HEIGHT 720
-
 QT_BEGIN_NAMESPACE
 namespace Ui { class MainWindow; }
 class QMenuBar;
 QT_END_NAMESPACE
 
+/*!
+ * \brief Creates and manages the IDE main window
+ */
 class MainWindow : public QMainWindow
 {
     Q_OBJECT
@@ -55,8 +60,8 @@ class MainWindow : public QMainWindow
         void dontShowAgainReassemblyWarnings();
 
     protected:
-        void closeEvent(QCloseEvent *event) override;
-        void onClose();
+        void closeEvent(QCloseEvent *event) override; //*! Called when the window's cross is clicked
+        void onClose(); //*! Called when Quit action is clicked in File menu
 
     private:
         void loadIcons();
@@ -196,7 +201,7 @@ class MainWindow : public QMainWindow
         ProjectManager *m_projectManager;
 
         // Others
-        Assembler *m_assembler;
+        Assembly::Assembler *m_assembler;
         HbcEmulator *m_emulator;
         MonitorWidget *m_monitor;
         ConfigManager *m_configManager;
@@ -204,11 +209,17 @@ class MainWindow : public QMainWindow
         // Dialogs
         SettingsDialog *m_settingsDialog;
 
+        static constexpr int WINDOW_WIDTH = 1280;
+        static constexpr int WINDOW_HEIGHT = 720;
+
         QFont defaultEditorFont;
         QWidget *m_window;
         Ui::MainWindow *ui;
 };
 
+/*!
+ * \brief QDialog that displays general information about the IDE
+ */
 class AboutDialog : public QDialog
 {
     Q_OBJECT
