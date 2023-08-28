@@ -153,6 +153,22 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
     return loadProject(initialRamData, projectName.toStdString());
 }
 
+const QByteArray HbcEmulator::getCurrentBinaryData()
+{
+    QByteArray exportContent;
+
+    m_computer.motherboard.m_ram.m_lock.lock();
+
+    for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
+    {
+        exportContent.push_back(m_computer.motherboard.m_ram.m_memory[i]);
+    }
+
+    m_computer.motherboard.m_ram.m_lock.unlock();
+
+    return exportContent;
+}
+
 void HbcEmulator::useMonitor(bool enable)
 {
     m_status.useMonitor = enable;
@@ -211,6 +227,7 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
 
     connect(this, SIGNAL(statusChanged(Emulator::State)), m_mainWindow, SLOT(onEmulatorStatusChanged(Emulator::State)), Qt::ConnectionType::BlockingQueuedConnection);
     connect(this, SIGNAL(tickCountSent(int)), m_mainWindow, SLOT(onTickCountReceived(int)), Qt::ConnectionType::BlockingQueuedConnection);
+    connect(this, SIGNAL(stepped()), m_mainWindow, SLOT(onEmulatorStepped()), Qt::ConnectionType::BlockingQueuedConnection);
 
     start(); // Threads always idling
 }
@@ -288,6 +305,7 @@ void HbcEmulator::run()
                 m_status.command = Emulator::Command::NONE;
 
                 tickComputer();
+                emit stepped();
 
                 m_consoleOutput->log("Emulator steps");
             }

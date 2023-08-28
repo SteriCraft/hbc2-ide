@@ -25,8 +25,8 @@ namespace Monitor
     constexpr int MONITOR_HEIGHT = 192;
     constexpr int PIXEL_SCALE = 4;
 
-    constexpr int MONITOR_WINDOW_WIDTH = (MONITOR_WIDTH * PIXEL_SCALE + 22); //*! A 22px margin is added for a good looking window
-    constexpr int MONITOR_WINDOW_HEIGHT = (MONITOR_HEIGHT * PIXEL_SCALE + 22); //*! A 22px margin is added for a good looking window
+    constexpr int MONITOR_WINDOW_WIDTH = (MONITOR_WIDTH * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
+    constexpr int MONITOR_WINDOW_HEIGHT = (MONITOR_HEIGHT * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
 
     constexpr int CHARACTER_WIDTH = 6;
     constexpr int CHARACTER_HEIGHT = 8;
@@ -34,27 +34,27 @@ namespace Monitor
     constexpr int TEXT_MODE_ROWS = 24;
 
     constexpr int SCREEN_PORTS_NB = 5;
-    constexpr int PIXEL_MODE_BUFFER_SIZE = (MONITOR_WIDTH * MONITOR_HEIGHT); //*! The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), <b>dropped here</b>
+    constexpr int PIXEL_MODE_BUFFER_SIZE = (MONITOR_WIDTH * MONITOR_HEIGHT); //!< The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), <b>dropped here</b>
     constexpr int TEXT_MODE_BUFFER_SIZE = (TEXT_MODE_COLUMNS * TEXT_MODE_ROWS);
 
     constexpr int DISPLAYABLE_CHARS = 95;
 
     constexpr int FPS_TARGET = 60;
-    constexpr int COLORS_NB = 16; //*! 4-bit colors
+    constexpr int COLORS_NB = 16; //!< 4-bit colors
 
-    enum class Port { DATA_0 = 0, DATA_1 = 1, POS_X = 2, POS_Y = 3, CMD = 4 }; //*! Lists the ports used by the Monitor device
-    enum class Command { NOP = 0, WRITE = 1, READ = 2, SWITCH_TO_PIXEL_MODE = 3, SWITCH_TO_TEXT_MODE = 4 }; //*! Lists the commands for the Monitor device
-    enum class Mode { PIXEL = 0, TEXT = 1 }; //*! Lists the commands for the Monitor device
+    enum class Port { DATA_0 = 0, DATA_1 = 1, POS_X = 2, POS_Y = 3, CMD = 4 }; //!< Lists the ports used by the Monitor device
+    enum class Command { NOP = 0, WRITE = 1, READ = 2, SWITCH_TO_PIXEL_MODE = 3, SWITCH_TO_TEXT_MODE = 4 }; //!< Lists the commands for the Monitor device
+    enum class Mode { PIXEL = 0, TEXT = 1 }; //!< Lists the commands for the Monitor device
 
     enum class Color { BLACK = 0,    BLUE,           GREEN,         CYAN,
                        RED,          MAGENTA,        BROWN_COLOR,   LIGHT_GRAY,
                        BRIGHT_BLACK, BRIGHT_BLUE,    BRIGHT_GREEN,  BRIGHT_CYAN,
-                       BRIGHT_RED,   BRIGHT_MAGENTA, BRIGHT_YELLOW, WHITE }; //*! 4-bit color labels
+                       BRIGHT_RED,   BRIGHT_MAGENTA, BRIGHT_YELLOW, WHITE }; //!< 4-bit color labels
 
     const QRgb colorArray[] = { qRgb(  0,   0,   0), qRgb(  0,   0, 170), qRgb(  0, 170,   0), qRgb(  0, 170, 170),
                                 qRgb(170,   0,   0), qRgb(170,   0, 170), qRgb(170,  85,   0), qRgb(170,  70, 170),
                                 qRgb( 85,  85,  85), qRgb( 85,  85, 255), qRgb( 85, 255,  85), qRgb( 85, 255, 255),
-                                qRgb(255,  85,  85), qRgb(255,  85, 255), qRgb(255, 255,  85), qRgb(255, 255, 255)}; //*! See the color palette in HbcMonitor
+                                qRgb(255,  85,  85), qRgb(255,  85, 255), qRgb(255, 255,  85), qRgb(255, 255, 255)}; //!< See the color palette in HbcMonitor
 
     /*!
      * \struct CharData
@@ -62,8 +62,8 @@ namespace Monitor
      */
     struct CharData
     {
-        Byte colors; //*! 4 most significant bits coding the background color, the 4 others coding the font color
-        Byte ascii; //*! See the displayable characters in HbcMonitor
+        Byte colors; //!< 4 most significant bits coding the background color, the 4 others coding the font color
+        Byte ascii; //!< See the displayable characters in HbcMonitor
     };
 
     /*!
@@ -85,9 +85,9 @@ namespace Monitor
     {
         QMutex mutex;
 
-        QElapsedTimer fpsCountTimer; //*! Used to measure framerate
-        int fpsCount; //*! Used to measure framerate
-        bool stopCmd; //*! Stops the monitor thread if <b>true</b>
+        QElapsedTimer fpsCountTimer; //!< Used to measure framerate
+        int fpsCount; //!< Used to measure framerate
+        bool stopCmd; //!< Stops the monitor thread if <b>true</b>
     };
 }
 

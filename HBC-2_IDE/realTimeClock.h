@@ -20,10 +20,10 @@ namespace RealTimeClock
 {
     constexpr int RTC_PORTS_NB = 7;
     constexpr int INTERRUPTS_PER_SECOND = 1;
-    constexpr int YEAR_0 = 1900; //*! Starts counting from year 1900 to year 2155
+    constexpr int YEAR_0 = 1900; //!< Starts counting from year 1900 to year 2155
 
-    enum class Port { YEAR = 0, MONTH = 1, DAY = 2, HOUR = 3, MINUTE = 4, SECOND = 5, CMD = 6 }; //*! Lists the ports used by the RTC device
-    enum class Command { NOP = 0, GET_TIME = 1, SET_TIME = 2 }; //*! Lists the commands for the RTC device
+    enum class Port { YEAR = 0, MONTH = 1, DAY = 2, HOUR = 3, MINUTE = 4, SECOND = 5, CMD = 6 }; //!< Lists the ports used by the RTC device
+    enum class Command { NOP = 0, GET_TIME = 1, SET_TIME = 2 }; //!< Lists the commands for the RTC device
 
     /*!
      * \class HbcRealTimeClock

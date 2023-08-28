@@ -24,7 +24,22 @@ ConfigManager::~ConfigManager()
     m_singleton = nullptr;
 }
 
-// GETTERS
+// SETTERS
+// Binary viewer settings
+void ConfigManager::setOpenViewerOnAssembly(bool enable)
+{
+    m_settings.openViewerOnAssembly = enable;
+}
+
+void ConfigManager::setOpenViewerOnEmulatorPaused(bool enable)
+{
+    m_settings.openViewerOnEmulatorPaused = enable;
+}
+void ConfigManager::setOpenViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openViewerOnEmulatorStopped = enable;
+}
+
 // Emulator settings
 void ConfigManager::setStartEmulatorPaused(bool paused)
 {
@@ -56,8 +71,23 @@ bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
     return true;
 }
 
-// SETTERS
+// GETTERS
 // Emulator settings
+bool ConfigManager::getOpenViewerOnAssembly()
+{
+    return m_settings.openViewerOnAssembly;
+}
+
+bool ConfigManager::getOpenViewerOnEmulatorPaused()
+{
+    return m_settings.openViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenViewerOnEmulatorStopped()
+{
+    return m_settings.openViewerOnEmulatorStopped;
+}
+
 bool ConfigManager::getStartEmulatorPaused()
 {
     return m_settings.startEmulatorPaused;
@@ -103,9 +133,21 @@ ConfigManager::ConfigManager()
                     key = line.mid(0, equalCharPos);
                     value = line.mid(equalCharPos + 1);
 
-                    if (key == "START_EMULATOR_PAUSED")
+                    if (key == "OPEN_BIN_VIEWER_ASSEMBLY")
                     {
-                        m_settings.startEmulatorPaused = (value == "TRUE");
+                        m_settings.openViewerOnAssembly = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_PAUSED")
+                    {
+                        m_settings.openViewerOnEmulatorPaused = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_STOPPPED")
+                    {
+                        m_settings.openViewerOnEmulatorStopped = (value == "TRUE");
+                    }
+                    else if (key == "START_EMULATOR_PAUSED")
+                    {
+                        m_settings.monitorPlugged = (value == "TRUE");
                     }
                     else if (key == "MONITOR_PLUGGED")
                     {
@@ -151,6 +193,9 @@ bool ConfigManager::saveConfigFile()
     {
         QTextStream out(&configFile);
 
+        out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
@@ -189,16 +234,35 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     ideSettingsGroupBox->setLayout(ideSettingsLayout);
 
 
+    // Binary viewer settings
+    QGroupBox *binaryViewerSettingsGroupBox = new QGroupBox(tr("Binary viewer"), this);
+
+    m_openViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), this);
+    m_openViewerOnAssemblyCheckBox->setChecked(configManager->getOpenViewerOnAssembly());
+
+    m_openViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
+    m_openViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenViewerOnEmulatorPaused());
+
+    m_openViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
+    m_openViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenViewerOnEmulatorStopped());
+
+    QVBoxLayout *binaryViewerSettingsLayout = new QVBoxLayout;
+    binaryViewerSettingsLayout->addWidget(m_openViewerOnAssemblyCheckBox);
+    binaryViewerSettingsLayout->addWidget(m_openViewerOnEmulatorPausedCheckBox);
+    binaryViewerSettingsLayout->addWidget(m_openViewerOnEmulatorStoppedCheckBox);
+    binaryViewerSettingsGroupBox->setLayout(binaryViewerSettingsLayout);
+
+
     // Emulator settings
     QGroupBox *emulatorSettingsGroupBox = new QGroupBox(tr("Emulator"), this);
 
-    m_startPausedCheckBox = new QCheckBox(tr("Start the emulator paused"), this);
+    m_startPausedCheckBox = new QCheckBox(tr("Start paused"), this);
     m_startPausedCheckBox->setChecked(configManager->getStartEmulatorPaused());
 
     m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), this);
     m_plugMonitorCheckBox->setChecked(configManager->getMonitorPlugged());
 
-    m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running emulator with a non assembled project"), this);
+    m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), this);
     m_dismissReassemblyWarningsCheckBox->setChecked(configManager->getDismissReassemblyWarnings());
 
     QVBoxLayout *emulatorSettingsLayout = new QVBoxLayout;
@@ -212,6 +276,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addWidget(binaryViewerSettingsGroupBox);
     mainLayout->addWidget(ideSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
     mainLayout->addWidget(closeButton);
@@ -220,6 +285,9 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     // Connections
+    connect(m_openViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnAssemblyChanged()));
+    connect(m_openViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnEmulatorPausedChanged()));
+    connect(m_openViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnEmulatorStoppedChanged()));
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
     connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
@@ -227,6 +295,21 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(defaultProjectsPathChanged()));
 
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+}
+
+void SettingsDialog::openViewerOnAssemblyChanged()
+{
+    m_configManager->setOpenViewerOnAssembly(m_openViewerOnAssemblyCheckBox->isChecked());
+}
+
+void SettingsDialog::openViewerOnEmulatorPausedChanged()
+{
+    m_configManager->setOpenViewerOnEmulatorPaused(m_openViewerOnEmulatorPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::openViewerOnEmulatorStoppedChanged()
+{
+    m_configManager->setOpenViewerOnEmulatorStopped(m_openViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
 void SettingsDialog::startPausedChanged()

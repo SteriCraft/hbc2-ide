@@ -22,7 +22,7 @@ class Project;
 class CustomFile
 {
     public:
-        CustomFile(); //*! Creates a new file named "newFile.has"
+        CustomFile(); //!< Creates a new file named "newFile.has"
 
         /*!
          * \brief Creates a new file provided with path and content
@@ -34,15 +34,15 @@ class CustomFile
 
         QString getName();
         QString getPath();
-        bool exists(); //*! Returns if the file exists on disk (if it has a path)
-        bool isSaved(); //*! Returns if the file has been saved on disk (true by default after opening a file)
-        bool getReloaded(); //*! Returns if the file has just been reloaded
+        bool exists(); //!< Returns if the file exists on disk (if it has a path)
+        bool isSaved(); //!< Returns if the file has been saved on disk (true by default after opening a file)
+        bool getReloaded(); //!< Returns if the file has just been reloaded
         QString getContent();
         Project* getAssociatedProject();
 
-        bool setPath(QString path); //*! Returns <b>false</b> if the path is invalid
+        bool setPath(QString path); //!< Returns <b>false</b> if the path is invalid
         void setSaved(bool saved);
-        void setReloaded(bool reloaded); //*! Sets file's flag that tells if it has just been reloaded
+        void setReloaded(bool reloaded); //!< Sets file's flag that tells if it has just been reloaded
         void setContent(QString content);
         void setAssociatedProject(Project *associatedProject);
 
@@ -72,7 +72,7 @@ class FileManager // SINGLETON
         static FileManager* getInstance();
         ~FileManager();
 
-        CustomFile* newFile(); //*! A new file is named "newFile.has"
+        CustomFile* newFile(); //!< A new file is named "newFile.has"
 
         /*!
          * \brief Opens a file

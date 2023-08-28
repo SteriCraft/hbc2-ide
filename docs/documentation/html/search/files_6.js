@@ -1,5 +1,6 @@
 var searchData=
 [
-  ['peripheral_2eh_341',['peripheral.h',['../peripheral_8h.html',1,'']]],
-  ['projectmanager_2eh_342',['projectManager.h',['../project_manager_8h.html',1,'']]]
+  ['mainwindow_2eh_383',['mainwindow.h',['../mainwindow_8h.html',1,'']]],
+  ['monitor_2eh_384',['monitor.h',['../monitor_8h.html',1,'']]],
+  ['motherboard_2eh_385',['motherboard.h',['../motherboard_8h.html',1,'']]]
 ];

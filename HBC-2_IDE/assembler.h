@@ -102,6 +102,8 @@ namespace Assembly
      * \brief Singleton of the assembler
      *
      * Produces a binary output for a project, usable in the emulator or a real machine.
+     *
+     * Pressing F5 will assemble the active project.
      */
     class Assembler
     {

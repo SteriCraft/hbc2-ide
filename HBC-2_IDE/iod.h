@@ -21,8 +21,8 @@ struct HbcIod
 {
     HbcMotherboard *m_motherboard; //!< Used internaly
 
-    unsigned int m_nbPeripheralsPlugged; //*! Number of peripherals plugged in
-    Iod::Port m_ports[Iod::PORTS_NB]; //*! Input/Output Device ports
+    unsigned int m_nbPeripheralsPlugged; //!< Number of peripherals plugged in
+    Iod::Port m_ports[Iod::PORTS_NB]; //!< Input/Output Device ports
     std::queue<Iod::Interrupt> m_interruptsQueue; //!< Queue size is defined by INTERRUPT_QUEUE_SIZE
 };
 

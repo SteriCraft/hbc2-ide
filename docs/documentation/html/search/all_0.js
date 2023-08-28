@@ -13,11 +13,12 @@ var searchData=
   ['addresswidth_10',['addressWidth',['../class_q_hex_edit.html#a11b672fd38a7c48949ccce3228474b2f',1,'QHexEdit']]],
   ['addrmode_5fmask_11',['ADDRMODE_MASK',['../namespace_cpu.html#a4443f887ee728a552b3e8098fdfa8412',1,'Cpu']]],
   ['arethereunsavedfiles_12',['areThereUnsavedFiles',['../class_file_manager.html#ab7a6d4de267b45aa68317b314a0b8705',1,'FileManager']]],
-  ['asciiarea_13',['asciiArea',['../class_q_hex_edit.html#a0e297a4a212a9d7addbbf82472e1acb2',1,'QHexEdit']]],
-  ['asciiareacolor_14',['asciiAreaColor',['../class_q_hex_edit.html#af9a5439eb9d7081207f960c878ee0ad7',1,'QHexEdit']]],
-  ['asciifontcolor_15',['asciiFontColor',['../class_q_hex_edit.html#a763f0ddfe7c8246fb8d623d8dbb3306a',1,'QHexEdit']]],
-  ['assembleproject_16',['assembleProject',['../class_assembly_1_1_assembler.html#a601cd099cd5a33f2be4810121a93b8d8',1,'Assembly::Assembler']]],
-  ['assembler_17',['Assembler',['../class_assembly_1_1_assembler.html',1,'Assembly']]],
-  ['assembler_2eh_18',['assembler.h',['../assembler_8h.html',1,'']]],
-  ['assembly_19',['Assembly',['../namespace_assembly.html',1,'']]]
+  ['ascii_13',['ascii',['../struct_monitor_1_1_char_data.html#a6d9c3f248107825920664baacc9a9c17',1,'Monitor::CharData']]],
+  ['asciiarea_14',['asciiArea',['../class_q_hex_edit.html#a0e297a4a212a9d7addbbf82472e1acb2',1,'QHexEdit']]],
+  ['asciiareacolor_15',['asciiAreaColor',['../class_q_hex_edit.html#af9a5439eb9d7081207f960c878ee0ad7',1,'QHexEdit']]],
+  ['asciifontcolor_16',['asciiFontColor',['../class_q_hex_edit.html#a763f0ddfe7c8246fb8d623d8dbb3306a',1,'QHexEdit']]],
+  ['assembleproject_17',['assembleProject',['../class_assembly_1_1_assembler.html#a601cd099cd5a33f2be4810121a93b8d8',1,'Assembly::Assembler']]],
+  ['assembler_18',['Assembler',['../class_assembly_1_1_assembler.html',1,'Assembly']]],
+  ['assembler_2eh_19',['assembler.h',['../assembler_8h.html',1,'']]],
+  ['assembly_20',['Assembly',['../namespace_assembly.html',1,'']]]
 ];

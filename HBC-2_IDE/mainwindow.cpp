@@ -1,6 +1,5 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
-#include "binaryViewer.h"
 
 #include <QDesktopServices>
 
@@ -51,6 +50,8 @@ MainWindow::~MainWindow()
         delete m_monitor;
         m_monitor = nullptr;
     }
+
+    BinaryViewer::close();
 
     delete m_emulator;
     delete m_configManager;
@@ -126,19 +127,22 @@ void MainWindow::setupMenuBar()
     m_assembleAction->setShortcut(QKeySequence(Qt::Key_F5));
 
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
-    m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F10));
+    m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F6));
 
     // - Emulator menu -
     m_emulatorMenu = menuBar()->addMenu(tr("Emulator"));
 
     m_runEmulatorAction = m_emulatorMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F6));
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F9));
 
     m_stepEmulatorAction = m_emulatorMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F10));
 
     m_pauseEmulatorAction = m_emulatorMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F11));
 
     m_stopEmulatorAction = m_emulatorMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
+    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F12));
 
     m_emulatorMenu->addSeparator();
 
@@ -566,6 +570,24 @@ void MainWindow::onItemDoubleClick(QTreeWidgetItem* item)
 void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
 {
     updateEmulatorActions(newState);
+
+    if (newState == Emulator::State::RUNNING)
+    {
+        BinaryViewer::close();
+    }
+    else if (newState == Emulator::State::READY && m_configManager->getOpenViewerOnEmulatorStopped())
+    {
+        updateBinaryViewer();
+    }
+    else if (newState == Emulator::State::PAUSED && m_configManager->getOpenViewerOnEmulatorPaused())
+    {
+        updateBinaryViewer();
+    }
+}
+
+void MainWindow::onEmulatorStepped()
+{
+    BinaryViewer::update(m_emulator->getCurrentBinaryData());
 }
 
 void MainWindow::onTickCountReceived(int countIn100Ms)
@@ -995,15 +1017,29 @@ void MainWindow::assembleAction()
     m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
 
     updateWinTabMenu();
+
+    if (m_configManager->getOpenViewerOnAssembly())
+    {
+        showBinaryAction();
+    }
 }
 
 void MainWindow::showBinaryAction()
 {
-    const QByteArray &data = m_assembler->getBinaryData();
+    QByteArray data;
+    BinaryViewer *viewer = BinaryViewer::getInstance(this);
 
-    BinaryViewer *binaryViewerDialog = BinaryViewer::getInstance(data, this);
+    if (m_emulator != nullptr)
+    {
+        data = m_emulator->getCurrentBinaryData();
+    }
+    else
+    {
+        data = m_assembler->getBinaryData();
+    }
 
-    binaryViewerDialog->show();
+    viewer->update(data);
+    viewer->show();
 }
 
 void MainWindow::runEmulatorAction()
@@ -1595,6 +1631,15 @@ int MainWindow::findTab(CustomFile *file)
     }
 
     return -1;
+}
+
+void MainWindow::updateBinaryViewer()
+{
+    const QByteArray &data = m_emulator->getCurrentBinaryData();
+    BinaryViewer *viewer = BinaryViewer::getInstance(this);
+
+    viewer->update(data);
+    viewer->show();
 }
 
 

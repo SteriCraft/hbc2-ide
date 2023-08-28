@@ -6,7 +6,7 @@
  * \brief Main code for the HBC-2 Emulator
  * \author Gianni Leclercq
  * \version 0.1
- * \date 27/08/2023
+ * \date 28/08/2023
  */
 #include <QThread>
 #include <QMutex>
@@ -20,10 +20,10 @@
  */
 namespace Emulator
 {
-    enum class State { NOT_INITIALIZED = 0, READY = 1, RUNNING = 2, PAUSED = 3 }; //*! Lists emulator states
-    enum class Command { NONE = 0, RUN = 1, STEP = 2, PAUSE = 3, STOP = 4, CLOSE = 5 }; //*! Lists emulator commands
+    enum class State { NOT_INITIALIZED = 0, READY = 1, RUNNING = 2, PAUSED = 3 }; //!< Lists emulator states
+    enum class Command { NONE = 0, RUN = 1, STEP = 2, PAUSE = 3, STOP = 4, CLOSE = 5 }; //!< Lists emulator commands
     enum class FrequencyTarget { KHZ_100 = 100000, MHZ_1 = 1000000, MHZ_2 = 2000000,
-                                 MHZ_5 = 5000000, MHZ_10 = 10000000, MHZ_20 = 20000000, FASTEST = 0 }; //*! Lists possible frequency targets
+                                 MHZ_5 = 5000000, MHZ_10 = 10000000, MHZ_20 = 20000000, FASTEST = 0 }; //!< Lists possible frequency targets
 
     /*!
      * \struct Status
@@ -101,31 +101,37 @@ class MainWindow;
  *   <th>ID</th>
  *   <th>Command</th>
  *   <th>Description</th>
+ *   <th>Keyboard shortcut</th>
  *  </tr>
  *  <tr>
  *   <td>0</td>
  *   <td>NONE</td>
  *   <td>No operation</td>
+ *   <td></td>
  *  </tr>
  *  <tr>
  *   <td>1</td>
  *   <td>RUN</td>
  *   <td>Starts execution at targeted frequency and sets the emulator's state to RUNNING</td>
+ *   <td>F9</td>
  *  </tr>
  *  <tr>
  *   <td>2</td>
  *   <td>STEP</td>
  *   <td>Executes one instruction, does not change the emulator's state</td>
+ *   <td>F10</td>
  *  </tr>
  *  <tr>
  *   <td>3</td>
  *   <td>PAUSE</td>
  *   <td>Pauses execution and sets the emulator's state to PAUSED</td>
+ *   <td>F11</td>
  *  </tr>
  *  <tr>
  *   <td>4</td>
  *   <td>STOP</td>
  *   <td>Stops execution and sets the emulator's state to READY</td>
+ *   <td>F12</td>
  *  </tr>
  *  <tr>
  *   <td>5</td>
@@ -195,6 +201,11 @@ class HbcEmulator : public QThread
         bool loadProject(QByteArray initialRamData, std::string projectName);
         bool loadProject(QByteArray initialRamData, QString projectName);
 
+        /*!
+         * \return the current content of memory
+         */
+        const QByteArray getCurrentBinaryData();
+
         void useMonitor(bool enable);
         void setStartPaused(bool enable);
 
@@ -225,6 +236,11 @@ class HbcEmulator : public QThread
          * \param newState New emulator's state
          */
         void statusChanged(Emulator::State newState);
+
+        /*!
+         * \brief Emitted wheneven the emulator executes the STEP command
+         */
+        void stepped();
 
         /*!
          * \brief Emitted every 100 milliseconds

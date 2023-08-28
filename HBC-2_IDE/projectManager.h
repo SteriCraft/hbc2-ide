@@ -27,7 +27,7 @@
 class ProjectItem : public QTreeWidgetItem
 {
     public:
-        enum class Type { ProjectName, File, Folder, MandatoryFile, MandatoryFolder, None }; //*! Lists item types
+        enum class Type { ProjectName, File, Folder, MandatoryFile, MandatoryFolder, None }; //!< Lists item types
 
         /*!
          * \brief Creates an child item
@@ -37,7 +37,7 @@ class ProjectItem : public QTreeWidgetItem
          */
         ProjectItem(QString path, ProjectItem* parent, bool isFolder);
 
-        ProjectItem(QString projectName); //*! Creates a project's main item
+        ProjectItem(QString projectName); //!< Creates a project's main item
         ~ProjectItem();
 
         /*!
@@ -60,7 +60,7 @@ class ProjectItem : public QTreeWidgetItem
 
         QString getName();
         QString getPath();
-        QList<QString> getFilesNamesList(); //*! Returns list of children file's names <b>(recursive)</b>
+        QList<QString> getFilesNamesList(); //!< Returns list of children file's names <b>(recursive)</b>
         bool isFolder();
         bool isMainNode();
 
@@ -72,7 +72,7 @@ class ProjectItem : public QTreeWidgetItem
          * \param item
          * \return
          */
-        bool isPartOf(ProjectItem* item); //*! Returns <b>true</b> if the passed item is a child of this item
+        bool isPartOf(ProjectItem* item); //!< Returns <b>true</b> if the passed item is a child of this item
 
         /*!
          * \brief Returns a list of children file's path
@@ -81,7 +81,7 @@ class ProjectItem : public QTreeWidgetItem
          */
         QList<QString> getFilesPaths(QString projectPath = "");
 
-        bool setPath(QString newPath); //*! Returns <b>false</b> if newPath is empty
+        bool setPath(QString newPath); //!< Returns <b>false</b> if newPath is empty
 
         /*!
          * \brief Renames the item
@@ -89,7 +89,7 @@ class ProjectItem : public QTreeWidgetItem
          * \return <b>false</b> if newName is empty
          */
         bool rename(QString newName, QString currentFullPath);
-        void renameInChildrenPaths(QString newParentName); //*! Used to rename children items recursively
+        void renameInChildrenPaths(QString newParentName); //!< Used to rename children items recursively
 
     private:
         bool m_isFolder;
@@ -128,16 +128,16 @@ class Project
          */
         bool addFile(QString name, QString path);
 
-        static QList<QString> getPathParentsList(QString path); //*! Converts a path in a list of directory (main one first)
+        static QList<QString> getPathParentsList(QString path); //!< Converts a path in a list of directory (main one first)
 
         QString getName();
         QString getDirPath();
         QString getPath();
-        bool getAssembled(); //*! Returns if the project is currently assembled in binary
-        ProjectItem* getTopItem(); //*! Returns the tree's main node
-        bool isPartOf(ProjectItem* item); //*! Returns <b>true</b> if the passed item is a child of this project <b>(recursive)</b>
-        QList<QString> getFilesPaths(); //*! Returns a list of the files complete paths
-        QList<QString> getFilesNames(); //*! Returns a list of the files names
+        bool getAssembled(); //!< Returns if the project is currently assembled in binary
+        ProjectItem* getTopItem(); //!< Returns the tree's main node
+        bool isPartOf(ProjectItem* item); //!< Returns <b>true</b> if the passed item is a child of this project <b>(recursive)</b>
+        QList<QString> getFilesPaths(); //!< Returns a list of the files complete paths
+        QList<QString> getFilesNames(); //!< Returns a list of the files names
 
         void setAssembled(bool assembled);
 
@@ -162,7 +162,7 @@ class ProjectManager : public QTreeWidget // SINGLETON
     static ProjectManager *m_singleton;
 
     public:
-        static ProjectManager* getInstance(QWidget *parent); //*! <i><b>SINGLETON:</b></i> Call this to instanciate the object (the constructor is private).
+        static ProjectManager* getInstance(QWidget *parent); //!< <i><b>SINGLETON:</b></i> Call this to instanciate the object (the constructor is private).
         ~ProjectManager();
 
         /*!

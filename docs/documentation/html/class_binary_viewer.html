@@ -97,15 +97,22 @@ Collaboration diagram for BinaryViewer:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:ad36c35e32fb35e16c27889402e0ef0c2"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_binary_viewer.html">BinaryViewer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#ad36c35e32fb35e16c27889402e0ef0c2">getInstance</a> (const QByteArray data, QWidget *parent=nullptr)</td></tr>
-<tr class="separator:ad36c35e32fb35e16c27889402e0ef0c2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:afe0baeb628c7ce810122791049e29c02"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_binary_viewer.html">BinaryViewer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">getInstance</a> (QWidget *parent=nullptr)</td></tr>
+<tr class="separator:afe0baeb628c7ce810122791049e29c02"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a8955c8c28aacac0b989c17d0f8369bce"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">update</a> (const QByteArray data)</td></tr>
+<tr class="memdesc:a8955c8c28aacac0b989c17d0f8369bce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates displayed content.  <a href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">More...</a><br /></td></tr>
+<tr class="separator:a8955c8c28aacac0b989c17d0f8369bce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memItemLeft" align="right" valign="top"><a id="a3252471a8cf56315936ae2e82a4e6d9c"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</td></tr>
+<tr class="separator:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Singleton of the binary viewer. </p>
-<p>QDialog showing the current binary output for a given project. </p>
+<p>QDialog showing the current binary output for a given project.</p>
+<p>Pressing F6 will open the binary viewer. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="ad36c35e32fb35e16c27889402e0ef0c2"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad36c35e32fb35e16c27889402e0ef0c2">&#9670;&nbsp;</a></span>getInstance()</h2>
+<a id="afe0baeb628c7ce810122791049e29c02"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afe0baeb628c7ce810122791049e29c02">&#9670;&nbsp;</a></span>getInstance()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -116,19 +123,9 @@ Static Public Member Functions</h2></td></tr>
         <tr>
           <td class="memname"><a class="el" href="class_binary_viewer.html">BinaryViewer</a> * BinaryViewer::getInstance </td>
           <td>(</td>
-          <td class="paramtype">const QByteArray&#160;</td>
-          <td class="paramname"><em>data</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
           <td class="paramtype">QWidget *&#160;</td>
-          <td class="paramname"><em>parent</em> = <code>nullptr</code>&#160;</td>
-        </tr>
-        <tr>
+          <td class="paramname"><em>parent</em> = <code>nullptr</code></td><td>)</td>
           <td></td>
-          <td>)</td>
-          <td></td><td></td>
         </tr>
       </table>
   </td>
@@ -140,8 +137,41 @@ Static Public Member Functions</h2></td></tr>
 <p><em><b>SINGLETON:</b></em> Call this to instanciate the object (the constructor is private).</p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">data</td><td>Binary data to display </td></tr>
-    <tr><td class="paramname">parent</td><td>Pointer to the parent QWidget </td></tr>
+    <tr><td class="paramname">parent</td><td>Pointer to the parent QWidget (facultative) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a8955c8c28aacac0b989c17d0f8369bce"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a8955c8c28aacac0b989c17d0f8369bce">&#9670;&nbsp;</a></span>update()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void BinaryViewer::update </td>
+          <td>(</td>
+          <td class="paramtype">const QByteArray&#160;</td>
+          <td class="paramname"><em>data</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Updates displayed content. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">data</td><td>New binary data </td></tr>
   </table>
   </dd>
 </dl>

@@ -6,7 +6,7 @@
  * \brief Creates and manages the IDE main window
  * \author Gianni Leclercq
  * \version 0.1
- * \date 27/08/2023
+ * \date 28/08/2023
  */
 #include <QMainWindow>
 #include <QVBoxLayout>
@@ -23,6 +23,7 @@
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
+#include "binaryViewer.h"
 
 #define IDE_VERSION QString("0.1")
 
@@ -55,13 +56,14 @@ class MainWindow : public QMainWindow
         void onItemDoubleClick(QTreeWidgetItem* item);
         // Emulator signals
         void onEmulatorStatusChanged(Emulator::State newState);
+        void onEmulatorStepped();
         void onTickCountReceived(int countIn100Ms);
         void onMonitorClosed();
         void dontShowAgainReassemblyWarnings();
 
     protected:
-        void closeEvent(QCloseEvent *event) override; //*! Called when the window's cross is clicked
-        void onClose(); //*! Called when Quit action is clicked in File menu
+        void closeEvent(QCloseEvent *event) override; //!< Called when the window's cross is clicked
+        void onClose(); //!< Called when Quit action is clicked in File menu
 
     private:
         void loadIcons();
@@ -80,6 +82,7 @@ class MainWindow : public QMainWindow
         CustomizedCodeEditor* getCCE(QWidget *w);
         QString getItemPath(ProjectItem *item);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
+        void updateBinaryViewer();
 
         // Editors management actions
         void newProjectAction();

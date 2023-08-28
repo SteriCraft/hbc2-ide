@@ -88,6 +88,9 @@ $(function() {
 <li>checkValidity()
 : <a class="el" href="class_token_1_1_token_line.html#a25c184d4ec147a12d286c1271cf169f1">Token::TokenLine</a>
 </li>
+<li>closeEvent()
+: <a class="el" href="class_main_window.html#a05fb9d72c044aa3bb7d187b994704e2f">MainWindow</a>
+</li>
 <li>closeFile()
 : <a class="el" href="class_file_manager.html#a5f1a3ef47e35b1397e8450ef7d57079d">FileManager</a>
 </li>
@@ -110,7 +113,7 @@ $(function() {
 : <a class="el" href="class_q_hex_edit.html#a1d833c6a3957317f4daacc54e0c99919">QHexEdit</a>
 </li>
 <li>CustomFile()
-: <a class="el" href="class_custom_file.html#ad0e65cfa6f819e5cf28e3471b19c2f1a">CustomFile</a>
+: <a class="el" href="class_custom_file.html#ae88d33a44109a2cf40c1508d95f5990b">CustomFile</a>
 </li>
 </ul>
 
@@ -130,7 +133,8 @@ $(function() {
 : <a class="el" href="class_q_hex_edit.html#a43b1af42e25e3beb48932f38aa4af46e">QHexEdit</a>
 </li>
 <li>exists()
-: <a class="el" href="class_file_manager.html#ab6e0db9332fba22955c20b965e31b538">FileManager</a>
+: <a class="el" href="class_custom_file.html#a3c4e1cd2a5a3178e4bc1fe49a3a9daef">CustomFile</a>
+, <a class="el" href="class_file_manager.html#ab6e0db9332fba22955c20b965e31b538">FileManager</a>
 </li>
 </ul>
 
@@ -139,11 +143,17 @@ $(function() {
 <li>getAddress()
 : <a class="el" href="class_token_1_1_token_item.html#a71e584a32eb65ab60a513d4607e5a76c">Token::TokenItem</a>
 </li>
+<li>getAssembled()
+: <a class="el" href="class_project.html#a2a9c3d87028e025135703bb567bca0c0">Project</a>
+</li>
 <li>getBinaryData()
 : <a class="el" href="class_assembly_1_1_assembler.html#abbf5e0ded53671ff117d05e83316bfc4">Assembly::Assembler</a>
 </li>
 <li>getConcatRegs()
 : <a class="el" href="class_token_1_1_token_item.html#a1ff726f58fb18a5745f3bfb98f2d8b46">Token::TokenItem</a>
+</li>
+<li>getCurrentBinaryData()
+: <a class="el" href="class_hbc_emulator.html#a6f0c5343676ac2c52d9c489f78aeb69c">HbcEmulator</a>
 </li>
 <li>getCurrentProject()
 : <a class="el" href="class_project_manager.html#a240aa5ae281421fe379149d82b22f2d4">ProjectManager</a>
@@ -169,8 +179,15 @@ $(function() {
 <li>getFileContent()
 : <a class="el" href="class_file_manager.html#aae472d24065c7c4e9aecb2e26bfcc247">FileManager</a>
 </li>
+<li>getFilesNames()
+: <a class="el" href="class_project.html#a7097c09003539eea62860a6595a62193">Project</a>
+</li>
+<li>getFilesNamesList()
+: <a class="el" href="class_project_item.html#abe5e538e35f58a540a577fd5651c2958">ProjectItem</a>
+</li>
 <li>getFilesPaths()
-: <a class="el" href="class_project_item.html#aa1ebacc7c13ff66625c55d4d2d980731">ProjectItem</a>
+: <a class="el" href="class_project.html#a854f94a3bba77e04d3be5656f023b167">Project</a>
+, <a class="el" href="class_project_item.html#aa1ebacc7c13ff66625c55d4d2d980731">ProjectItem</a>
 </li>
 <li>getFrequencyTarget()
 : <a class="el" href="class_hbc_emulator.html#ab31889d0b7f5d02621e87b69665ad850">HbcEmulator</a>
@@ -180,10 +197,11 @@ $(function() {
 </li>
 <li>getInstance()
 : <a class="el" href="class_assembly_1_1_assembler.html#ab8d5de48512bfa20e91ae5d3b88f785f">Assembly::Assembler</a>
-, <a class="el" href="class_binary_viewer.html#ad36c35e32fb35e16c27889402e0ef0c2">BinaryViewer</a>
+, <a class="el" href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">BinaryViewer</a>
 , <a class="el" href="class_config_manager.html#a245145c059a352e37d9be761ac593599">ConfigManager</a>
 , <a class="el" href="class_file_manager.html#ade27e8aea5573a768b03863bf6bea8f4">FileManager</a>
 , <a class="el" href="class_hbc_emulator.html#ae49711f4e8d6cbf2d68a1306d4e2384c">HbcEmulator</a>
+, <a class="el" href="class_project_manager.html#af7360d766427ce49dfc033a761be17a5">ProjectManager</a>
 </li>
 <li>getInstruction()
 : <a class="el" href="class_token_1_1_token_line.html#a0203e2f1683293dce3cae3c615219d30">Token::TokenLine</a>
@@ -200,8 +218,20 @@ $(function() {
 <li>getNonExistingFilesList()
 : <a class="el" href="class_file_manager.html#a61188cd9c1c06e9ebbac5ef1a4a90216">FileManager</a>
 </li>
+<li>getOpenViewerOnAssembly()
+: <a class="el" href="class_config_manager.html#af6fde21f68ff1ebaeb70e9c2862611eb">ConfigManager</a>
+</li>
+<li>getOpenViewerOnEmulatorPaused()
+: <a class="el" href="class_config_manager.html#a173307fe24ac3975f4d2e5df6b52fe3a">ConfigManager</a>
+</li>
+<li>getOpenViewerOnEmulatorStopped()
+: <a class="el" href="class_config_manager.html#a5d34d35d4c7f3198422f3d2b8c192bbe">ConfigManager</a>
+</li>
 <li>getParentProject()
 : <a class="el" href="class_project_manager.html#ac01d722c48c87eed96360ffb1effae0f">ProjectManager</a>
+</li>
+<li>getPathParentsList()
+: <a class="el" href="class_project.html#acd3c552b46109702033e1de466bf5347">Project</a>
 </li>
 <li>getProjectItemSelectedType()
 : <a class="el" href="class_project_manager.html#aef0119d0d4c4784becaf98d8d8736a8c">ProjectManager</a>
@@ -212,6 +242,9 @@ $(function() {
 <li>getRegister()
 : <a class="el" href="class_token_1_1_token_item.html#aa7721e9844a2784981a22a6213001dfc">Token::TokenItem</a>
 </li>
+<li>getReloaded()
+: <a class="el" href="class_custom_file.html#abb0f60ecb45d9cbca120d23f97dc4ad1">CustomFile</a>
+</li>
 <li>getStartEmulatorPaused()
 : <a class="el" href="class_config_manager.html#a7843baf6d0a90cbb56790f3f119d1ea9">ConfigManager</a>
 </li>
@@ -220,6 +253,9 @@ $(function() {
 </li>
 <li>getStr()
 : <a class="el" href="class_token_1_1_token_item.html#aec136224d025dbf581d867e90274b233">Token::TokenItem</a>
+</li>
+<li>getTopItem()
+: <a class="el" href="class_project.html#a951469bfff5ffac9cd231ef5541636f8">Project</a>
 </li>
 <li>getType()
 : <a class="el" href="class_token_1_1_token_item.html#ae674e62ac243a6755c1cc2fd625be062">Token::TokenItem</a>
@@ -251,7 +287,9 @@ $(function() {
 : <a class="el" href="class_q_hex_edit.html#a183ec73d5ef567770dc4860e9d33e239">QHexEdit</a>
 </li>
 <li>init()
-: <a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">RealTimeClock::HbcRealTimeClock</a>
+: <a class="el" href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor</a>
+, <a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5">HbcPeripheral</a>
+, <a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">RealTimeClock::HbcRealTimeClock</a>
 </li>
 <li>insert()
 : <a class="el" href="class_q_hex_edit.html#a1593f2dee03be5738df96da67c9c83d9">QHexEdit</a>
@@ -278,7 +316,11 @@ $(function() {
 : <a class="el" href="class_q_hex_edit.html#ad8339ee39adf7863e46a9c57a7f9db0a">QHexEdit</a>
 </li>
 <li>isPartOf()
-: <a class="el" href="class_project_item.html#a31dcf5bb8008e3c902455f657e92791a">ProjectItem</a>
+: <a class="el" href="class_project.html#a1e01dcd86cedaac3e4010c21f5f84123">Project</a>
+, <a class="el" href="class_project_item.html#a31dcf5bb8008e3c902455f657e92791a">ProjectItem</a>
+</li>
+<li>isSaved()
+: <a class="el" href="class_custom_file.html#a9f704cda8dfca241b078ffcbc1534f73">CustomFile</a>
 </li>
 </ul>
 
@@ -294,6 +336,9 @@ $(function() {
 
 
 <h3><a id="index_n"></a>- n -</h3><ul>
+<li>newFile()
+: <a class="el" href="class_file_manager.html#a1ba2de2f6407235b476185a69ac2cd98">FileManager</a>
+</li>
 <li>newProject()
 : <a class="el" href="class_project_manager.html#ac7032a4c84353d40b4c23043ed309dda">ProjectManager</a>
 </li>
@@ -301,6 +346,9 @@ $(function() {
 
 
 <h3><a id="index_o"></a>- o -</h3><ul>
+<li>onClose()
+: <a class="el" href="class_main_window.html#a279a612e05dd76662acbe55f85c2a89d">MainWindow</a>
+</li>
 <li>openFile()
 : <a class="el" href="class_file_manager.html#aadf0e776945c9b6cf28309ef55dd8249">FileManager</a>
 </li>
@@ -352,6 +400,9 @@ $(function() {
 <li>rename()
 : <a class="el" href="class_project_item.html#a10575649cd3adcba8240a5abddb5d612">ProjectItem</a>
 </li>
+<li>renameInChildrenPaths()
+: <a class="el" href="class_project_item.html#ad5ef6f09d2c3f8bd75f7b88bf5516016">ProjectItem</a>
+</li>
 <li>replace()
 : <a class="el" href="class_q_hex_edit.html#a386bff35c7453caaf547d203026fb462">QHexEdit</a>
 </li>
@@ -399,7 +450,7 @@ $(function() {
 : <a class="el" href="class_file_manager.html#a47f655202d3bba550a0a40d6446ea00c">FileManager</a>
 </li>
 <li>setFileUnsaved()
-: <a class="el" href="class_file_manager.html#ad444476b9c6b204804850a7beeef21f1">FileManager</a>
+: <a class="el" href="class_file_manager.html#ae5824f6d95ad8242eb1c10316fc418b8">FileManager</a>
 </li>
 <li>setFont()
 : <a class="el" href="class_q_hex_edit.html#a57221461a9c9e1b2c0e1882788ac9911">QHexEdit</a>
@@ -409,6 +460,22 @@ $(function() {
 </li>
 <li>setMonitorPlugged()
 : <a class="el" href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">ConfigManager</a>
+</li>
+<li>setOpenViewerOnAssembly()
+: <a class="el" href="class_config_manager.html#a7ce246651657cb662327b058c4537594">ConfigManager</a>
+</li>
+<li>setOpenViewerOnEmulatorPaused()
+: <a class="el" href="class_config_manager.html#a34cb734152ff5cfd7b96c729aa37c6e4">ConfigManager</a>
+</li>
+<li>setOpenViewerOnEmulatorStopped()
+: <a class="el" href="class_config_manager.html#a760d2f7d187df67c48dfce42b9d59628">ConfigManager</a>
+</li>
+<li>setPath()
+: <a class="el" href="class_custom_file.html#afe5099084aeeab73e4b8853dbd1514b0">CustomFile</a>
+, <a class="el" href="class_project_item.html#a44badf165b16bc630076e8ff9c69de10">ProjectItem</a>
+</li>
+<li>setReloaded()
+: <a class="el" href="class_custom_file.html#a7b9738ea2890e7cde8780e637f25cc27">CustomFile</a>
 </li>
 <li>setStartEmulatorPaused()
 : <a class="el" href="class_config_manager.html#a43e3b36d177a04bd6993c0c5e3f1e9b4">ConfigManager</a>
@@ -425,6 +492,9 @@ $(function() {
 <li>stepCmd()
 : <a class="el" href="class_hbc_emulator.html#a6ce953e554ef3e966c20421daa7de8cb">HbcEmulator</a>
 </li>
+<li>stepped()
+: <a class="el" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">HbcEmulator</a>
+</li>
 <li>stopCmd()
 : <a class="el" href="class_hbc_emulator.html#a430a463c0a620202bb11c72cc68c3937">HbcEmulator</a>
 </li>
@@ -433,7 +503,9 @@ $(function() {
 
 <h3><a id="index_t"></a>- t -</h3><ul>
 <li>tick()
-: <a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">RealTimeClock::HbcRealTimeClock</a>
+: <a class="el" href="class_hbc_monitor.html#a3752e51f5353380b314a8221cbae8301">HbcMonitor</a>
+, <a class="el" href="class_hbc_peripheral.html#a6b2aefb3d69ae68ad92a0f67444bfb6a">HbcPeripheral</a>
+, <a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">RealTimeClock::HbcRealTimeClock</a>
 </li>
 <li>tickCountSent()
 : <a class="el" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">HbcEmulator</a>
@@ -454,12 +526,22 @@ $(function() {
 <li>undo()
 : <a class="el" href="class_q_hex_edit.html#a57a6f775cd612f901567cc005988c6de">QHexEdit</a>
 </li>
+<li>update()
+: <a class="el" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">BinaryViewer</a>
+</li>
 </ul>
 
 
 <h3><a id="index_w"></a>- w -</h3><ul>
 <li>write()
 : <a class="el" href="class_q_hex_edit.html#acc71d91a132a7cf6504d3f20de0ef4ce">QHexEdit</a>
+</li>
+</ul>
+
+
+<h3><a id="index__7E"></a>- ~ -</h3><ul>
+<li>~HbcPeripheral()
+: <a class="el" href="class_hbc_peripheral.html#ab821ed1f1f8bf5adb070b1d1c3bd1b5d">HbcPeripheral</a>
 </li>
 </ul>
 </div><!-- contents -->

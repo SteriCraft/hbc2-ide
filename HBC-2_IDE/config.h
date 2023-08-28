@@ -6,7 +6,7 @@
  * \brief IDE settings management
  * \author Gianni Leclercq
  * \version 0.1
- * \date 27/08/2023
+ * \date 28/08/2023
  */
 #include <QStandardPaths>
 #include <QDialog>
@@ -25,6 +25,11 @@
  */
 struct ConfigurationSettings
 {
+    // Binary viewer settings
+    bool openViewerOnAssembly = true; //!< Sets if the viewer is automatically opened after assembling a project
+    bool openViewerOnEmulatorPaused = true; //!< Sets if the viewer is automatically opened after the emulator was paused
+    bool openViewerOnEmulatorStopped = true; //!< Sets if the viewer is automatically opened after the emulator was stopped
+
     // Emulator settings
     bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
     bool monitorPlugged = true; //!< Sets if the emulator starts with the monitor plugged in
@@ -53,7 +58,24 @@ class ConfigManager
         static ConfigManager* getInstance();
         ~ConfigManager();
 
-        // SETTERS
+
+        // ==== SETTERS ====
+        // Binary viewer settings
+        /*!
+         * \param enable Desired behaviour for the binary viewer on project assembly
+         */
+        void setOpenViewerOnAssembly(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the binary viewer when the emulator is paused
+         */
+        void setOpenViewerOnEmulatorPaused(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the binary viewer when the emulator is stopped
+         */
+        void setOpenViewerOnEmulatorStopped(bool enable);
+
         // Emulator settings
         /*!
          * \param paused Desired behaviour for the emulator on run command
@@ -71,16 +93,32 @@ class ConfigManager
         void setDismissReassemblyWarnings(bool dismiss);
 
         // IDE settings
-
         /*!
          * \param defaultPath Desired new default path for new projects
          */
         bool setDefaultProjectsPath(QString defaultPath);
 
-        // GETTERS
+
+        // ==== GETTERS ====
+        // Binary viewer settings
+        /*!
+         * \return <b>true</b> if the binary viewer opens on project assembly
+         */
+        bool getOpenViewerOnAssembly();
+
+        /*!
+         * \return <b>true</b> if the binary viewer opens when the emulator is paused
+         */
+        bool getOpenViewerOnEmulatorPaused();
+
+        /*!
+         * \return <b>true</b> if the binary viewer opens when the emulator is stopped
+         */
+        bool getOpenViewerOnEmulatorStopped();
+
         // Emulator settings
         /*!
-         * \return startEmulatorPaused
+         * \return <b>true</b> if the emulator starts paused
          */
         bool getStartEmulatorPaused();
 
@@ -124,14 +162,23 @@ class SettingsDialog : public QDialog
         SettingsDialog(ConfigManager *configManager, QWidget *parent = nullptr);
 
     private slots:
+        void openViewerOnAssemblyChanged();
+        void openViewerOnEmulatorPausedChanged();
+        void openViewerOnEmulatorStoppedChanged();
+
         void startPausedChanged();
         void plugMonitorChanged();
         void dismissReassemblyWarningsChanged();
+
         void browseProjectsPathClicked();
         void defaultProjectsPathChanged();
 
     private:
         QLineEdit *m_defaultProjectsPathLineEdit;
+
+        QCheckBox *m_openViewerOnAssemblyCheckBox;
+        QCheckBox *m_openViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openViewerOnEmulatorStoppedCheckBox;
 
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;

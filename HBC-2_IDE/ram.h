@@ -21,7 +21,7 @@
 struct HbcRam
 {
     QMutex m_lock;
-    Byte m_memory[Ram::MEMORY_SIZE]; //*! 65,536 bytes
+    Byte m_memory[Ram::MEMORY_SIZE]; //!< 65,536 bytes
 };
 
 // Already documented in computerDetails.h

@@ -28,10 +28,10 @@ class HbcPeripheral
          * \param consoleOutput Pointer to MainWindow's console output
          */
         HbcPeripheral(HbcIod *iod, Console *consoleOutput);
-        virtual ~HbcPeripheral() = 0; //*! Must be overriden to destroy the derived peripheral
+        virtual ~HbcPeripheral() = 0; //!< Must be overriden to destroy the derived peripheral
 
-        virtual void init() = 0; //*! Must be overriden to initialize the derived peripheral
-        virtual void tick() = 0; //*! Must be overriden to tick the derived peripheral
+        virtual void init() = 0; //!< Must be overriden to initialize the derived peripheral
+        virtual void tick() = 0; //!< Must be overriden to tick the derived peripheral
 
     protected:
         /*!

@@ -102,6 +102,10 @@ Signals</h2></td></tr>
 <tr class="memitem:a372e82f6e4229bb266c16494a00e1e97"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">statusChanged</a> (Emulator::State newState)</td></tr>
 <tr class="memdesc:a372e82f6e4229bb266c16494a00e1e97"><td class="mdescLeft">&#160;</td><td class="mdescRight">Emitted whenever the emulator's state changes.  <a href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">More...</a><br /></td></tr>
 <tr class="separator:a372e82f6e4229bb266c16494a00e1e97"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6332eaca734c8fa70c1de6d6b1d5eb3"><td class="memItemLeft" align="right" valign="top"><a id="ac6332eaca734c8fa70c1de6d6b1d5eb3"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">stepped</a> ()</td></tr>
+<tr class="memdesc:ac6332eaca734c8fa70c1de6d6b1d5eb3"><td class="mdescLeft">&#160;</td><td class="mdescRight">Emitted wheneven the emulator executes the STEP command. <br /></td></tr>
+<tr class="separator:ac6332eaca734c8fa70c1de6d6b1d5eb3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8aa3b8fb06f56dc8f272f99b8f7061fd"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">tickCountSent</a> (int countIn100Ms)</td></tr>
 <tr class="memdesc:a8aa3b8fb06f56dc8f272f99b8f7061fd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Emitted every 100 milliseconds.  <a href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">More...</a><br /></td></tr>
 <tr class="separator:a8aa3b8fb06f56dc8f272f99b8f7061fd"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -126,6 +130,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadProject</b> (QByt
 <tr class="memitem:a0445b6b41695e021b9205290c8d1abf7"><td class="memItemLeft" align="right" valign="top"><a id="a0445b6b41695e021b9205290c8d1abf7"></a>
 bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadProject</b> (QByteArray initialRamData, QString projectName)</td></tr>
 <tr class="separator:a0445b6b41695e021b9205290c8d1abf7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a6f0c5343676ac2c52d9c489f78aeb69c"><td class="memItemLeft" align="right" valign="top">const QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a6f0c5343676ac2c52d9c489f78aeb69c">getCurrentBinaryData</a> ()</td></tr>
+<tr class="separator:a6f0c5343676ac2c52d9c489f78aeb69c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a4634273ea4a9602e6d0062c715ec3a29"><td class="memItemLeft" align="right" valign="top"><a id="a4634273ea4a9602e6d0062c715ec3a29"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>useMonitor</b> (bool enable)</td></tr>
 <tr class="separator:a4634273ea4a9602e6d0062c715ec3a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -166,22 +172,40 @@ Static Public Member Functions</h2></td></tr>
 <table class="doxtable">
 <caption>List of available commands</caption>
 <tr>
-<th>ID </th><th>Command </th><th>Description  </th></tr>
+<th>ID </th><th>Command </th><th>Description </th><th>Keyboard shortcut  </th></tr>
 <tr>
-<td>0 </td><td>NONE </td><td>No operation  </td></tr>
+<td>0 </td><td>NONE </td><td>No operation </td><td></td></tr>
 <tr>
-<td>1 </td><td>RUN </td><td>Starts execution at targeted frequency and sets the emulator's state to RUNNING  </td></tr>
+<td>1 </td><td>RUN </td><td>Starts execution at targeted frequency and sets the emulator's state to RUNNING </td><td>F9  </td></tr>
 <tr>
-<td>2 </td><td>STEP </td><td>Executes one instruction, does not change the emulator's state  </td></tr>
+<td>2 </td><td>STEP </td><td>Executes one instruction, does not change the emulator's state </td><td>F10  </td></tr>
 <tr>
-<td>3 </td><td>PAUSE </td><td>Pauses execution and sets the emulator's state to PAUSED  </td></tr>
+<td>3 </td><td>PAUSE </td><td>Pauses execution and sets the emulator's state to PAUSED </td><td>F11  </td></tr>
 <tr>
-<td>4 </td><td>STOP </td><td>Stops execution and sets the emulator's state to READY  </td></tr>
+<td>4 </td><td>STOP </td><td>Stops execution and sets the emulator's state to READY </td><td>F12  </td></tr>
 <tr>
 <td>5 </td><td>CLOSE </td><td>Stops the thread and sets the emulator's state to NOT_INITIALIZED  </td></tr>
 </table>
 <p>Any invalid command will result in <b>NONE</b>. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
+<a id="a6f0c5343676ac2c52d9c489f78aeb69c"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a6f0c5343676ac2c52d9c489f78aeb69c">&#9670;&nbsp;</a></span>getCurrentBinaryData()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const QByteArray HbcEmulator::getCurrentBinaryData </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>the current content of memory </dd></dl>
+
+</div>
+</div>
 <a id="ab31889d0b7f5d02621e87b69665ad850"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab31889d0b7f5d02621e87b69665ad850">&#9670;&nbsp;</a></span>getFrequencyTarget()</h2>
 

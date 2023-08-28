@@ -51,7 +51,7 @@ struct HbcCpu
 // Already documented in computerDetails.h
 namespace Cpu
 {
-    void init(HbcCpu &cpu, HbcMotherboard* mb); //*! Initializes the CPU
+    void init(HbcCpu &cpu, HbcMotherboard* mb); //!< Initializes the CPU
 
     /*!
      * \brief <b>Used internaly: </b> Step 1 of Cpu::tick

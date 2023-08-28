@@ -23,11 +23,11 @@ struct HbcMotherboard
     HbcRam m_ram;
     HbcIod m_iod;
 
-    Word m_addressBus; //*! 16-bit
-    Byte m_dataBus; //*! 8-bit
+    Word m_addressBus; //!< 16-bit
+    Byte m_dataBus; //!< 8-bit
 
-    bool m_int; //*! INT: Interrupt signal
-    bool m_inr; //*! INR: Interrupt Ready signal
+    bool m_int; //!< INT: Interrupt signal
+    bool m_inr; //!< INR: Interrupt Ready signal
 };
 
 /*!
