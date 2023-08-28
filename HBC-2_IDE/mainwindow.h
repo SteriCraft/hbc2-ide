@@ -103,6 +103,7 @@ class MainWindow : public QMainWindow
         QString getItemPath(ProjectItem *item);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
+        void updateCpuStateViewer();
         void updateRecentProjectsMenu();
 
         // Editors management actions
@@ -131,6 +132,9 @@ class MainWindow : public QMainWindow
         void setFrequencyTargetAction(Emulator::FrequencyTarget target);
         void plugMonitorPeripheralAction();
         void startPausedAction();
+        // Tools actions
+        void openCpuStateViewer();
+        // Miscellaneous actions
         void openAboutDialogAction();
         // Project item right-click menu actions
         void setActiveProjectActionRC();
@@ -191,6 +195,8 @@ class MainWindow : public QMainWindow
         QMenu *m_emulatorPeripheralsMenu;
         QAction *m_monitorToggle;
         QAction *m_startPausedToggle;
+        QMenu *m_toolsMenu;
+        QAction *m_openCpuStateViewerAction;
         // Project Manager right-click menu
         QAction *m_setActiveProjectActionRC;
         QAction *m_addNewFileActionRC;

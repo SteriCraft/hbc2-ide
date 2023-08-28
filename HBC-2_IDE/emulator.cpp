@@ -169,6 +169,34 @@ const QByteArray HbcEmulator::getCurrentBinaryData()
     return exportContent;
 }
 
+const CpuStatus HbcEmulator::getCurrentCpuStatus()
+{
+    CpuStatus status;
+
+    status.state = m_computer.motherboard.m_cpu.m_currentState;
+    status.interruptReady = (m_computer.motherboard.m_cpu.m_flags[(int)Cpu::Flags::INTERRUPT]) ? true : false;
+
+    status.programCounter = m_computer.motherboard.m_cpu.m_programCounter;
+    status.instructionRegister = m_computer.motherboard.m_cpu.m_instructionRegister;
+    status.addrMode = m_computer.motherboard.m_cpu.m_addressingMode;
+
+    status.regA = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::A];
+    status.regB = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::B];
+    status.regC = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::C];
+    status.regD = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::D];
+    status.regI = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::I];
+    status.regJ = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::J];
+    status.regX = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::X];
+    status.regY = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::Y];
+
+    status.stackPointer = m_computer.motherboard.m_cpu.m_stackPointer;
+
+    status.addressBus = m_computer.motherboard.m_addressBus;
+    status.dataBus = m_computer.motherboard.m_dataBus;
+
+    return status;
+}
+
 void HbcEmulator::useMonitor(bool enable)
 {
     m_status.useMonitor = enable;

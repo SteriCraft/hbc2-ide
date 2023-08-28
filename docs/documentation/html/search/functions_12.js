@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['write_536',['write',['../class_q_hex_edit.html#acc71d91a132a7cf6504d3f20de0ef4ce',1,'QHexEdit::write()'],['../namespace_ram.html#a486110e15c5949ccfb26e43a2e3761ad',1,'Ram::write()']]],
-  ['writeram_537',['writeRam',['../namespace_motherboard.html#a0500c95795205f3e110acdef30fe44c5',1,'Motherboard']]]
+  ['undo_549',['undo',['../class_q_hex_edit.html#a57a6f775cd612f901567cc005988c6de',1,'QHexEdit']]],
+  ['update_550',['update',['../class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce',1,'BinaryViewer::update()'],['../class_cpu_state_viewer.html#a02f5d1c691d93db68ee3b56f939a90bd',1,'CpuStateViewer::update()']]]
 ];

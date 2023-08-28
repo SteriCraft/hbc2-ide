@@ -89,7 +89,7 @@ namespace Token
                                    "Defined routines exceed memory size", "Data definition exceeds memory size",
                                    "Error on free memory space split while analyzing defined data",
                                    "Routine exceeds memory size", "Data definition overlaps \"", "Routine overlaps \"",
-                                   "Unknown variable", "Unable to write the binary file" }; //!< More info in the assembly language documentation
+                                   "Unknown variable", "Unable to write the binary file (" }; //!< More info in the assembly language documentation
 
     /*!
      * \class TokenItem

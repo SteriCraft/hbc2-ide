@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "binaryViewer.h"
+#include "cpuStateViewer.h"
 
 #include <QDesktopServices>
 
@@ -140,13 +141,13 @@ void MainWindow::setupMenuBar()
     m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F9));
 
     m_stepEmulatorAction = m_emulatorMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F10));
+    m_stepEmulatorAction->setShortcut(QKeySequence(Qt::Key_F10));
 
     m_pauseEmulatorAction = m_emulatorMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F11));
+    m_pauseEmulatorAction->setShortcut(QKeySequence(Qt::Key_F11));
 
     m_stopEmulatorAction = m_emulatorMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F12));
+    m_stopEmulatorAction->setShortcut(QKeySequence(Qt::Key_F12));
 
     m_emulatorMenu->addSeparator();
 
@@ -193,6 +194,11 @@ void MainWindow::setupMenuBar()
     m_startPausedToggle = m_emulatorMenu->addAction(tr("Start paused"), this, &MainWindow::startPausedAction);
     m_startPausedToggle->setCheckable(true);
     m_startPausedToggle->setChecked(m_configManager->getStartEmulatorPaused());
+
+    m_toolsMenu = menuBar()->addMenu(tr("Tools"));
+
+    m_openCpuStateViewerAction = m_toolsMenu->addAction(tr("Show CPU state"), this, &MainWindow::openCpuStateViewer);
+    m_openCpuStateViewerAction->setShortcut(QKeySequence(Qt::Key_F7));
 
     menuBar()->addAction(tr("About"), this, &MainWindow::openAboutDialogAction);
 
@@ -590,14 +596,27 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     if (newState == Emulator::State::RUNNING)
     {
         BinaryViewer::close();
+        CpuStateViewer::close();
     }
-    else if (newState == Emulator::State::READY && m_configManager->getOpenViewerOnEmulatorStopped())
+    else if (newState == Emulator::State::READY)
     {
-        updateBinaryViewer();
+        if (m_configManager->getOpenViewerOnEmulatorStopped())
+            updateBinaryViewer();
+
+        /*if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
+            updateCpuStateViewer();*/
+
+        updateCpuStateViewer();
     }
-    else if (newState == Emulator::State::PAUSED && m_configManager->getOpenViewerOnEmulatorPaused())
+    else if (newState == Emulator::State::PAUSED)
     {
-        updateBinaryViewer();
+        if (m_configManager->getOpenViewerOnEmulatorPaused())
+            updateBinaryViewer();
+
+        /*if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
+            updateCpuStateViewer();*/
+
+        updateCpuStateViewer();
     }
 }
 
@@ -1155,6 +1174,13 @@ void MainWindow::startPausedAction()
     m_emulator->setStartPaused(m_startPausedToggle->isChecked());
 }
 
+// Tools actions
+void MainWindow::openCpuStateViewer()
+{
+    updateCpuStateViewer();
+}
+
+// Miscellaneous actions
 void MainWindow::openAboutDialogAction()
 {
     AboutDialog *about = new AboutDialog(this);
@@ -1475,8 +1501,6 @@ void MainWindow::openPathInFileExplorerActionRC()
     if (info.isFile())
         dirPath = info.absolutePath();
 
-    qDebug() << dirPath;
-
     QDesktopServices::openUrl(QUrl::fromLocalFile(dirPath));
 #endif
 }
@@ -1558,6 +1582,8 @@ void MainWindow::updateWinTabMenu()
         m_stepEmulatorAction->setEnabled(false);
         m_pauseEmulatorAction->setEnabled(false);
         m_stopEmulatorAction->setEnabled(false);
+
+        m_openCpuStateViewerAction->setEnabled(false);
     }
     else
     {
@@ -1625,6 +1651,8 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
         m_stepEmulatorAction->setEnabled(newState == Emulator::State::PAUSED);
         m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
         m_stopEmulatorAction->setEnabled(newState == Emulator::State::RUNNING || newState == Emulator::State::PAUSED);
+
+        m_openCpuStateViewerAction->setEnabled(newState != Emulator::State::NOT_INITIALIZED);
     }
     else
     {
@@ -1634,6 +1662,8 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
         m_stepEmulatorAction->setEnabled(false);
         m_pauseEmulatorAction->setEnabled(false);
         m_stopEmulatorAction->setEnabled(false);
+
+        m_openCpuStateViewerAction->setEnabled(false);
     }
 
     m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
@@ -1696,6 +1726,15 @@ void MainWindow::updateBinaryViewer()
     BinaryViewer *viewer = BinaryViewer::getInstance(this);
 
     viewer->update(data);
+    viewer->show();
+}
+
+void MainWindow::updateCpuStateViewer()
+{
+    const CpuStatus status = m_emulator->getCurrentCpuStatus();
+    CpuStateViewer *viewer = CpuStateViewer::getInstance(this);
+
+    viewer->update(status);
     viewer->show();
 }
 

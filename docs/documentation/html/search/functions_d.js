@@ -1,4 +1,9 @@
 var searchData=
 [
-  ['qhexedit_485',['QHexEdit',['../class_q_hex_edit.html#aec1f1e5b7652e7e39a8ca5e73ed63373',1,'QHexEdit']]]
+  ['pausecmd_494',['pauseCmd',['../class_hbc_emulator.html#a582aa1267090e5f5f1f16010602c4d7f',1,'HbcEmulator']]],
+  ['pop_495',['pop',['../namespace_cpu.html#afd970e0ad8adda453a2c4a3f829c2dce',1,'Cpu']]],
+  ['print_496',['print',['../class_token_1_1_token_item.html#a915a93cae7b2bd72b8b843979fb95398',1,'Token::TokenItem']]],
+  ['project_497',['Project',['../class_project.html#a75267cfd1330eec49a554615da56cddd',1,'Project']]],
+  ['projectitem_498',['ProjectItem',['../class_project_item.html#afdd145abe4469573b1bbd9c7cd304dae',1,'ProjectItem::ProjectItem(QString path, ProjectItem *parent, bool isFolder)'],['../class_project_item.html#aa358f7d055f5d11fcd1aa99536c8c2e7',1,'ProjectItem::ProjectItem(QString projectName)']]],
+  ['push_499',['push',['../namespace_cpu.html#ae443202b839b1909cce9302a19e8ce25',1,'Cpu']]]
 ];

@@ -1317,10 +1317,6 @@ bool Assembler::calculateRoutineBlocksAddresses()
 
         for (unsigned int j(0); j < m_freeMemorySpaces.size(); j++)
         {
-            /*qDebug() << "free mem space at " << m_freeMemorySpaces[j].range.begin;
-            qDebug() << "ends at " << m_freeMemorySpaces[j].range.end;
-            qDebug() << "total " << m_freeMemorySpaces[j].size();*/
-
             if (m_freeMemorySpaces[j].size() >= m_undefinedRoutineBlocks[0].size()) // Large enough free memory space found
             {
                 spaceFound = true;
@@ -1546,12 +1542,10 @@ bool Assembler::saveBinaryToFile()
 
     if (!file.open(QIODevice::WriteOnly))
     {
-        qDebug() << "Cannot open file for writing: " << qPrintable(file.errorString());
-
         m_error.originFilePath = "";
         m_error.originLineNb = 0;
         m_error.type = Token::ErrorType::BIN_FILE_OPEN;
-        m_error.additionalInfo = "";
+        m_error.additionalInfo = file.errorString().toStdString() + ")";
 
         logError();
         return false;

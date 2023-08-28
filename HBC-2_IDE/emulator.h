@@ -206,6 +206,11 @@ class HbcEmulator : public QThread
          */
         const QByteArray getCurrentBinaryData();
 
+        /*!
+         * \return the current HbcCpu status
+         */
+        const CpuStatus getCurrentCpuStatus();
+
         void useMonitor(bool enable);
         void setStartPaused(bool enable);
 

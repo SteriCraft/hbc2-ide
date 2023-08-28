@@ -179,10 +179,6 @@ void ProjectItem::renameInChildrenPaths(QString newParentName)
 
 bool ProjectItem::contains(QString path, QString projectPath)
 {
-    qDebug() << (QFileInfo(projectPath).path() + m_path);
-    qDebug() << projectPath;
-    qDebug();
-
     if ((QFileInfo(projectPath).path() + m_path) == path)
     {
         return true;

@@ -19,8 +19,6 @@ void BinaryViewer::update(const QByteArray data)
 {
     if (m_singleton != nullptr)
         m_singleton->m_hexEditor->setData(data);
-
-    qDebug() << "updated";
 }
 
 void BinaryViewer::close()

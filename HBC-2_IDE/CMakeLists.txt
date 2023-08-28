@@ -35,6 +35,8 @@ add_executable(HBC-2_IDE
   console.h
   cpu.cpp
   cpu.h
+  cpuStateViewer.cpp
+  cpuStateViewer.h
   customizedEditor.cpp
   customizedEditor.h
   emulator.cpp
@@ -63,7 +65,6 @@ add_executable(HBC-2_IDE
   token.h
   mainwindow.ui
   res.qrc
-  assembler.cpp
 )
 
 #Adding executable icon

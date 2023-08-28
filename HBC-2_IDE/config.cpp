@@ -47,8 +47,6 @@ bool ConfigManager::addRecentProject(QString path)
 
     m_settings.recentProjects.push_front(path);
 
-    qDebug() << "new recent project added";
-
     return true;
 }
 
@@ -281,11 +279,9 @@ bool ConfigManager::saveRecentProjects()
     {
         QTextStream out(&recentProjectsFile);
 
-        qDebug() << m_settings.recentProjects.size();
         for (unsigned int i(0); i < m_settings.recentProjects.size(); i++)
         {
             out << m_settings.recentProjects[i];
-            qDebug() << m_settings.recentProjects[i];
         }
 
         recentProjectsFile.close();

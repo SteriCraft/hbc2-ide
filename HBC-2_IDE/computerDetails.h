@@ -73,6 +73,33 @@ namespace Cpu
 }
 
 /*!
+ * \brief Used to send the current HbcCpu state to the CpuStateViewer
+ */
+struct CpuStatus
+{
+    Cpu::CpuState state = Cpu::CpuState::INSTRUCTION_EXEC;
+    bool interruptReady = true;
+
+    Word programCounter = Cpu::PROGRAM_START_ADDRESS;
+    Dword instructionRegister = 0x0000;
+    Cpu::AddressingMode addrMode = Cpu::AddressingMode::NONE;
+
+    Byte regA = 0x00;
+    Byte regB = 0x00;
+    Byte regC = 0x00;
+    Byte regD = 0x00;
+    Byte regI = 0x00;
+    Byte regJ = 0x00;
+    Byte regX = 0x00;
+    Byte regY = 0x00;
+
+    Word stackPointer = 0x0000;
+
+    Word addressBus = 0x0000;
+    Byte dataBus = 0x00;
+};
+
+/*!
  * \namespace Ram
  *
  * Random Access Memory specifications.<br>
