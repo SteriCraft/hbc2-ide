@@ -94,7 +94,7 @@ $(function() {
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    <span class="keyword">public</span>:</div>
 <div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>* <a class="code" href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">getInstance</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
 <div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160; </div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_cpu_state_viewer.html#a02f5d1c691d93db68ee3b56f939a90bd">update</a>(<a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">update</a>(<span class="keyword">const</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
 <div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160; </div>
 <div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;        <span class="keyword">static</span> QString <a class="code" href="class_cpu_state_viewer.html#aaf90e75d26f9a16d2fa736f1dcb31308">byte2QString</a>(Byte value);</div>
 <div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160; </div>
@@ -102,44 +102,46 @@ $(function() {
 <div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160; </div>
 <div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;        <span class="keyword">static</span> QString <a class="code" href="class_cpu_state_viewer.html#ab56da45cb87ad475b98f42b86a585139">dWord2QString</a>(Dword value);</div>
 <div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160; </div>
-<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH = 400;</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> STATE_WIDTH = 250;</div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> INSTRUCTION_WIDTH = 200;</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REGISTER_LINE_EDIT_WIDTH = 80;</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160; </div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;        <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        <span class="keywordtype">void</span> updateStatus(<a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160; </div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;        QLineEdit *m_stateLineEdit;</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        QLineEdit *m_interruptReadyLineEdit;</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160; </div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        QLineEdit *m_programCounterLineEdit;</div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;        QLineEdit *m_instructionRegisterLineEdit;</div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;        QLineEdit *m_addressingModeLineEdit;</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160; </div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;        QLineEdit *m_registerALineEdit;</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        QLineEdit *m_registerBLineEdit;</div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;        QLineEdit *m_registerCLineEdit;</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;        QLineEdit *m_registerDLineEdit;</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;        QLineEdit *m_registerILineEdit;</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        QLineEdit *m_registerJLineEdit;</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;        QLineEdit *m_registerXLineEdit;</div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        QLineEdit *m_registerYLineEdit;</div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160; </div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        QLineEdit *m_stackPointerLineEdit;</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160; </div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH = 400;</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> STATE_WIDTH = 250;</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> INSTRUCTION_WIDTH = 200;</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REGISTER_LINE_EDIT_WIDTH = 80;</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160; </div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;        <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;        <span class="keywordtype">void</span> updateStatus(<a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160; </div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        QLineEdit *m_stateLineEdit;</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;        QLineEdit *m_interruptReadyLineEdit;</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160; </div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;        QLineEdit *m_programCounterLineEdit;</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;        QLineEdit *m_instructionRegisterLineEdit;</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;        QLineEdit *m_addressingModeLineEdit;</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160; </div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;        QLineEdit *m_registerALineEdit;</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;        QLineEdit *m_registerBLineEdit;</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;        QLineEdit *m_registerCLineEdit;</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        QLineEdit *m_registerDLineEdit;</div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;        QLineEdit *m_registerILineEdit;</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        QLineEdit *m_registerJLineEdit;</div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;        QLineEdit *m_registerXLineEdit;</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        QLineEdit *m_registerYLineEdit;</div>
 <div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160; </div>
-<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        QLineEdit *m_addressBusLineEdit;</div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;        QLineEdit *m_dataBusLineEdit;</div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;};</div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160; </div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CPUSTATEVIEWER_H</span></div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        QLineEdit *m_stackPointerLineEdit;</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160; </div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;        QLineEdit *m_addressBusLineEdit;</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;        QLineEdit *m_dataBusLineEdit;</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;};</div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160; </div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CPUSTATEVIEWER_H</span></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html"><div class="ttname"><a href="class_cpu_state_viewer.html">CpuStateViewer</a></div><div class="ttdoc">Singleton of the HbcCpu state viewer.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.h:30</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_a02f5d1c691d93db68ee3b56f939a90bd"><div class="ttname"><a href="class_cpu_state_viewer.html#a02f5d1c691d93db68ee3b56f939a90bd">CpuStateViewer::update</a></div><div class="ttdeci">static void update(CpuStatus status)</div><div class="ttdoc">Updates displayed status information.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:15</div></div>
+<div class="ttc" id="aclass_cpu_state_viewer_html_a2335100c37947f00afdbcfead5e1f7d4"><div class="ttname"><a href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">CpuStateViewer::update</a></div><div class="ttdeci">static void update(const CpuStatus status)</div><div class="ttdoc">Updates displayed status information.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:15</div></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html_a3908fc057eeff72b3d9d14eb76b4d02b"><div class="ttname"><a href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">CpuStateViewer::getInstance</a></div><div class="ttdeci">static CpuStateViewer * getInstance(QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:5</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_a7d90850a1fa88eccb9dfddea50ef27dc"><div class="ttname"><a href="class_cpu_state_viewer.html#a7d90850a1fa88eccb9dfddea50ef27dc">CpuStateViewer::word2QString</a></div><div class="ttdeci">static QString word2QString(Word value)</div><div class="ttdoc">Converts a word to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:25</div></div>
+<div class="ttc" id="aclass_cpu_state_viewer_html_a7d90850a1fa88eccb9dfddea50ef27dc"><div class="ttname"><a href="class_cpu_state_viewer.html#a7d90850a1fa88eccb9dfddea50ef27dc">CpuStateViewer::word2QString</a></div><div class="ttdeci">static QString word2QString(Word value)</div><div class="ttdoc">Converts a word to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:33</div></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html_aaf90e75d26f9a16d2fa736f1dcb31308"><div class="ttname"><a href="class_cpu_state_viewer.html#aaf90e75d26f9a16d2fa736f1dcb31308">CpuStateViewer::byte2QString</a></div><div class="ttdeci">static QString byte2QString(Byte value)</div><div class="ttdoc">Converts a byte to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:21</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_ab56da45cb87ad475b98f42b86a585139"><div class="ttname"><a href="class_cpu_state_viewer.html#ab56da45cb87ad475b98f42b86a585139">CpuStateViewer::dWord2QString</a></div><div class="ttdeci">static QString dWord2QString(Dword value)</div><div class="ttdoc">Converts a dword to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:29</div></div>
+<div class="ttc" id="aclass_cpu_state_viewer_html_ab56da45cb87ad475b98f42b86a585139"><div class="ttname"><a href="class_cpu_state_viewer.html#ab56da45cb87ad475b98f42b86a585139">CpuStateViewer::dWord2QString</a></div><div class="ttdeci">static QString dWord2QString(Dword value)</div><div class="ttdoc">Converts a dword to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:49</div></div>
 <div class="ttc" id="acomputer_details_8h_html"><div class="ttname"><a href="computer_details_8h.html">computerDetails.h</a></div><div class="ttdoc">Constants, structures and enumerations according to the computer specifications.</div></div>
 <div class="ttc" id="astruct_cpu_status_html"><div class="ttname"><a href="struct_cpu_status.html">CpuStatus</a></div><div class="ttdoc">Used to send the current HbcCpu state to the CpuStateViewer.</div><div class="ttdef"><b>Definition:</b> computerDetails.h:79</div></div>
 </div><!-- fragment --></div><!-- contents -->
