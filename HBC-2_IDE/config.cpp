@@ -21,7 +21,35 @@ ConfigManager* ConfigManager::getInstance()
 ConfigManager::~ConfigManager()
 {
     saveConfigFile();
+    saveRecentProjects();
+
     m_singleton = nullptr;
+}
+
+QList<QString> ConfigManager::getRecentProjects()
+{
+    return m_settings.recentProjects;
+}
+
+bool ConfigManager::addRecentProject(QString path)
+{
+    for (unsigned int i(0); i < m_settings.recentProjects.size(); i++)
+    {
+        if (m_settings.recentProjects[i] == path)
+        {
+            m_settings.recentProjects.removeAt(i);
+            i--;
+        }
+    }
+
+    if (path.isEmpty()) // After the loop to remove any empty project path from the list
+        return false;
+
+    m_settings.recentProjects.push_front(path);
+
+    qDebug() << "new recent project added";
+
+    return true;
 }
 
 // SETTERS
@@ -112,6 +140,7 @@ QString ConfigManager::getDefaultProjectsPath()
 // PRIVATE
 ConfigManager::ConfigManager()
 {
+    // Configuration file
     QString configFilePath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/config.cfg");
     QFile configFile(configFilePath);
 
@@ -173,6 +202,33 @@ ConfigManager::ConfigManager()
                 }
             }
         }
+
+        configFile.close();
+    }
+
+    // Recent projects file
+    QString recentProjectsFilePath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/recentProjects.cfg");
+    QFile recentProjectsFile(recentProjectsFilePath);
+    m_settings.recentProjects.clear();
+
+    if (QFile::exists(configFilePath))
+    {
+        if (recentProjectsFile.open(QIODevice::ReadOnly))
+        {
+            QTextStream in(&recentProjectsFile);
+
+            int i(0);
+            while (!in.atEnd() && i < 10)
+            {
+                QString line = in.readLine();
+
+                m_settings.recentProjects.push_back(line);
+
+                i++;
+            }
+
+            recentProjectsFile.close();
+        }
     }
 }
 
@@ -201,6 +257,38 @@ bool ConfigManager::saveConfigFile()
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
         out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
 
+        configFile.close();
+        return true;
+    }
+
+    return false;
+}
+
+bool ConfigManager::saveRecentProjects()
+{
+    QString recentProjectsFilePath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/recentProjects.cfg");
+    QFile recentProjectsFile(recentProjectsFilePath);
+
+    QString recentProjectsDirectoryPath(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation));
+    QDir recentProjectsDirectory(recentProjectsDirectoryPath);
+
+    if (!recentProjectsDirectory.exists())
+    {
+        recentProjectsDirectory.mkpath(recentProjectsDirectoryPath);
+    }
+
+    if (recentProjectsFile.open(QIODevice::WriteOnly))
+    {
+        QTextStream out(&recentProjectsFile);
+
+        qDebug() << m_settings.recentProjects.size();
+        for (unsigned int i(0); i < m_settings.recentProjects.size(); i++)
+        {
+            out << m_settings.recentProjects[i];
+            qDebug() << m_settings.recentProjects[i];
+        }
+
+        recentProjectsFile.close();
         return true;
     }
 

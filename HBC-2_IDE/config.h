@@ -37,6 +37,9 @@ struct ConfigurationSettings
 
     // IDE settings
     QString defaultProjectsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/hbc2_projects"; //!< Stores the default path for new projects
+
+    // Recent projects
+    QList<QString> recentProjects;
 };
 
 /*!
@@ -57,6 +60,16 @@ class ConfigManager
          */
         static ConfigManager* getInstance();
         ~ConfigManager();
+
+        /*!
+         * \return a list of recents projects stored in "recentProjects.cfg"
+         */
+        QList<QString> getRecentProjects();
+
+        /*!
+         * \brief Returns <b>false</b> if path is empty
+         */
+        bool addRecentProject(QString path);
 
 
         // ==== SETTERS ====
@@ -140,6 +153,7 @@ class ConfigManager
 
     private:
         ConfigManager();
+        bool saveRecentProjects();
         bool saveConfigFile();
 
         ConfigurationSettings m_settings;

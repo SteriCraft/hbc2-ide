@@ -178,7 +178,7 @@ class ProjectManager : public QTreeWidget // SINGLETON
         /*!
          * \brief Creates a new project
          * \param path Project's main directory
-         * \param toLoad <b>true</b> if the project must be loaded <i>(project opening)</i>
+         * \param toLoad <b>true</b> if the project must be loaded <i>(open a project)</i>
          * \return <b>false</b> if path is empty
          * \return <b>false</b> if the project could not be loaded
          * \return <b>false</b> if the project's files are invalid

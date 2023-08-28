@@ -71,6 +71,8 @@ class MainWindow : public QMainWindow
         void onItemSelectChanged();
         void onItemRightClick(const QPoint &pos);
         void onItemDoubleClick(QTreeWidgetItem* item);
+        // Menu interaction
+        void onRecentProjectSelected(QString path);
         // Emulator signals
         void onEmulatorStatusChanged(Emulator::State newState);
         void onEmulatorStepped();
@@ -101,11 +103,13 @@ class MainWindow : public QMainWindow
         QString getItemPath(ProjectItem *item);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
+        void updateRecentProjectsMenu();
 
         // Editors management actions
         void newProjectAction();
         void newFileAction();
         void openProjectAction();
+        void openProject(QString projectPath);
         void openFileAction();
         void openFile(QString filePath, Project *associatedProject = nullptr);
         void saveCurrentFileAction();
@@ -160,6 +164,7 @@ class MainWindow : public QMainWindow
         QAction *m_newFileAction;
         QAction *m_openFileAction;
         QAction *m_openProjectAction;
+        QMenu *m_recentProjectsMenu;
         QAction *m_saveFileAction;
         QAction *m_saveAllAction;
         QAction *m_closeProjectAction;

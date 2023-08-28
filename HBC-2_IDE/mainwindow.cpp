@@ -94,6 +94,9 @@ void MainWindow::setupMenuBar()
     m_openFileAction = m_fileMenu->addAction(*m_openFileIcon, tr("Open file"), this, &MainWindow::openFileAction);
     m_openFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_O));
 
+    m_recentProjectsMenu = m_fileMenu->addMenu(tr("Recent projects"));
+    updateRecentProjectsMenu();
+
     m_fileMenu->addSeparator();
 
     m_saveFileAction = m_fileMenu->addAction(*m_saveFileIcon, tr("Save current file"), this, &MainWindow::saveCurrentFileAction);
@@ -573,6 +576,13 @@ void MainWindow::onItemDoubleClick(QTreeWidgetItem* item)
     }
 }
 
+// Menu interactions
+void MainWindow::onRecentProjectSelected(QString path)
+{
+    openProject(path);
+}
+
+// Emulator signals
 void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
 {
     updateEmulatorActions(newState);
@@ -749,17 +759,25 @@ void MainWindow::openProjectAction()
 
     if (!projectPath.isEmpty())
     {
-        if (!m_projectManager->newProject(projectPath, true))
-        {
-            QMessageBox::warning(this, tr("Unable to open project"), tr("Invalid project file."));
-            return;
-        }
-        else
-        {
-            openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
+        openProject(projectPath);
+    }
+}
 
-            updateWinTabMenu();
-        }
+void MainWindow::openProject(QString projectPath)
+{
+    if (!m_projectManager->newProject(projectPath, true))
+    {
+        QMessageBox::warning(this, tr("Unable to open project"), tr("Invalid project file."));
+        return;
+    }
+    else
+    {
+        openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
+
+        m_configManager->addRecentProject(projectPath);
+        updateRecentProjectsMenu();
+
+        updateWinTabMenu();
     }
 }
 
@@ -1679,6 +1697,19 @@ void MainWindow::updateBinaryViewer()
 
     viewer->update(data);
     viewer->show();
+}
+
+void MainWindow::updateRecentProjectsMenu()
+{
+    // Look for recent projects stored in a file next to config
+    QList<QString> recentProjectsPaths = m_configManager->getRecentProjects();
+
+    m_recentProjectsMenu->clear();
+
+    for (unsigned int i(0); i < recentProjectsPaths.size(); i++)
+    {
+        m_recentProjectsMenu->addAction(recentProjectsPaths[i], this, std::bind(&MainWindow::onRecentProjectSelected, this, recentProjectsPaths[i]));
+    }
 }
 
 
