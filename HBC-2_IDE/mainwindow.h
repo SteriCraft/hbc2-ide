@@ -23,7 +23,6 @@
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
-#include "binaryViewer.h"
 
 #define IDE_VERSION QString("0.1")
 
@@ -34,6 +33,23 @@ QT_END_NAMESPACE
 
 /*!
  * \brief Creates and manages the IDE main window
+ *
+ * For more info about HBC-2 emulation, see:<br>
+ * 1. HbcEmulator
+ * 2. HbcCpu
+ * 3. HbcRam
+ * 4. HbcMotherboard
+ * 5. HbcMonitor
+ * 6. HbcRealTimeClock
+ *
+ * For more info about the IDE, see:<br>
+ * 1. Assembler
+ * 2. Console
+ * 3. ProjectManager
+ * 4. FileManager
+ * 5. CustomizedCodeEditor
+ * 6. BinaryViewer
+ * 7. SettingsDialog
  */
 class MainWindow : public QMainWindow
 {
@@ -47,6 +63,7 @@ class MainWindow : public QMainWindow
         // General changes
         void onFileChanged(QString filePath);
         void onTextChanged();
+        void onTextCursorMoved();
         // Tabs
         void onTabSelect();
         void onTabClose(int tabIndex);
@@ -75,7 +92,8 @@ class MainWindow : public QMainWindow
         void closeAssociatedTabs(ProjectItem* item);
         void closeProject(Project *p);
         void updateWinTabMenu();
-        void setStatusBarMessage(QString message);
+        void updateStatusBar();
+        void setStatusBarRightMessage(QString message);
         void updateEmulatorActions(Emulator::State newState);
         int getEditorIndex(CustomFile *file);
         int getEditorIndex(QString fileName);

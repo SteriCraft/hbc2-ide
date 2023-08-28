@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
+#include "binaryViewer.h"
 
 #include <QDesktopServices>
 
@@ -366,6 +367,11 @@ void MainWindow::onTextChanged()
     updateWinTabMenu();
 }
 
+void MainWindow::onTextCursorMoved()
+{
+    updateStatusBar();
+}
+
 void MainWindow::onTabClose(int tabIndex)
 {
     // Identify file
@@ -626,7 +632,7 @@ void MainWindow::onTickCountReceived(int countIn100Ms)
         statusBarStr += QString::number(m_monitor->getFPS());
     }
 
-    setStatusBarMessage(statusBarStr);
+    setStatusBarRightMessage(statusBarStr);
 }
 
 void MainWindow::onMonitorClosed()
@@ -731,6 +737,7 @@ void MainWindow::newFileAction()
     newFile = m_fileManager->newFile();
     CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(newFile, newFile->getName(), defaultEditorFont, m_assemblyEditor);
     connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
+    connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
     newTabNb = m_assemblyEditor->addTab(newEditor, newFile->getName() + "*");
     m_assemblyEditor->setCurrentIndex(newTabNb);
@@ -791,6 +798,7 @@ void MainWindow::openFile(QString filePath, Project *associatedProject)
         {
             CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(openedFile, openedFile->getName(), defaultEditorFont, m_assemblyEditor);
             connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
+            connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
             newEditor->setPlainText(openedFile->getContent());
             newEditor->getFile()->setSaved(true);
@@ -1103,7 +1111,7 @@ void MainWindow::stopEmulatorAction()
 
     m_emulator->stopCmd();
 
-    setStatusBarMessage("");
+    setStatusBarRightMessage("");
 }
 
 void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)
@@ -1569,7 +1577,22 @@ void MainWindow::updateWinTabMenu()
     m_saveAllAction->setEnabled(m_fileManager->areThereUnsavedFiles());
 }
 
-void MainWindow::setStatusBarMessage(QString message)
+void MainWindow::updateStatusBar()
+{
+    CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
+
+    if (currentEditor != nullptr)
+    {
+        QString statusBarStr("");
+
+        statusBarStr += "Line " + QString::number(currentEditor->getCurrentCursorLineNumber()) + " / " + QString::number(currentEditor->blockCount()) + "  |  ";
+        statusBarStr += "Column " + QString::number(currentEditor->getCurrentCursorColumnNumber()) + "  |  ";
+        statusBarStr += QString::number(currentEditor->toPlainText().size() + 1) + " characters";
+        statusBar()->showMessage(statusBarStr);
+    }
+}
+
+void MainWindow::setStatusBarRightMessage(QString message)
 {
     m_statusBarLabel->setText(message);
 }

@@ -301,6 +301,16 @@ CustomFile* CustomizedCodeEditor::getFile()
     return m_associatedFile;
 }
 
+int CustomizedCodeEditor::getCurrentCursorLineNumber()
+{
+    return textCursor().blockNumber() + 1;
+}
+
+int CustomizedCodeEditor::getCurrentCursorColumnNumber()
+{
+    return textCursor().columnNumber() + 1;
+}
+
 void CustomizedCodeEditor::updateLineNumberAreaWidth(int /* newBlockCount */)
 {
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);

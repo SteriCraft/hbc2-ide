@@ -70,6 +70,8 @@ class CustomizedCodeEditor : public QPlainTextEdit
 
         QString getFileName();
         CustomFile* getFile();
+        int getCurrentCursorLineNumber();
+        int getCurrentCursorColumnNumber();
 
     protected:
         void resizeEvent(QResizeEvent *event);
