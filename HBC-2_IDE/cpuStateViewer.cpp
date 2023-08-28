@@ -25,7 +25,7 @@ QString CpuStateViewer::byte2QString(Byte value)
     if (value < 0x10)
         result += "0";
 
-    result += QString::number(value, 16);
+    result += QString::number(value, 16).toUpper();
 
     return result;
 }
@@ -41,7 +41,7 @@ QString CpuStateViewer::word2QString(Word value)
     if (value < 0x10)
         result += "0";
 
-    result += QString::number(value, 16);
+    result += QString::number(value, 16).toUpper();
 
     return result;
 }
@@ -65,7 +65,7 @@ QString CpuStateViewer::dWord2QString(Dword value)
     if (value < 0x10)
         result += "0";
 
-    result += QString::number(value, 16);
+    result += QString::number(value, 16).toUpper();
 
     return result;
 }
@@ -341,15 +341,15 @@ void CpuStateViewer::updateStatus(const CpuStatus status)
             break;
 
         case Cpu::AddressingMode::REG_IMM8:
-            m_addressingModeLineEdit->setText("REG_IMM8");
+            m_addressingModeLineEdit->setText("REG IMM8");
             break;
 
         case Cpu::AddressingMode::REG_RAM:
-            m_addressingModeLineEdit->setText("REG_RAM");
+            m_addressingModeLineEdit->setText("REG RAM");
             break;
 
         case Cpu::AddressingMode::RAMREG_IMMREG:
-            m_addressingModeLineEdit->setText("RAMREG_IMMREG");
+            m_addressingModeLineEdit->setText("RAMREG IMMREG");
             break;
 
         case Cpu::AddressingMode::REG16:
@@ -363,6 +363,9 @@ void CpuStateViewer::updateStatus(const CpuStatus status)
         case Cpu::AddressingMode::IMM8:
             m_addressingModeLineEdit->setText("IMM8");
             break;
+
+        default:
+            m_addressingModeLineEdit->setText("INVALID");
     }
 
     m_registerALineEdit->setText(byte2QString(status.regA));

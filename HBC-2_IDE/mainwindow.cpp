@@ -623,6 +623,7 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
 void MainWindow::onEmulatorStepped()
 {
     BinaryViewer::update(m_emulator->getCurrentBinaryData());
+    CpuStateViewer::update(m_emulator->getCurrentCpuStatus());
 }
 
 void MainWindow::onTickCountReceived(int countIn100Ms)

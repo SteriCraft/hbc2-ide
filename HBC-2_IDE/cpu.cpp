@@ -91,7 +91,7 @@ void Cpu::fetch(HbcCpu &cpu)
     cpu.m_instructionRegister =  ((Dword)Motherboard::readRam(*cpu.m_motherboard, cpu.m_programCounter))     << 24;
     cpu.m_instructionRegister += ((Dword)Motherboard::readRam(*cpu.m_motherboard, cpu.m_programCounter + 1)) << 16;
     cpu.m_instructionRegister += ((Dword)Motherboard::readRam(*cpu.m_motherboard, cpu.m_programCounter + 2)) << 8;
-    cpu.m_instructionRegister +=            Motherboard::readRam(*cpu.m_motherboard, cpu.m_programCounter + 3);
+    cpu.m_instructionRegister +=         Motherboard::readRam(*cpu.m_motherboard, cpu.m_programCounter + 3);
 }
 
 void Cpu::decode(HbcCpu &cpu)
