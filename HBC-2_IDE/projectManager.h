@@ -91,6 +91,11 @@ class ProjectItem : public QTreeWidgetItem
         bool rename(QString newName, QString currentFullPath);
         void renameInChildrenPaths(QString newParentName); //!< Used to rename children items recursively
 
+        /*!
+         * \return <b>true</b> if the item or any of its child has that path
+         */
+        bool contains(QString path, QString projectPath);
+
     private:
         bool m_isFolder;
         QString m_path;
@@ -138,6 +143,11 @@ class Project
         bool isPartOf(ProjectItem* item); //!< Returns <b>true</b> if the passed item is a child of this project <b>(recursive)</b>
         QList<QString> getFilesPaths(); //!< Returns a list of the files complete paths
         QList<QString> getFilesNames(); //!< Returns a list of the files names
+
+        /*!
+         * \return <b>true</b> if the project already includes a file or folder with that path
+         */
+        bool contains(QString path);
 
         void setAssembled(bool assembled);
 

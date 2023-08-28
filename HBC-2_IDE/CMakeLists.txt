@@ -63,6 +63,7 @@ add_executable(HBC-2_IDE
   token.h
   mainwindow.ui
   res.qrc
+  assembler.cpp
 )
 
 #Adding executable icon

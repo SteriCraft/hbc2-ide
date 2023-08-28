@@ -1221,16 +1221,24 @@ void MainWindow::addNewDirectoryActionRC()
 
 void MainWindow::addExistingFileActionRC()
 {
+    Project *parentProject(m_projectManager->getParentProject(m_pointedItem));
+
     if (m_pointedItem == nullptr)
         return;
 
-    QString filePath = QFileDialog::getOpenFileName(this, tr("Open file"), "", "HBC-2 source code (*.has)");
+    QString filePath = QFileDialog::getOpenFileName(this, tr("Open file"), parentProject->getDirPath(), "HBC-2 source code (*.has)");
     QString itemFolderPath(getItemPath(m_pointedItem));
 
     if (!filePath.isEmpty())
     {
         if (QFileInfo(filePath).path() == itemFolderPath) // File is already in the project directory
         {
+            if (parentProject->contains(filePath))
+            {
+                QMessageBox::warning(this, tr("File already included"), tr("This file is already part of the project"));
+                return;
+            }
+
             m_pointedItem->addFile(QFileInfo(filePath).fileName());
             openFile(filePath);
         }
@@ -1270,16 +1278,24 @@ void MainWindow::addExistingFileActionRC()
 
 void MainWindow::addExistingDirectoryActionRC()
 {
+    Project *parentProject(m_projectManager->getParentProject(m_pointedItem));
+
     if (m_pointedItem == nullptr)
         return;
 
-    QString folderPath = QFileDialog::getExistingDirectory(this, tr("Add existing directory"), "");
+    QString folderPath = QFileDialog::getExistingDirectory(this, tr("Add existing directory"), parentProject->getDirPath());
 
     if (!folderPath.isEmpty())
     {
-        if (!folderPath.contains(m_projectManager->getParentProject(m_pointedItem)->getDirPath()))
+        if (!folderPath.contains(parentProject->getDirPath()))
         {
             QMessageBox::warning(this, tr("Invalid directory"), tr("The new directory must be inside the project directory."));
+            return;
+        }
+
+        if (parentProject->contains(folderPath))
+        {
+            QMessageBox::warning(this, tr("Directory already included"), tr("This directory is already part of the project"));
             return;
         }
 

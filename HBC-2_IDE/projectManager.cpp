@@ -177,6 +177,32 @@ void ProjectItem::renameInChildrenPaths(QString newParentName)
     }
 }
 
+bool ProjectItem::contains(QString path, QString projectPath)
+{
+    qDebug() << (QFileInfo(projectPath).path() + m_path);
+    qDebug() << projectPath;
+    qDebug();
+
+    if ((QFileInfo(projectPath).path() + m_path) == path)
+    {
+        return true;
+    }
+    else
+    {
+        for (unsigned int i(0); i < childCount(); i++)
+        {
+            ProjectItem *c(dynamic_cast<ProjectItem*>(child(i)));
+
+            if (c->contains(path, projectPath))
+            {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
 
 // === PROJECT CLASS ===
 Project::Project(QString name, QString path, ProjectItem* mainNode)
@@ -371,6 +397,11 @@ QList<QString> Project::getFilesPaths()
 QList<QString> Project::getFilesNames()
 {
     return m_topItem->getFilesNamesList();
+}
+
+bool Project::contains(QString path)
+{
+    return m_topItem->contains(path, m_path);
 }
 
 void Project::setAssembled(bool assembled)
