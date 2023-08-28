@@ -49,7 +49,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     m_hexEditor->setAddressAreaColor(QColor(64, 66, 68));
     m_hexEditor->setAddressFontColor(QColor(190, 192, 194));
 
-    m_hexEditor->setAsciiAreaColor(QColor(0, 0, 0, 0));
+    m_hexEditor->setAsciiAreaColor(QColor(25, 25, 25));
     m_hexEditor->setAsciiFontColor(QColor(190, 192, 194));
 
     m_hexEditor->setHexFontColor(QColor(190, 192, 194));

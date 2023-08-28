@@ -54,6 +54,8 @@ QHexEdit::QHexEdit(QWidget *parent) : QAbstractScrollArea(parent)
     setHighlighting(true);
     setReadOnly(false);
 
+    setStyleSheet("QAbstractScrollArea {background-color: rgb(14, 14, 14); color:white; }");
+
     init();
 
 }
