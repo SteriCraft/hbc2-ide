@@ -158,6 +158,8 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="clas
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_item.html#ad5ef6f09d2c3f8bd75f7b88bf5516016">renameInChildrenPaths</a> (QString newParentName)</td></tr>
 <tr class="memdesc:ad5ef6f09d2c3f8bd75f7b88bf5516016"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to rename children items recursively. <br /></td></tr>
 <tr class="separator:ad5ef6f09d2c3f8bd75f7b88bf5516016"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a06cf671e7bb92b3fc47b7d2c84006f47"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_item.html#a06cf671e7bb92b3fc47b7d2c84006f47">contains</a> (QString path, QString projectPath)</td></tr>
+<tr class="separator:a06cf671e7bb92b3fc47b7d2c84006f47"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Describes a custom project item in the project tree. </p>
@@ -249,6 +251,35 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="clas
 <p>Adds a new child folder. </p>
 <p>Returns <b>nullptr</b> if an error occured</p>
 <dl class="section return"><dt>Returns</dt><dd>a pointer to the created item </dd></dl>
+
+</div>
+</div>
+<a id="a06cf671e7bb92b3fc47b7d2c84006f47"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a06cf671e7bb92b3fc47b7d2c84006f47">&#9670;&nbsp;</a></span>contains()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool ProjectItem::contains </td>
+          <td>(</td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>path</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>projectPath</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd><b>true</b> if the item or any of its child has that path </dd></dl>
 
 </div>
 </div>
