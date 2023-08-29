@@ -505,7 +505,7 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
         m_registersLineEdits[i]->setText(byte2QString(status.registers[i]));
     }
 
-    m_stackPointerLineEdit->setText(word2QString(status.stackPointer));
+    m_stackPointerLineEdit->setText(byte2QString(status.stackPointer));
 
     m_addressBusLineEdit->setText(word2QString(status.addressBus));
     m_dataBusLineEdit->setText(byte2QString(status.dataBus));

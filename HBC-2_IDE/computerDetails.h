@@ -99,7 +99,7 @@ struct CpuStatus
     bool flags[Cpu::FLAGS_NB] = { false };
     Byte registers[Cpu::REGISTERS_NB] = { 0x00 };
 
-    Word stackPointer = 0x0000;
+    Byte stackPointer = 0x00;
 
     Word addressBus = 0x0000;
     Byte dataBus = 0x00;
