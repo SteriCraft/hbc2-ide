@@ -5,7 +5,7 @@ var searchData=
   ['checkvalidity_29',['checkValidity',['../class_token_1_1_token_line.html#a25c184d4ec147a12d286c1271cf169f1',1,'Token::TokenLine']]],
   ['closeevent_30',['closeEvent',['../class_main_window.html#a05fb9d72c044aa3bb7d187b994704e2f',1,'MainWindow']]],
   ['closefile_31',['closeFile',['../class_file_manager.html#a82df70bfa5009872982bb37dda5b55ca',1,'FileManager::closeFile(QString fileName)'],['../class_file_manager.html#a5f1a3ef47e35b1397e8450ef7d57079d',1,'FileManager::closeFile(CustomFile *file)']]],
-  ['closeproject_32',['closeProject',['../class_project_manager.html#ad1020e676c9a45de68e0210a331c2652',1,'ProjectManager::closeProject(Project *p)'],['../class_project_manager.html#a09a588bd47d38497819be71e353a755d',1,'ProjectManager::closeProject(QString projectName)']]],
+  ['closeproject_32',['closeProject',['../class_project_manager.html#af98af4706e6f8b81ecb7397902a6ee01',1,'ProjectManager::closeProject(std::shared_ptr&lt; Project &gt; project)'],['../class_project_manager.html#a09a588bd47d38497819be71e353a755d',1,'ProjectManager::closeProject(QString projectName)']]],
   ['colorarray_33',['colorArray',['../namespace_monitor.html#af63f2d131b27a6bf7f90ff7096d09c25',1,'Monitor']]],
   ['colors_34',['colors',['../struct_monitor_1_1_char_data.html#ad82a1910f5243bd3889c953735087971',1,'Monitor::CharData']]],
   ['colors_5fnb_35',['COLORS_NB',['../namespace_monitor.html#a39175a2bf90ee5b8f8ce83e41ba496e0',1,'Monitor']]],

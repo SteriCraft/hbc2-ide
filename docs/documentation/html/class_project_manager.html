@@ -110,9 +110,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>closeAllProjects</b> 
 <tr class="memitem:a09a588bd47d38497819be71e353a755d"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a09a588bd47d38497819be71e353a755d">closeProject</a> (QString projectName)</td></tr>
 <tr class="memdesc:a09a588bd47d38497819be71e353a755d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes a project.  <a href="class_project_manager.html#a09a588bd47d38497819be71e353a755d">More...</a><br /></td></tr>
 <tr class="separator:a09a588bd47d38497819be71e353a755d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad1020e676c9a45de68e0210a331c2652"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#ad1020e676c9a45de68e0210a331c2652">closeProject</a> (<a class="el" href="class_project.html">Project</a> *p)</td></tr>
-<tr class="memdesc:ad1020e676c9a45de68e0210a331c2652"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes a project.  <a href="class_project_manager.html#ad1020e676c9a45de68e0210a331c2652">More...</a><br /></td></tr>
-<tr class="separator:ad1020e676c9a45de68e0210a331c2652"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af98af4706e6f8b81ecb7397902a6ee01"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#af98af4706e6f8b81ecb7397902a6ee01">closeProject</a> (std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; project)</td></tr>
+<tr class="memdesc:af98af4706e6f8b81ecb7397902a6ee01"><td class="mdescLeft">&#160;</td><td class="mdescRight">Closes a project.  <a href="class_project_manager.html#af98af4706e6f8b81ecb7397902a6ee01">More...</a><br /></td></tr>
+<tr class="separator:af98af4706e6f8b81ecb7397902a6ee01"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afca89129b3d788cc2f60d4c16fc30372"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#afca89129b3d788cc2f60d4c16fc30372">removeCurrentItem</a> ()</td></tr>
 <tr class="memdesc:afca89129b3d788cc2f60d4c16fc30372"><td class="mdescLeft">&#160;</td><td class="mdescRight">Removes the currently selected item.  <a href="class_project_manager.html#afca89129b3d788cc2f60d4c16fc30372">More...</a><br /></td></tr>
 <tr class="separator:afca89129b3d788cc2f60d4c16fc30372"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -124,13 +124,13 @@ ProjectItem::Type&#160;</td><td class="memItemRight" valign="bottom"><a class="e
 ProjectItem::Type&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a85af273cc06b6c57c69203c080183a06">getProjectItemType</a> (<a class="el" href="class_project_item.html">ProjectItem</a> *item)</td></tr>
 <tr class="memdesc:a85af273cc06b6c57c69203c080183a06"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns item type (<b>ProjectItem::Type::None</b> if no item passed) <br /></td></tr>
 <tr class="separator:a85af273cc06b6c57c69203c080183a06"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ac01d722c48c87eed96360ffb1effae0f"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_project.html">Project</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#ac01d722c48c87eed96360ffb1effae0f">getParentProject</a> (<a class="el" href="class_project_item.html">ProjectItem</a> *item)</td></tr>
-<tr class="memdesc:ac01d722c48c87eed96360ffb1effae0f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a pointer to the parent <a class="el" href="class_project.html" title="Describes a project.">Project</a> of the item.  <a href="class_project_manager.html#ac01d722c48c87eed96360ffb1effae0f">More...</a><br /></td></tr>
-<tr class="separator:ac01d722c48c87eed96360ffb1effae0f"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a240aa5ae281421fe379149d82b22f2d4"><td class="memItemLeft" align="right" valign="top"><a id="a240aa5ae281421fe379149d82b22f2d4"></a>
-<a class="el" href="class_project.html">Project</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a240aa5ae281421fe379149d82b22f2d4">getCurrentProject</a> ()</td></tr>
-<tr class="memdesc:a240aa5ae281421fe379149d82b22f2d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns currently active project (<b>nullptr</b> if none) <br /></td></tr>
-<tr class="separator:a240aa5ae281421fe379149d82b22f2d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ace65e1a54dae1d9f47d76f0582c7b2a0"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#ace65e1a54dae1d9f47d76f0582c7b2a0">getParentProject</a> (<a class="el" href="class_project_item.html">ProjectItem</a> *item)</td></tr>
+<tr class="memdesc:ace65e1a54dae1d9f47d76f0582c7b2a0"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a pointer to the parent <a class="el" href="class_project.html" title="Describes a project.">Project</a> of the item.  <a href="class_project_manager.html#ace65e1a54dae1d9f47d76f0582c7b2a0">More...</a><br /></td></tr>
+<tr class="separator:ace65e1a54dae1d9f47d76f0582c7b2a0"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a687a77ca521be755aa0747195877f627"><td class="memItemLeft" align="right" valign="top"><a id="a687a77ca521be755aa0747195877f627"></a>
+std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a687a77ca521be755aa0747195877f627">getCurrentProject</a> ()</td></tr>
+<tr class="memdesc:a687a77ca521be755aa0747195877f627"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns currently active project (<b>nullptr</b> if none) <br /></td></tr>
+<tr class="separator:a687a77ca521be755aa0747195877f627"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -143,29 +143,8 @@ static <a class="el" href="class_project_manager.html">ProjectManager</a> *&#160
 <div class="textblock"><p>Singleton of the project manager. </p>
 <p>Creates and manages projects </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="ad1020e676c9a45de68e0210a331c2652"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ad1020e676c9a45de68e0210a331c2652">&#9670;&nbsp;</a></span>closeProject() <span class="overload">[1/2]</span></h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">bool ProjectManager::closeProject </td>
-          <td>(</td>
-          <td class="paramtype"><a class="el" href="class_project.html">Project</a> *&#160;</td>
-          <td class="paramname"><em>p</em></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-
-<p>Closes a project. </p>
-<dl class="section return"><dt>Returns</dt><dd><b>false</b> if the project could not be found or if p is <b>nullptr</b> </dd></dl>
-
-</div>
-</div>
 <a id="a09a588bd47d38497819be71e353a755d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a09a588bd47d38497819be71e353a755d">&#9670;&nbsp;</a></span>closeProject() <span class="overload">[2/2]</span></h2>
+<h2 class="memtitle"><span class="permalink"><a href="#a09a588bd47d38497819be71e353a755d">&#9670;&nbsp;</a></span>closeProject() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -185,14 +164,35 @@ static <a class="el" href="class_project_manager.html">ProjectManager</a> *&#160
 
 </div>
 </div>
-<a id="ac01d722c48c87eed96360ffb1effae0f"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ac01d722c48c87eed96360ffb1effae0f">&#9670;&nbsp;</a></span>getParentProject()</h2>
+<a id="af98af4706e6f8b81ecb7397902a6ee01"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af98af4706e6f8b81ecb7397902a6ee01">&#9670;&nbsp;</a></span>closeProject() <span class="overload">[2/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
       <table class="memname">
         <tr>
-          <td class="memname"><a class="el" href="class_project.html">Project</a> * ProjectManager::getParentProject </td>
+          <td class="memname">bool ProjectManager::closeProject </td>
+          <td>(</td>
+          <td class="paramtype">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td>
+          <td class="paramname"><em>project</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Closes a project. </p>
+<dl class="section return"><dt>Returns</dt><dd><b>false</b> if the project could not be found or if p is <b>nullptr</b> </dd></dl>
+
+</div>
+</div>
+<a id="ace65e1a54dae1d9f47d76f0582c7b2a0"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ace65e1a54dae1d9f47d76f0582c7b2a0">&#9670;&nbsp;</a></span>getParentProject()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; ProjectManager::getParentProject </td>
           <td>(</td>
           <td class="paramtype"><a class="el" href="class_project_item.html">ProjectItem</a> *&#160;</td>
           <td class="paramname"><em>item</em></td><td>)</td>
