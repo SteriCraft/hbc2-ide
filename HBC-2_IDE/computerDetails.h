@@ -82,21 +82,29 @@ struct CpuStatus
 
     Word programCounter = Cpu::PROGRAM_START_ADDRESS;
     Dword instructionRegister = 0x0000;
+
+    // == DECODED INSTRUCTION ==
+    Cpu::InstructionOpcode opcode;
     Cpu::AddressingMode addrMode = Cpu::AddressingMode::NONE;
 
-    Byte regA = 0x00;
-    Byte regB = 0x00;
-    Byte regC = 0x00;
-    Byte regD = 0x00;
-    Byte regI = 0x00;
-    Byte regJ = 0x00;
-    Byte regX = 0x00;
-    Byte regY = 0x00;
+    Cpu::Register r1;
+    Cpu::Register r2;
+    Cpu::Register r3;
+
+    Byte v1;
+    Byte v2;
+    Word vX;
+    // =========================
+
+    bool flags[Cpu::FLAGS_NB] = { false };
+    Byte registers[Cpu::REGISTERS_NB] = { 0x00 };
 
     Word stackPointer = 0x0000;
 
     Word addressBus = 0x0000;
     Byte dataBus = 0x00;
+
+    bool lastState = false;
 };
 
 /*!

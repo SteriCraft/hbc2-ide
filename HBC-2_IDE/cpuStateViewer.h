@@ -15,7 +15,7 @@
 #include <QLineEdit>
 #include <QLabel>
 #include <QPushButton>
-//#include table widget
+#include <QTableWidget>
 #include "computerDetails.h"
 
 /*!
@@ -74,6 +74,8 @@ class CpuStateViewer : public QDialog // SINGLETON
         static constexpr int STATE_WIDTH = 250;
         static constexpr int INSTRUCTION_WIDTH = 200;
         static constexpr int REGISTER_LINE_EDIT_WIDTH = 80;
+        static constexpr int FLAGS_TABLE_WIDTH = 306;
+        static constexpr int FLAGS_TABLE_HEIGHT = 50;
 
         CpuStateViewer(QWidget *parent = nullptr);
         void updateStatus(CpuStatus status);
@@ -85,14 +87,10 @@ class CpuStateViewer : public QDialog // SINGLETON
         QLineEdit *m_instructionRegisterLineEdit;
         QLineEdit *m_addressingModeLineEdit;
 
-        QLineEdit *m_registerALineEdit;
-        QLineEdit *m_registerBLineEdit;
-        QLineEdit *m_registerCLineEdit;
-        QLineEdit *m_registerDLineEdit;
-        QLineEdit *m_registerILineEdit;
-        QLineEdit *m_registerJLineEdit;
-        QLineEdit *m_registerXLineEdit;
-        QLineEdit *m_registerYLineEdit;
+        QTableWidget *m_decodedInstructionTable;
+
+        std::vector<QTableWidgetItem*> m_flagsTableItem;
+        std::vector<QLineEdit*> m_registersLineEdits;
 
         QLineEdit *m_stackPointerLineEdit;
 

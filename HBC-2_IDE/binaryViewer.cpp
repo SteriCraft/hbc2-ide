@@ -2,6 +2,7 @@
 
 #include <QIcon>
 #include <QDebug>
+#include <QPushButton>
 
 BinaryViewer* BinaryViewer::m_singleton = nullptr;
 
@@ -60,4 +61,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(m_hexEditor);
     setLayout(mainLayout);
+
+    QPushButton *closeButton = new QPushButton(tr("Close"), this);
+    connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }

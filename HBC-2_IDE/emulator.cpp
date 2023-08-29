@@ -178,16 +178,29 @@ const CpuStatus HbcEmulator::getCurrentCpuStatus()
 
     status.programCounter = m_computer.motherboard.m_cpu.m_programCounter;
     status.instructionRegister = m_computer.motherboard.m_cpu.m_instructionRegister;
+
+    // == DECODED INSTRUCTION ==
+    status.opcode = m_computer.motherboard.m_cpu.m_opcode;
     status.addrMode = m_computer.motherboard.m_cpu.m_addressingMode;
 
-    status.regA = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::A];
-    status.regB = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::B];
-    status.regC = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::C];
-    status.regD = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::D];
-    status.regI = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::I];
-    status.regJ = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::J];
-    status.regX = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::X];
-    status.regY = m_computer.motherboard.m_cpu.m_registers[(int)Cpu::Register::Y];
+    status.r1 = m_computer.motherboard.m_cpu.m_register1Index;
+    status.r2 = m_computer.motherboard.m_cpu.m_register2Index;
+    status.r3 = m_computer.motherboard.m_cpu.m_register3Index;
+
+    status.v1 = m_computer.motherboard.m_cpu.m_v1;
+    status.v2 = m_computer.motherboard.m_cpu.m_v2;
+    status.vX = m_computer.motherboard.m_cpu.m_vX;
+    // =========================
+
+    for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
+    {
+        status.flags[i] = m_computer.motherboard.m_cpu.m_flags[i];
+    }
+
+    for (unsigned int i(0); i < Cpu::REGISTERS_NB; i++)
+    {
+        status.registers[i] = m_computer.motherboard.m_cpu.m_registers[i];
+    }
 
     status.stackPointer = m_computer.motherboard.m_cpu.m_stackPointer;
 
