@@ -33,19 +33,9 @@ QList<QString> ConfigManager::getRecentProjects()
 
 bool ConfigManager::addRecentProject(QString path)
 {
-    for (unsigned int i(0); i < m_settings.recentProjects.size(); i++)
-    {
-        if (m_settings.recentProjects[i] == path)
-        {
-            m_settings.recentProjects.removeAt(i);
-            i--;
-        }
-    }
-
-    if (path.isEmpty()) // After the loop to remove any empty project path from the list
-        return false;
-
     m_settings.recentProjects.push_front(path);
+
+    flushRecentProjects();
 
     return true;
 }
@@ -289,6 +279,29 @@ bool ConfigManager::saveRecentProjects()
     }
 
     return false;
+}
+
+void ConfigManager::flushRecentProjects()
+{
+    m_settings.recentProjects.removeDuplicates();
+
+    for (auto &p : m_settings.recentProjects)
+    {
+        if (p.isEmpty())
+        {
+            m_settings.recentProjects.removeOne(p);
+        }
+
+        if (!QFileInfo(p).isFile())
+        {
+            m_settings.recentProjects.removeOne(p);
+        }
+
+        if (QFileInfo(p).completeSuffix() != "hcp") // HBC-2 project files
+        {
+            m_settings.recentProjects.removeOne(p);
+        }
+    }
 }
 
 

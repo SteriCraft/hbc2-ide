@@ -155,6 +155,7 @@ class ConfigManager
         ConfigManager();
         bool saveRecentProjects();
         bool saveConfigFile();
+        void flushRecentProjects();
 
         ConfigurationSettings m_settings;
 };

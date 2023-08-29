@@ -96,11 +96,13 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     m_stateLineEdit->setReadOnly(true);
     m_stateLineEdit->setFixedWidth(STATE_WIDTH);
     m_stateLineEdit->setAlignment(Qt::AlignHCenter);
+    m_stateLineEdit->setStyleSheet("color: red;");
 
     m_interruptReadyLineEdit = new QLineEdit(this);
     m_interruptReadyLineEdit->setReadOnly(true);
     m_interruptReadyLineEdit->setFixedWidth(STATE_WIDTH);
     m_interruptReadyLineEdit->setAlignment(Qt::AlignHCenter);
+    m_interruptReadyLineEdit->setStyleSheet("color: red;");
 
     QHBoxLayout *programCounterLayout = new QHBoxLayout;
     QLabel *programCounterLabel = new QLabel(tr("Program counter"), this);
