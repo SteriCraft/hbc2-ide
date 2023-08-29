@@ -38,20 +38,20 @@ class CustomFile
         bool isSaved(); //!< Returns if the file has been saved on disk (true by default after opening a file)
         bool getReloaded(); //!< Returns if the file has just been reloaded
         QString getContent();
-        Project* getAssociatedProject();
+        std::shared_ptr<Project> getAssociatedProject();
 
         bool setPath(QString path); //!< Returns <b>false</b> if the path is invalid
         void setSaved(bool saved);
         void setReloaded(bool reloaded); //!< Sets file's flag that tells if it has just been reloaded
         void setContent(QString content);
-        void setAssociatedProject(Project *associatedProject);
+        void setAssociatedProject(std::shared_ptr<Project> associatedProject);
 
     private:
         QString m_path;
         bool m_saved;
         bool m_reloaded;
         QString m_content;
-        Project *m_associatedProject;
+        std::shared_ptr<Project> m_associatedProject;
 };
 
 /*!

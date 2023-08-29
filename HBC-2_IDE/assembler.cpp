@@ -28,7 +28,7 @@ QByteArray Assembler::getBinaryData()
     return m_finalBinary;
 }
 
-bool Assembler::assembleProject(Project *p)
+bool Assembler::assembleProject(std::shared_ptr<Project> p)
 {
     m_consoleOutput->clear();
     m_consoleOutput->log("Assembling project \"" + p->getName() + "\"...");

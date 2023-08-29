@@ -203,7 +203,7 @@ class ProjectManager : public QTreeWidget // SINGLETON
          * \brief Closes a project
          * \return <b>false</b> if the project could not be found or if p is <b>nullptr</b>
          */
-        bool closeProject(Project* p);
+        bool closeProject(std::shared_ptr<Project> project);
 
         /*!
          * \brief Removes the currently selected item
@@ -230,19 +230,19 @@ class ProjectManager : public QTreeWidget // SINGLETON
          * \brief Returns a pointer to the parent Project of the item
          * \return <b>nullptr</b> if the item is part of no project
          */
-        Project* getParentProject(ProjectItem* item);
+        std::shared_ptr<Project> getParentProject(ProjectItem* item);
 
         /*!
          * \brief Returns currently active project (<b>nullptr</b> if none)
          */
-        Project* getCurrentProject();
+        std::shared_ptr<Project> getCurrentProject();
 
     private:
         ProjectManager(QWidget *parent);
 
         ProjectItem* openProjectFile(QString path); // Returns project mainNode (nullptr if error)
         bool readProjectItemXML(QDomNode xmlNode, ProjectItem* topProjectNode);
-        bool saveProjectFile(Project* p);
+        bool saveProjectFile(std::shared_ptr<Project> p);
         QDomElement writeProjectItemXML(ProjectItem* item, QDomDocument &document);
 
         bool checkProjectFiles(ProjectItem* mainNode, QString path);
@@ -253,8 +253,8 @@ class ProjectManager : public QTreeWidget // SINGLETON
         static constexpr int PROJECT_MANAGER_MIN_HEIGHT = 200;
         static constexpr int PROJECT_MANAGER_MAX_HEIGHT = 300;
 
-        QVector<Project*> m_projects;
-        Project* m_currentProject;
+        QVector<std::shared_ptr<Project>> m_projects;
+        std::shared_ptr<Project> m_currentProject;
 
         QFont defaultFont;
         QFont boldFont;

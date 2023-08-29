@@ -92,7 +92,7 @@ class MainWindow : public QMainWindow
 
         // General methods
         void closeAssociatedTabs(ProjectItem* item);
-        void closeProject(Project *p);
+        void closeProject(std::shared_ptr<Project> p);
         void updateWinTabMenu();
         void updateStatusBar();
         void setStatusBarRightMessage(QString message);
@@ -112,7 +112,7 @@ class MainWindow : public QMainWindow
         void openProjectAction();
         void openProject(QString projectPath);
         void openFileAction();
-        void openFile(QString filePath, Project *associatedProject = nullptr);
+        void openFile(QString filePath, std::shared_ptr<Project> associatedProject = nullptr);
         void saveCurrentFileAction();
         void saveFileAction(CustomFile *file);
         bool saveAllAction();

@@ -134,7 +134,7 @@ namespace Assembly
              *
              * \param p Pointer to the project to assemble
              */
-            bool assembleProject(Project *p);
+            bool assembleProject(std::shared_ptr<Project> p);
 
         private:
             Assembler(Console *consoleOutput);

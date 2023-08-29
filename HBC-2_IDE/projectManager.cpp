@@ -433,7 +433,8 @@ ProjectManager::~ProjectManager()
     for (auto p : m_projects)
     {
         saveProjectFile(p);
-        delete p;
+        p.reset();
+        //delete p;
     }
 }
 
@@ -469,7 +470,8 @@ bool ProjectManager::newProject(QString path, bool toLoad)
     }
 
     // Create a new project
-    Project* newProject = new Project(QFileInfo(path).baseName(), path, mainNode);
+    std::shared_ptr<Project> newProject = std::make_shared<Project>(QFileInfo(path).baseName(), path, mainNode);
+    //Project* newProject = new Project(QFileInfo(path).baseName(), path, mainNode);
 
     m_projects.push_back(newProject);
 
@@ -532,33 +534,32 @@ bool ProjectManager::closeProject(QString projectName)
     return false;
 }
 
-bool ProjectManager::closeProject(Project* p)
+bool ProjectManager::closeProject(std::shared_ptr<Project> project)
 {
-    if (p == nullptr)
+    bool success(false);
+
+    if (project == nullptr)
         return false;
 
-    for (int i(0); i < m_projects.count(); i++)
+    saveProjectFile(project);
+    success = m_projects.removeOne(project);
+
+    if (project == m_currentProject)
     {
-        if (m_projects[i] == p)
+        if (m_projects.count() > 0)
         {
-            saveProjectFile(p);
-            delete p;
-
-            m_projects.removeAt(i);
-
-            if (m_projects.count() > 0)
-            {
-                m_currentProject = m_projects[0];
-                m_currentProject->getTopItem()->setFont(0, boldFont);
-            }
-            else
-                m_currentProject = nullptr;
-
-            return true;
+            m_currentProject = m_projects[0];
+            m_currentProject->getTopItem()->setFont(0, boldFont);
+        }
+        else
+        {
+            m_currentProject.reset();
         }
     }
 
-    return false;
+    project.reset();
+
+    return success;
 }
 
 bool ProjectManager::removeCurrentItem()
@@ -620,7 +621,7 @@ ProjectItem::Type ProjectManager::getProjectItemType(ProjectItem* item)
         return ProjectItem::Type::File;
 }
 
-Project* ProjectManager::getParentProject(ProjectItem* item)
+std::shared_ptr<Project> ProjectManager::getParentProject(ProjectItem* item)
 {
     for (auto p : m_projects)
     {
@@ -631,7 +632,7 @@ Project* ProjectManager::getParentProject(ProjectItem* item)
     return nullptr;
 }
 
-Project* ProjectManager::getCurrentProject()
+std::shared_ptr<Project> ProjectManager::getCurrentProject()
 {
     return m_currentProject;
 }
@@ -728,7 +729,7 @@ bool ProjectManager::readProjectItemXML(QDomNode xmlNode, ProjectItem* topProjec
     return true;
 }
 
-bool ProjectManager::saveProjectFile(Project* p)
+bool ProjectManager::saveProjectFile(std::shared_ptr<Project> p)
 {
     QFile xmlFile(p->getPath());
 

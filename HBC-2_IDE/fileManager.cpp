@@ -53,7 +53,7 @@ QString CustomFile::getContent()
     return m_content;
 }
 
-Project* CustomFile::getAssociatedProject()
+std::shared_ptr<Project> CustomFile::getAssociatedProject()
 {
     return m_associatedProject;
 }
@@ -86,7 +86,7 @@ void CustomFile::setContent(QString content)
     m_content = content;
 }
 
-void CustomFile::setAssociatedProject(Project *associatedProject)
+void CustomFile::setAssociatedProject(std::shared_ptr<Project> associatedProject)
 {
     m_associatedProject = associatedProject;
 }
@@ -229,6 +229,7 @@ bool FileManager::closeFile(CustomFile *file)
     {
         if (m_files[i] == file)
         {
+            delete m_files[i];
             m_files.removeAt(i);
             return true;
         }

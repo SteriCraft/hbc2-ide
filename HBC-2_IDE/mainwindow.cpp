@@ -363,7 +363,7 @@ void MainWindow::onFileChanged(QString filePath)
 void MainWindow::onTextChanged()
 {
     CustomizedCodeEditor *editor = qobject_cast<CustomizedCodeEditor*>(sender());
-    Project *associatedProject(editor->getFile()->getAssociatedProject());
+    std::shared_ptr<Project> associatedProject(editor->getFile()->getAssociatedProject());
 
     editor->getFile()->setContent(editor->toPlainText());
     editor->getFile()->setSaved(false);
@@ -808,7 +808,7 @@ void MainWindow::openFileAction()
     openFile(filePath);
 }
 
-void MainWindow::openFile(QString filePath, Project *associatedProject)
+void MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedProject)
 {
     QString errorStr;
     CustomFile *openedFile;
@@ -1274,7 +1274,7 @@ void MainWindow::addNewDirectoryActionRC()
 
 void MainWindow::addExistingFileActionRC()
 {
-    Project *parentProject(m_projectManager->getParentProject(m_pointedItem));
+    std::shared_ptr<Project> parentProject(m_projectManager->getParentProject(m_pointedItem));
 
     if (m_pointedItem == nullptr)
         return;
@@ -1331,7 +1331,7 @@ void MainWindow::addExistingFileActionRC()
 
 void MainWindow::addExistingDirectoryActionRC()
 {
-    Project *parentProject(m_projectManager->getParentProject(m_pointedItem));
+    std::shared_ptr<Project> parentProject(m_projectManager->getParentProject(m_pointedItem));
 
     if (m_pointedItem == nullptr)
         return;
@@ -1538,7 +1538,7 @@ void MainWindow::closeAssociatedTabs(ProjectItem* item)
     updateWinTabMenu();
 }
 
-void MainWindow::closeProject(Project *p)
+void MainWindow::closeProject(std::shared_ptr<Project> p)
 {
     if (p == nullptr)
         return;
