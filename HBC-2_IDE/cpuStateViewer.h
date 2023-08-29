@@ -70,12 +70,16 @@ class CpuStateViewer : public QDialog // SINGLETON
         static void close();
 
     private:
-        static constexpr int CPU_STATE_VIEWER_WIDTH = 400;
+        static constexpr int CPU_STATE_VIEWER_WIDTH = 500;
         static constexpr int STATE_WIDTH = 250;
         static constexpr int INSTRUCTION_WIDTH = 200;
         static constexpr int REGISTER_LINE_EDIT_WIDTH = 80;
+        static constexpr int DECODED_INSTRUCTION_TABLE_WIDTH = 452;
         static constexpr int FLAGS_TABLE_WIDTH = 306;
-        static constexpr int FLAGS_TABLE_HEIGHT = 50;
+        static constexpr int TABLE_HEIGHT = 50;
+        static constexpr int ADDR_MODE_TABLE_ITEM_WIDTH = 80;
+        static constexpr int BYTE_ITEM_WIDTH = 50;
+        static constexpr int WORD_ITEM_WIDTH = 60;
 
         CpuStateViewer(QWidget *parent = nullptr);
         void updateStatus(CpuStatus status);
@@ -87,7 +91,14 @@ class CpuStateViewer : public QDialog // SINGLETON
         QLineEdit *m_instructionRegisterLineEdit;
         QLineEdit *m_addressingModeLineEdit;
 
-        QTableWidget *m_decodedInstructionTable;
+        QTableWidgetItem *m_opcodeTableItem;
+        QTableWidgetItem *m_addrModeTableItem;
+        QTableWidgetItem *m_r1TableItem;
+        QTableWidgetItem *m_r2TableItem;
+        QTableWidgetItem *m_r3TableItem;
+        QTableWidgetItem *m_v1TableItem;
+        QTableWidgetItem *m_v2TableItem;
+        QTableWidgetItem *m_vXTableItem;
 
         std::vector<QTableWidgetItem*> m_flagsTableItem;
         std::vector<QLineEdit*> m_registersLineEdits;

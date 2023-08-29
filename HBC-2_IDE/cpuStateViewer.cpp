@@ -85,6 +85,8 @@ void CpuStateViewer::close()
 // PRIVATE
 CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
 {
+    QStringList header;
+
     setWindowTitle(tr("CPU State"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
@@ -131,7 +133,55 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     adressingModeLayout->addWidget(adressingModeLabel);
     adressingModeLayout->addWidget(m_addressingModeLineEdit);
 
-    // Decoded instruction table
+    QTableWidget *m_decodedInstructionTable = new QTableWidget(1, 8, this);
+    header << "Opcode" << "AddrMode" << "R1" << "R2" << "R3" << "V1" << "V2" << "Vx";
+    m_decodedInstructionTable->setHorizontalHeaderLabels(header);
+    m_decodedInstructionTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
+    m_decodedInstructionTable->setFocusPolicy(Qt::NoFocus);
+    m_decodedInstructionTable->setSelectionMode(QAbstractItemView::NoSelection);
+    m_decodedInstructionTable->verticalHeader()->setVisible(false);
+    m_decodedInstructionTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
+    m_decodedInstructionTable->setFixedSize(DECODED_INSTRUCTION_TABLE_WIDTH, TABLE_HEIGHT);
+
+    m_opcodeTableItem = new QTableWidgetItem("0x00");
+    m_opcodeTableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 0, m_opcodeTableItem);
+    m_decodedInstructionTable->setColumnWidth(0, WORD_ITEM_WIDTH);
+
+    m_addrModeTableItem = new QTableWidgetItem("0x0");
+    m_addrModeTableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 1, m_addrModeTableItem);
+    m_decodedInstructionTable->setColumnWidth(1, ADDR_MODE_TABLE_ITEM_WIDTH);
+
+    m_r1TableItem = new QTableWidgetItem("0x0");
+    m_r1TableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 2, m_r1TableItem);
+    m_decodedInstructionTable->setColumnWidth(2, BYTE_ITEM_WIDTH);
+
+    m_r2TableItem = new QTableWidgetItem("0x0");
+    m_r2TableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 3, m_r2TableItem);
+    m_decodedInstructionTable->setColumnWidth(3, BYTE_ITEM_WIDTH);
+
+    m_r3TableItem = new QTableWidgetItem("0x0");
+    m_r3TableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 4, m_r3TableItem);
+    m_decodedInstructionTable->setColumnWidth(4, BYTE_ITEM_WIDTH);
+
+    m_v1TableItem = new QTableWidgetItem("0x00");
+    m_v1TableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 5, m_v1TableItem);
+    m_decodedInstructionTable->setColumnWidth(5, BYTE_ITEM_WIDTH);
+
+    m_v2TableItem = new QTableWidgetItem("0x00");
+    m_v2TableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 6, m_v2TableItem);
+    m_decodedInstructionTable->setColumnWidth(6, BYTE_ITEM_WIDTH);
+
+    m_vXTableItem = new QTableWidgetItem("0x0000");
+    m_vXTableItem->setTextAlignment(Qt::AlignCenter);
+    m_decodedInstructionTable->setItem(0, 7, m_vXTableItem);
+    m_decodedInstructionTable->setColumnWidth(7, WORD_ITEM_WIDTH);
 
     stateGroupLayout->addWidget(m_stateLineEdit);
     stateGroupLayout->setAlignment(m_stateLineEdit, Qt::AlignHCenter);
@@ -140,6 +190,8 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     stateGroupLayout->addLayout(programCounterLayout);
     stateGroupLayout->addLayout(instructionRegisterLayout);
     stateGroupLayout->addLayout(adressingModeLayout);
+    stateGroupLayout->addWidget(m_decodedInstructionTable);
+    stateGroupLayout->setAlignment(m_decodedInstructionTable, Qt::AlignHCenter);
     stateGroupBox->setLayout(stateGroupLayout);
     stateGroupBox->setAlignment(Qt::AlignHCenter);
     // ===================================
@@ -150,7 +202,7 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
 
     QLabel *flagsLabel = new QLabel(tr("Flags"), this);
     QTableWidget *m_flagsTable = new QTableWidget(1, 8, this);
-    QStringList header;
+    header.clear();
     header << "C" << "E" << "I" << "N" << "S" << "Z" << "F" << "H";
     m_flagsTable->setHorizontalHeaderLabels(header);
     m_flagsTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -158,7 +210,7 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     m_flagsTable->setSelectionMode(QAbstractItemView::NoSelection);
     m_flagsTable->verticalHeader()->setVisible(false);
     m_flagsTable->horizontalHeader()->setSectionResizeMode(QHeaderView::Fixed);
-    m_flagsTable->setFixedSize(FLAGS_TABLE_WIDTH, FLAGS_TABLE_HEIGHT);
+    m_flagsTable->setFixedSize(FLAGS_TABLE_WIDTH, TABLE_HEIGHT);
     for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
     {
         m_flagsTableItem.push_back(new QTableWidgetItem("0"));
@@ -419,6 +471,15 @@ void CpuStateViewer::updateStatus(const CpuStatus status)
         default:
             m_addressingModeLineEdit->setText("INVALID");
     }
+
+    m_opcodeTableItem->setText(byte2QString((Byte)status.opcode));
+    m_addrModeTableItem->setText(byte2QString((Byte)status.addrMode));
+    m_r1TableItem->setText(byte2QString((Byte)status.r1));
+    m_r2TableItem->setText(byte2QString((Byte)status.r2));
+    m_r3TableItem->setText(byte2QString((Byte)status.r3));
+    m_v1TableItem->setText(byte2QString(status.v1));
+    m_v2TableItem->setText(byte2QString(status.v2));
+    m_vXTableItem->setText(word2QString(status.vX));
 
     for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
     {

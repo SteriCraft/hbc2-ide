@@ -58,10 +58,12 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     setFixedWidth(BINARY_DIALOG_WIDTH);
     setFixedHeight(BINARY_DIALOG_WIDTH);
 
+    QPushButton *closeButton = new QPushButton(tr("Close"), this);
+
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addWidget(m_hexEditor);
+    mainLayout->addWidget(closeButton);
     setLayout(mainLayout);
 
-    QPushButton *closeButton = new QPushButton(tr("Close"), this);
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
