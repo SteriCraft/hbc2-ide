@@ -41,19 +41,29 @@ bool ConfigManager::addRecentProject(QString path)
 }
 
 // SETTERS
-// Binary viewer settings
-void ConfigManager::setOpenViewerOnAssembly(bool enable)
+// Cpu state viewer settings
+void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
 {
-    m_settings.openViewerOnAssembly = enable;
+    m_settings.openCpuStateViewerOnEmulatorPaused = enable;
+}
+void ConfigManager::setOpenCpuStateViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openCpuStateViewerOnEmulatorStopped = enable;
 }
 
-void ConfigManager::setOpenViewerOnEmulatorPaused(bool enable)
+// Binary viewer settings
+void ConfigManager::setOpenBinaryViewerOnAssembly(bool enable)
 {
-    m_settings.openViewerOnEmulatorPaused = enable;
+    m_settings.openBinaryViewerOnAssembly = enable;
 }
-void ConfigManager::setOpenViewerOnEmulatorStopped(bool enable)
+
+void ConfigManager::setOpenBinaryViewerOnEmulatorPaused(bool enable)
 {
-    m_settings.openViewerOnEmulatorStopped = enable;
+    m_settings.openBinaryViewerOnEmulatorPaused = enable;
+}
+void ConfigManager::setOpenBinaryViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openBinaryViewerOnEmulatorStopped = enable;
 }
 
 // Emulator settings
@@ -88,22 +98,34 @@ bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
 }
 
 // GETTERS
+// Cpu state viewer settings
+bool ConfigManager::getOpenCpuStateViewerOnEmulatorPaused()
+{
+    return m_settings.openCpuStateViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenCpuStateViewerOnEmulatorStopped()
+{
+    return m_settings.openCpuStateViewerOnEmulatorStopped;
+}
+
+// Binary viewer settings
+bool ConfigManager::getOpenBinaryViewerOnAssembly()
+{
+    return m_settings.openBinaryViewerOnAssembly;
+}
+
+bool ConfigManager::getOpenBinaryViewerOnEmulatorPaused()
+{
+    return m_settings.openBinaryViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenBinaryViewerOnEmulatorStopped()
+{
+    return m_settings.openBinaryViewerOnEmulatorStopped;
+}
+
 // Emulator settings
-bool ConfigManager::getOpenViewerOnAssembly()
-{
-    return m_settings.openViewerOnAssembly;
-}
-
-bool ConfigManager::getOpenViewerOnEmulatorPaused()
-{
-    return m_settings.openViewerOnEmulatorPaused;
-}
-
-bool ConfigManager::getOpenViewerOnEmulatorStopped()
-{
-    return m_settings.openViewerOnEmulatorStopped;
-}
-
 bool ConfigManager::getStartEmulatorPaused()
 {
     return m_settings.startEmulatorPaused;
@@ -150,17 +172,25 @@ ConfigManager::ConfigManager()
                     key = line.mid(0, equalCharPos);
                     value = line.mid(equalCharPos + 1);
 
-                    if (key == "OPEN_BIN_VIEWER_ASSEMBLY")
+                    if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
                     {
-                        m_settings.openViewerOnAssembly = (value == "TRUE");
+                        m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPPED")
+                    {
+                        m_settings.openCpuStateViewerOnEmulatorStopped = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_ASSEMBLY")
+                    {
+                        m_settings.openBinaryViewerOnAssembly = (value == "TRUE");
                     }
                     else if (key == "OPEN_BIN_VIEWER_EMULATOR_PAUSED")
                     {
-                        m_settings.openViewerOnEmulatorPaused = (value == "TRUE");
+                        m_settings.openBinaryViewerOnEmulatorPaused = (value == "TRUE");
                     }
                     else if (key == "OPEN_BIN_VIEWER_EMULATOR_STOPPPED")
                     {
-                        m_settings.openViewerOnEmulatorStopped = (value == "TRUE");
+                        m_settings.openBinaryViewerOnEmulatorStopped = (value == "TRUE");
                     }
                     else if (key == "START_EMULATOR_PAUSED")
                     {
@@ -237,9 +267,11 @@ bool ConfigManager::saveConfigFile()
     {
         QTextStream out(&configFile);
 
-        out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings.openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED=" << (m_settings.openCpuStateViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openBinaryViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openBinaryViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
@@ -331,22 +363,37 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     ideSettingsGroupBox->setLayout(ideSettingsLayout);
 
 
+    // Cpu state viewer settings
+    QGroupBox *cpuStateViewerSettingsGroupBox = new QGroupBox(tr("CPU status viewer"), this);
+
+    m_openCpuStateViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
+    m_openCpuStateViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenCpuStateViewerOnEmulatorPaused());
+
+    m_openCpuStateViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
+    m_openCpuStateViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenCpuStateViewerOnEmulatorStopped());
+
+    QVBoxLayout *cpuStateViewerSettingsLayout = new QVBoxLayout;
+    cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorPausedCheckBox);
+    cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorStoppedCheckBox);
+    cpuStateViewerSettingsGroupBox->setLayout(cpuStateViewerSettingsLayout);
+
+
     // Binary viewer settings
     QGroupBox *binaryViewerSettingsGroupBox = new QGroupBox(tr("Binary viewer"), this);
 
-    m_openViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), this);
-    m_openViewerOnAssemblyCheckBox->setChecked(configManager->getOpenViewerOnAssembly());
+    m_openBinaryViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), this);
+    m_openBinaryViewerOnAssemblyCheckBox->setChecked(configManager->getOpenBinaryViewerOnAssembly());
 
-    m_openViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
-    m_openViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenViewerOnEmulatorPaused());
+    m_openBinaryViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
+    m_openBinaryViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenBinaryViewerOnEmulatorPaused());
 
-    m_openViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
-    m_openViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenViewerOnEmulatorStopped());
+    m_openBinaryViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
+    m_openBinaryViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenBinaryViewerOnEmulatorStopped());
 
     QVBoxLayout *binaryViewerSettingsLayout = new QVBoxLayout;
-    binaryViewerSettingsLayout->addWidget(m_openViewerOnAssemblyCheckBox);
-    binaryViewerSettingsLayout->addWidget(m_openViewerOnEmulatorPausedCheckBox);
-    binaryViewerSettingsLayout->addWidget(m_openViewerOnEmulatorStoppedCheckBox);
+    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnAssemblyCheckBox);
+    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorPausedCheckBox);
+    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorStoppedCheckBox);
     binaryViewerSettingsGroupBox->setLayout(binaryViewerSettingsLayout);
 
 
@@ -373,6 +420,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addWidget(cpuStateViewerSettingsGroupBox);
     mainLayout->addWidget(binaryViewerSettingsGroupBox);
     mainLayout->addWidget(ideSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
@@ -382,31 +430,43 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     // Connections
-    connect(m_openViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnAssemblyChanged()));
-    connect(m_openViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnEmulatorPausedChanged()));
-    connect(m_openViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openViewerOnEmulatorStoppedChanged()));
+    connect(m_openCpuStateViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorPausedChanged()));
+    connect(m_openCpuStateViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorStoppedChanged()));
+    connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
+    connect(m_openBinaryViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorPausedChanged()));
+    connect(m_openBinaryViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorStoppedChanged()));
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
     connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
     connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
-    connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(const QString&)), this, SLOT(defaultProjectsPathChanged()));
+    connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
 
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
 
-void SettingsDialog::openViewerOnAssemblyChanged()
+void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
 {
-    m_configManager->setOpenViewerOnAssembly(m_openViewerOnAssemblyCheckBox->isChecked());
+    m_configManager->setOpenCpuStateViewerOnEmulatorPaused(m_openCpuStateViewerOnEmulatorPausedCheckBox->isChecked());
 }
 
-void SettingsDialog::openViewerOnEmulatorPausedChanged()
+void SettingsDialog::openCpuStateViewerOnEmulatorStoppedChanged()
 {
-    m_configManager->setOpenViewerOnEmulatorPaused(m_openViewerOnEmulatorPausedCheckBox->isChecked());
+    m_configManager->setOpenCpuStateViewerOnEmulatorPaused(m_openCpuStateViewerOnEmulatorPausedCheckBox->isChecked());
 }
 
-void SettingsDialog::openViewerOnEmulatorStoppedChanged()
+void SettingsDialog::openBinaryViewerOnAssemblyChanged()
 {
-    m_configManager->setOpenViewerOnEmulatorStopped(m_openViewerOnEmulatorStoppedCheckBox->isChecked());
+    m_configManager->setOpenBinaryViewerOnAssembly(m_openBinaryViewerOnAssemblyCheckBox->isChecked());
+}
+
+void SettingsDialog::openBinaryViewerOnEmulatorPausedChanged()
+{
+    m_configManager->setOpenBinaryViewerOnEmulatorPaused(m_openBinaryViewerOnEmulatorPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::openBinaryViewerOnEmulatorStoppedChanged()
+{
+    m_configManager->setOpenBinaryViewerOnEmulatorStopped(m_openBinaryViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
 void SettingsDialog::startPausedChanged()
@@ -431,14 +491,14 @@ void SettingsDialog::browseProjectsPathClicked()
     m_defaultProjectsPathLineEdit->setText(newDefaultProjectsPath);
 }
 
-void SettingsDialog::defaultProjectsPathChanged()
+void SettingsDialog::defaultProjectsPathChanged(QString newPath)
 {
-    if (m_defaultProjectsPathLineEdit->text().isEmpty())
+    if (newPath.isEmpty())
     {
-        QMessageBox::warning(this, tr("Invalid projects directory"), tr("The projects directory cannot be empty")); // Cannot be empty
+        QMessageBox::warning(this, tr("Invalid projects directory"), tr("The projects directory cannot be empty"));
     }
     else
     {
-        m_configManager->setDefaultProjectsPath(m_defaultProjectsPathLineEdit->text());
+        m_configManager->setDefaultProjectsPath(newPath);
     }
 }

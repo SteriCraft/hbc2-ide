@@ -6,7 +6,7 @@
  * \brief IDE settings management
  * \author Gianni Leclercq
  * \version 0.1
- * \date 28/08/2023
+ * \date 29/08/2023
  */
 #include <QStandardPaths>
 #include <QDialog>
@@ -25,10 +25,14 @@
  */
 struct ConfigurationSettings
 {
+    // CPU state viewer settings
+    bool openCpuStateViewerOnEmulatorPaused = true;
+    bool openCpuStateViewerOnEmulatorStopped = true;
+
     // Binary viewer settings
-    bool openViewerOnAssembly = true; //!< Sets if the viewer is automatically opened after assembling a project
-    bool openViewerOnEmulatorPaused = true; //!< Sets if the viewer is automatically opened after the emulator was paused
-    bool openViewerOnEmulatorStopped = true; //!< Sets if the viewer is automatically opened after the emulator was stopped
+    bool openBinaryViewerOnAssembly = true; //!< Sets if the viewer is automatically opened after assembling a project
+    bool openBinaryViewerOnEmulatorPaused = true; //!< Sets if the viewer is automatically opened after the emulator was paused
+    bool openBinaryViewerOnEmulatorStopped = true; //!< Sets if the viewer is automatically opened after the emulator was stopped
 
     // Emulator settings
     bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
@@ -73,21 +77,32 @@ class ConfigManager
 
 
         // ==== SETTERS ====
+        // CPU state viewer settings
+        /*!
+         * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
+         */
+        void setOpenCpuStateViewerOnEmulatorPaused(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the CpuStateViewer when the emulator is stopped
+         */
+        void setOpenCpuStateViewerOnEmulatorStopped(bool enable);
+
         // Binary viewer settings
         /*!
-         * \param enable Desired behaviour for the binary viewer on project assembly
+         * \param enable Desired behaviour for the BinaryViewer on project assembly
          */
-        void setOpenViewerOnAssembly(bool enable);
+        void setOpenBinaryViewerOnAssembly(bool enable);
 
         /*!
-         * \param enable Desired behaviour for the binary viewer when the emulator is paused
+         * \param enable Desired behaviour for the BinaryViewer when the emulator is paused
          */
-        void setOpenViewerOnEmulatorPaused(bool enable);
+        void setOpenBinaryViewerOnEmulatorPaused(bool enable);
 
         /*!
-         * \param enable Desired behaviour for the binary viewer when the emulator is stopped
+         * \param enable Desired behaviour for the BinaryViewer when the emulator is stopped
          */
-        void setOpenViewerOnEmulatorStopped(bool enable);
+        void setOpenBinaryViewerOnEmulatorStopped(bool enable);
 
         // Emulator settings
         /*!
@@ -113,21 +128,32 @@ class ConfigManager
 
 
         // ==== GETTERS ====
+        // Cpu state viewer settings
+        /*!
+         * \return <b>true</b> if the CpuStateViewer opens when the emulator is paused
+         */
+        bool getOpenCpuStateViewerOnEmulatorPaused();
+
+        /*!
+         * \return <b>true</b> if the CpuStateViewer opens when the emulator is stopped
+         */
+        bool getOpenCpuStateViewerOnEmulatorStopped();
+
         // Binary viewer settings
         /*!
-         * \return <b>true</b> if the binary viewer opens on project assembly
+         * \return <b>true</b> if the BinaryViewer opens on project assembly
          */
-        bool getOpenViewerOnAssembly();
+        bool getOpenBinaryViewerOnAssembly();
 
         /*!
-         * \return <b>true</b> if the binary viewer opens when the emulator is paused
+         * \return <b>true</b> if the BinaryViewer opens when the emulator is paused
          */
-        bool getOpenViewerOnEmulatorPaused();
+        bool getOpenBinaryViewerOnEmulatorPaused();
 
         /*!
-         * \return <b>true</b> if the binary viewer opens when the emulator is stopped
+         * \return <b>true</b> if the BinaryViewer opens when the emulator is stopped
          */
-        bool getOpenViewerOnEmulatorStopped();
+        bool getOpenBinaryViewerOnEmulatorStopped();
 
         // Emulator settings
         /*!
@@ -177,23 +203,29 @@ class SettingsDialog : public QDialog
         SettingsDialog(ConfigManager *configManager, QWidget *parent = nullptr);
 
     private slots:
-        void openViewerOnAssemblyChanged();
-        void openViewerOnEmulatorPausedChanged();
-        void openViewerOnEmulatorStoppedChanged();
+        void openCpuStateViewerOnEmulatorPausedChanged();
+        void openCpuStateViewerOnEmulatorStoppedChanged();
+
+        void openBinaryViewerOnAssemblyChanged();
+        void openBinaryViewerOnEmulatorPausedChanged();
+        void openBinaryViewerOnEmulatorStoppedChanged();
 
         void startPausedChanged();
         void plugMonitorChanged();
         void dismissReassemblyWarningsChanged();
 
         void browseProjectsPathClicked();
-        void defaultProjectsPathChanged();
+        void defaultProjectsPathChanged(QString newPath);
 
     private:
         QLineEdit *m_defaultProjectsPathLineEdit;
 
-        QCheckBox *m_openViewerOnAssemblyCheckBox;
-        QCheckBox *m_openViewerOnEmulatorPausedCheckBox;
-        QCheckBox *m_openViewerOnEmulatorStoppedCheckBox;
+        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
+
+        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;
+        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;
 
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;

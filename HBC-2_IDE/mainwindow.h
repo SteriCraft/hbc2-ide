@@ -103,7 +103,7 @@ class MainWindow : public QMainWindow
         QString getItemPath(ProjectItem *item);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
-        void updateCpuStateViewer();
+        void updateCpuStateViewer(bool lastState = false);
         void updateRecentProjectsMenu();
 
         // Editors management actions

@@ -600,23 +600,21 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     }
     else if (newState == Emulator::State::READY)
     {
-        if (m_configManager->getOpenViewerOnEmulatorStopped())
+        if (m_configManager->getOpenBinaryViewerOnEmulatorStopped())
             updateBinaryViewer();
 
-        /*if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
-            updateCpuStateViewer();*/
-
-        updateCpuStateViewer();
+        if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
+        {
+            updateCpuStateViewer(true);
+        }
     }
     else if (newState == Emulator::State::PAUSED)
     {
-        if (m_configManager->getOpenViewerOnEmulatorPaused())
+        if (m_configManager->getOpenBinaryViewerOnEmulatorPaused())
             updateBinaryViewer();
 
-        /*if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
-            updateCpuStateViewer();*/
-
-        updateCpuStateViewer();
+        if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
+            updateCpuStateViewer();
     }
 }
 
@@ -1064,7 +1062,7 @@ void MainWindow::assembleAction()
 
     updateWinTabMenu();
 
-    if (m_configManager->getOpenViewerOnAssembly())
+    if (m_configManager->getOpenBinaryViewerOnAssembly())
     {
         showBinaryAction();
     }
@@ -1730,12 +1728,12 @@ void MainWindow::updateBinaryViewer()
     viewer->show();
 }
 
-void MainWindow::updateCpuStateViewer()
+void MainWindow::updateCpuStateViewer(bool lastState)
 {
     const CpuStatus status = m_emulator->getCurrentCpuStatus();
     CpuStateViewer *viewer = CpuStateViewer::getInstance(this);
 
-    viewer->update(status);
+    viewer->update(status, lastState);
     viewer->show();
 }
 

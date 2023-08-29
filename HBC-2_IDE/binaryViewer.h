@@ -6,7 +6,7 @@
  * \brief QDialog to display hexadecimal data
  * \author Gianni Leclercq
  * \version 0.1
- * \date 28/08/2023
+ * \date 29/08/2023
  */
 #include <QDialog>
 #include <QVBoxLayout>

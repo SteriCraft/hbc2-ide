@@ -6,7 +6,7 @@
  * \brief QDialog to display the HbcCpu state
  * \author Gianni Leclercq
  * \version 0.1
- * \date 28/08/2023
+ * \date 29/08/2023
  */
 #include <QDialog>
 #include <QVBoxLayout>
@@ -44,7 +44,7 @@ class CpuStateViewer : public QDialog // SINGLETON
          * \brief Updates displayed status information
          * \param status New status information
          */
-        static void update(const CpuStatus status);
+        static void update(const CpuStatus status, bool lastState = false);
 
         /*!
          * \brief Converts a byte to a QString
@@ -82,7 +82,9 @@ class CpuStateViewer : public QDialog // SINGLETON
         static constexpr int WORD_ITEM_WIDTH = 60;
 
         CpuStateViewer(QWidget *parent = nullptr);
-        void updateStatus(CpuStatus status);
+        void updateStatus(CpuStatus status, bool lastState = false);
+
+        QLabel *m_lastStateLabel;
 
         QLineEdit *m_stateLineEdit;
         QLineEdit *m_interruptReadyLineEdit;

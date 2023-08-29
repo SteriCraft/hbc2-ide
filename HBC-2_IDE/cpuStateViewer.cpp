@@ -14,10 +14,10 @@ CpuStateViewer* CpuStateViewer::getInstance(QWidget *parent)
     return m_singleton;
 }
 
-void CpuStateViewer::update(CpuStatus status)
+void CpuStateViewer::update(CpuStatus status, bool lastState)
 {
     if (m_singleton != nullptr)
-        m_singleton->updateStatus(status);
+        m_singleton->updateStatus(status, lastState);
 }
 
 QString CpuStateViewer::byte2QString(Byte value)
@@ -95,6 +95,10 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     // ==== STATE GROUP BOX (VLayout) ====
     QGroupBox *stateGroupBox = new QGroupBox(tr("Status"), this);
     QVBoxLayout *stateGroupLayout = new QVBoxLayout;
+
+    m_lastStateLabel = new QLabel(tr("Last dump before reinitialization"), this);
+    m_lastStateLabel->setStyleSheet("color: red;");
+    m_lastStateLabel->setAlignment(Qt::AlignHCenter);
 
     m_stateLineEdit = new QLineEdit(this);
     m_stateLineEdit->setReadOnly(true);
@@ -183,6 +187,7 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     m_decodedInstructionTable->setItem(0, 7, m_vXTableItem);
     m_decodedInstructionTable->setColumnWidth(7, WORD_ITEM_WIDTH);
 
+    stateGroupLayout->addWidget(m_lastStateLabel);
     stateGroupLayout->addWidget(m_stateLineEdit);
     stateGroupLayout->setAlignment(m_stateLineEdit, Qt::AlignHCenter);
     stateGroupLayout->addWidget(m_interruptReadyLineEdit);
@@ -394,8 +399,17 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
 
-void CpuStateViewer::updateStatus(const CpuStatus status)
+void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
 {
+    if (lastState)
+    {
+        m_lastStateLabel->show();
+    }
+    else
+    {
+        m_lastStateLabel->hide();
+    }
+
     if (status.state == Cpu::CpuState::INSTRUCTION_EXEC)
     {
         if (status.flags[(int)Cpu::Flags::HALT])
