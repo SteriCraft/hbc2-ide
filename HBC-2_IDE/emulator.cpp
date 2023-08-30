@@ -176,7 +176,7 @@ const CpuStatus HbcEmulator::getCurrentCpuStatus()
     status.state = m_computer.motherboard.m_cpu.m_currentState;
     status.interruptReady = (m_computer.motherboard.m_cpu.m_flags[(int)Cpu::Flags::INTERRUPT]) ? true : false;
 
-    status.programCounter = m_computer.motherboard.m_cpu.m_programCounter;
+    status.programCounter = m_computer.motherboard.m_cpu.m_lastExecutedInstructionAddress;
     status.instructionRegister = m_computer.motherboard.m_cpu.m_instructionRegister;
 
     // == DECODED INSTRUCTION ==

@@ -32,6 +32,8 @@ void Cpu::init(HbcCpu &cpu, HbcMotherboard* mb)
 
     cpu.m_currentState = Cpu::CpuState::INSTRUCTION_EXEC;
     cpu.m_motherboard = mb;
+
+    cpu.m_lastExecutedInstructionAddress = PROGRAM_START_ADDRESS;
 }
 
 void Cpu::tick(HbcCpu &cpu)
@@ -55,6 +57,8 @@ void Cpu::tick(HbcCpu &cpu)
                 Cpu::fetch(cpu);
                 Cpu::decode(cpu);
                 Cpu::execute(cpu);
+
+                cpu.m_lastExecutedInstructionAddress = cpu.m_programCounter;
 
                 if (!cpu.m_jumpOccured)
                     cpu.m_programCounter += INSTRUCTION_SIZE;
