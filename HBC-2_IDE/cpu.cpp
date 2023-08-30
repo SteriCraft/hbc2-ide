@@ -34,6 +34,8 @@ void Cpu::init(HbcCpu &cpu, HbcMotherboard* mb)
     cpu.m_motherboard = mb;
 
     cpu.m_lastExecutedInstructionAddress = PROGRAM_START_ADDRESS;
+
+    cpu.m_softwareInterrupt = false;
 }
 
 void Cpu::tick(HbcCpu &cpu)
@@ -46,6 +48,13 @@ void Cpu::tick(HbcCpu &cpu)
                 if (cpu.m_motherboard->m_int)
                 {
                     cpu.m_motherboard->m_inr = true;
+
+                    cpu.m_currentState = Cpu::CpuState::INTERRUPT_MANAGEMENT;
+                    break;
+                }
+                else if (cpu.m_softwareInterrupt)
+                {
+                    cpu.m_softwareInterrupt = false;
 
                     cpu.m_currentState = Cpu::CpuState::INTERRUPT_MANAGEMENT;
                     break;
@@ -72,13 +81,15 @@ void Cpu::tick(HbcCpu &cpu)
             {
                 Cpu::push(cpu, cpu.m_registers[(int)Cpu::Register::I]);
 
-                Cpu::push(cpu, (Byte)(cpu.m_programCounter >> 8));   // LSB
-                Cpu::push(cpu, (Byte)cpu.m_programCounter & 0x00FF); // MSB
+                Cpu::push(cpu, (Byte)(cpu.m_programCounter >> 8));   // MSB
+                Cpu::push(cpu, (Byte)(cpu.m_programCounter & 0x00FF)); // LSB
 
                 cpu.m_flags[(int)Cpu::Flags::INTERRUPT] = false;
                 cpu.m_flags[(int)Cpu::Flags::HALT] = false;
 
                 Word ivtAddress(Cpu::IVT_START_ADDRESS + (cpu.m_motherboard->m_addressBus & INTERRUPT_PORT_MASK) * 2);
+
+                cpu.m_registers[(int)Cpu::Register::I] = cpu.m_motherboard->m_dataBus;
 
                 cpu.m_programCounter = (Word)Motherboard::readRam(*cpu.m_motherboard, ivtAddress) << 8;
                 cpu.m_programCounter += Motherboard::readRam(*cpu.m_motherboard, ivtAddress + 1);
@@ -105,7 +116,7 @@ void Cpu::decode(HbcCpu &cpu)
 
     cpu.m_register1Index = (Cpu::Register)((cpu.m_instructionRegister & R1_MASK) >> 19);
     cpu.m_register2Index = (Cpu::Register)((cpu.m_instructionRegister & R2_MASK) >> 16);
-    cpu.m_register2Index = (Cpu::Register)((cpu.m_instructionRegister & R3_MASK) >> 8);
+    cpu.m_register3Index = (Cpu::Register)((cpu.m_instructionRegister & R3_MASK) >> 8);
 
     cpu.m_v1 = (cpu.m_instructionRegister & V1_MASK) >> 8;
     cpu.m_v2 = cpu.m_instructionRegister & V2_MASK;
@@ -133,7 +144,7 @@ void Cpu::execute(HbcCpu &cpu)
             }
             else if (cpu.m_addressingMode == Cpu::AddressingMode::REG_IMM8)
             {
-                cpu.m_operationCache += cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1 + 1;
+                cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1 + 1;
 
                 cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1 + 1) > 0xFF;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
@@ -158,7 +169,7 @@ void Cpu::execute(HbcCpu &cpu)
         case Cpu::InstructionOpcode::ADD:
             if (cpu.m_addressingMode == Cpu::AddressingMode::REG)
             {
-                cpu.m_operationCache += cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_registers[(int)cpu.m_register2Index];
+                cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_registers[(int)cpu.m_register2Index];
 
                 cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_registers[(int)cpu.m_register2Index]) > 0xFF;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
@@ -168,7 +179,7 @@ void Cpu::execute(HbcCpu &cpu)
             }
             else if (cpu.m_addressingMode == Cpu::AddressingMode::REG_IMM8)
             {
-                cpu.m_operationCache += cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1;
+                cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1;
 
                 cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] + cpu.m_v1) > 0xFF;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
@@ -343,8 +354,14 @@ void Cpu::execute(HbcCpu &cpu)
             cpu.m_flags[(int)Cpu::Flags::INTERRUPT] = true;
             break;
 
-        case Cpu::InstructionOpcode::IN: // TODO
-        case Cpu::InstructionOpcode::OUT: // TODO
+        case Cpu::InstructionOpcode::IN:
+            cpu.m_registers[(int)cpu.m_register1Index] = Iod::getPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register2Index]);
+            break;
+
+        case Cpu::InstructionOpcode::OUT:
+            Iod::setPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register1Index], cpu.m_registers[(int)cpu.m_register2Index]);
+            break;
+
         case Cpu::InstructionOpcode::INC:
             if (cpu.m_addressingMode == Cpu::AddressingMode::REG)
             {
@@ -381,15 +398,27 @@ void Cpu::execute(HbcCpu &cpu)
             }
             break;
 
-        case Cpu::InstructionOpcode::INT: // TODO
+        case Cpu::InstructionOpcode::INT:
+            // TODO: Update documentation
+            // Register I is pushed even under software interrupt (on next cycle when CPU handles it)
+            // It will fill the register I with the motherboard data port
+            // Therefore: the content of register I is moved to motherboard data port on "INT" instruction
+
+            cpu.m_motherboard->m_addressBus = cpu.m_v1;
+            cpu.m_motherboard->m_dataBus = cpu.m_registers[(int)Cpu::Register::I];
+
+            cpu.m_softwareInterrupt = true;
+            break;
+
         case Cpu::InstructionOpcode::IRT:
             Cpu::pop(cpu, cpu.m_dataCache); // LSB
             cpu.m_programCounter = cpu.m_dataCache;
 
             Cpu::pop(cpu, cpu.m_dataCache); // MSB
-            cpu.m_programCounter = (Word)cpu.m_dataCache << 8;
+            cpu.m_programCounter += (Word)cpu.m_dataCache << 8;
 
             Cpu::pop(cpu, cpu.m_registers[(int)Cpu::Register::I]);
+            cpu.m_flags[(int)Cpu::Flags::INTERRUPT] = true;
 
             cpu.m_jumpOccured = true;
             break;
@@ -541,6 +570,8 @@ void Cpu::execute(HbcCpu &cpu)
 
                 Cpu::pop(cpu, cpu.m_dataCache); // MSB
                 cpu.m_programCounter += (Word)cpu.m_dataCache << 8;
+
+                cpu.m_programCounter += Cpu::INSTRUCTION_SIZE;
 
                 cpu.m_jumpOccured = true;
             }

@@ -47,7 +47,9 @@ struct HbcCpu
     Cpu::CpuState m_currentState; //!< Used internaly to decode interrupts
     HbcMotherboard *m_motherboard; //!< Used internaly
 
-    Word m_lastExecutedInstructionAddress;
+    bool m_softwareInterrupt; //!< Used internaly
+
+    Word m_lastExecutedInstructionAddress; //!< For CpuStateViewer
 };
 
 // Already documented in computerDetails.h

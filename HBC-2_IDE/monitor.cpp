@@ -46,16 +46,13 @@ void HbcMonitor::init()
 void HbcMonitor::tick()
 {
     Monitor::Command command = (Monitor::Command)*m_sockets[(int)Monitor::Port::CMD].portDataPointer;
-    int index;
-
-    index = QRandomGenerator::global()->generate() % TEXT_MODE_BUFFER_SIZE;
-    m_videoData.textBuffer[index].ascii = (QRandomGenerator::global()->generate() % (127 - 31)) + 32;
-    m_videoData.textBuffer[index].colors = ((QRandomGenerator::global()->generate() % 16) << 4)+ (QRandomGenerator::global()->generate() % 16);
+    int videoIndex, textIndex;
 
     // Check command
     if (command != Monitor::Command::NOP)
     {
-        index = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * MONITOR_WIDTH;
+        videoIndex = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * MONITOR_WIDTH;
+        textIndex = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * TEXT_MODE_COLUMNS;
 
         if (command == Monitor::Command::WRITE)
         {
@@ -63,9 +60,9 @@ void HbcMonitor::tick()
             {
                 m_videoData.mutex.lock();
 
-                if (index < PIXEL_MODE_BUFFER_SIZE)
+                if (videoIndex < PIXEL_MODE_BUFFER_SIZE)
                 {
-                    m_videoData.pixelBuffer[index] = *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer;
+                    m_videoData.pixelBuffer[videoIndex] = *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer;
                 }
 
                 m_videoData.mutex.unlock();
@@ -74,10 +71,10 @@ void HbcMonitor::tick()
             {
                 m_videoData.mutex.lock();
 
-                if (index < TEXT_MODE_BUFFER_SIZE)
+                if (textIndex < TEXT_MODE_BUFFER_SIZE)
                 {
-                    m_videoData.textBuffer[index].colors = *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer;
-                    m_videoData.textBuffer[index].ascii = *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer;
+                    m_videoData.textBuffer[textIndex].colors = *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer;
+                    m_videoData.textBuffer[textIndex].ascii = *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer;
                 }
 
                 m_videoData.mutex.unlock();
@@ -91,13 +88,13 @@ void HbcMonitor::tick()
 
                 *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer = 0x00;
 
-                if (index >= PIXEL_MODE_BUFFER_SIZE)
+                if (videoIndex >= PIXEL_MODE_BUFFER_SIZE)
                 {
                     *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = 0x00;
                 }
                 else
                 {
-                    *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = m_videoData.pixelBuffer[index];
+                    *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = m_videoData.pixelBuffer[videoIndex];
                 }
 
                 m_videoData.mutex.unlock();
@@ -106,15 +103,15 @@ void HbcMonitor::tick()
             {
                 m_videoData.mutex.lock();
 
-                if (index >= TEXT_MODE_BUFFER_SIZE)
+                if (textIndex >= TEXT_MODE_BUFFER_SIZE)
                 {
                     *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = 0x00;
                     *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer = 0x00;
                 }
                 else
                 {
-                    *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = m_videoData.textBuffer[index].colors;
-                    *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer = m_videoData.textBuffer[index].ascii;
+                    *m_sockets[(int)Monitor::Port::DATA_0].portDataPointer = m_videoData.textBuffer[textIndex].colors;
+                    *m_sockets[(int)Monitor::Port::DATA_1].portDataPointer = m_videoData.textBuffer[textIndex].ascii;
                 }
 
                 m_videoData.mutex.unlock();
@@ -123,10 +120,12 @@ void HbcMonitor::tick()
         else if (command == Monitor::Command::SWITCH_TO_PIXEL_MODE)
         {
             m_mode = Monitor::Mode::PIXEL;
+            qDebug() << "[MONITOR]: Switches to pixel mode";
         }
         else if (command == Monitor::Command::SWITCH_TO_TEXT_MODE)
         {
             m_mode = Monitor::Mode::TEXT;
+            qDebug() << "[MONITOR]: Switches to text mode";
         }
     }
 }

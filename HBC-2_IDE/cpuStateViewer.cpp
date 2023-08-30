@@ -425,7 +425,7 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
     }
     else if (status.state == Cpu::CpuState::INTERRUPT_MANAGEMENT)
     {
-        m_stateLineEdit->setText("ANALIZING INTERRUPT");
+        m_stateLineEdit->setText("ANALYZING INTERRUPT");
         m_stateLineEdit->setStyleSheet("color: orange;");
     }
     else
@@ -436,12 +436,12 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
 
     if (status.interruptReady)
     {
-        m_interruptReadyLineEdit->setText("YES");
+        m_interruptReadyLineEdit->setText("INTERRUPT READY");
         m_interruptReadyLineEdit->setStyleSheet("color: green;");
     }
     else
     {
-        m_interruptReadyLineEdit->setText("NO");
+        m_interruptReadyLineEdit->setText("INTERRUPT QUEUED");
         m_interruptReadyLineEdit->setStyleSheet("color: red;");
     }
 
