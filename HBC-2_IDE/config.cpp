@@ -176,7 +176,7 @@ ConfigManager::ConfigManager()
                     {
                         m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
                     }
-                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPPED")
+                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED")
                     {
                         m_settings.openCpuStateViewerOnEmulatorStopped = (value == "TRUE");
                     }
@@ -451,7 +451,7 @@ void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
 
 void SettingsDialog::openCpuStateViewerOnEmulatorStoppedChanged()
 {
-    m_configManager->setOpenCpuStateViewerOnEmulatorPaused(m_openCpuStateViewerOnEmulatorPausedCheckBox->isChecked());
+    m_configManager->setOpenCpuStateViewerOnEmulatorStopped(m_openCpuStateViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
 void SettingsDialog::openBinaryViewerOnAssemblyChanged()
