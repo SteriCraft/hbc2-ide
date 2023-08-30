@@ -25,7 +25,17 @@ bool Assembler::isBinaryReady()
 
 QByteArray Assembler::getBinaryData()
 {
+    return m_finalBinary.binaryData;
+}
+
+BinaryWithSymbols Assembler::getBinaryDataWithSymbols()
+{
     return m_finalBinary;
+}
+
+ByteDebugSymbol Assembler::getSymbolFromAddress(Word address)
+{
+    return m_finalBinary.origin[address];
 }
 
 bool Assembler::assembleProject(std::shared_ptr<Project> p)
@@ -59,11 +69,16 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     m_finalFile.m_lines.clear();
     m_tokenFiles.clear();
 
-    m_finalBinary.clear();
+    m_finalBinary.binaryData.clear();
+    m_finalBinary.origin.clear();
+
     quint8 nullChar(0);
     for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
     {
-        m_finalBinary.push_back(nullChar);
+        ByteDebugSymbol newSymbol;
+
+        m_finalBinary.binaryData.push_back(nullChar);
+        m_finalBinary.origin.push_back(newSymbol);
     }
 
 
@@ -1468,10 +1483,14 @@ bool Assembler::replaceVariablesByAddresses()
 // -- Major pass 7 --
 bool Assembler::convertTokensToBinary()
 {
-    for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
+    // TODO: Useless because initialized in "assembleProject()"
+    /*for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
     {
-        m_finalBinary[i] = 0x00;
-    }
+        ByteDebugSymbol newSymbol;
+
+        m_finalBinary.binaryData[i] = 0x00;
+        m_finalBinary.origin.push_back(newSymbol);
+    }*/
 
     Token::TokenLine *line(nullptr);
     uint16_t instructionAddress;
@@ -1486,10 +1505,13 @@ bool Assembler::convertTokensToBinary()
 
             instructionBinary = getBinaryFromTokenLine(line);
 
-            m_finalBinary[instructionAddress]     = ((instructionBinary & 0xFF000000) >> 24);
-            m_finalBinary[instructionAddress + 1] = ((instructionBinary & 0x00FF0000) >> 16);
-            m_finalBinary[instructionAddress + 2] = ((instructionBinary & 0x0000FF00) >> 8);
-            m_finalBinary[instructionAddress + 3] = ((instructionBinary & 0x000000FF));
+            m_finalBinary.binaryData[instructionAddress]     = ((instructionBinary & 0xFF000000) >> 24);
+            m_finalBinary.binaryData[instructionAddress + 1] = ((instructionBinary & 0x00FF0000) >> 16);
+            m_finalBinary.binaryData[instructionAddress + 2] = ((instructionBinary & 0x0000FF00) >> 8);
+            m_finalBinary.binaryData[instructionAddress + 3] = ((instructionBinary & 0x000000FF));
+
+            m_finalBinary.origin[instructionAddress].filePath = m_definedRoutineBlocks[i].instructionLines[j].m_originFilePath;
+            m_finalBinary.origin[instructionAddress].lineNb = m_definedRoutineBlocks[i].instructionLines[j].m_originLineNb;
 
             instructionAddress += Cpu::INSTRUCTION_SIZE;
         }
@@ -1504,7 +1526,7 @@ bool Assembler::convertDataToBinary()
     {
         if (m_definedVars[i].type == Token::DataType::SINGLE_VALUE_DEFINED || m_definedVars[i].type == Token::DataType::SINGLE_VALUE_UNDEFINED)
         {
-            m_finalBinary[m_definedVars[i].range.begin] = m_definedVars[i].values[0].getValue();
+            m_finalBinary.binaryData[m_definedVars[i].range.begin] = m_definedVars[i].values[0].getValue();
         }
         else if (m_definedVars[i].type == Token::DataType::STRING_DEFINED || m_definedVars[i].type == Token::DataType::STRING_UNDEFINED)
         {
@@ -1512,14 +1534,14 @@ bool Assembler::convertDataToBinary()
 
             for (unsigned int j(0); j < str.size(); j++)
             {
-                m_finalBinary[m_definedVars[i].range.begin + j] = str.at(j);
+                m_finalBinary.binaryData[m_definedVars[i].range.begin + j] = str.at(j);
             }
         }
         else // Multiple values
         {
             for (unsigned int j(0); j < m_definedVars[i].values.size(); j++)
             {
-                m_finalBinary[m_definedVars[i].range.begin + j] = m_definedVars[i].values[j].getValue();
+                m_finalBinary.binaryData[m_definedVars[i].range.begin + j] = m_definedVars[i].values[j].getValue();
             }
         }
     }
@@ -1555,7 +1577,7 @@ bool Assembler::saveBinaryToFile()
 
     for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
     {
-        out << m_finalBinary[i];
+        out << m_finalBinary.binaryData[i];
     }
 
     file.flush();

@@ -93,6 +93,7 @@ class MainWindow : public QMainWindow
         // General methods
         void closeAssociatedTabs(ProjectItem* item);
         void closeProject(std::shared_ptr<Project> p);
+        void updateTabs();
         void updateWinTabMenu();
         void updateStatusBar();
         void setStatusBarRightMessage(QString message);
@@ -104,7 +105,9 @@ class MainWindow : public QMainWindow
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
         void updateCpuStateViewer(bool lastState = false);
+        void updateCpuStateViewer(CpuStatus status, bool lastState = false);
         void updateRecentProjectsMenu();
+        void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol);
 
         // Editors management actions
         void newProjectAction();
@@ -112,7 +115,7 @@ class MainWindow : public QMainWindow
         void openProjectAction();
         void openProject(QString projectPath);
         void openFileAction();
-        void openFile(QString filePath, std::shared_ptr<Project> associatedProject = nullptr);
+        bool openFile(QString filePath, std::shared_ptr<Project> associatedProject = nullptr, bool warnings = true);
         void saveCurrentFileAction();
         void saveFileAction(CustomFile *file);
         bool saveAllAction();

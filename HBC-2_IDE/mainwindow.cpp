@@ -373,7 +373,7 @@ void MainWindow::onTextChanged()
         associatedProject->setAssembled(false);
     }
 
-    updateWinTabMenu();
+    updateTabs();
 }
 
 void MainWindow::onTextCursorMoved()
@@ -610,18 +610,26 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     }
     else if (newState == Emulator::State::PAUSED)
     {
+        CpuStatus status(m_emulator->getCurrentCpuStatus());
+
         if (m_configManager->getOpenBinaryViewerOnEmulatorPaused())
             updateBinaryViewer();
 
         if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
-            updateCpuStateViewer();
+            updateCpuStateViewer(status);
+
+        highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentCpuStatus().programCounter));
     }
 }
 
 void MainWindow::onEmulatorStepped()
 {
+    CpuStatus status(m_emulator->getCurrentCpuStatus());
+
     BinaryViewer::update(m_emulator->getCurrentBinaryData());
-    CpuStateViewer::update(m_emulator->getCurrentCpuStatus());
+    updateCpuStateViewer(status);
+
+    highlightDebugSymbol(m_assembler->getSymbolFromAddress(status.programCounter));
 }
 
 void MainWindow::onTickCountReceived(int countIn100Ms)
@@ -806,8 +814,9 @@ void MainWindow::openFileAction()
     openFile(filePath);
 }
 
-void MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedProject)
+bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedProject, bool warnings)
 {
+    bool success(false);
     QString errorStr;
     CustomFile *openedFile;
 
@@ -817,7 +826,10 @@ void MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
 
         if (openedFile == nullptr)
         {
-            QMessageBox::information(this, tr("Unable to open file"), errorStr);
+            if (warnings)
+            {
+                QMessageBox::warning(this, tr("Unable to open file"), errorStr);
+            }
         }
         else if (errorStr == "alreadyOpened")
         {
@@ -826,8 +838,14 @@ void MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
                 if (getCCE(m_assemblyEditor->widget(i))->getFile() == openedFile)
                 {
                     m_assemblyEditor->setCurrentIndex(i);
+                    success = true;
                     break;
                 }
+            }
+
+            if (!success && warnings)
+            {
+                QMessageBox::warning(this, tr("Unable to locate the right editor tab"), errorStr);
             }
         }
         else
@@ -845,8 +863,12 @@ void MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
             openedFile->setAssociatedProject(associatedProject);
 
             m_observer.addPath(filePath);
+
+            success = true;
         }
     }
+
+    return success;
 }
 
 void MainWindow::saveCurrentFileAction()
@@ -1563,11 +1585,37 @@ void MainWindow::closeProject(std::shared_ptr<Project> p)
     updateWinTabMenu();
 }
 
-void MainWindow::updateWinTabMenu()
+void MainWindow::updateTabs()
 {
-    // File menu update
     CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
 
+    if (currentEditor != nullptr)
+    {
+        CustomFile* file;
+
+        setWindowTitle("HBC-2 IDE - " + currentEditor->getFileName() + (currentEditor->getFile()->isSaved() ? "" : "*"));
+
+        for (int i(0); i < m_assemblyEditor->count(); i++)
+        {
+            file = getCCE(m_assemblyEditor->widget(i))->getFile();
+
+            m_assemblyEditor->setTabText(i, file->getName() + (file->isSaved() ? "" : "*"));
+        }
+
+        m_saveFileAction->setEnabled(!currentEditor->getFile()->isSaved());
+    }
+    else
+    {
+        setWindowTitle("HBC-2 IDE");
+
+        m_saveFileAction->setEnabled(false);
+    }
+
+    m_saveAllAction->setEnabled(m_fileManager->areThereUnsavedFiles());
+}
+
+void MainWindow::updateWinTabMenu()
+{
     m_closeProjectAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
     m_closeFileAction->setEnabled(m_assemblyEditor->count() > 0);
     m_closeAllAction->setEnabled(m_assemblyEditor->count() > 0);
@@ -1594,30 +1642,7 @@ void MainWindow::updateWinTabMenu()
     else
         m_showBinOutputAction->setEnabled(m_assembler->isBinaryReady());
 
-    // Save status (tab titles and window title)
-    if (currentEditor != nullptr)
-    {
-        CustomFile* file;
-
-        setWindowTitle("HBC-2 IDE - " + currentEditor->getFileName() + (currentEditor->getFile()->isSaved() ? "" : "*"));
-
-        for (int i(0); i < m_assemblyEditor->count(); i++)
-        {
-            file = getCCE(m_assemblyEditor->widget(i))->getFile();
-
-            m_assemblyEditor->setTabText(i, file->getName() + (file->isSaved() ? "" : "*"));
-        }
-
-        m_saveFileAction->setEnabled(!currentEditor->getFile()->isSaved());
-    }
-    else
-    {
-        setWindowTitle("HBC-2 IDE");
-
-        m_saveFileAction->setEnabled(false);
-    }
-
-    m_saveAllAction->setEnabled(m_fileManager->areThereUnsavedFiles());
+    updateTabs();
 }
 
 void MainWindow::updateStatusBar()
@@ -1731,6 +1756,12 @@ void MainWindow::updateBinaryViewer()
 void MainWindow::updateCpuStateViewer(bool lastState)
 {
     const CpuStatus status = m_emulator->getCurrentCpuStatus();
+
+    updateCpuStateViewer(status, lastState);
+}
+
+void MainWindow::updateCpuStateViewer(CpuStatus status, bool lastState)
+{
     CpuStateViewer *viewer = CpuStateViewer::getInstance(this);
 
     viewer->update(status, lastState);
@@ -1739,7 +1770,6 @@ void MainWindow::updateCpuStateViewer(bool lastState)
 
 void MainWindow::updateRecentProjectsMenu()
 {
-    // Look for recent projects stored in a file next to config
     QList<QString> recentProjectsPaths = m_configManager->getRecentProjects();
 
     m_recentProjectsMenu->clear();
@@ -1747,6 +1777,44 @@ void MainWindow::updateRecentProjectsMenu()
     for (unsigned int i(0); i < recentProjectsPaths.size(); i++)
     {
         m_recentProjectsMenu->addAction(recentProjectsPaths[i], this, std::bind(&MainWindow::onRecentProjectSelected, this, recentProjectsPaths[i]));
+    }
+}
+
+void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol)
+{
+    if (!symbol.filePath.isEmpty())
+    {
+        bool found(false);
+
+        m_assemblyEditor->blockSignals(true); // Because the emulator locks its mutex and "getState" gets called on tab change
+        for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
+        {
+            CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
+
+            if (editor->getFile()->getPath() == symbol.filePath)
+            {
+                m_assemblyEditor->setCurrentIndex(i);
+
+                found = true;
+                break;
+            }
+        }
+
+        if (!found)
+        {
+            if (!openFile(symbol.filePath, m_projectManager->getCurrentProject(), false))
+            {
+                QMessageBox::warning(this, tr("Debug symbol error"), "Unable to open the source code file associated with the current instruction");
+                return;
+            }
+        }
+        m_assemblyEditor->blockSignals(false);
+
+        CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
+        if (currentEditor != nullptr)
+        {
+            currentEditor->highlightLine(symbol.lineNb-1);
+        }
     }
 }
 

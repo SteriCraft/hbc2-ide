@@ -316,6 +316,30 @@ void CustomizedCodeEditor::updateLineNumberAreaWidth(int /* newBlockCount */)
     setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
 }
 
+void CustomizedCodeEditor::highlightLine(int lineNb)
+{
+    if (lineNb < 0 | lineNb >= blockCount())
+    {
+        return;
+    }
+
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    QTextEdit::ExtraSelection selection;
+
+    QColor lineColor = QColor(128, 128, 128, 128);
+
+    QTextCursor cursor(document()->findBlockByLineNumber(lineNb));
+    setTextCursor(cursor);
+
+    selection.format.setBackground(lineColor);
+    selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+    selection.cursor = textCursor();
+    selection.cursor.clearSelection();
+    extraSelections.append(selection);
+
+    setExtraSelections(extraSelections);
+}
+
 void CustomizedCodeEditor::updateLineNumberArea(const QRect &rect, int dy)
 {
     if (dy)
@@ -342,25 +366,6 @@ void CustomizedCodeEditor::keyPressEvent(QKeyEvent *e)
     else
         QPlainTextEdit::keyPressEvent(e);
 }
-
-/*void CustomizedCodeEditor::highlightCurrentLine()
-{
-    QList<QTextEdit::ExtraSelection> extraSelections;
-
-    if (!isReadOnly()) {
-        QTextEdit::ExtraSelection selection;
-
-        QColor lineColor = QColor(Qt::yellow).lighter(160);
-
-        selection.format.setBackground(lineColor);
-        selection.format.setProperty(QTextFormat::FullWidthSelection, true);
-        selection.cursor = textCursor();
-        selection.cursor.clearSelection();
-        extraSelections.append(selection);
-    }
-
-    setExtraSelections(extraSelections);
-}*/
 
 void CustomizedCodeEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
 {

@@ -6,7 +6,7 @@
  * \brief Specialized QPlainTextEdit for the HBC-2 assembly language
  * \author Gianni Leclercq
  * \version 0.1
- * \date 27/08/2023
+ * \date 29/08/2023
  */
 #include <QWidget>
 #include <QPlainTextEdit>
@@ -22,6 +22,7 @@
  * \brief Tool used to highlight and/or color text with regular expressions
  *
  * Derived from the <a href="https://doc.qt.io/qt-6/qtwidgets-richtext-syntaxhighlighter-example.html">Syntax Highlighter example</a> in the Qt Documentation.
+ *
  * ChatGPT was used here to obtain useful regular expression.<br>
  * Special thanks to Thibaut De La Chapelle for his help with regular expressions.
  */
@@ -68,6 +69,14 @@ class CustomizedCodeEditor : public QPlainTextEdit
         void lineNumberAreaPaintEvent(QPaintEvent *event);
         int lineNumberAreaWidth();
 
+        /*!
+         * \brief Highlights a line
+         * \param lineNb Line number (starting at 0)
+         *
+         * Doesn't do anything if the line number is negative or superior than the file's number of line
+         */
+        void highlightLine(int lineNb);
+
         QString getFileName();
         CustomFile* getFile();
         int getCurrentCursorLineNumber();
@@ -79,7 +88,6 @@ class CustomizedCodeEditor : public QPlainTextEdit
 
     private slots:
         void updateLineNumberAreaWidth(int newBlockCount);
-        //void highlightCurrentLine();
         void updateLineNumberArea(const QRect &, int);
 
     private:

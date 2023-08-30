@@ -88,6 +88,11 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a8b376f068c0a6c3f4cf88fc377ce840e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:abbf5e0ded53671ff117d05e83316bfc4"><td class="memItemLeft" align="right" valign="top">QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#abbf5e0ded53671ff117d05e83316bfc4">getBinaryData</a> ()</td></tr>
 <tr class="separator:abbf5e0ded53671ff117d05e83316bfc4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a838dcbd18d67428ed30d3b194b12d2fe"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_assembly_1_1_binary_with_symbols.html">BinaryWithSymbols</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a838dcbd18d67428ed30d3b194b12d2fe">getBinaryDataWithSymbols</a> ()</td></tr>
+<tr class="separator:a838dcbd18d67428ed30d3b194b12d2fe"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_assembly_1_1_byte_debug_symbol.html">ByteDebugSymbol</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a5a33795e5b1f8754ddf8f7b7ddba1b1b">getSymbolFromAddress</a> (Word address)</td></tr>
+<tr class="memdesc:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get a debug symbol from a memory address.  <a href="class_assembly_1_1_assembler.html#a5a33795e5b1f8754ddf8f7b7ddba1b1b">More...</a><br /></td></tr>
+<tr class="separator:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e">assembleProject</a> (std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; p)</td></tr>
 <tr class="memdesc:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the project and returns true it succeeded.  <a href="class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e">More...</a><br /></td></tr>
 <tr class="separator:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -143,7 +148,25 @@ Static Public Member Functions</h2></td></tr>
         </tr>
       </table>
 </div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>binary data after assembly </dd></dl>
+<dl class="section return"><dt>Returns</dt><dd>binary data after assembly without debug symbols </dd></dl>
+
+</div>
+</div>
+<a id="a838dcbd18d67428ed30d3b194b12d2fe"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a838dcbd18d67428ed30d3b194b12d2fe">&#9670;&nbsp;</a></span>getBinaryDataWithSymbols()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="struct_assembly_1_1_binary_with_symbols.html">BinaryWithSymbols</a> Assembler::getBinaryDataWithSymbols </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>binary data after assembly with debug symbols </dd></dl>
 
 </div>
 </div>
@@ -177,6 +200,35 @@ Static Public Member Functions</h2></td></tr>
   </table>
   </dd>
 </dl>
+
+</div>
+</div>
+<a id="a5a33795e5b1f8754ddf8f7b7ddba1b1b"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5a33795e5b1f8754ddf8f7b7ddba1b1b">&#9670;&nbsp;</a></span>getSymbolFromAddress()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="struct_assembly_1_1_byte_debug_symbol.html">ByteDebugSymbol</a> Assembler::getSymbolFromAddress </td>
+          <td>(</td>
+          <td class="paramtype">Word&#160;</td>
+          <td class="paramname"><em>address</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Get a debug symbol from a memory address. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">address</td><td>Memory address (word) </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd>a struct with the original file and the line number associated to the address </dd>
+<dd>
+an empty struct if the memory address does not point to the first byte of an instruction </dd></dl>
 
 </div>
 </div>

@@ -98,6 +98,26 @@ namespace Assembly
     };
 
     /*!
+     * \brief Debug symbol storing the original code file and line number
+     *
+     * Associated to the first byte of an instruction <b>only</b>
+     */
+    struct ByteDebugSymbol
+    {
+        QString filePath = "";
+        unsigned int lineNb = 0;
+    };
+
+    /*!
+     * \brief Final binary data with debug symbols
+     */
+    struct BinaryWithSymbols
+    {
+        QByteArray binaryData;
+        std::vector<ByteDebugSymbol> origin;
+    };
+
+    /*!
      * \class Assembler
      * \brief Singleton of the assembler
      *
@@ -123,9 +143,23 @@ namespace Assembly
             bool isBinaryReady();
 
             /*!
-             * \return binary data after assembly
+             * \return binary data after assembly without debug symbols
              */
             QByteArray getBinaryData();
+
+            /*!
+             * \return binary data after assembly with debug symbols
+             */
+            BinaryWithSymbols getBinaryDataWithSymbols();
+
+            /*!
+             * \brief Get a debug symbol from a memory address
+             *
+             * \param address Memory address (word)
+             * \return a struct with the original file and the line number associated to the address
+             * \return an empty struct if the memory address does not point to the first byte of an instruction
+             */
+            ByteDebugSymbol getSymbolFromAddress(Word address);
 
             /*!
              * \brief Assembles the project and returns true it succeeded.
@@ -199,7 +233,8 @@ namespace Assembly
             std::vector<RoutineBlock> m_undefinedRoutineBlocks;
             std::vector<RoutineBlock> m_definedRoutineBlocks;
 
-            QByteArray m_finalBinary;
+            BinaryWithSymbols m_finalBinary;
+            //QByteArray m_finalBinary;
             bool m_binaryReady;
 
             unsigned int m_definesCount;
