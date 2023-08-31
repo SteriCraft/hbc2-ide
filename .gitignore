@@ -1,7 +1,7 @@
 # ignore all logs
 .log
 
-# Push only "Documentation/", "HBC-2_IDE" and "Logisim"
+# Directories to ignore
 Rom dump/
 Youtube/
 Blog/
