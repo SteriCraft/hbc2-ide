@@ -293,8 +293,6 @@ void Cpu::execute(HbcCpu &cpu)
                 cpu.m_flags[(int)Cpu::Flags::SUPERIOR] = cpu.m_registers[(int)cpu.m_register1Index] >  cpu.m_registers[(int)cpu.m_register2Index];
                 cpu.m_flags[(int)Cpu::Flags::EQUAL] =    cpu.m_registers[(int)cpu.m_register1Index] == cpu.m_registers[(int)cpu.m_register2Index];
                 cpu.m_flags[(int)Cpu::Flags::INFERIOR] = cpu.m_registers[(int)cpu.m_register1Index] <  cpu.m_registers[(int)cpu.m_register2Index];
-                // TODO : Update documentation because flag ZERO don't get updated
-                // TODO : Update document because it's not flag "I" (interrupt) but "F" (inferior) that gets updated
             }
             else if (cpu.m_addressingMode == Cpu::AddressingMode::REG_IMM8)
             {
@@ -399,11 +397,6 @@ void Cpu::execute(HbcCpu &cpu)
             break;
 
         case Cpu::InstructionOpcode::INT:
-            // TODO: Update documentation
-            // Register I is pushed even under software interrupt (on next cycle when CPU handles it)
-            // It will fill the register I with the motherboard data port
-            // Therefore: the content of register I is moved to motherboard data port on "INT" instruction
-
             cpu.m_motherboard->m_addressBus = cpu.m_v1;
             cpu.m_motherboard->m_dataBus = cpu.m_registers[(int)Cpu::Register::I];
 
@@ -611,7 +604,6 @@ void Cpu::execute(HbcCpu &cpu)
 
                 cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] & 0x01;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
-                // TODO update documentation because negative flag would never be set by a right shift
 
                 cpu.m_registers[(int)cpu.m_register1Index] = cpu.m_operationCache;
             }

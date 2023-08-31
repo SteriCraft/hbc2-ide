@@ -1,5 +1,7 @@
 #include "console.h"
 
+#include <QScrollBar>
+
 Console::Console(QWidget *parent) : QTextEdit(parent)
 {
     setMinimumHeight(CONSOLE_HEIGHT);
