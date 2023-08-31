@@ -1483,15 +1483,6 @@ bool Assembler::replaceVariablesByAddresses()
 // -- Major pass 7 --
 bool Assembler::convertTokensToBinary()
 {
-    // TODO: Useless because initialized in "assembleProject()"
-    /*for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
-    {
-        ByteDebugSymbol newSymbol;
-
-        m_finalBinary.binaryData[i] = 0x00;
-        m_finalBinary.origin.push_back(newSymbol);
-    }*/
-
     Token::TokenLine *line(nullptr);
     uint16_t instructionAddress;
     uint32_t instructionBinary;
