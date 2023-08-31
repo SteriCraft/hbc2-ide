@@ -18,10 +18,16 @@ HbcMonitor::~HbcMonitor()
 
 void HbcMonitor::init()
 {
-    m_sockets = Iod::requestPortsConnexions(*m_iod, SCREEN_PORTS_NB);
+    bool success(true);
+
+    m_sockets = Iod::requestPortsConnexions(*m_iod, MONITOR_DEVICE_ID, SCREEN_PORTS_NB);
 
     if (m_sockets.size() < SCREEN_PORTS_NB)
+    {
         m_consoleOutput->log("Cannot plug the monitor, not enough available ports");
+
+        success = false;
+    }
 
     m_mode = Monitor::Mode::TEXT; // Default
 

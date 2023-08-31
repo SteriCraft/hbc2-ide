@@ -21,6 +21,8 @@
  */
 namespace Monitor
 {
+    constexpr Byte MONITOR_DEVICE_ID = 0x4A; //!< Random to "look" nice
+
     constexpr int MONITOR_WIDTH = 256;
     constexpr int MONITOR_HEIGHT = 192;
     constexpr int PIXEL_SCALE = 4;
@@ -211,7 +213,7 @@ class HbcMonitor : public HbcPeripheral
         HbcMonitor(HbcIod *iod, Console *consoleOutput);
         ~HbcMonitor();
 
-        void init() override;
+        void init() override; //!< See HbcPeripheral for the overriden method
         void tick() override;
 
         Monitor::CharData* getTextBuffer();

@@ -21,7 +21,6 @@ struct HbcIod
 {
     HbcMotherboard *m_motherboard; //!< Used internaly
 
-    unsigned int m_nbPeripheralsPlugged; //!< Number of peripherals plugged in
     Iod::Port m_ports[Iod::PORTS_NB]; //!< Input/Output Device ports
     std::queue<Iod::Interrupt> m_interruptsQueue; //!< Queue size is defined by INTERRUPT_QUEUE_SIZE
 };
@@ -64,13 +63,16 @@ namespace Iod
     /*!
      * \brief Requests HbcIod for available ports
      *
-     * HbcIod will keep track of the peripheral id plugged in the ports <i><b>(under development)</b></i><br>
+     * HbcIod keeps track of the peripheral id plugged in the ports.<br>
+     * This function is called on initialization of peripherals.<br>
+     * It triggers 2 interrupts for the CPU to identify plugged devices.
+     *
      * <i>Returns an <b>empty vector of sockets</b> if there is not enough available ports</i>
      *
      * \param nbPortsRequested Number of ports requested
      * \return a vector of the sockets created <b>(empty if there is not enough available ports)</b>
      */
-    std::vector<PortSocket> requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested);
+    std::vector<PortSocket> requestPortsConnexions(HbcIod &iod, Byte peripheralId, unsigned int nbPortsRequested);
 }
 
 #endif // IOD_H

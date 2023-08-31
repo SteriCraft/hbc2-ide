@@ -126,6 +126,7 @@ namespace Iod
 {
     constexpr int INTERRUPT_QUEUE_SIZE = 256;
     constexpr int PORTS_NB = 256;
+    constexpr int IOD_RESERVED_PORT_NB = 0; //!< Used to HbcIod - HbcCpu data exchange
 
     /*!
      * \struct Interrupt
@@ -153,7 +154,7 @@ namespace Iod
      */
     struct Port
     {
-        unsigned int peripheralId; //!< HbcIod stores informations about connected peripherals
+        unsigned int peripheralId; //!< HbcIod stores informations about connected peripherals <i>(#0 = no peripheral connected)</i>
         Byte data; //!< Where PortSocket.portDataPointer leads to
     };
 }

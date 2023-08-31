@@ -441,7 +441,7 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
     }
     else
     {
-        m_interruptReadyLineEdit->setText("INTERRUPT QUEUED");
+        m_interruptReadyLineEdit->setText("INTERRUPTS QUEUED");
         m_interruptReadyLineEdit->setStyleSheet("color: red;");
     }
 

@@ -30,7 +30,13 @@ class HbcPeripheral
         HbcPeripheral(HbcIod *iod, Console *consoleOutput);
         virtual ~HbcPeripheral() = 0; //!< Must be overriden to destroy the derived peripheral
 
-        virtual void init() = 0; //!< Must be overriden to initialize the derived peripheral
+        /*!
+         * \brief To override <b><i>IMPORTANT</i></b>
+         *
+         * Must be overriden to initialize the derived peripheral.<br>
+         * After initialization, it must trigger an interrupt giving the peripheral's ID.
+         */
+        virtual void init() = 0;
         virtual void tick() = 0; //!< Must be overriden to tick the derived peripheral
 
     protected:

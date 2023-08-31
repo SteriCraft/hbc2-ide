@@ -4,8 +4,6 @@ void Iod::init(HbcIod &iod, HbcMotherboard *mb)
 {
     iod.m_motherboard = mb;
 
-    iod.m_nbPeripheralsPlugged = 0;
-
     for (unsigned int i(0); i < PORTS_NB; i++)
     {
         iod.m_ports[i].peripheralId = 0x00;
@@ -23,7 +21,7 @@ void Iod::tick(HbcIod &iod)
         iod.m_motherboard->m_int = iod.m_interruptsQueue.size() > 0;
 
         if (iod.m_motherboard->m_int)
-            qDebug() << "[IOD]: Interrupt(s) pending";
+            qDebug() << "[IOD]: " << iod.m_interruptsQueue.size() << " interrupt(s) pending";
     }
     else
     {
@@ -62,18 +60,16 @@ void Iod::triggerInterrupt(HbcIod &iod, Byte peripheralFirstPortID)
     }
 }
 
-std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, unsigned int nbPortsRequested)
+std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, Byte peripheralId, unsigned int nbPortsRequested)
 {
     std::vector<PortSocket> sockets;
 
-    for (unsigned int i(0); i < PORTS_NB; i++)
+    for (unsigned int i(1); i < PORTS_NB; i++) // Port #0 is reseved for the IOD to talk to the CPU
     {
-        if (iod.m_ports[i].peripheralId == 0) // No peripheral plugged
+        if (iod.m_ports[i].peripheralId == 0) // No peripheral connected
         {
-            if (PORTS_NB - i >= nbPortsRequested)
+            if (PORTS_NB - i >= nbPortsRequested) // Enough ports available to accept the device
             {
-                iod.m_nbPeripheralsPlugged++;
-
                 for (unsigned int j(0); j < nbPortsRequested; j++)
                 {
                     PortSocket newSocket;
@@ -83,8 +79,16 @@ std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, unsigned i
 
                     sockets.push_back(newSocket);
 
-                    iod.m_ports[i + j].peripheralId = iod.m_nbPeripheralsPlugged;
+                    iod.m_ports[i + j].peripheralId = peripheralId;
                 }
+
+                // First interrupt to tell the CPU the first port on which a peripheral was connected
+                iod.m_ports[IOD_RESERVED_PORT_NB].data = sockets[0].portId;
+                Iod::triggerInterrupt(iod, IOD_RESERVED_PORT_NB);
+
+                // Second interrupt to tell the CPU what peripheral is plugged in
+                iod.m_ports[IOD_RESERVED_PORT_NB].data = peripheralId;
+                Iod::triggerInterrupt(iod, IOD_RESERVED_PORT_NB);
             }
 
             break;
