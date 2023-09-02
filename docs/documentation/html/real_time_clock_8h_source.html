@@ -80,44 +80,47 @@ $(function() {
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160; </div>
 <div class="line"><a name="l00019"></a><span class="lineno">   19</span>&#160;<span class="keyword">namespace </span><a class="code" href="namespace_real_time_clock.html">RealTimeClock</a></div>
 <div class="line"><a name="l00020"></a><span class="lineno">   20</span>&#160;{</div>
-<div class="line"><a name="l00021"></a><span class="lineno">   21</span>&#160;    constexpr <span class="keywordtype">int</span> RTC_PORTS_NB = 7;</div>
-<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;    constexpr <span class="keywordtype">int</span> INTERRUPTS_PER_SECOND = 1;</div>
-<div class="line"><a name="l00023"></a><span class="lineno"><a class="line" href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">   23</a></span>&#160;    constexpr <span class="keywordtype">int</span> <a class="code" href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">YEAR_0</a> = 1900; </div>
-<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160; </div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;    <span class="keyword">enum class</span> Port { YEAR = 0, MONTH = 1, DAY = 2, HOUR = 3, MINUTE = 4, SECOND = 5, CMD = 6 }; </div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    <span class="keyword">enum class</span> Command { NOP = 0, GET_TIME = 1, SET_TIME = 2 }; </div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160; </div>
-<div class="line"><a name="l00105"></a><span class="lineno"><a class="line" href="class_real_time_clock_1_1_hbc_real_time_clock.html">  105</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html">HbcRealTimeClock</a> : <span class="keyword">public</span> <a class="code" href="class_hbc_peripheral.html">HbcPeripheral</a></div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;    {</div>
-<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;        <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;            <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a6a0b423c26cb37dc4f2bf0a833fb1778">HbcRealTimeClock</a>(<a class="code" href="struct_hbc_iod.html">HbcIod</a> *iod, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160; </div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">init</a>() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160; </div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">tick</a>() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160; </div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;        <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;            <span class="keywordtype">void</span> putDateTimeOnPorts();</div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;            <span class="keywordtype">void</span> getDateTimeFromPorts(<span class="keywordtype">int</span> &amp;year, <span class="keywordtype">int</span> &amp;month, <span class="keywordtype">int</span> &amp;day, <span class="keywordtype">int</span> &amp;hour, <span class="keywordtype">int</span> &amp;minute, <span class="keywordtype">int</span> &amp;second);</div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160; </div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;            QElapsedTimer m_clock;</div>
+<div class="line"><a name="l00021"></a><span class="lineno"><a class="line" href="namespace_real_time_clock.html#acf9bef666c3c8622d56ea481d34497fd">   21</a></span>&#160;    constexpr Byte <a class="code" href="namespace_real_time_clock.html#acf9bef666c3c8622d56ea481d34497fd">RTC_DEVICE_ID</a> = 0x95; </div>
+<div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160; </div>
+<div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;    constexpr <span class="keywordtype">int</span> RTC_PORTS_NB = 7;</div>
+<div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;    constexpr <span class="keywordtype">int</span> INTERRUPTS_PER_SECOND = 1;</div>
+<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">   25</a></span>&#160;    constexpr <span class="keywordtype">int</span> <a class="code" href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">YEAR_0</a> = 1900; </div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160; </div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    <span class="keyword">enum class</span> Port { YEAR = 0, MONTH = 1, DAY = 2, HOUR = 3, MINUTE = 4, SECOND = 5, CMD = 6 }; </div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;    <span class="keyword">enum class</span> Command { NOP = 0, GET_TIME = 1, SET_TIME = 2 }; </div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160; </div>
+<div class="line"><a name="l00107"></a><span class="lineno"><a class="line" href="class_real_time_clock_1_1_hbc_real_time_clock.html">  107</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html">HbcRealTimeClock</a> : <span class="keyword">public</span> <a class="code" href="class_hbc_peripheral.html">HbcPeripheral</a></div>
+<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;    {</div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;        <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160;            <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a6a0b423c26cb37dc4f2bf0a833fb1778">HbcRealTimeClock</a>(<a class="code" href="struct_hbc_iod.html">HbcIod</a> *iod, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160; </div>
+<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">init</a>() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160; </div>
+<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">tick</a>() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160; </div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;        <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;            <span class="keywordtype">void</span> putDateTimeOnPorts();</div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160;            <span class="keywordtype">void</span> getDateTimeFromPorts(<span class="keywordtype">int</span> &amp;year, <span class="keywordtype">int</span> &amp;month, <span class="keywordtype">int</span> &amp;day, <span class="keywordtype">int</span> &amp;hour, <span class="keywordtype">int</span> &amp;minute, <span class="keywordtype">int</span> &amp;second);</div>
 <div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160; </div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;            QDate m_date;</div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;            QTime m_time;</div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160; </div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;            RealTimeClock::Command m_command;</div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;        };</div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;}</div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160; </div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// REALTIMECLOCK_H</span></div>
+<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;            QElapsedTimer m_clock;</div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160; </div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160;            QDate m_date;</div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;            QTime m_time;</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160; </div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160;            RealTimeClock::Command m_command;</div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;        };</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160;}</div>
+<div class="line"><a name="l00143"></a><span class="lineno">  143</span>&#160; </div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// REALTIMECLOCK_H</span></div>
 <div class="ttc" id="aclass_console_html"><div class="ttname"><a href="class_console.html">Console</a></div><div class="ttdoc">A console widget to show events and provide information to the user.</div><div class="ttdef"><b>Definition:</b> console.h:23</div></div>
 <div class="ttc" id="aclass_hbc_peripheral_html"><div class="ttname"><a href="class_hbc_peripheral.html">HbcPeripheral</a></div><div class="ttdoc">Virtual class used to derive new peripherals.</div><div class="ttdef"><b>Definition:</b> peripheral.h:24</div></div>
-<div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the RTC device.</div><div class="ttdef"><b>Definition:</b> realTimeClock.h:106</div></div>
-<div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html_a349f20c4c6024299ff3bf2bc9138b4a3"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">RealTimeClock::HbcRealTimeClock::tick</a></div><div class="ttdeci">void tick() override</div><div class="ttdef"><b>Definition:</b> realTimeClock.cpp:19</div></div>
+<div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the RTC device.</div><div class="ttdef"><b>Definition:</b> realTimeClock.h:108</div></div>
+<div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html_a349f20c4c6024299ff3bf2bc9138b4a3"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">RealTimeClock::HbcRealTimeClock::tick</a></div><div class="ttdeci">void tick() override</div><div class="ttdef"><b>Definition:</b> realTimeClock.cpp:28</div></div>
 <div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html_a6a0b423c26cb37dc4f2bf0a833fb1778"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html#a6a0b423c26cb37dc4f2bf0a833fb1778">RealTimeClock::HbcRealTimeClock::HbcRealTimeClock</a></div><div class="ttdeci">HbcRealTimeClock(HbcIod *iod, Console *consoleOutput)</div><div class="ttdef"><b>Definition:</b> realTimeClock.cpp:6</div></div>
 <div class="ttc" id="aclass_real_time_clock_1_1_hbc_real_time_clock_html_ab764199e726eb9f85869b59396bb1d73"><div class="ttname"><a href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">RealTimeClock::HbcRealTimeClock::init</a></div><div class="ttdeci">void init() override</div><div class="ttdef"><b>Definition:</b> realTimeClock.cpp:9</div></div>
 <div class="ttc" id="anamespace_real_time_clock_html"><div class="ttname"><a href="namespace_real_time_clock.html">RealTimeClock</a></div></div>
-<div class="ttc" id="anamespace_real_time_clock_html_aa0262913d5a564f861676e852078a745"><div class="ttname"><a href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">RealTimeClock::YEAR_0</a></div><div class="ttdeci">constexpr int YEAR_0</div><div class="ttdoc">Starts counting from year 1900 to year 2155.</div><div class="ttdef"><b>Definition:</b> realTimeClock.h:23</div></div>
+<div class="ttc" id="anamespace_real_time_clock_html_aa0262913d5a564f861676e852078a745"><div class="ttname"><a href="namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745">RealTimeClock::YEAR_0</a></div><div class="ttdeci">constexpr int YEAR_0</div><div class="ttdoc">Starts counting from year 1900 to year 2155.</div><div class="ttdef"><b>Definition:</b> realTimeClock.h:25</div></div>
+<div class="ttc" id="anamespace_real_time_clock_html_acf9bef666c3c8622d56ea481d34497fd"><div class="ttname"><a href="namespace_real_time_clock.html#acf9bef666c3c8622d56ea481d34497fd">RealTimeClock::RTC_DEVICE_ID</a></div><div class="ttdeci">constexpr Byte RTC_DEVICE_ID</div><div class="ttdoc">Random to &quot;look&quot; nice.</div><div class="ttdef"><b>Definition:</b> realTimeClock.h:21</div></div>
 <div class="ttc" id="aperipheral_8h_html"><div class="ttname"><a href="peripheral_8h.html">peripheral.h</a></div><div class="ttdoc">HBC-2 Peripheral implementation.</div></div>
 <div class="ttc" id="astruct_hbc_iod_html"><div class="ttname"><a href="struct_hbc_iod.html">HbcIod</a></div><div class="ttdoc">Stores the Iod state.</div><div class="ttdef"><b>Definition:</b> iod.h:21</div></div>
 </div><!-- fragment --></div><!-- contents -->

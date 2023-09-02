@@ -102,9 +102,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>tick</b> (<a class="e
 <tr class="memitem:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#ae60dea7a3361e3c6c45f2a2b603a2148">triggerInterrupt</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, Byte peripheralFirstPortID)</td></tr>
 <tr class="memdesc:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggers an interrupt for <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a>.  <a href="namespace_iod.html#ae60dea7a3361e3c6c45f2a2b603a2148">More...</a><br /></td></tr>
 <tr class="separator:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9c71ed9ec323384004c93589a99df85d"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">PortSocket</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#a9c71ed9ec323384004c93589a99df85d">requestPortsConnexions</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, unsigned int nbPortsRequested)</td></tr>
-<tr class="memdesc:a9c71ed9ec323384004c93589a99df85d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Requests <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> for available ports.  <a href="namespace_iod.html#a9c71ed9ec323384004c93589a99df85d">More...</a><br /></td></tr>
-<tr class="separator:a9c71ed9ec323384004c93589a99df85d"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">PortSocket</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#aa5910ac8a10cabd6c74e7da0999ea5dd">requestPortsConnexions</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, Byte peripheralId, unsigned int nbPortsRequested)</td></tr>
+<tr class="memdesc:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Requests <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> for available ports.  <a href="namespace_iod.html#aa5910ac8a10cabd6c74e7da0999ea5dd">More...</a><br /></td></tr>
+<tr class="separator:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
@@ -114,6 +114,10 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>INTERRUPT_QU
 <tr class="memitem:a1a6f2ba18c62e79734c92e861c549977"><td class="memItemLeft" align="right" valign="top"><a id="a1a6f2ba18c62e79734c92e861c549977"></a>
 constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>PORTS_NB</b> = 256</td></tr>
 <tr class="separator:a1a6f2ba18c62e79734c92e861c549977"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2aeb8d48b200b6df8ce552abe88aef9b"><td class="memItemLeft" align="right" valign="top"><a id="a2aeb8d48b200b6df8ce552abe88aef9b"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#a2aeb8d48b200b6df8ce552abe88aef9b">IOD_RESERVED_PORT_NB</a> = 0</td></tr>
+<tr class="memdesc:a2aeb8d48b200b6df8ce552abe88aef9b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Used to <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> - <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a> data exchange. <br /></td></tr>
+<tr class="separator:a2aeb8d48b200b6df8ce552abe88aef9b"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Input/Output Device specifications.<br  />
@@ -157,8 +161,8 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>PORTS_NB</b>
 
 </div>
 </div>
-<a id="a9c71ed9ec323384004c93589a99df85d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9c71ed9ec323384004c93589a99df85d">&#9670;&nbsp;</a></span>requestPortsConnexions()</h2>
+<a id="aa5910ac8a10cabd6c74e7da0999ea5dd"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa5910ac8a10cabd6c74e7da0999ea5dd">&#9670;&nbsp;</a></span>requestPortsConnexions()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -168,6 +172,12 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>PORTS_NB</b>
           <td>(</td>
           <td class="paramtype"><a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;&#160;</td>
           <td class="paramname"><em>iod</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Byte&#160;</td>
+          <td class="paramname"><em>peripheralId</em>, </td>
         </tr>
         <tr>
           <td class="paramkey"></td>
@@ -184,8 +194,10 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>PORTS_NB</b>
 </div><div class="memdoc">
 
 <p>Requests <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> for available ports. </p>
-<p><a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> will keep track of the peripheral id plugged in the ports <em><b>(under development)</b></em><br  />
- <em>Returns an <b>empty vector of sockets</b> if there is not enough available ports</em></p>
+<p><a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> keeps track of the peripheral id plugged in the ports.<br  />
+ This function is called on initialization of peripherals.<br  />
+ It triggers 2 interrupts for the CPU to identify plugged devices.</p>
+<p><em>Returns an <b>empty vector of sockets</b> if there is not enough available ports</em></p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">nbPortsRequested</td><td>Number of ports requested </td></tr>

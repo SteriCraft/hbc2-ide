@@ -79,6 +79,7 @@ void Cpu::tick(HbcCpu &cpu)
         case Cpu::CpuState::INTERRUPT_MANAGEMENT:
             if (!cpu.m_motherboard->m_int)
             {
+                cpu.m_motherboard->m_inr = false;
                 Cpu::push(cpu, cpu.m_registers[(int)Cpu::Register::I]);
 
                 Cpu::push(cpu, (Byte)(cpu.m_programCounter >> 8));   // MSB
@@ -93,7 +94,6 @@ void Cpu::tick(HbcCpu &cpu)
 
                 cpu.m_programCounter = (Word)Motherboard::readRam(*cpu.m_motherboard, ivtAddress) << 8;
                 cpu.m_programCounter += Motherboard::readRam(*cpu.m_motherboard, ivtAddress + 1);
-                cpu.m_jumpOccured = true;
 
                 cpu.m_currentState = Cpu::CpuState::INSTRUCTION_EXEC;
             }

@@ -113,9 +113,8 @@ Public Member Functions</h2></td></tr>
 virtual&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#ab821ed1f1f8bf5adb070b1d1c3bd1b5d">~HbcPeripheral</a> ()=0</td></tr>
 <tr class="memdesc:ab821ed1f1f8bf5adb070b1d1c3bd1b5d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Must be overriden to destroy the derived peripheral. <br /></td></tr>
 <tr class="separator:ab821ed1f1f8bf5adb070b1d1c3bd1b5d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a7f415ca7bf6dd379fb94b74801bb4eb5"><td class="memItemLeft" align="right" valign="top"><a id="a7f415ca7bf6dd379fb94b74801bb4eb5"></a>
-virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5">init</a> ()=0</td></tr>
-<tr class="memdesc:a7f415ca7bf6dd379fb94b74801bb4eb5"><td class="mdescLeft">&#160;</td><td class="mdescRight">Must be overriden to initialize the derived peripheral. <br /></td></tr>
+<tr class="memitem:a7f415ca7bf6dd379fb94b74801bb4eb5"><td class="memItemLeft" align="right" valign="top">virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5">init</a> ()=0</td></tr>
+<tr class="memdesc:a7f415ca7bf6dd379fb94b74801bb4eb5"><td class="mdescLeft">&#160;</td><td class="mdescRight">To override <b><em>IMPORTANT</em></b>  <a href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5">More...</a><br /></td></tr>
 <tr class="separator:a7f415ca7bf6dd379fb94b74801bb4eb5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6b2aefb3d69ae68ad92a0f67444bfb6a"><td class="memItemLeft" align="right" valign="top"><a id="a6b2aefb3d69ae68ad92a0f67444bfb6a"></a>
 virtual void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#a6b2aefb3d69ae68ad92a0f67444bfb6a">tick</a> ()=0</td></tr>
@@ -135,7 +134,7 @@ Protected Member Functions</h2></td></tr>
 Protected Attributes</h2></td></tr>
 <tr class="memitem:a99394cd613de41253a1a447d9c27d4dc"><td class="memItemLeft" align="right" valign="top"><a id="a99394cd613de41253a1a447d9c27d4dc"></a>
 std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSocket</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#a99394cd613de41253a1a447d9c27d4dc">m_sockets</a></td></tr>
-<tr class="memdesc:a99394cd613de41253a1a447d9c27d4dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sockets to allocated ports by <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> on <a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5" title="Must be overriden to initialize the derived peripheral.">init()</a> <br /></td></tr>
+<tr class="memdesc:a99394cd613de41253a1a447d9c27d4dc"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sockets to allocated ports by <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> on <a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5" title="To override IMPORTANT">init()</a> <br /></td></tr>
 <tr class="separator:a99394cd613de41253a1a447d9c27d4dc"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a72d1f31c05d62fae4aa23c32819f9cbf"><td class="memItemLeft" align="right" valign="top"><a id="a72d1f31c05d62fae4aa23c32819f9cbf"></a>
 <a class="el" href="struct_hbc_iod.html">HbcIod</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>m_iod</b></td></tr>
@@ -185,6 +184,37 @@ std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSo
 </div>
 </div>
 <h2 class="groupheader">Member Function Documentation</h2>
+<a id="a7f415ca7bf6dd379fb94b74801bb4eb5"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a7f415ca7bf6dd379fb94b74801bb4eb5">&#9670;&nbsp;</a></span>init()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">virtual void HbcPeripheral::init </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">pure virtual</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>To override <b><em>IMPORTANT</em></b> </p>
+<p>Must be overriden to initialize the derived peripheral.<br  />
+ After initialization, it must trigger an interrupt giving the peripheral's ID. </p>
+
+<p>Implemented in <a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">RealTimeClock::HbcRealTimeClock</a>, and <a class="el" href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor</a>.</p>
+
+</div>
+</div>
 <a id="aa010a09c18268c7f2e0a28e8bcb44f11"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#aa010a09c18268c7f2e0a28e8bcb44f11">&#9670;&nbsp;</a></span>readData()</h2>
 

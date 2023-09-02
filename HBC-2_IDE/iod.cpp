@@ -21,7 +21,9 @@ void Iod::tick(HbcIod &iod)
         iod.m_motherboard->m_int = iod.m_interruptsQueue.size() > 0;
 
         if (iod.m_motherboard->m_int)
+        {
             qDebug() << "[IOD]: " << iod.m_interruptsQueue.size() << " interrupt(s) pending";
+        }
     }
     else
     {
