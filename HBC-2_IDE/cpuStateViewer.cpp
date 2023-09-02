@@ -3,6 +3,7 @@
 #include <QHeaderView>
 
 CpuStateViewer* CpuStateViewer::m_singleton = nullptr;
+CpuStatus CpuStateViewer::m_savedState;
 
 CpuStateViewer* CpuStateViewer::getInstance(QWidget *parent)
 {
@@ -14,10 +15,14 @@ CpuStateViewer* CpuStateViewer::getInstance(QWidget *parent)
     return m_singleton;
 }
 
-void CpuStateViewer::update(CpuStatus status, bool lastState)
+void CpuStateViewer::update(CpuStatus status)
 {
+    m_savedState = status;
+
     if (m_singleton != nullptr)
-        m_singleton->updateStatus(status, lastState);
+    {
+        m_singleton->updateStatus();
+    }
 }
 
 QString CpuStateViewer::byte2QString(Byte value)
@@ -397,11 +402,13 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     setLayout(mainLayout);
 
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+
+    updateStatus();
 }
 
-void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
+void CpuStateViewer::updateStatus()
 {
-    if (lastState)
+    if (m_savedState.lastState)
     {
         m_lastStateLabel->show();
     }
@@ -410,9 +417,9 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
         m_lastStateLabel->hide();
     }
 
-    if (status.state == Cpu::CpuState::INSTRUCTION_EXEC)
+    if (m_savedState.state == Cpu::CpuState::INSTRUCTION_EXEC)
     {
-        if (status.flags[(int)Cpu::Flags::HALT])
+        if (m_savedState.flags[(int)Cpu::Flags::HALT])
         {
             m_stateLineEdit->setText("HALTED");
             m_stateLineEdit->setStyleSheet("color: red;");
@@ -423,7 +430,7 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
             m_stateLineEdit->setStyleSheet("color: green;");
         }
     }
-    else if (status.state == Cpu::CpuState::INTERRUPT_MANAGEMENT)
+    else if (m_savedState.state == Cpu::CpuState::INTERRUPT_MANAGEMENT)
     {
         m_stateLineEdit->setText("ANALYZING INTERRUPT");
         m_stateLineEdit->setStyleSheet("color: orange;");
@@ -434,7 +441,7 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
         m_stateLineEdit->setStyleSheet("color: red;");
     }
 
-    if (status.interruptReady)
+    if (m_savedState.interruptReady)
     {
         m_interruptReadyLineEdit->setText("INTERRUPT READY");
         m_interruptReadyLineEdit->setStyleSheet("color: green;");
@@ -445,10 +452,10 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
         m_interruptReadyLineEdit->setStyleSheet("color: red;");
     }
 
-    m_programCounterLineEdit->setText(word2QString(status.programCounter));
-    m_instructionRegisterLineEdit->setText(dWord2QString(status.instructionRegister));
+    m_programCounterLineEdit->setText(word2QString(m_savedState.programCounter));
+    m_instructionRegisterLineEdit->setText(dWord2QString(m_savedState.instructionRegister));
 
-    switch (status.addrMode)
+    switch (m_savedState.addrMode)
     {
         case Cpu::AddressingMode::NONE:
             m_addressingModeLineEdit->setText("NONE");
@@ -486,27 +493,27 @@ void CpuStateViewer::updateStatus(const CpuStatus status, bool lastState)
             m_addressingModeLineEdit->setText("INVALID");
     }
 
-    m_opcodeTableItem->setText(byte2QString((Byte)status.opcode));
-    m_addrModeTableItem->setText(byte2QString((Byte)status.addrMode));
-    m_r1TableItem->setText(byte2QString((Byte)status.r1));
-    m_r2TableItem->setText(byte2QString((Byte)status.r2));
-    m_r3TableItem->setText(byte2QString((Byte)status.r3));
-    m_v1TableItem->setText(byte2QString(status.v1));
-    m_v2TableItem->setText(byte2QString(status.v2));
-    m_vXTableItem->setText(word2QString(status.vX));
+    m_opcodeTableItem->setText(byte2QString((Byte)m_savedState.opcode));
+    m_addrModeTableItem->setText(byte2QString((Byte)m_savedState.addrMode));
+    m_r1TableItem->setText(byte2QString((Byte)m_savedState.r1));
+    m_r2TableItem->setText(byte2QString((Byte)m_savedState.r2));
+    m_r3TableItem->setText(byte2QString((Byte)m_savedState.r3));
+    m_v1TableItem->setText(byte2QString(m_savedState.v1));
+    m_v2TableItem->setText(byte2QString(m_savedState.v2));
+    m_vXTableItem->setText(word2QString(m_savedState.vX));
 
     for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
     {
-        m_flagsTableItem[i]->setText((status.flags[i]) ? "1" : "0");
+        m_flagsTableItem[i]->setText((m_savedState.flags[i]) ? "1" : "0");
     }
 
     for (unsigned int i(0); i < Cpu::REGISTERS_NB; i++)
     {
-        m_registersLineEdits[i]->setText(byte2QString(status.registers[i]));
+        m_registersLineEdits[i]->setText(byte2QString(m_savedState.registers[i]));
     }
 
-    m_stackPointerLineEdit->setText(byte2QString(status.stackPointer));
+    m_stackPointerLineEdit->setText(byte2QString(m_savedState.stackPointer));
 
-    m_addressBusLineEdit->setText(word2QString(status.addressBus));
-    m_dataBusLineEdit->setText(byte2QString(status.dataBus));
+    m_addressBusLineEdit->setText(word2QString(m_savedState.addressBus));
+    m_dataBusLineEdit->setText(byte2QString(m_savedState.dataBus));
 }

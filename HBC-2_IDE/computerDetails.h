@@ -103,6 +103,8 @@ struct CpuStatus
 
     Word addressBus = 0x0000;
     Byte dataBus = 0x00;
+
+    bool lastState = false;
 };
 
 /*!

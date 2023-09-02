@@ -22,13 +22,14 @@ var searchData=
   ['count_48',['count',['../class_file_manager.html#a9374dfab387f244d924a1aadabd8e24c',1,'FileManager']]],
   ['cpu_49',['Cpu',['../namespace_cpu.html',1,'']]],
   ['cpu_2eh_50',['cpu.h',['../cpu_8h.html',1,'']]],
-  ['cpustateviewer_51',['CpuStateViewer',['../class_cpu_state_viewer.html',1,'']]],
-  ['cpustateviewer_2eh_52',['cpuStateViewer.h',['../cpu_state_viewer_8h.html',1,'']]],
-  ['cpustatus_53',['CpuStatus',['../struct_cpu_status.html',1,'']]],
-  ['currentaddresschanged_54',['currentAddressChanged',['../class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc',1,'QHexEdit']]],
-  ['currentsizechanged_55',['currentSizeChanged',['../class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359',1,'QHexEdit']]],
-  ['cursorposition_56',['cursorPosition',['../class_q_hex_edit.html#aa50b3ebe0d22133891dce0c8237846c7',1,'QHexEdit::cursorPosition()'],['../class_q_hex_edit.html#a1d833c6a3957317f4daacc54e0c99919',1,'QHexEdit::cursorPosition(QPoint point)']]],
-  ['customfile_57',['CustomFile',['../class_custom_file.html',1,'CustomFile'],['../class_custom_file.html#ae88d33a44109a2cf40c1508d95f5990b',1,'CustomFile::CustomFile()'],['../class_custom_file.html#ad0e65cfa6f819e5cf28e3471b19c2f1a',1,'CustomFile::CustomFile(QString path, QString content)']]],
-  ['customizedcodeeditor_58',['CustomizedCodeEditor',['../class_customized_code_editor.html',1,'']]],
-  ['customizededitor_2eh_59',['customizedEditor.h',['../customized_editor_8h.html',1,'']]]
+  ['cpustate_51',['cpuState',['../struct_emulator_1_1_computer.html#a1a512707edac84c56456c11f6d1095d2',1,'Emulator::Computer']]],
+  ['cpustateviewer_52',['CpuStateViewer',['../class_cpu_state_viewer.html',1,'']]],
+  ['cpustateviewer_2eh_53',['cpuStateViewer.h',['../cpu_state_viewer_8h.html',1,'']]],
+  ['cpustatus_54',['CpuStatus',['../struct_cpu_status.html',1,'']]],
+  ['currentaddresschanged_55',['currentAddressChanged',['../class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc',1,'QHexEdit']]],
+  ['currentsizechanged_56',['currentSizeChanged',['../class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359',1,'QHexEdit']]],
+  ['cursorposition_57',['cursorPosition',['../class_q_hex_edit.html#aa50b3ebe0d22133891dce0c8237846c7',1,'QHexEdit::cursorPosition()'],['../class_q_hex_edit.html#a1d833c6a3957317f4daacc54e0c99919',1,'QHexEdit::cursorPosition(QPoint point)']]],
+  ['customfile_58',['CustomFile',['../class_custom_file.html',1,'CustomFile'],['../class_custom_file.html#ae88d33a44109a2cf40c1508d95f5990b',1,'CustomFile::CustomFile()'],['../class_custom_file.html#ad0e65cfa6f819e5cf28e3471b19c2f1a',1,'CustomFile::CustomFile(QString path, QString content)']]],
+  ['customizedcodeeditor_59',['CustomizedCodeEditor',['../class_customized_code_editor.html',1,'']]],
+  ['customizededitor_2eh_60',['customizedEditor.h',['../customized_editor_8h.html',1,'']]]
 ];

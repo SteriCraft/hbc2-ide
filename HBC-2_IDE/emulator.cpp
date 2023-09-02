@@ -171,43 +171,12 @@ const QByteArray HbcEmulator::getCurrentBinaryData()
 
 const CpuStatus HbcEmulator::getCurrentCpuStatus()
 {
-    CpuStatus status;
+    return m_computer.cpuState;
+}
 
-    status.state = m_computer.motherboard.m_cpu.m_currentState;
-    status.interruptReady = (m_computer.motherboard.m_cpu.m_flags[(int)Cpu::Flags::INTERRUPT]) ? true : false;
-
-    status.programCounter = m_computer.motherboard.m_cpu.m_lastExecutedInstructionAddress;
-    status.instructionRegister = m_computer.motherboard.m_cpu.m_instructionRegister;
-
-    // == DECODED INSTRUCTION ==
-    status.opcode = m_computer.motherboard.m_cpu.m_opcode;
-    status.addrMode = m_computer.motherboard.m_cpu.m_addressingMode;
-
-    status.r1 = m_computer.motherboard.m_cpu.m_register1Index;
-    status.r2 = m_computer.motherboard.m_cpu.m_register2Index;
-    status.r3 = m_computer.motherboard.m_cpu.m_register3Index;
-
-    status.v1 = m_computer.motherboard.m_cpu.m_v1;
-    status.v2 = m_computer.motherboard.m_cpu.m_v2;
-    status.vX = m_computer.motherboard.m_cpu.m_vX;
-    // =========================
-
-    for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
-    {
-        status.flags[i] = m_computer.motherboard.m_cpu.m_flags[i];
-    }
-
-    for (unsigned int i(0); i < Cpu::REGISTERS_NB; i++)
-    {
-        status.registers[i] = m_computer.motherboard.m_cpu.m_registers[i];
-    }
-
-    status.stackPointer = m_computer.motherboard.m_cpu.m_stackPointer;
-
-    status.addressBus = m_computer.motherboard.m_addressBus;
-    status.dataBus = m_computer.motherboard.m_dataBus;
-
-    return status;
+const Word HbcEmulator::getCurrentProgramCounter()
+{
+    return m_computer.cpuState.programCounter;
 }
 
 void HbcEmulator::useMonitor(bool enable)
@@ -334,6 +303,7 @@ void HbcEmulator::run()
             {
                 m_status.state = Emulator::State::RUNNING;
                 m_status.command = Emulator::Command::NONE;
+
                 emit statusChanged(m_status.state);
 
                 frequencyTimer.restart();
@@ -346,6 +316,7 @@ void HbcEmulator::run()
                 m_status.command = Emulator::Command::NONE;
 
                 tickComputer();
+                storeCpuStatus();
                 emit stepped();
 
                 m_consoleOutput->log("Emulator steps");
@@ -354,6 +325,8 @@ void HbcEmulator::run()
             {
                 m_status.state = Emulator::State::PAUSED;
                 m_status.command = Emulator::Command::NONE;
+
+                storeCpuStatus();
                 emit statusChanged(m_status.state);
 
                 m_consoleOutput->log("Emulator paused");
@@ -362,6 +335,8 @@ void HbcEmulator::run()
             {
                 m_status.state = Emulator::State::READY;
                 m_status.command = Emulator::Command::NONE;
+
+                storeCpuStatus(true);
                 emit statusChanged(m_status.state);
 
                 initComputer();
@@ -402,4 +377,43 @@ void HbcEmulator::tickComputer()
     {
         m_computer.peripherals[i]->tick();
     }
+}
+
+void HbcEmulator::storeCpuStatus(bool lastState)
+{
+    m_computer.cpuState.lastState = lastState;
+
+    m_computer.cpuState.state = m_computer.motherboard.m_cpu.m_currentState;
+    m_computer.cpuState.interruptReady = (m_computer.motherboard.m_cpu.m_flags[(int)Cpu::Flags::INTERRUPT]) ? true : false;
+
+    m_computer.cpuState.programCounter = m_computer.motherboard.m_cpu.m_lastExecutedInstructionAddress;
+    m_computer.cpuState.instructionRegister = m_computer.motherboard.m_cpu.m_instructionRegister;
+
+    // == DECODED INSTRUCTION ==
+    m_computer.cpuState.opcode = m_computer.motherboard.m_cpu.m_opcode;
+    m_computer.cpuState.addrMode = m_computer.motherboard.m_cpu.m_addressingMode;
+
+    m_computer.cpuState.r1 = m_computer.motherboard.m_cpu.m_register1Index;
+    m_computer.cpuState.r2 = m_computer.motherboard.m_cpu.m_register2Index;
+    m_computer.cpuState.r3 = m_computer.motherboard.m_cpu.m_register3Index;
+
+    m_computer.cpuState.v1 = m_computer.motherboard.m_cpu.m_v1;
+    m_computer.cpuState.v2 = m_computer.motherboard.m_cpu.m_v2;
+    m_computer.cpuState.vX = m_computer.motherboard.m_cpu.m_vX;
+    // =========================
+
+    for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
+    {
+        m_computer.cpuState.flags[i] = m_computer.motherboard.m_cpu.m_flags[i];
+    }
+
+    for (unsigned int i(0); i < Cpu::REGISTERS_NB; i++)
+    {
+        m_computer.cpuState.registers[i] = m_computer.motherboard.m_cpu.m_registers[i];
+    }
+
+    m_computer.cpuState.stackPointer = m_computer.motherboard.m_cpu.m_stackPointer;
+
+    m_computer.cpuState.addressBus = m_computer.motherboard.m_addressBus;
+    m_computer.cpuState.dataBus = m_computer.motherboard.m_dataBus;
 }

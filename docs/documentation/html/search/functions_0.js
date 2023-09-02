@@ -1,8 +1,8 @@
 var searchData=
 [
-  ['addfile_420',['addFile',['../class_project_item.html#a5a02e04ab0c9409834eaf12a3b18008e',1,'ProjectItem::addFile()'],['../class_project.html#ae734654376f1273e92518abe5245817c',1,'Project::addFile()']]],
-  ['addfolder_421',['addFolder',['../class_project_item.html#a398a028a2860013ca5fa4f81d2ef6f2e',1,'ProjectItem::addFolder()'],['../class_project.html#ac2c69c57a60210dbcb4a3b7d966b1a6e',1,'Project::addFolder()']]],
-  ['addrecentproject_422',['addRecentProject',['../class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6',1,'ConfigManager']]],
-  ['arethereunsavedfiles_423',['areThereUnsavedFiles',['../class_file_manager.html#ab7a6d4de267b45aa68317b314a0b8705',1,'FileManager']]],
-  ['assembleproject_424',['assembleProject',['../class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e',1,'Assembly::Assembler']]]
+  ['addfile_422',['addFile',['../class_project_item.html#a5a02e04ab0c9409834eaf12a3b18008e',1,'ProjectItem::addFile()'],['../class_project.html#ae734654376f1273e92518abe5245817c',1,'Project::addFile()']]],
+  ['addfolder_423',['addFolder',['../class_project_item.html#a398a028a2860013ca5fa4f81d2ef6f2e',1,'ProjectItem::addFolder()'],['../class_project.html#ac2c69c57a60210dbcb4a3b7d966b1a6e',1,'Project::addFolder()']]],
+  ['addrecentproject_424',['addRecentProject',['../class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6',1,'ConfigManager']]],
+  ['arethereunsavedfiles_425',['areThereUnsavedFiles',['../class_file_manager.html#ab7a6d4de267b45aa68317b314a0b8705',1,'FileManager']]],
+  ['assembleproject_426',['assembleProject',['../class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e',1,'Assembly::Assembler']]]
 ];

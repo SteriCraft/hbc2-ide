@@ -54,6 +54,7 @@ namespace Emulator
         std::vector<HbcPeripheral*> peripherals; //!< General vector of the peripherals for simpler systemwide iterations (to cast dynamically)
 
         QByteArray initialRamData; //!< Binary data used on emulator first run
+        CpuStatus cpuState; //!< Only updated when the emulator is stopped or when requested
     };
 }
 
@@ -211,6 +212,11 @@ class HbcEmulator : public QThread
          */
         const CpuStatus getCurrentCpuStatus();
 
+        /*!
+         * \return the current value of the program counter
+         */
+        const Word getCurrentProgramCounter();
+
         void useMonitor(bool enable);
         void setStartPaused(bool enable);
 
@@ -261,6 +267,8 @@ class HbcEmulator : public QThread
 
         void initComputer();
         void tickComputer();
+
+        void storeCpuStatus(bool lastState = false);
 
         Emulator::Status m_status;
         Emulator::Computer m_computer;

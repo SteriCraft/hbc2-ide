@@ -1,7 +1,6 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "binaryViewer.h"
-#include "cpuStateViewer.h"
 
 #include <QDesktopServices>
 
@@ -601,35 +600,41 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     else if (newState == Emulator::State::READY)
     {
         if (m_configManager->getOpenBinaryViewerOnEmulatorStopped())
+        {
             updateBinaryViewer();
+        }
 
+        updateCpuStateViewer();
         if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
         {
-            updateCpuStateViewer(true);
+            openCpuStateViewer();
         }
     }
     else if (newState == Emulator::State::PAUSED)
     {
-        CpuStatus status(m_emulator->getCurrentCpuStatus());
-
         if (m_configManager->getOpenBinaryViewerOnEmulatorPaused())
+        {
             updateBinaryViewer();
+        }
 
+        updateCpuStateViewer();
         if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
-            updateCpuStateViewer(status);
+        {
+            openCpuStateViewer();
+        }
 
-        highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentCpuStatus().programCounter));
+        highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentProgramCounter()));
     }
 }
 
 void MainWindow::onEmulatorStepped()
 {
-    CpuStatus status(m_emulator->getCurrentCpuStatus());
-
     BinaryViewer::update(m_emulator->getCurrentBinaryData());
-    updateCpuStateViewer(status);
 
-    highlightDebugSymbol(m_assembler->getSymbolFromAddress(status.programCounter));
+    updateCpuStateViewer();
+    openCpuStateViewer();
+
+    highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentProgramCounter()));
 }
 
 void MainWindow::onTickCountReceived(int countIn100Ms)
@@ -1201,7 +1206,9 @@ void MainWindow::startPausedAction()
 // Tools actions
 void MainWindow::openCpuStateViewer()
 {
-    updateCpuStateViewer();
+    CpuStateViewer *viewer = CpuStateViewer::getInstance(this);
+
+    viewer->show();
 }
 
 // Miscellaneous actions
@@ -1756,19 +1763,9 @@ void MainWindow::updateBinaryViewer()
     viewer->show();
 }
 
-void MainWindow::updateCpuStateViewer(bool lastState)
+void MainWindow::updateCpuStateViewer()
 {
-    const CpuStatus status = m_emulator->getCurrentCpuStatus();
-
-    updateCpuStateViewer(status, lastState);
-}
-
-void MainWindow::updateCpuStateViewer(CpuStatus status, bool lastState)
-{
-    CpuStateViewer *viewer = CpuStateViewer::getInstance(this);
-
-    viewer->update(status, lastState);
-    viewer->show();
+    CpuStateViewer::update(m_emulator->getCurrentCpuStatus());
 }
 
 void MainWindow::updateRecentProjectsMenu()

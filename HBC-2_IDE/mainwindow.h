@@ -23,6 +23,7 @@
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
+#include "cpuStateViewer.h"
 
 #define IDE_VERSION QString("0.1")
 
@@ -104,8 +105,7 @@ class MainWindow : public QMainWindow
         QString getItemPath(ProjectItem *item);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
-        void updateCpuStateViewer(bool lastState = false);
-        void updateCpuStateViewer(CpuStatus status, bool lastState = false);
+        void updateCpuStateViewer();
         void updateRecentProjectsMenu();
         void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol);
 

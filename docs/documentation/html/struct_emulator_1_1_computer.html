@@ -85,7 +85,8 @@ Collaboration diagram for Emulator::Computer:</div>
 <div class="dyncontent">
 <div class="center"><img src="struct_emulator_1_1_computer__coll__graph.png" border="0" usemap="#a_emulator_1_1_computer_coll__map" alt="Collaboration graph"/></div>
 <map name="a_emulator_1_1_computer_coll__map" id="a_emulator_1_1_computer_coll__map">
-<area shape="rect" title="Stores the computer information for the emulator (only used in the emulator thread)" alt="" coords="221,363,375,389"/>
+<area shape="rect" title="Stores the computer information for the emulator (only used in the emulator thread)" alt="" coords="103,363,256,389"/>
+<area shape="rect" href="struct_cpu_status.html" title="Used to send the current HbcCpu state to the CpuStateViewer." alt="" coords="18,273,106,300"/>
 <area shape="rect" href="class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="131,273,228,300"/>
 <area shape="rect" href="class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="108,184,221,211"/>
 <area shape="rect" href="class_console.html" title="A console widget to show events and provide information to the user." alt="" coords="10,95,85,121"/>
@@ -114,6 +115,10 @@ std::vector&lt; <a class="el" href="class_hbc_peripheral.html">HbcPeripheral</a>
 QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_emulator_1_1_computer.html#af7bb273fdf6b8de274e95627f4e57467">initialRamData</a></td></tr>
 <tr class="memdesc:af7bb273fdf6b8de274e95627f4e57467"><td class="mdescLeft">&#160;</td><td class="mdescRight">Binary data used on emulator first run. <br /></td></tr>
 <tr class="separator:af7bb273fdf6b8de274e95627f4e57467"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1a512707edac84c56456c11f6d1095d2"><td class="memItemLeft" align="right" valign="top"><a id="a1a512707edac84c56456c11f6d1095d2"></a>
+<a class="el" href="struct_cpu_status.html">CpuStatus</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="struct_emulator_1_1_computer.html#a1a512707edac84c56456c11f6d1095d2">cpuState</a></td></tr>
+<tr class="memdesc:a1a512707edac84c56456c11f6d1095d2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Only updated when the emulator is stopped or when requested. <br /></td></tr>
+<tr class="separator:a1a512707edac84c56456c11f6d1095d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Stores the computer information for the emulator <em>(only used in the emulator thread)</em> </p>

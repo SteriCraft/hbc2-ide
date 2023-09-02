@@ -31,6 +31,7 @@ class CpuStateViewer : public QDialog // SINGLETON
     Q_OBJECT
 
     static CpuStateViewer *m_singleton;
+    static CpuStatus m_savedState;
 
     public:
         /*!
@@ -44,7 +45,7 @@ class CpuStateViewer : public QDialog // SINGLETON
          * \brief Updates displayed status information
          * \param status New status information
          */
-        static void update(const CpuStatus status, bool lastState = false);
+        static void update(const CpuStatus status);
 
         /*!
          * \brief Converts a byte to a QString
@@ -82,7 +83,7 @@ class CpuStateViewer : public QDialog // SINGLETON
         static constexpr int WORD_ITEM_WIDTH = 60;
 
         CpuStateViewer(QWidget *parent = nullptr);
-        void updateStatus(CpuStatus status, bool lastState = false);
+        void updateStatus();
 
         QLabel *m_lastStateLabel;
 
