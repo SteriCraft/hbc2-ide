@@ -109,7 +109,7 @@ class MainWindow : public QMainWindow
         void updateCpuStateViewer();
         void updateRecentProjectsMenu();
         void clearRecentProjectsMenu();
-        void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol);
+        void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter);
 
         // Editors management actions
         void newProjectAction();

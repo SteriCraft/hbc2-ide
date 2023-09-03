@@ -628,7 +628,8 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
             openCpuStateViewer();
         }
 
-        highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentProgramCounter()));
+        Word programCounter(m_emulator->getCurrentProgramCounter());
+        highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
     }
 }
 
@@ -639,7 +640,8 @@ void MainWindow::onEmulatorStepped()
     updateCpuStateViewer();
     openCpuStateViewer();
 
-    highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentProgramCounter()));
+    Word programCounter(m_emulator->getCurrentProgramCounter());
+    highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
 
     setStatusBarRightMessage("");
 }
@@ -1831,8 +1833,10 @@ void MainWindow::clearRecentProjectsMenu()
     m_recentProjectsMenu->addAction("Clear recent projects list", this, &MainWindow::clearRecentProjectsMenu);
 }
 
-void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol)
+void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter)
 {
+    CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
+
     if (!symbol.filePath.isEmpty())
     {
         bool found(false);
@@ -1862,14 +1866,21 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol)
         }
         m_assemblyEditor->blockSignals(false);
 
-        CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
         if (currentEditor != nullptr)
         {
-            currentEditor->highlightLine(symbol.lineNb-1);
+            currentEditor->highlightLine(symbol.lineNb - 1);
         }
     }
-}
+    else
+    {
+        if (currentEditor != nullptr)
+        {
+            currentEditor->highlightLine(-1);
+        }
 
+        QMessageBox::warning(this, tr("Undefined instruction"), "The CPU has jumped to an address that does not correspond to any instruction.\n\nProgram Counter: " + CpuStateViewer::word2QString(programCounter));
+    }
+}
 
 // AboutDialog class
 AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)

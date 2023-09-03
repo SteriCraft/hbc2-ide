@@ -320,13 +320,14 @@ void CustomizedCodeEditor::updateLineNumberAreaWidth(int /* newBlockCount */)
 
 void CustomizedCodeEditor::highlightLine(int lineNb)
 {
-    if (lineNb < 0 | lineNb >= blockCount())
-    {
-        return;
-    }
-
     QList<QTextEdit::ExtraSelection> extraSelections;
     QTextEdit::ExtraSelection selection;
+
+    if (lineNb < 0 | lineNb >= blockCount())
+    {
+        setExtraSelections(extraSelections);
+        return;
+    }
 
     QColor lineColor = QColor(128, 128, 128, 128);
 
