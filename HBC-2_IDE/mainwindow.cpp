@@ -599,6 +599,8 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     }
     else if (newState == Emulator::State::READY)
     {
+        setStatusBarRightMessage("");
+
         if (m_configManager->getOpenBinaryViewerOnEmulatorStopped())
         {
             updateBinaryViewer();
@@ -612,6 +614,8 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     }
     else if (newState == Emulator::State::PAUSED)
     {
+        setStatusBarRightMessage("");
+
         if (m_configManager->getOpenBinaryViewerOnEmulatorPaused())
         {
             updateBinaryViewer();
@@ -635,6 +639,8 @@ void MainWindow::onEmulatorStepped()
     openCpuStateViewer();
 
     highlightDebugSymbol(m_assembler->getSymbolFromAddress(m_emulator->getCurrentProgramCounter()));
+
+    setStatusBarRightMessage("");
 }
 
 void MainWindow::onTickCountReceived(int countIn100Ms)
