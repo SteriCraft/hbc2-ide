@@ -367,7 +367,7 @@ void CustomizedCodeEditor::keyPressEvent(QKeyEvent *e)
     if (e->key() == Qt::Key_Tab) // Spaces instead of tab char (defined in settings)
     {
         int tabSize(m_configManager->getTabSize());
-        unsigned int modulo(getCurrentCursorColumnNumber() % tabSize);
+        unsigned int modulo((getCurrentCursorColumnNumber() - 1) % tabSize);
 
         for (unsigned int i(0); i < tabSize - modulo; i++)
         {
