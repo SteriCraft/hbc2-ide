@@ -75,6 +75,11 @@ class ConfigManager
          */
         bool addRecentProject(QString path);
 
+        /*!
+         * \brief Clears the list of recent projects
+         */
+        void clearRecentProjects();
+
 
         // ==== SETTERS ====
         // CPU state viewer settings

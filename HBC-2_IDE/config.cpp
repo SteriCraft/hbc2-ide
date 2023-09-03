@@ -40,6 +40,11 @@ bool ConfigManager::addRecentProject(QString path)
     return true;
 }
 
+void ConfigManager::clearRecentProjects()
+{
+    m_settings.recentProjects.clear();
+}
+
 // SETTERS
 // Cpu state viewer settings
 void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
@@ -303,7 +308,7 @@ bool ConfigManager::saveRecentProjects()
 
         for (unsigned int i(0); i < m_settings.recentProjects.size(); i++)
         {
-            out << m_settings.recentProjects[i];
+            out << m_settings.recentProjects[i] << "\n";
         }
 
         recentProjectsFile.close();

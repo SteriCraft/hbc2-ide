@@ -1778,6 +1778,18 @@ void MainWindow::updateRecentProjectsMenu()
     {
         m_recentProjectsMenu->addAction(recentProjectsPaths[i], this, std::bind(&MainWindow::onRecentProjectSelected, this, recentProjectsPaths[i]));
     }
+
+    m_recentProjectsMenu->addSeparator();
+    m_recentProjectsMenu->addAction("Clear recent projects list", this, &MainWindow::clearRecentProjectsMenu);
+}
+
+void MainWindow::clearRecentProjectsMenu()
+{
+    m_recentProjectsMenu->clear();
+    m_configManager->clearRecentProjects();
+
+    m_recentProjectsMenu->addSeparator();
+    m_recentProjectsMenu->addAction("Clear recent projects list", this, &MainWindow::clearRecentProjectsMenu);
 }
 
 void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol)

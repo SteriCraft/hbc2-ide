@@ -107,6 +107,7 @@ class MainWindow : public QMainWindow
         void updateBinaryViewer();
         void updateCpuStateViewer();
         void updateRecentProjectsMenu();
+        void clearRecentProjectsMenu();
         void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol);
 
         // Editors management actions
