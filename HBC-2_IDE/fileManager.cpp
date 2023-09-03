@@ -58,6 +58,19 @@ std::shared_ptr<Project> CustomFile::getAssociatedProject()
     return m_associatedProject;
 }
 
+bool CustomFile::rename(QString newName)
+{
+    if (!newName.isEmpty())
+    {
+        // PERFORM RENAMING
+        qDebug() << "current path: " << getPath();
+
+        return true;
+    }
+
+    return false;
+}
+
 bool CustomFile::setPath(QString path)
 {
     QFileInfo info(path);
@@ -90,7 +103,6 @@ void CustomFile::setAssociatedProject(std::shared_ptr<Project> associatedProject
 {
     m_associatedProject = associatedProject;
 }
-
 
 // === FILE MANAGER CLASS ===
 FileManager* FileManager::m_singleton = nullptr;

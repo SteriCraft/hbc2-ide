@@ -40,6 +40,7 @@ class CustomFile
         QString getContent();
         std::shared_ptr<Project> getAssociatedProject();
 
+        bool rename(QString newName); //<! Returns <b>false</b> if the new name is empty
         bool setPath(QString path); //!< Returns <b>false</b> if the path is invalid
         void setSaved(bool saved);
         void setReloaded(bool reloaded); //!< Sets file's flag that tells if it has just been reloaded

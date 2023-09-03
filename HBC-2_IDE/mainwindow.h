@@ -23,7 +23,7 @@
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
-#include "cpuStateViewer.h"
+//#include "cpuStateViewer.h"
 
 #define IDE_VERSION QString("0.1")
 
@@ -103,6 +103,7 @@ class MainWindow : public QMainWindow
         int getEditorIndex(QString fileName);
         CustomizedCodeEditor* getCCE(QWidget *w);
         QString getItemPath(ProjectItem *item);
+        ProjectItem* getFileProjectItem(QString fullFilePath);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
         void updateBinaryViewer();
         void updateCpuStateViewer();
@@ -116,7 +117,7 @@ class MainWindow : public QMainWindow
         void openProjectAction();
         void openProject(QString projectPath);
         void openFileAction();
-        bool openFile(QString filePath, std::shared_ptr<Project> associatedProject = nullptr, bool warnings = true);
+        bool openFile(QString filePath, std::shared_ptr<Project> associatedProject = nullptr, ProjectItem *associatedProjectItem = nullptr, bool warnings = true);
         void saveCurrentFileAction();
         void saveFileAction(CustomFile *file);
         bool saveAllAction();

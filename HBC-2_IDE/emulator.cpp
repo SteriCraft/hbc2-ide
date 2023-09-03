@@ -318,8 +318,6 @@ void HbcEmulator::run()
                 tickComputer();
                 storeCpuStatus();
                 emit stepped();
-
-                m_consoleOutput->log("Emulator steps");
             }
             else if (m_status.command == Emulator::Command::PAUSE)
             {

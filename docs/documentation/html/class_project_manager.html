@@ -133,6 +133,9 @@ ProjectItem::Type&#160;</td><td class="memItemRight" valign="bottom"><a class="e
 std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a687a77ca521be755aa0747195877f627">getCurrentProject</a> ()</td></tr>
 <tr class="memdesc:a687a77ca521be755aa0747195877f627"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns currently active project (<b>nullptr</b> if none) <br /></td></tr>
 <tr class="separator:a687a77ca521be755aa0747195877f627"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a3aa1427b3540d9f3f64e03ad5579f10e"><td class="memItemLeft" align="right" valign="top">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project_manager.html#a3aa1427b3540d9f3f64e03ad5579f10e">getProject</a> (QString projectName)</td></tr>
+<tr class="memdesc:a3aa1427b3540d9f3f64e03ad5579f10e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns a shared pointer to the project corresponding to the given name.  <a href="class_project_manager.html#a3aa1427b3540d9f3f64e03ad5579f10e">More...</a><br /></td></tr>
+<tr class="separator:a3aa1427b3540d9f3f64e03ad5579f10e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -205,6 +208,27 @@ static <a class="el" href="class_project_manager.html">ProjectManager</a> *&#160
 
 <p>Returns a pointer to the parent <a class="el" href="class_project.html" title="Describes a project.">Project</a> of the item. </p>
 <dl class="section return"><dt>Returns</dt><dd><b>nullptr</b> if the item is part of no project </dd></dl>
+
+</div>
+</div>
+<a id="a3aa1427b3540d9f3f64e03ad5579f10e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a3aa1427b3540d9f3f64e03ad5579f10e">&#9670;&nbsp;</a></span>getProject()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; ProjectManager::getProject </td>
+          <td>(</td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>projectName</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Returns a shared pointer to the project corresponding to the given name. </p>
+<dl class="section return"><dt>Returns</dt><dd><b>nullptr</b> if there is no such project </dd></dl>
 
 </div>
 </div>

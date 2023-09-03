@@ -35,7 +35,7 @@ class ProjectItem : public QTreeWidgetItem
          * \param parent Pointer to parent item <b>mandatory</b>
          * \param isFolder <b>true</b> if it is a directory
          */
-        ProjectItem(QString path, ProjectItem* parent, bool isFolder);
+        ProjectItem(QString path, QString associatedProjectName, ProjectItem *parent, bool isFolder);
 
         ProjectItem(QString projectName); //!< Creates a project's main item
         ~ProjectItem();
@@ -67,7 +67,7 @@ class ProjectItem : public QTreeWidgetItem
         /*!
          * \brief Returns if the passed item is one of the children
          *
-         * <i>Used by Project::isPartOf() for recursive check</i>
+         * <i>Used by Project::isPartOf() for recursive check.</i>
          *
          * \param item
          * \return
@@ -81,15 +81,37 @@ class ProjectItem : public QTreeWidgetItem
          */
         QList<QString> getFilesPaths(QString projectPath = "");
 
+        /*!
+         * \brief Recursive
+         * \return a list of pointers to ProjectItems that are children files
+         */
+        QList<ProjectItem*> getFilesItems();
+
+        /*!
+         * \brief Returns the ProjectItem associated to the given path
+         *
+         * Includes children items
+         */
+        ProjectItem* getProjectItemFromPath(QString fullPath, QString projectPath);
+
+        QString getAssociatedProjectName();
+
         bool setPath(QString newPath); //!< Returns <b>false</b> if newPath is empty
+
+        void setAssociatedProjectName(QString associatedProjectName);
 
         /*!
          * \brief Renames the item
-         * \param currentFullPath Its current full path (the project's path is not known internaly)
-         * \return <b>false</b> if newName is empty
+         * \return <b>false</b> if the new name is empty
          */
         bool rename(QString newName, QString currentFullPath);
-        void renameInChildrenPaths(QString newParentName); //!< Used to rename children items recursively
+
+        /*!
+         * \brief Renames items recursively
+         *
+         * Called if a folder has been renamed. See ProjectItem::rename.
+         */
+        void renameParentInChildrenPaths(QString oldPartialParentPath, QString newPartialParentPath);
 
         /*!
          * \return <b>true</b> if the item or any of its child has that path
@@ -100,6 +122,7 @@ class ProjectItem : public QTreeWidgetItem
         bool m_isFolder;
         QString m_path;
         QString m_name;
+        QString m_associatedProjectName;
 };
 
 /*!
@@ -132,6 +155,12 @@ class Project
          * \return <b>false</b> if one of the parent directories wasn't found <b>(invalid path)</b>
          */
         bool addFile(QString name, QString path);
+
+        /*!
+         * \return a pointer to the ProjectItem associated to the given full path
+         * \return <b>nullptr</b> if there is no such ProjectItem
+         */
+        ProjectItem* getProjectItemFromFullPath(QString fullPath);
 
         static QList<QString> getPathParentsList(QString path); //!< Converts a path in a list of directory (main one first)
 
@@ -241,6 +270,12 @@ class ProjectManager : public QTreeWidget // SINGLETON
          * \brief Returns currently active project (<b>nullptr</b> if none)
          */
         std::shared_ptr<Project> getCurrentProject();
+
+        /*!
+         * \brief Returns a shared pointer to the project corresponding to the given name
+         * \return <b>nullptr</b> if there is no such project
+         */
+        std::shared_ptr<Project> getProject(QString projectName);
 
     private:
         ProjectManager(QWidget *parent);

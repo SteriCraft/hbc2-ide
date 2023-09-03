@@ -19,12 +19,16 @@
 #include <QPushButton>
 #include <QFileDialog>
 #include <QMessageBox>
+#include <QSpinBox>
 
 /*!
  * \brief Stores the IDE settings on runtime.
  */
 struct ConfigurationSettings
 {
+    // Editor settings
+    unsigned int tabSize = 4; // Number of spaces representing a tab
+
     // CPU state viewer settings
     bool openCpuStateViewerOnEmulatorPaused = true;
     bool openCpuStateViewerOnEmulatorStopped = true;
@@ -66,7 +70,7 @@ class ConfigManager
         ~ConfigManager();
 
         /*!
-         * \return a list of recents projects stored in "recentProjects.cfg"
+         * \return a list of recent projects stored in "recentProjects.cfg"
          */
         QList<QString> getRecentProjects();
 
@@ -82,6 +86,12 @@ class ConfigManager
 
 
         // ==== SETTERS ====
+        // Editor settings
+        /*!
+         * \brief Sets the number of spaces representing a tab
+         */
+        void setTabSize(unsigned int nbOfSpaces);
+
         // CPU state viewer settings
         /*!
          * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
@@ -133,6 +143,9 @@ class ConfigManager
 
 
         // ==== GETTERS ====
+        // Editor settings
+        unsigned int getTabSize();
+
         // Cpu state viewer settings
         /*!
          * \return <b>true</b> if the CpuStateViewer opens when the emulator is paused
@@ -208,6 +221,8 @@ class SettingsDialog : public QDialog
         SettingsDialog(ConfigManager *configManager, QWidget *parent = nullptr);
 
     private slots:
+        void tabSizeChanged(int nbOfSpaces);
+
         void openCpuStateViewerOnEmulatorPausedChanged();
         void openCpuStateViewerOnEmulatorStoppedChanged();
 
@@ -223,7 +238,7 @@ class SettingsDialog : public QDialog
         void defaultProjectsPathChanged(QString newPath);
 
     private:
-        QLineEdit *m_defaultProjectsPathLineEdit;
+        QSpinBox *m_tabSizeSpinBox;
 
         QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
         QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
@@ -235,6 +250,8 @@ class SettingsDialog : public QDialog
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
+
+        QLineEdit *m_defaultProjectsPathLineEdit;
 
         ConfigManager *m_configManager;
 };

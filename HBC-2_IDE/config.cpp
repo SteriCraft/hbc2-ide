@@ -46,11 +46,18 @@ void ConfigManager::clearRecentProjects()
 }
 
 // SETTERS
+// Editor settings
+void ConfigManager::setTabSize(unsigned int nbOfSpaces)
+{
+    m_settings.tabSize = nbOfSpaces;
+}
+
 // Cpu state viewer settings
 void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
 {
     m_settings.openCpuStateViewerOnEmulatorPaused = enable;
 }
+
 void ConfigManager::setOpenCpuStateViewerOnEmulatorStopped(bool enable)
 {
     m_settings.openCpuStateViewerOnEmulatorStopped = enable;
@@ -103,6 +110,12 @@ bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
 }
 
 // GETTERS
+// Editor settings
+unsigned int ConfigManager::getTabSize()
+{
+    return m_settings.tabSize;
+}
+
 // Cpu state viewer settings
 bool ConfigManager::getOpenCpuStateViewerOnEmulatorPaused()
 {
@@ -177,7 +190,15 @@ ConfigManager::ConfigManager()
                     key = line.mid(0, equalCharPos);
                     value = line.mid(equalCharPos + 1);
 
-                    if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
+                    if (key == "TAB_SIZE")
+                    {
+                        bool ok;
+                        unsigned int tabSize(value.toUInt(&ok));
+
+                        if (ok)
+                            m_settings.tabSize = tabSize;
+                    }
+                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
                     {
                         m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
                     }
@@ -272,6 +293,7 @@ bool ConfigManager::saveConfigFile()
     {
         QTextStream out(&configFile);
 
+        out << "TAB_SIZE=" << QString::number(m_settings.tabSize) << "\n";
         out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings.openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED=" << (m_settings.openCpuStateViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
@@ -362,9 +384,19 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     defaultProjectsPathLayout->addWidget(m_defaultProjectsPathLineEdit);
     defaultProjectsPathLayout->addWidget(browseProjectsPath);
 
+    QLabel *tabSizeLabel = new QLabel(tr("Tab size"), this);
+    m_tabSizeSpinBox = new QSpinBox(this);
+    m_tabSizeSpinBox->setSuffix(" spaces");
+    m_tabSizeSpinBox->setRange(1, 16);
+    m_tabSizeSpinBox->setValue(configManager->getTabSize());
+    QHBoxLayout *tabSizeLayout = new QHBoxLayout;
+    tabSizeLayout->addWidget(tabSizeLabel);
+    tabSizeLayout->addWidget(m_tabSizeSpinBox);
+
     QVBoxLayout *ideSettingsLayout = new QVBoxLayout;
     ideSettingsLayout->addWidget(defaultProjectsPathLabel);
     ideSettingsLayout->addLayout(defaultProjectsPathLayout);
+    ideSettingsLayout->addLayout(tabSizeLayout);
     ideSettingsGroupBox->setLayout(ideSettingsLayout);
 
 
@@ -435,6 +467,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
 
     // Connections
+    connect(m_tabSizeSpinBox, SIGNAL(valueChanged(int)), this, SLOT(tabSizeChanged(int)));
     connect(m_openCpuStateViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorPausedChanged()));
     connect(m_openCpuStateViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorStoppedChanged()));
     connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
@@ -447,6 +480,11 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
 
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+}
+
+void SettingsDialog::tabSizeChanged(int nbOfSpaces)
+{
+    m_configManager->setTabSize(nbOfSpaces);
 }
 
 void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()

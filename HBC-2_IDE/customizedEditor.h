@@ -16,6 +16,7 @@
 #include <QRegularExpression>
 #include <QTextCharFormat>
 #include "fileManager.h"
+#include "config.h"
 
 /*!
  * \class SyntaxHightlighter
@@ -63,7 +64,7 @@ class CustomizedCodeEditor : public QPlainTextEdit
     Q_OBJECT
 
     public:
-        CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, QWidget *parent = 0);
+        CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, ConfigManager *configManager, QWidget *parent = 0);
         ~CustomizedCodeEditor();
 
         void lineNumberAreaPaintEvent(QPaintEvent *event);
@@ -96,6 +97,8 @@ class CustomizedCodeEditor : public QPlainTextEdit
         QWidget *lineNumberArea;
         QString m_associatedFileName;
         CustomFile* m_associatedFile;
+
+        ConfigManager *m_configManager;
 };
 
 

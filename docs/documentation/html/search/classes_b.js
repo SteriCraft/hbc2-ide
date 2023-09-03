@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['qhexedit_384',['QHexEdit',['../class_q_hex_edit.html',1,'']]]
+  ['qhexedit_389',['QHexEdit',['../class_q_hex_edit.html',1,'']]]
 ];

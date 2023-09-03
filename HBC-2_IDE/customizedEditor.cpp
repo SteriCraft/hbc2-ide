@@ -253,7 +253,7 @@ void SyntaxHighlighter::highlightBlock(const QString &text)
 }
 
 // CUSTOMIZED EDITOR WIDGET CLASS
-CustomizedCodeEditor::CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, QWidget *parent) : QPlainTextEdit(parent)
+CustomizedCodeEditor::CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, ConfigManager *configManager, QWidget *parent) : QPlainTextEdit(parent)
 {
     lineNumberArea = new LineNumberArea(this);
 
@@ -270,6 +270,8 @@ CustomizedCodeEditor::CustomizedCodeEditor(CustomFile *file, QString fileName, Q
 
     m_associatedFileName = fileName;
     m_associatedFile = file;
+
+    m_configManager = configManager;
 }
 
 CustomizedCodeEditor::~CustomizedCodeEditor()
@@ -361,8 +363,16 @@ void CustomizedCodeEditor::resizeEvent(QResizeEvent *e)
 
 void CustomizedCodeEditor::keyPressEvent(QKeyEvent *e)
 {
-    if (e->key() == Qt::Key_Tab)
-        insertPlainText("    "); // 4 spaces instead of a tab char
+    if (e->key() == Qt::Key_Tab) // Spaces instead of tab char (defined in settings)
+    {
+        int tabSize(m_configManager->getTabSize());
+        unsigned int modulo(getCurrentCursorColumnNumber() % tabSize);
+
+        for (unsigned int i(0); i < tabSize - modulo; i++)
+        {
+            insertPlainText(" ");
+        }
+    }
     else
         QPlainTextEdit::keyPressEvent(e);
 }

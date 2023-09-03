@@ -1,6 +1,7 @@
 #include "mainwindow.h"
 #include "./ui_mainwindow.h"
 #include "binaryViewer.h"
+#include "cpuStateViewer.h"
 
 #include <QDesktopServices>
 
@@ -785,7 +786,7 @@ void MainWindow::newFileAction()
     int newTabNb;
 
     newFile = m_fileManager->newFile();
-    CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(newFile, newFile->getName(), defaultEditorFont, m_assemblyEditor);
+    CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(newFile, newFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
     connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
     connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
@@ -821,7 +822,13 @@ void MainWindow::openProject(QString projectPath)
         return;
     }
 
-    openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
+    ProjectItem *mainSourceFileProjectItem(m_projectManager->getCurrentProject()->getProjectItemFromFullPath(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has"));
+    if (mainSourceFileProjectItem == nullptr)
+    {
+        qDebug() << "[ERROR]: ProjectItem* associated to \"main.has\" in project " << m_projectManager->getCurrentProject()->getName() << " does not exist";
+    }
+
+    openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject(), mainSourceFileProjectItem);
 
     m_configManager->addRecentProject(projectPath);
     updateRecentProjectsMenu();
@@ -836,7 +843,7 @@ void MainWindow::openFileAction()
     openFile(filePath);
 }
 
-bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedProject, bool warnings)
+bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedProject, ProjectItem *associatedProjectItem, bool warnings)
 {
     bool success(false);
     QString errorStr;
@@ -872,7 +879,7 @@ bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
         }
         else
         {
-            CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(openedFile, openedFile->getName(), defaultEditorFont, m_assemblyEditor);
+            CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(openedFile, openedFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
             connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
             connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
@@ -1284,7 +1291,7 @@ void MainWindow::addNewFileActionRC()
             openFile(newFilePath);
         }
         else
-            QMessageBox::warning(this, tr("Invalid file name"), tr("A new file must have a name."));
+            QMessageBox::warning(this, tr("Invalid file name"), tr("A new file have a name."));
     }
 }
 
@@ -1455,7 +1462,7 @@ void MainWindow::openFileActionRC()
 
     QString filePath = getItemPath(m_pointedItem);
 
-    openFile(filePath);
+    openFile(filePath, m_projectManager->getProject(m_pointedItem->getAssociatedProjectName()), m_pointedItem);
 }
 
 void MainWindow::renameItemActionRC()
@@ -1466,7 +1473,7 @@ void MainWindow::renameItemActionRC()
     bool ok;
     QString newName = QInputDialog::getText(this, tr("Rename file"), tr("New file name:"), QLineEdit::Normal, m_pointedItem->getName(), &ok);
     QString oldName(m_pointedItem->getName());
-    bool tabClosed(false);
+    QList<ProjectItem*> filesToReopen;
 
     if (ok && !newName.isEmpty())
     {
@@ -1481,18 +1488,36 @@ void MainWindow::renameItemActionRC()
 
                 if (tab->getFileName() == oldName)
                 {
+                    filesToReopen.push_back(m_pointedItem);
                     closeFileAction(tab->getFile(), i); // Automatically asks to save the file if needed
-                    tabClosed = true;
                     break;
                 }
             }
         }
-
-        m_pointedItem->rename(newName, getItemPath(m_pointedItem)); // Updates its paths and those of its children
-
-        if (tabClosed)
+        else
         {
-            openFile(getItemPath(m_pointedItem));
+            filesToReopen = m_pointedItem->getFilesItems();
+            for (unsigned int i(0); i < filesToReopen.size(); i++)
+            {
+                CustomFile *impactedFile(m_fileManager->getFileByPath(getItemPath(filesToReopen[i])));
+
+                if (impactedFile != nullptr)
+                {
+                    closeFileAction(impactedFile, getEditorIndex(impactedFile)); // Automatically asks to save the file if needed
+                }
+                else
+                {
+                    filesToReopen.removeAt(i);
+                    i--;
+                }
+            }
+        }
+
+        m_pointedItem->rename(newName, getItemPath(m_pointedItem));
+
+        for (unsigned int i(0); i < filesToReopen.size(); i++)
+        {
+            openFile(getItemPath(filesToReopen[i]));
         }
     }
 }
@@ -1828,7 +1853,8 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol)
 
         if (!found)
         {
-            if (!openFile(symbol.filePath, m_projectManager->getCurrentProject(), false))
+            ProjectItem *associatedProjectItem(m_projectManager->getCurrentProject()->getProjectItemFromFullPath(symbol.filePath));
+            if (!openFile(symbol.filePath, m_projectManager->getCurrentProject(), associatedProjectItem, false))
             {
                 QMessageBox::warning(this, tr("Debug symbol error"), "Unable to open the source code file associated with the current instruction");
                 return;

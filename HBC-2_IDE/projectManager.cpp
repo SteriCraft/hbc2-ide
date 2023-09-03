@@ -1,13 +1,14 @@
 ﻿#include "projectManager.h"
 
 // === PROJECT NODE CLASS ===
-ProjectItem::ProjectItem(QString path, ProjectItem* parent, bool isFolder) : QTreeWidgetItem(parent)
+ProjectItem::ProjectItem(QString path, QString associatedProjectName, ProjectItem *parent, bool isFolder) : QTreeWidgetItem(parent)
 {
     QFileInfo info(path);
 
     m_isFolder = isFolder;
     m_path = path;
     m_name = m_isFolder ? info.baseName() : info.fileName();
+    m_associatedProjectName = associatedProjectName;
 
     setText(0, m_name);
 }
@@ -17,6 +18,7 @@ ProjectItem::ProjectItem(QString projectName) : QTreeWidgetItem()
     m_isFolder = true;
     m_path = "";
     m_name = projectName;
+    m_associatedProjectName = projectName;
 
     setText(0, projectName);
 }
@@ -31,7 +33,7 @@ ProjectItem* ProjectItem::addFolder(QString name)
 
     QString path(m_path + "/" + name);
 
-    ProjectItem* child = new ProjectItem(path, this, true);
+    ProjectItem* child = new ProjectItem(path, m_associatedProjectName, this, true);
     addChild(child);
 
     return child;
@@ -47,7 +49,7 @@ ProjectItem* ProjectItem::addFile(QString name)
 
     QString path(m_path + "/" + name);
 
-    ProjectItem* child = new ProjectItem(path, this, false);
+    ProjectItem* child = new ProjectItem(path, m_associatedProjectName, this, false);
     addChild(child);
 
     return child;
@@ -127,6 +129,61 @@ QList<QString> ProjectItem::getFilesPaths(QString projectPath)
     return paths;
 }
 
+QList<ProjectItem*> ProjectItem::getFilesItems()
+{
+    QList<ProjectItem*> filesItems;
+
+    if (!m_isFolder)
+    {
+        filesItems.push_back(this);
+    }
+    else
+    {
+        for (unsigned int i(0); i < childCount(); i++)
+        {
+            ProjectItem *c(dynamic_cast<ProjectItem*>(child(i)));
+
+            filesItems.append(c->getFilesItems());
+        }
+    }
+
+    return filesItems;
+}
+
+ProjectItem* ProjectItem::getProjectItemFromPath(QString fullPath, QString projectPath)
+{
+    if (!m_isFolder)
+    {
+        if (projectPath + getPath() == fullPath)
+        {
+            return this;
+        }
+        else
+        {
+            return nullptr;
+        }
+    }
+    else
+    {
+        for (int i(0); i < childCount(); i++)
+        {
+            ProjectItem *c = dynamic_cast<ProjectItem*>(child(i));
+
+            if (c->getProjectItemFromPath(fullPath, projectPath) != nullptr)
+            {
+                return c;
+            }
+        }
+
+        return nullptr;
+    }
+}
+
+QString ProjectItem::getAssociatedProjectName()
+{
+    return m_associatedProjectName;
+}
+
 bool ProjectItem::setPath(QString newPath)
 {
     if (!newPath.isEmpty())
@@ -139,10 +196,16 @@ bool ProjectItem::setPath(QString newPath)
     return false;
 }
 
+void ProjectItem::setAssociatedProjectName(QString associatedProjectName)
+{
+    m_associatedProjectName = associatedProjectName;
+}
+
 bool ProjectItem::rename(QString newName, QString currentFullPath)
 {
     if (!m_name.isEmpty())
     {
+        QString oldPath(m_path);
         QFileInfo pathInfo(m_path);
         QFileInfo fullPathInfo(currentFullPath);
 
@@ -156,24 +219,29 @@ bool ProjectItem::rename(QString newName, QString currentFullPath)
         m_path = newPath;
 
         if (m_isFolder)
-            renameInChildrenPaths(newName);
+        {
+            renameParentInChildrenPaths(oldPath, m_path);
+        }
 
-        return true;
+        return false;
     }
 
-    return false;
+    return true;
 }
 
-void ProjectItem::renameInChildrenPaths(QString newParentName)
+void ProjectItem::renameParentInChildrenPaths(QString oldPartialParentPath, QString newPartialParentPath)
 {
     for (unsigned int i(0); i < childCount(); i++)
     {
         ProjectItem *c(dynamic_cast<ProjectItem*>(child(i)));
+        int oldPartialParentPathPos(c->getPath().indexOf(oldPartialParentPath));
 
-        c->setPath(c->getPath().replace(1, (c->getPath().indexOf('/', 1) - 1), newParentName));
+        c->setPath(c->getPath().replace(oldPartialParentPathPos, oldPartialParentPath.size(), newPartialParentPath));
 
         if (c->isFolder())
-            c->renameInChildrenPaths(newParentName);
+        {
+            c->renameParentInChildrenPaths(oldPartialParentPath, newPartialParentPath);
+        }
     }
 }
 
@@ -215,7 +283,10 @@ Project::Project(QString name, QString path, ProjectItem* mainNode)
         addFolder("Libraries");
     }
     else
+    {
         m_topItem = mainNode;
+        m_topItem->setAssociatedProjectName(m_name);
+    }
 }
 
 Project::~Project()
@@ -330,6 +401,11 @@ bool Project::addFile(QString name, QString path)
     nodeToUpdate->addFile(name);
 
     return true;
+}
+
+ProjectItem* Project::getProjectItemFromFullPath(QString fullPath)
+{
+    return m_topItem->getProjectItemFromPath(fullPath, getDirPath());
 }
 
 QList<QString> Project::getPathParentsList(QString path)
@@ -471,7 +547,6 @@ bool ProjectManager::newProject(QString path, bool toLoad)
 
     // Create a new project
     std::shared_ptr<Project> newProject = std::make_shared<Project>(QFileInfo(path).baseName(), path, mainNode);
-    //Project* newProject = new Project(QFileInfo(path).baseName(), path, mainNode);
 
     m_projects.push_back(newProject);
 
@@ -648,6 +723,17 @@ std::shared_ptr<Project> ProjectManager::getParentProject(ProjectItem* item)
 std::shared_ptr<Project> ProjectManager::getCurrentProject()
 {
     return m_currentProject;
+}
+
+std::shared_ptr<Project> ProjectManager::getProject(QString projectName)
+{
+    for (auto p : m_projects)
+    {
+        if (p->getName() == projectName)
+            return p;
+    }
+
+    return nullptr;
 }
 
 ProjectItem* ProjectManager::openProjectFile(QString path)

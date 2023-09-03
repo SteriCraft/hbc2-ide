@@ -1,4 +1,5 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/config.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/config.h">
-<area shape="rect" id="node1" title="IDE settings management." alt="" coords="17,5,189,61"/>
-<area shape="rect" id="node2" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,109,200,165"/>
+<area shape="rect" id="node1" title="IDE settings management." alt="" coords="106,5,278,61"/>
+<area shape="rect" id="node2" href="$customized_editor_8h.html" title="Specialized QPlainTextEdit for the HBC&#45;2 assembly language." alt="" coords="5,109,229,165"/>
+<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="95,213,289,269"/>
 </map>

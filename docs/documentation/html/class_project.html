@@ -89,6 +89,8 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ae734654376f1273e92518abe5245817c"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project.html#ae734654376f1273e92518abe5245817c">addFile</a> (QString name, QString path)</td></tr>
 <tr class="memdesc:ae734654376f1273e92518abe5245817c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Adds a file to the project.  <a href="class_project.html#ae734654376f1273e92518abe5245817c">More...</a><br /></td></tr>
 <tr class="separator:ae734654376f1273e92518abe5245817c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af72318030029efd42bd6833b47bc5005"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_project_item.html">ProjectItem</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_project.html#af72318030029efd42bd6833b47bc5005">getProjectItemFromFullPath</a> (QString fullPath)</td></tr>
+<tr class="separator:af72318030029efd42bd6833b47bc5005"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af30b0ce402c1a82a9b46ad11b0bd76e6"><td class="memItemLeft" align="right" valign="top"><a id="af30b0ce402c1a82a9b46ad11b0bd76e6"></a>
 QString&#160;</td><td class="memItemRight" valign="bottom"><b>getName</b> ()</td></tr>
 <tr class="separator:af30b0ce402c1a82a9b46ad11b0bd76e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -271,6 +273,27 @@ static QList&lt; QString &gt;&#160;</td><td class="memItemRight" valign="bottom"
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd><b>true</b> if the project already includes a file or folder with that path </dd></dl>
+
+</div>
+</div>
+<a id="af72318030029efd42bd6833b47bc5005"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#af72318030029efd42bd6833b47bc5005">&#9670;&nbsp;</a></span>getProjectItemFromFullPath()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="class_project_item.html">ProjectItem</a> * Project::getProjectItemFromFullPath </td>
+          <td>(</td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>fullPath</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>a pointer to the <a class="el" href="class_project_item.html" title="Describes a custom project item in the project tree.">ProjectItem</a> associated to the given full path </dd>
+<dd>
+<b>nullptr</b> if there is no such <a class="el" href="class_project_item.html" title="Describes a custom project item in the project tree.">ProjectItem</a> </dd></dl>
 
 </div>
 </div>
