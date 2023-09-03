@@ -615,11 +615,13 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
     }
     else if (newState == Emulator::State::PAUSED)
     {
+        Word programCounter(m_emulator->getCurrentProgramCounter());
+
         setStatusBarRightMessage("");
 
         if (m_configManager->getOpenBinaryViewerOnEmulatorPaused())
         {
-            updateBinaryViewer();
+            updateBinaryViewer(programCounter);
         }
 
         updateCpuStateViewer();
@@ -628,19 +630,20 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
             openCpuStateViewer();
         }
 
-        Word programCounter(m_emulator->getCurrentProgramCounter());
         highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
     }
 }
 
 void MainWindow::onEmulatorStepped()
 {
+    Word programCounter(m_emulator->getCurrentProgramCounter());
+
     BinaryViewer::update(m_emulator->getCurrentBinaryData());
+    BinaryViewer::highlightInstruction(programCounter);
 
     updateCpuStateViewer();
     openCpuStateViewer();
 
-    Word programCounter(m_emulator->getCurrentProgramCounter());
     highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
 
     setStatusBarRightMessage("");
@@ -1795,12 +1798,13 @@ int MainWindow::findTab(CustomFile *file)
     return -1;
 }
 
-void MainWindow::updateBinaryViewer()
+void MainWindow::updateBinaryViewer(Word programCounter)
 {
     const QByteArray &data = m_emulator->getCurrentBinaryData();
     BinaryViewer *viewer = BinaryViewer::getInstance(this);
 
     viewer->update(data);
+    viewer->highlightInstruction(programCounter);
     viewer->show();
 }
 

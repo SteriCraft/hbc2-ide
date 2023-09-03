@@ -13,5 +13,6 @@ var searchData=
   ['hexfontcolor_151',['hexFontColor',['../class_q_hex_edit.html#ab56bf70efb0966e82cf708080521fd69',1,'QHexEdit']]],
   ['highlighting_152',['highlighting',['../class_q_hex_edit.html#ae3669260a4d5c2fad5651893a17258fd',1,'QHexEdit']]],
   ['highlightingcolor_153',['highlightingColor',['../class_q_hex_edit.html#a9e8ed54e47fec94cfd64b14ea1f7cee8',1,'QHexEdit']]],
-  ['highlightline_154',['highlightLine',['../class_customized_code_editor.html#a0b9994fbd3e941e2342a9a93f7b2288e',1,'CustomizedCodeEditor']]]
+  ['highlightinstruction_154',['highlightInstruction',['../class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708',1,'BinaryViewer']]],
+  ['highlightline_155',['highlightLine',['../class_customized_code_editor.html#a0b9994fbd3e941e2342a9a93f7b2288e',1,'CustomizedCodeEditor']]]
 ];

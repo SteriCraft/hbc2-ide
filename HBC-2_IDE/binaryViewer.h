@@ -12,6 +12,7 @@
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
 #include "qhexedit.h"
+#include "computerDetails.h"
 
 /*!
  * \class BinaryViewer
@@ -40,6 +41,12 @@ class BinaryViewer : public QDialog // SINGLETON
          * \param data New binary data
          */
         static void update(const QByteArray data);
+
+        /*!
+         * \brief Highlights the 4 bytes of the instruction at the address passed
+         * \param programCounter address of the instruction to highlight
+         */
+        static void highlightInstruction(Word programCounter);
 
         static void close();
         ~BinaryViewer();

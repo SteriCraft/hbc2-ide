@@ -79,35 +79,40 @@ $(function() {
 <div class="line"><a name="l00012"></a><span class="lineno">   12</span>&#160;<span class="preprocessor">#include &lt;QVBoxLayout&gt;</span></div>
 <div class="line"><a name="l00013"></a><span class="lineno">   13</span>&#160;<span class="preprocessor">#include &lt;QDialogButtonBox&gt;</span></div>
 <div class="line"><a name="l00014"></a><span class="lineno">   14</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="qhexedit_8h.html">qhexedit.h</a>&quot;</span></div>
-<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160; </div>
-<div class="line"><a name="l00024"></a><span class="lineno"><a class="line" href="class_binary_viewer.html">   24</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_binary_viewer.html">BinaryViewer</a> : <span class="keyword">public</span> QDialog <span class="comment">// SINGLETON</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;{</div>
-<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;    Q_OBJECT</div>
-<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160; </div>
-<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_binary_viewer.html">BinaryViewer</a> *m_singleton;</div>
-<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160; </div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_binary_viewer.html">BinaryViewer</a>* <a class="code" href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">getInstance</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160; </div>
-<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">update</a>(<span class="keyword">const</span> QByteArray data);</div>
-<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160; </div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160;        ~<a class="code" href="class_binary_viewer.html">BinaryViewer</a>();</div>
-<div class="line"><a name="l00046"></a><span class="lineno">   46</span>&#160; </div>
-<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_WIDTH = 610;</div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_HEIGHT = 600;</div>
+<div class="line"><a name="l00015"></a><span class="lineno">   15</span>&#160;<span class="preprocessor">#include &quot;<a class="code" href="computer_details_8h.html">computerDetails.h</a>&quot;</span></div>
+<div class="line"><a name="l00016"></a><span class="lineno">   16</span>&#160; </div>
+<div class="line"><a name="l00025"></a><span class="lineno"><a class="line" href="class_binary_viewer.html">   25</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_binary_viewer.html">BinaryViewer</a> : <span class="keyword">public</span> QDialog <span class="comment">// SINGLETON</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;{</div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160;    Q_OBJECT</div>
+<div class="line"><a name="l00028"></a><span class="lineno">   28</span>&#160; </div>
+<div class="line"><a name="l00029"></a><span class="lineno">   29</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_binary_viewer.html">BinaryViewer</a> *m_singleton;</div>
+<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160; </div>
+<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_binary_viewer.html">BinaryViewer</a>* <a class="code" href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">getInstance</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160; </div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">update</a>(<span class="keyword">const</span> QByteArray data);</div>
+<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160; </div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">highlightInstruction</a>(Word programCounter);</div>
 <div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160; </div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;        <a class="code" href="class_binary_viewer.html">BinaryViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160; </div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;        <a class="code" href="class_q_hex_edit.html">QHexEdit</a> *m_hexEditor;</div>
-<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;};</div>
-<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160; </div>
-<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// BINARYVIEWER_H</span></div>
-<div class="ttc" id="aclass_binary_viewer_html"><div class="ttname"><a href="class_binary_viewer.html">BinaryViewer</a></div><div class="ttdoc">Singleton of the binary viewer.</div><div class="ttdef"><b>Definition:</b> binaryViewer.h:25</div></div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;        ~<a class="code" href="class_binary_viewer.html">BinaryViewer</a>();</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160; </div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_WIDTH = 610;</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_HEIGHT = 600;</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160; </div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;        <a class="code" href="class_binary_viewer.html">BinaryViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160; </div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;        <a class="code" href="class_q_hex_edit.html">QHexEdit</a> *m_hexEditor;</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;};</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160; </div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// BINARYVIEWER_H</span></div>
+<div class="ttc" id="aclass_binary_viewer_html"><div class="ttname"><a href="class_binary_viewer.html">BinaryViewer</a></div><div class="ttdoc">Singleton of the binary viewer.</div><div class="ttdef"><b>Definition:</b> binaryViewer.h:26</div></div>
 <div class="ttc" id="aclass_binary_viewer_html_a8955c8c28aacac0b989c17d0f8369bce"><div class="ttname"><a href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">BinaryViewer::update</a></div><div class="ttdeci">static void update(const QByteArray data)</div><div class="ttdoc">Updates displayed content.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:19</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_aa213a1160457e6b4ab9ce71c7bd75708"><div class="ttname"><a href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">BinaryViewer::highlightInstruction</a></div><div class="ttdeci">static void highlightInstruction(Word programCounter)</div><div class="ttdoc">Highlights the 4 bytes of the instruction at the address passed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:25</div></div>
 <div class="ttc" id="aclass_binary_viewer_html_afe0baeb628c7ce810122791049e29c02"><div class="ttname"><a href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">BinaryViewer::getInstance</a></div><div class="ttdeci">static BinaryViewer * getInstance(QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:9</div></div>
 <div class="ttc" id="aclass_q_hex_edit_html"><div class="ttname"><a href="class_q_hex_edit.html">QHexEdit</a></div><div class="ttdef"><b>Definition:</b> qhexedit.h:71</div></div>
+<div class="ttc" id="acomputer_details_8h_html"><div class="ttname"><a href="computer_details_8h.html">computerDetails.h</a></div><div class="ttdoc">Constants, structures and enumerations according to the computer specifications.</div></div>
 <div class="ttc" id="aqhexedit_8h_html"><div class="ttname"><a href="qhexedit_8h.html">qhexedit.h</a></div><div class="ttdoc">QHexEdit is a binary editor widget for Qt.</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->

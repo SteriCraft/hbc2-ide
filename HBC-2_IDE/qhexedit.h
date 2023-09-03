@@ -287,6 +287,13 @@ public:
     */
     QString toReadableString();
 
+    /*!
+     * Selects a number of bytes at the address passed
+     *
+     * <b>Added by Gianni Leclercq for the HBC-2 IDE project</b>
+     */
+    void selectData(qint64 address, qint64 nbOfBytes);
+
 
 public slots:
     /*! Redoes the last operation. If there is no operation to redo, i.e.

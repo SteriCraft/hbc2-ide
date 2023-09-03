@@ -503,6 +503,15 @@ QString QHexEdit::toReadableString()
     return toReadable(ba);
 }
 
+void QHexEdit::selectData(qint64 address, qint64 nbOfBytes)
+{
+    setCursorPosition(address * 2);
+    ensureVisible();
+
+    _bSelectionBegin = address;
+    _bSelectionEnd = address + nbOfBytes;
+}
+
 void QHexEdit::undo()
 {
     _undoStack->undo();

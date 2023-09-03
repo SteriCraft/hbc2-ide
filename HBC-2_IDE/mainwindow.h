@@ -105,7 +105,7 @@ class MainWindow : public QMainWindow
         QString getItemPath(ProjectItem *item);
         ProjectItem* getFileProjectItem(QString fullFilePath);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file
-        void updateBinaryViewer();
+        void updateBinaryViewer(Word programCounter = Cpu::PROGRAM_START_ADDRESS);
         void updateCpuStateViewer();
         void updateRecentProjectsMenu();
         void clearRecentProjectsMenu();

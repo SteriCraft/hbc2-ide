@@ -200,175 +200,177 @@ $(function() {
 <div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
 <div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;    QString toReadableString();</div>
 <div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160; </div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160; </div>
-<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;<span class="keyword">public</span> slots:</div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;    <span class="keywordtype">void</span> redo();</div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;    <span class="keywordtype">void</span> selectData(qint64 address, qint64 nbOfBytes);</div>
 <div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160; </div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;    <span class="keywordtype">void</span> undo();</div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160; </div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;signals:</div>
+<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160; </div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;<span class="keyword">public</span> slots:</div>
+<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;    <span class="keywordtype">void</span> redo();</div>
 <div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160; </div>
-<div class="line"><a name="l00305"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc">  305</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc">currentAddressChanged</a>(qint64 address);</div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160; </div>
-<div class="line"><a name="l00308"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359">  308</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359">currentSizeChanged</a>(qint64 size);</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160; </div>
-<div class="line"><a name="l00311"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a4ea1551815031057e6b3297406f93a5d">  311</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a4ea1551815031057e6b3297406f93a5d">dataChanged</a>();</div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160; </div>
-<div class="line"><a name="l00314"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a15abf5af9aa3a91d18ec17cc33b8e4a1">  314</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a15abf5af9aa3a91d18ec17cc33b8e4a1">overwriteModeChanged</a>(<span class="keywordtype">bool</span> state);</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160; </div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;    <span class="keywordtype">void</span> undo();</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160; </div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;signals:</div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160; </div>
+<div class="line"><a name="l00312"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc">  312</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc">currentAddressChanged</a>(qint64 address);</div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160; </div>
+<div class="line"><a name="l00315"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359">  315</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359">currentSizeChanged</a>(qint64 size);</div>
 <div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160; </div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;<span class="keyword">public</span>:</div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;    ~<a class="code" href="class_q_hex_edit.html">QHexEdit</a>();</div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160; </div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;    <span class="comment">// Properties</span></div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;    <span class="keywordtype">bool</span> addressArea();</div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;    <span class="keywordtype">void</span> setAddressArea(<span class="keywordtype">bool</span> addressArea);</div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160; </div>
-<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;    QColor addressAreaColor();</div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;    <span class="keywordtype">void</span> setAddressAreaColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00318"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a4ea1551815031057e6b3297406f93a5d">  318</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a4ea1551815031057e6b3297406f93a5d">dataChanged</a>();</div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160; </div>
+<div class="line"><a name="l00321"></a><span class="lineno"><a class="line" href="class_q_hex_edit.html#a15abf5af9aa3a91d18ec17cc33b8e4a1">  321</a></span>&#160;    <span class="keywordtype">void</span> <a class="code" href="class_q_hex_edit.html#a15abf5af9aa3a91d18ec17cc33b8e4a1">overwriteModeChanged</a>(<span class="keywordtype">bool</span> state);</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160; </div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160; </div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;<span class="keyword">public</span>:</div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;    ~<a class="code" href="class_q_hex_edit.html">QHexEdit</a>();</div>
 <div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160; </div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;    QColor addressFontColor();</div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;    <span class="keywordtype">void</span> setAddressFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160; </div>
-<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;    QColor asciiAreaColor();</div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;    <span class="keywordtype">void</span> setAsciiAreaColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160; </div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;    QColor asciiFontColor();</div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;    <span class="keywordtype">void</span> setAsciiFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160; </div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;    QColor hexFontColor();</div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;    <span class="keywordtype">void</span> setHexFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160; </div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;    qint64 addressOffset();</div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;    <span class="keywordtype">void</span> setAddressOffset(qint64 addressArea);</div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160; </div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;    <span class="keywordtype">int</span> addressWidth();</div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;    <span class="keywordtype">void</span> setAddressWidth(<span class="keywordtype">int</span> addressWidth);</div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160; </div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;    <span class="keywordtype">bool</span> asciiArea();</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;    <span class="keywordtype">void</span> setAsciiArea(<span class="keywordtype">bool</span> asciiArea);</div>
-<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160; </div>
-<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;    <span class="keywordtype">int</span> bytesPerLine();</div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    <span class="keywordtype">void</span> setBytesPerLine(<span class="keywordtype">int</span> count);</div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160; </div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;    qint64 cursorPosition();</div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;    <span class="keywordtype">void</span> setCursorPosition(qint64 position);</div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160; </div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;    QByteArray data();</div>
-<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;    <span class="keywordtype">void</span> setData(<span class="keyword">const</span> QByteArray &amp;ba);</div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160; </div>
-<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;    <span class="keywordtype">void</span> setHexCaps(<span class="keyword">const</span> <span class="keywordtype">bool</span> isCaps);</div>
-<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;    <span class="keywordtype">bool</span> hexCaps();</div>
-<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160; </div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;    <span class="keywordtype">void</span> setDynamicBytesPerLine(<span class="keyword">const</span> <span class="keywordtype">bool</span> isDynamic);</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;    <span class="keywordtype">bool</span> dynamicBytesPerLine();</div>
-<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160; </div>
-<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;    <span class="keywordtype">bool</span> highlighting();</div>
-<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;    <span class="keywordtype">void</span> setHighlighting(<span class="keywordtype">bool</span> mode);</div>
-<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160; </div>
-<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;    QColor highlightingColor();</div>
-<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;    <span class="keywordtype">void</span> setHighlightingColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160; </div>
-<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;    <span class="keywordtype">bool</span> overwriteMode();</div>
-<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;    <span class="keywordtype">void</span> setOverwriteMode(<span class="keywordtype">bool</span> overwriteMode);</div>
-<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160; </div>
-<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;    <span class="keywordtype">bool</span> isReadOnly();</div>
-<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;    <span class="keywordtype">void</span> setReadOnly(<span class="keywordtype">bool</span> readOnly);</div>
-<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160; </div>
-<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;    QColor selectionColor();</div>
-<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;    <span class="keywordtype">void</span> setSelectionColor(<span class="keyword">const</span> QColor &amp;color);</div>
-<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160; </div>
-<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;<span class="keyword">protected</span>:</div>
-<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;    <span class="comment">// Handle events</span></div>
-<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;    <span class="keywordtype">void</span> keyPressEvent(QKeyEvent *event);</div>
-<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;    <span class="keywordtype">void</span> mouseMoveEvent(QMouseEvent * event);</div>
-<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;    <span class="keywordtype">void</span> mousePressEvent(QMouseEvent * event);</div>
-<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;    <span class="keywordtype">void</span> paintEvent(QPaintEvent *event);</div>
-<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160;    <span class="keywordtype">void</span> resizeEvent(QResizeEvent *);</div>
-<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;    <span class="keyword">virtual</span> <span class="keywordtype">bool</span> focusNextPrevChild(<span class="keywordtype">bool</span> next);</div>
-<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;    <span class="comment">// Handle selections</span></div>
-<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;    <span class="keywordtype">void</span> resetSelection(qint64 pos);            <span class="comment">// set selectionStart and selectionEnd to pos</span></div>
-<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;    <span class="keywordtype">void</span> resetSelection();                      <span class="comment">// set selectionEnd to selectionStart</span></div>
-<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;    <span class="keywordtype">void</span> setSelection(qint64 pos);              <span class="comment">// set min (if below init) or max (if greater init)</span></div>
-<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;    qint64 getSelectionBegin();</div>
-<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;    qint64 getSelectionEnd();</div>
-<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160; </div>
-<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;    <span class="comment">// Private utility functions</span></div>
-<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;    <span class="keywordtype">void</span> <a class="code" href="namespace_cpu.html#a17ba1828af5ba1a54d3c216bb733d5e1">init</a>();</div>
-<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;    <span class="keywordtype">void</span> readBuffers();</div>
-<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;    QString toReadable(<span class="keyword">const</span> QByteArray &amp;ba);</div>
-<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160; </div>
-<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;<span class="keyword">private</span> slots:</div>
-<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;    <span class="keywordtype">void</span> adjust();                              <span class="comment">// recalc pixel positions</span></div>
-<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;    <span class="keywordtype">void</span> dataChangedPrivate(<span class="keywordtype">int</span> idx=0);         <span class="comment">// emit dataChanged() signal</span></div>
-<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;    <span class="keywordtype">void</span> refresh();                             <span class="comment">// ensureVisible() and readBuffers()</span></div>
-<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;    <span class="keywordtype">void</span> updateCursor();                        <span class="comment">// update blinking cursor</span></div>
-<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160; </div>
-<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;<span class="keyword">private</span>:</div>
-<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;    <span class="comment">// Name convention: pixel positions start with _px</span></div>
-<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;    <span class="keywordtype">int</span> _pxCharWidth, _pxCharHeight;            <span class="comment">// char dimensions (dependend on font)</span></div>
-<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;    <span class="keywordtype">int</span> _pxPosHexX;                             <span class="comment">// X-Pos of HeaxArea</span></div>
-<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;    <span class="keywordtype">int</span> _pxPosAdrX;                             <span class="comment">// X-Pos of Address Area</span></div>
-<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;    <span class="keywordtype">int</span> _pxPosAsciiX;                           <span class="comment">// X-Pos of Ascii Area</span></div>
-<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;    <span class="keywordtype">int</span> _pxGapAdr;                              <span class="comment">// gap left from AddressArea</span></div>
-<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;    <span class="keywordtype">int</span> _pxGapAdrHex;                           <span class="comment">// gap between AddressArea and HexAerea</span></div>
-<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;    <span class="keywordtype">int</span> _pxGapHexAscii;                         <span class="comment">// gap between HexArea and AsciiArea</span></div>
-<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;    <span class="keywordtype">int</span> _pxCursorWidth;                         <span class="comment">// cursor width</span></div>
-<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;    <span class="keywordtype">int</span> _pxSelectionSub;                        <span class="comment">// offset selection rect</span></div>
-<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;    <span class="keywordtype">int</span> _pxCursorX;                             <span class="comment">// current cursor pos</span></div>
-<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;    <span class="keywordtype">int</span> _pxCursorY;                             <span class="comment">// current cursor pos</span></div>
-<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160; </div>
-<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;    <span class="comment">// Name convention: absolute byte positions in chunks start with _b</span></div>
-<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;    qint64 _bSelectionBegin;                    <span class="comment">// first position of Selection</span></div>
-<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;    qint64 _bSelectionEnd;                      <span class="comment">// end of Selection</span></div>
-<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;    qint64 _bSelectionInit;                     <span class="comment">// memory position of Selection</span></div>
-<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;    qint64 _bPosFirst;                          <span class="comment">// position of first byte shown</span></div>
-<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;    qint64 _bPosLast;                           <span class="comment">// position of last byte shown</span></div>
-<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;    qint64 _bPosCurrent;                        <span class="comment">// current position</span></div>
-<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160; </div>
-<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;    <span class="comment">// variables to store the property values</span></div>
-<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;    <span class="keywordtype">bool</span> _addressArea;                          <span class="comment">// left area of QHexEdit</span></div>
-<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;    QColor _addressAreaColor;</div>
-<div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;    QColor _asciiAreaColor;</div>
-<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;    QColor _addressFontColor;</div>
-<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160;    QColor _asciiFontColor;</div>
-<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160;    QColor _hexFontColor;</div>
-<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;    <span class="keywordtype">int</span> _addressWidth;</div>
-<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;    <span class="keywordtype">bool</span> _asciiArea;</div>
-<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;    qint64 _addressOffset;</div>
-<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;    <span class="keywordtype">int</span> _bytesPerLine;</div>
-<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;    <span class="keywordtype">int</span> _hexCharsInLine;</div>
-<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;    <span class="keywordtype">bool</span> _highlighting;</div>
-<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;    <span class="keywordtype">bool</span> _overwriteMode;</div>
-<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;    QBrush _brushSelection;</div>
-<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;    QPen _penSelection;</div>
-<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;    QBrush _brushHighlighted;</div>
-<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;    QPen _penHighlighted;</div>
-<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;    <span class="keywordtype">bool</span> _readOnly;</div>
-<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;    <span class="keywordtype">bool</span> _hexCaps;</div>
-<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;    <span class="keywordtype">bool</span> _dynamicBytesPerLine;</div>
-<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160; </div>
-<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;    <span class="comment">// other variables</span></div>
-<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;    <span class="keywordtype">bool</span> _editAreaIsAscii;                      <span class="comment">// flag about the ascii mode edited</span></div>
-<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;    <span class="keywordtype">int</span> _addrDigits;                            <span class="comment">// real no of addressdigits, may be &gt; addressWidth</span></div>
-<div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;    <span class="keywordtype">bool</span> _blink;                                <span class="comment">// help get cursor blinking</span></div>
-<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;    QBuffer _bData;                             <span class="comment">// buffer, when setup with QByteArray</span></div>
-<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;    Chunks *_chunks;                            <span class="comment">// IODevice based access to data</span></div>
-<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;    QTimer _cursorTimer;                        <span class="comment">// for blinking cursor</span></div>
-<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;    qint64 _cursorPosition;                     <span class="comment">// absolute position of cursor, 1 Byte == 2 tics</span></div>
-<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;    QRect _cursorRect;                          <span class="comment">// physical dimensions of cursor</span></div>
-<div class="line"><a name="l00459"></a><span class="lineno">  459</span>&#160;    QByteArray _data;                           <span class="comment">// QHexEdit&#39;s data, when setup with QByteArray</span></div>
-<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;    QByteArray _dataShown;                      <span class="comment">// data in the current View</span></div>
-<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160;    QByteArray _hexDataShown;                   <span class="comment">// data in view, transformed to hex</span></div>
-<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160;    qint64 _lastEventSize;                      <span class="comment">// size, which was emitted last time</span></div>
-<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160;    QByteArray _markedShown;                    <span class="comment">// marked data in view</span></div>
-<div class="line"><a name="l00464"></a><span class="lineno">  464</span>&#160;    <span class="keywordtype">bool</span> _modified;                             <span class="comment">// Is any data in editor modified?</span></div>
-<div class="line"><a name="l00465"></a><span class="lineno">  465</span>&#160;    <span class="keywordtype">int</span> _rowsShown;                             <span class="comment">// lines of text shown</span></div>
-<div class="line"><a name="l00466"></a><span class="lineno">  466</span>&#160;    UndoStack * _undoStack;                     <span class="comment">// Stack to store edit actions for undo/redo</span></div>
-<div class="line"><a name="l00468"></a><span class="lineno">  468</span>&#160;<span class="comment"></span>};</div>
-<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160; </div>
-<div class="line"><a name="l00470"></a><span class="lineno">  470</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// QHEXEDIT_H</span></div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;    <span class="comment">// Properties</span></div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;    <span class="keywordtype">bool</span> addressArea();</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;    <span class="keywordtype">void</span> setAddressArea(<span class="keywordtype">bool</span> addressArea);</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160; </div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;    QColor addressAreaColor();</div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;    <span class="keywordtype">void</span> setAddressAreaColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160; </div>
+<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;    QColor addressFontColor();</div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;    <span class="keywordtype">void</span> setAddressFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160; </div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;    QColor asciiAreaColor();</div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;    <span class="keywordtype">void</span> setAsciiAreaColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160; </div>
+<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;    QColor asciiFontColor();</div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;    <span class="keywordtype">void</span> setAsciiFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160; </div>
+<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;    QColor hexFontColor();</div>
+<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;    <span class="keywordtype">void</span> setHexFontColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160; </div>
+<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;    qint64 addressOffset();</div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;    <span class="keywordtype">void</span> setAddressOffset(qint64 addressArea);</div>
+<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160; </div>
+<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    <span class="keywordtype">int</span> addressWidth();</div>
+<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;    <span class="keywordtype">void</span> setAddressWidth(<span class="keywordtype">int</span> addressWidth);</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160; </div>
+<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;    <span class="keywordtype">bool</span> asciiArea();</div>
+<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;    <span class="keywordtype">void</span> setAsciiArea(<span class="keywordtype">bool</span> asciiArea);</div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160; </div>
+<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;    <span class="keywordtype">int</span> bytesPerLine();</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;    <span class="keywordtype">void</span> setBytesPerLine(<span class="keywordtype">int</span> count);</div>
+<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160; </div>
+<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;    qint64 cursorPosition();</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;    <span class="keywordtype">void</span> setCursorPosition(qint64 position);</div>
+<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160; </div>
+<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;    QByteArray data();</div>
+<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;    <span class="keywordtype">void</span> setData(<span class="keyword">const</span> QByteArray &amp;ba);</div>
+<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160; </div>
+<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;    <span class="keywordtype">void</span> setHexCaps(<span class="keyword">const</span> <span class="keywordtype">bool</span> isCaps);</div>
+<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;    <span class="keywordtype">bool</span> hexCaps();</div>
+<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160; </div>
+<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;    <span class="keywordtype">void</span> setDynamicBytesPerLine(<span class="keyword">const</span> <span class="keywordtype">bool</span> isDynamic);</div>
+<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;    <span class="keywordtype">bool</span> dynamicBytesPerLine();</div>
+<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160; </div>
+<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;    <span class="keywordtype">bool</span> highlighting();</div>
+<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;    <span class="keywordtype">void</span> setHighlighting(<span class="keywordtype">bool</span> mode);</div>
+<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160; </div>
+<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;    QColor highlightingColor();</div>
+<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;    <span class="keywordtype">void</span> setHighlightingColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160; </div>
+<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;    <span class="keywordtype">bool</span> overwriteMode();</div>
+<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160;    <span class="keywordtype">void</span> setOverwriteMode(<span class="keywordtype">bool</span> overwriteMode);</div>
+<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160; </div>
+<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;    <span class="keywordtype">bool</span> isReadOnly();</div>
+<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;    <span class="keywordtype">void</span> setReadOnly(<span class="keywordtype">bool</span> readOnly);</div>
+<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160; </div>
+<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;    QColor selectionColor();</div>
+<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;    <span class="keywordtype">void</span> setSelectionColor(<span class="keyword">const</span> QColor &amp;color);</div>
+<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160; </div>
+<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;<span class="keyword">protected</span>:</div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;    <span class="comment">// Handle events</span></div>
+<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;    <span class="keywordtype">void</span> keyPressEvent(QKeyEvent *event);</div>
+<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;    <span class="keywordtype">void</span> mouseMoveEvent(QMouseEvent * event);</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;    <span class="keywordtype">void</span> mousePressEvent(QMouseEvent * event);</div>
+<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;    <span class="keywordtype">void</span> paintEvent(QPaintEvent *event);</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;    <span class="keywordtype">void</span> resizeEvent(QResizeEvent *);</div>
+<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;    <span class="keyword">virtual</span> <span class="keywordtype">bool</span> focusNextPrevChild(<span class="keywordtype">bool</span> next);</div>
+<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;    <span class="comment">// Handle selections</span></div>
+<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;    <span class="keywordtype">void</span> resetSelection(qint64 pos);            <span class="comment">// set selectionStart and selectionEnd to pos</span></div>
+<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;    <span class="keywordtype">void</span> resetSelection();                      <span class="comment">// set selectionEnd to selectionStart</span></div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;    <span class="keywordtype">void</span> setSelection(qint64 pos);              <span class="comment">// set min (if below init) or max (if greater init)</span></div>
+<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;    qint64 getSelectionBegin();</div>
+<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;    qint64 getSelectionEnd();</div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160; </div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;    <span class="comment">// Private utility functions</span></div>
+<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;    <span class="keywordtype">void</span> <a class="code" href="namespace_cpu.html#a17ba1828af5ba1a54d3c216bb733d5e1">init</a>();</div>
+<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;    <span class="keywordtype">void</span> readBuffers();</div>
+<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;    QString toReadable(<span class="keyword">const</span> QByteArray &amp;ba);</div>
+<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160; </div>
+<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;<span class="keyword">private</span> slots:</div>
+<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;    <span class="keywordtype">void</span> adjust();                              <span class="comment">// recalc pixel positions</span></div>
+<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;    <span class="keywordtype">void</span> dataChangedPrivate(<span class="keywordtype">int</span> idx=0);         <span class="comment">// emit dataChanged() signal</span></div>
+<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;    <span class="keywordtype">void</span> refresh();                             <span class="comment">// ensureVisible() and readBuffers()</span></div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;    <span class="keywordtype">void</span> updateCursor();                        <span class="comment">// update blinking cursor</span></div>
+<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160; </div>
+<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;<span class="keyword">private</span>:</div>
+<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;    <span class="comment">// Name convention: pixel positions start with _px</span></div>
+<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;    <span class="keywordtype">int</span> _pxCharWidth, _pxCharHeight;            <span class="comment">// char dimensions (dependend on font)</span></div>
+<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;    <span class="keywordtype">int</span> _pxPosHexX;                             <span class="comment">// X-Pos of HeaxArea</span></div>
+<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;    <span class="keywordtype">int</span> _pxPosAdrX;                             <span class="comment">// X-Pos of Address Area</span></div>
+<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;    <span class="keywordtype">int</span> _pxPosAsciiX;                           <span class="comment">// X-Pos of Ascii Area</span></div>
+<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;    <span class="keywordtype">int</span> _pxGapAdr;                              <span class="comment">// gap left from AddressArea</span></div>
+<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;    <span class="keywordtype">int</span> _pxGapAdrHex;                           <span class="comment">// gap between AddressArea and HexAerea</span></div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;    <span class="keywordtype">int</span> _pxGapHexAscii;                         <span class="comment">// gap between HexArea and AsciiArea</span></div>
+<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;    <span class="keywordtype">int</span> _pxCursorWidth;                         <span class="comment">// cursor width</span></div>
+<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;    <span class="keywordtype">int</span> _pxSelectionSub;                        <span class="comment">// offset selection rect</span></div>
+<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;    <span class="keywordtype">int</span> _pxCursorX;                             <span class="comment">// current cursor pos</span></div>
+<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;    <span class="keywordtype">int</span> _pxCursorY;                             <span class="comment">// current cursor pos</span></div>
+<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160; </div>
+<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;    <span class="comment">// Name convention: absolute byte positions in chunks start with _b</span></div>
+<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;    qint64 _bSelectionBegin;                    <span class="comment">// first position of Selection</span></div>
+<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;    qint64 _bSelectionEnd;                      <span class="comment">// end of Selection</span></div>
+<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;    qint64 _bSelectionInit;                     <span class="comment">// memory position of Selection</span></div>
+<div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;    qint64 _bPosFirst;                          <span class="comment">// position of first byte shown</span></div>
+<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;    qint64 _bPosLast;                           <span class="comment">// position of last byte shown</span></div>
+<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160;    qint64 _bPosCurrent;                        <span class="comment">// current position</span></div>
+<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160; </div>
+<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;    <span class="comment">// variables to store the property values</span></div>
+<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;    <span class="keywordtype">bool</span> _addressArea;                          <span class="comment">// left area of QHexEdit</span></div>
+<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;    QColor _addressAreaColor;</div>
+<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;    QColor _asciiAreaColor;</div>
+<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;    QColor _addressFontColor;</div>
+<div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160;    QColor _asciiFontColor;</div>
+<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;    QColor _hexFontColor;</div>
+<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;    <span class="keywordtype">int</span> _addressWidth;</div>
+<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;    <span class="keywordtype">bool</span> _asciiArea;</div>
+<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;    qint64 _addressOffset;</div>
+<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;    <span class="keywordtype">int</span> _bytesPerLine;</div>
+<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;    <span class="keywordtype">int</span> _hexCharsInLine;</div>
+<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;    <span class="keywordtype">bool</span> _highlighting;</div>
+<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;    <span class="keywordtype">bool</span> _overwriteMode;</div>
+<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;    QBrush _brushSelection;</div>
+<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;    QPen _penSelection;</div>
+<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;    QBrush _brushHighlighted;</div>
+<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;    QPen _penHighlighted;</div>
+<div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;    <span class="keywordtype">bool</span> _readOnly;</div>
+<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;    <span class="keywordtype">bool</span> _hexCaps;</div>
+<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;    <span class="keywordtype">bool</span> _dynamicBytesPerLine;</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160; </div>
+<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;    <span class="comment">// other variables</span></div>
+<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;    <span class="keywordtype">bool</span> _editAreaIsAscii;                      <span class="comment">// flag about the ascii mode edited</span></div>
+<div class="line"><a name="l00459"></a><span class="lineno">  459</span>&#160;    <span class="keywordtype">int</span> _addrDigits;                            <span class="comment">// real no of addressdigits, may be &gt; addressWidth</span></div>
+<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;    <span class="keywordtype">bool</span> _blink;                                <span class="comment">// help get cursor blinking</span></div>
+<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160;    QBuffer _bData;                             <span class="comment">// buffer, when setup with QByteArray</span></div>
+<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160;    Chunks *_chunks;                            <span class="comment">// IODevice based access to data</span></div>
+<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160;    QTimer _cursorTimer;                        <span class="comment">// for blinking cursor</span></div>
+<div class="line"><a name="l00464"></a><span class="lineno">  464</span>&#160;    qint64 _cursorPosition;                     <span class="comment">// absolute position of cursor, 1 Byte == 2 tics</span></div>
+<div class="line"><a name="l00465"></a><span class="lineno">  465</span>&#160;    QRect _cursorRect;                          <span class="comment">// physical dimensions of cursor</span></div>
+<div class="line"><a name="l00466"></a><span class="lineno">  466</span>&#160;    QByteArray _data;                           <span class="comment">// QHexEdit&#39;s data, when setup with QByteArray</span></div>
+<div class="line"><a name="l00467"></a><span class="lineno">  467</span>&#160;    QByteArray _dataShown;                      <span class="comment">// data in the current View</span></div>
+<div class="line"><a name="l00468"></a><span class="lineno">  468</span>&#160;    QByteArray _hexDataShown;                   <span class="comment">// data in view, transformed to hex</span></div>
+<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160;    qint64 _lastEventSize;                      <span class="comment">// size, which was emitted last time</span></div>
+<div class="line"><a name="l00470"></a><span class="lineno">  470</span>&#160;    QByteArray _markedShown;                    <span class="comment">// marked data in view</span></div>
+<div class="line"><a name="l00471"></a><span class="lineno">  471</span>&#160;    <span class="keywordtype">bool</span> _modified;                             <span class="comment">// Is any data in editor modified?</span></div>
+<div class="line"><a name="l00472"></a><span class="lineno">  472</span>&#160;    <span class="keywordtype">int</span> _rowsShown;                             <span class="comment">// lines of text shown</span></div>
+<div class="line"><a name="l00473"></a><span class="lineno">  473</span>&#160;    UndoStack * _undoStack;                     <span class="comment">// Stack to store edit actions for undo/redo</span></div>
+<div class="line"><a name="l00475"></a><span class="lineno">  475</span>&#160;<span class="comment"></span>};</div>
+<div class="line"><a name="l00476"></a><span class="lineno">  476</span>&#160; </div>
+<div class="line"><a name="l00477"></a><span class="lineno">  477</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// QHEXEDIT_H</span></div>
 <div class="ttc" id="aclass_q_hex_edit_html"><div class="ttname"><a href="class_q_hex_edit.html">QHexEdit</a></div><div class="ttdef"><b>Definition:</b> qhexedit.h:71</div></div>
 <div class="ttc" id="aclass_q_hex_edit_html_a15abf5af9aa3a91d18ec17cc33b8e4a1"><div class="ttname"><a href="class_q_hex_edit.html#a15abf5af9aa3a91d18ec17cc33b8e4a1">QHexEdit::overwriteModeChanged</a></div><div class="ttdeci">void overwriteModeChanged(bool state)</div></div>
 <div class="ttc" id="aclass_q_hex_edit_html_a1cd8ece4fd9ea4aef38a9844184ae9bc"><div class="ttname"><a href="class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc">QHexEdit::currentAddressChanged</a></div><div class="ttdeci">void currentAddressChanged(qint64 address)</div></div>

@@ -102,6 +102,9 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a8955c8c28aacac0b989c17d0f8369bce"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">update</a> (const QByteArray data)</td></tr>
 <tr class="memdesc:a8955c8c28aacac0b989c17d0f8369bce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates displayed content.  <a href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">More...</a><br /></td></tr>
 <tr class="separator:a8955c8c28aacac0b989c17d0f8369bce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa213a1160457e6b4ab9ce71c7bd75708"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">highlightInstruction</a> (Word programCounter)</td></tr>
+<tr class="memdesc:aa213a1160457e6b4ab9ce71c7bd75708"><td class="mdescLeft">&#160;</td><td class="mdescRight">Highlights the 4 bytes of the instruction at the address passed.  <a href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">More...</a><br /></td></tr>
+<tr class="separator:aa213a1160457e6b4ab9ce71c7bd75708"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memItemLeft" align="right" valign="top"><a id="a3252471a8cf56315936ae2e82a4e6d9c"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</td></tr>
 <tr class="separator:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -138,6 +141,40 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">parent</td><td>Pointer to the parent QWidget (facultative) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="aa213a1160457e6b4ab9ce71c7bd75708"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aa213a1160457e6b4ab9ce71c7bd75708">&#9670;&nbsp;</a></span>highlightInstruction()</h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void BinaryViewer::highlightInstruction </td>
+          <td>(</td>
+          <td class="paramtype">Word&#160;</td>
+          <td class="paramname"><em>programCounter</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Highlights the 4 bytes of the instruction at the address passed. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">programCounter</td><td>address of the instruction to highlight </td></tr>
   </table>
   </dd>
 </dl>

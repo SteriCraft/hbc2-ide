@@ -22,6 +22,14 @@ void BinaryViewer::update(const QByteArray data)
         m_singleton->m_hexEditor->setData(data);
 }
 
+void BinaryViewer::highlightInstruction(Word programCounter)
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->m_hexEditor->selectData(programCounter, Cpu::INSTRUCTION_SIZE);
+    }
+}
+
 void BinaryViewer::close()
 {
     if (m_singleton != nullptr)
