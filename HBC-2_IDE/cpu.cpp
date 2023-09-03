@@ -649,7 +649,7 @@ void Cpu::execute(HbcCpu &cpu)
             {
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_registers[(int)cpu.m_register2Index];
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_registers[(int)cpu.m_register2Index]) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] < cpu.m_registers[(int)cpu.m_register2Index];
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
@@ -659,7 +659,7 @@ void Cpu::execute(HbcCpu &cpu)
             {
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1;
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] < cpu.m_v1;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
@@ -670,7 +670,7 @@ void Cpu::execute(HbcCpu &cpu)
                 cpu.m_dataCache = Motherboard::readRam(*cpu.m_motherboard, cpu.m_vX);
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_dataCache;
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] < cpu.m_dataCache;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
@@ -683,7 +683,7 @@ void Cpu::execute(HbcCpu &cpu)
             {
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_registers[(int)cpu.m_register2Index] - 1;
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_registers[(int)cpu.m_register2Index] - 1) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] <= cpu.m_registers[(int)cpu.m_register2Index];
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
@@ -693,7 +693,7 @@ void Cpu::execute(HbcCpu &cpu)
             {
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1 - 1;
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1 - 1) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] <= cpu.m_v1;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
@@ -704,7 +704,7 @@ void Cpu::execute(HbcCpu &cpu)
                 cpu.m_dataCache = Motherboard::readRam(*cpu.m_motherboard, cpu.m_vX);
                 cpu.m_operationCache = cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_dataCache - 1;
 
-                cpu.m_flags[(int)Cpu::Flags::CARRY] = ((int)cpu.m_registers[(int)cpu.m_register1Index] - cpu.m_v1 - 1) < 0;
+                cpu.m_flags[(int)Cpu::Flags::CARRY] = cpu.m_registers[(int)cpu.m_register1Index] <= cpu.m_dataCache;
                 cpu.m_flags[(int)Cpu::Flags::ZERO] = cpu.m_operationCache == 0x00;
                 cpu.m_flags[(int)Cpu::Flags::NEGATIVE] = cpu.m_operationCache & 0x80;
 
