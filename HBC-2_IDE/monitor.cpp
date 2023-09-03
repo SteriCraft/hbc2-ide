@@ -376,7 +376,7 @@ void MonitorWidget::convertToPixelBuffer(Monitor::CharData *textBuffer)
                     {
                         index = (column * CHARACTER_WIDTH + x) + (row * CHARACTER_HEIGHT + y) * MONITOR_WIDTH;
 
-                        m_pixelBuffer[index] = Monitor::colorArray[(int)Monitor::Color::BLACK];
+                        m_pixelBuffer[index] = Monitor::colorArray[colors & 0x0F];
                     }
                 }
             }

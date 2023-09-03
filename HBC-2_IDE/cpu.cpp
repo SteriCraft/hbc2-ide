@@ -125,10 +125,6 @@ void Cpu::decode(HbcCpu &cpu)
 
 void Cpu::execute(HbcCpu &cpu)
 {
-    // TODO
-    // Modify flags when affected by instruction
-    // Implement addressing modes
-
     switch (cpu.m_opcode)
     {
         case Cpu::InstructionOpcode::ADC:
