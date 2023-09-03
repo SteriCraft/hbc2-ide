@@ -9,7 +9,7 @@ It contains documentation about the computer design and an IDE built around a cu
 The HBC-2 is an 8-bit computer with 64 KB of RAM, a 256 * 192 pixels monitor and a real-time clock.
 
 ### Documentation
-Documentation about the computer's design is available [here](https://github.com/SteriCraft/hbc2-ide/tree/main/Documentation)
+Documentation about the computer's design is available [here](https://github.com/SteriCraft/hbc2-ide/tree/main/Documentation)<br />
 You can also gather information about the computer on the official blog [here](https://hbc2fr.wordpress.com/)
 
 
