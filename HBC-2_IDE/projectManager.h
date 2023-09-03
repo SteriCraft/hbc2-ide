@@ -187,6 +187,11 @@ class ProjectManager : public QTreeWidget // SINGLETON
         bool newProject(QString path, bool toLoad = false);
 
         /*!
+         * \return <b>true</b> if the project is already opened
+         */
+        bool isOpened(QString path);
+
+        /*!
          * \brief Changes the currently active project
          * \return <b>false</b> if the project could not be found
          */

@@ -15,11 +15,12 @@ var searchData=
   ['isbinaryready_163',['isBinaryReady',['../class_assembly_1_1_assembler.html#a8b376f068c0a6c3f4cf88fc377ce840e',1,'Assembly::Assembler']]],
   ['isdata_164',['isData',['../class_token_1_1_token_line.html#a78bd44a8861f2949e8bc991f0f3bdb74',1,'Token::TokenLine']]],
   ['isfileloaded_165',['isFileLoaded',['../class_file_manager.html#a35687cc8cf79a90b26658a0574a80c28',1,'FileManager']]],
-  ['isfilesaved_166',['isFileSaved',['../class_file_manager.html#a063c4dc11a7ef1d5228a816af2521042',1,'FileManager::isFileSaved(CustomFile *file)'],['../class_file_manager.html#a7c736a48dcdc44c2a7f3672206aaef76',1,'FileManager::isFileSaved(QString fileName)']]],
+  ['isfilesaved_166',['isFileSaved',['../class_file_manager.html#a7c736a48dcdc44c2a7f3672206aaef76',1,'FileManager::isFileSaved(QString fileName)'],['../class_file_manager.html#a063c4dc11a7ef1d5228a816af2521042',1,'FileManager::isFileSaved(CustomFile *file)']]],
   ['isinstruction_167',['isInstruction',['../class_token_1_1_token_line.html#af2b7f629620e42cb7dfdca61906ecad2',1,'Token::TokenLine']]],
   ['islabel_168',['isLabel',['../class_token_1_1_token_line.html#ad3005ab2319a6f722b151e1e4b685c98',1,'Token::TokenLine']]],
   ['ismodified_169',['isModified',['../class_q_hex_edit.html#ad8339ee39adf7863e46a9c57a7f9db0a',1,'QHexEdit']]],
-  ['ispartof_170',['isPartOf',['../class_project.html#a1e01dcd86cedaac3e4010c21f5f84123',1,'Project::isPartOf()'],['../class_project_item.html#a31dcf5bb8008e3c902455f657e92791a',1,'ProjectItem::isPartOf()']]],
-  ['issaved_171',['isSaved',['../class_custom_file.html#a9f704cda8dfca241b078ffcbc1534f73',1,'CustomFile']]],
-  ['ivt_5fstart_5faddress_172',['IVT_START_ADDRESS',['../namespace_cpu.html#a28235ba1c63b363801527a31b17ad22f',1,'Cpu']]]
+  ['isopened_170',['isOpened',['../class_project_manager.html#a3be8f858becb8a2f3cdc7b584ed90ef3',1,'ProjectManager']]],
+  ['ispartof_171',['isPartOf',['../class_project.html#a1e01dcd86cedaac3e4010c21f5f84123',1,'Project::isPartOf()'],['../class_project_item.html#a31dcf5bb8008e3c902455f657e92791a',1,'ProjectItem::isPartOf()']]],
+  ['issaved_172',['isSaved',['../class_custom_file.html#a9f704cda8dfca241b078ffcbc1534f73',1,'CustomFile']]],
+  ['ivt_5fstart_5faddress_173',['IVT_START_ADDRESS',['../namespace_cpu.html#a28235ba1c63b363801527a31b17ad22f',1,'Cpu']]]
 ];

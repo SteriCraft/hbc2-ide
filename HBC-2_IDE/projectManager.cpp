@@ -495,6 +495,19 @@ bool ProjectManager::newProject(QString path, bool toLoad)
     return true;
 }
 
+bool ProjectManager::isOpened(QString path)
+{
+    for (auto p : m_projects)
+    {
+        if (p->getPath() == path)
+        {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 bool ProjectManager::selectProject(QString name)
 {
     for (auto p : m_projects)

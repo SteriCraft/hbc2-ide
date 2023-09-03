@@ -799,20 +799,28 @@ void MainWindow::openProjectAction()
 
 void MainWindow::openProject(QString projectPath)
 {
+    if (m_projectManager->isOpened(projectPath))
+    {
+        QMessageBox::warning(this, tr("Project already opened"), tr("This project is already loaded."));
+
+        QFileInfo projectInfo(projectPath);
+        m_projectManager->selectProject(projectInfo.baseName());
+
+        return;
+    }
+
     if (!m_projectManager->newProject(projectPath, true))
     {
         QMessageBox::warning(this, tr("Unable to open project"), tr("Invalid project file."));
         return;
     }
-    else
-    {
-        openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
 
-        m_configManager->addRecentProject(projectPath);
-        updateRecentProjectsMenu();
+    openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has", m_projectManager->getCurrentProject());
 
-        updateWinTabMenu();
-    }
+    m_configManager->addRecentProject(projectPath);
+    updateRecentProjectsMenu();
+
+    updateWinTabMenu();
 }
 
 void MainWindow::openFileAction()
