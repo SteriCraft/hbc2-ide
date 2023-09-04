@@ -1,5 +1,6 @@
 #include "monitor.h"
 #include "iod.h"
+#include "mainwindow.h"
 
 #include <QDebug>
 #include <QVBoxLayout>
@@ -164,10 +165,10 @@ Monitor::Mode HbcMonitor::getMode()
 MonitorWidget* MonitorWidget::m_singleton = nullptr;
 
 // PUBLIC
-MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput)
+MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin)
 {
     if (m_singleton == nullptr)
-        m_singleton = new MonitorWidget(projectName, hbcMonitor, consoleOutput);
+        m_singleton = new MonitorWidget(projectName, hbcMonitor, consoleOutput, mainWin);
 
     return m_singleton;
 }
@@ -199,6 +200,35 @@ int MonitorWidget::getFPS()
     return m_thread->getFPS();
 }
 
+// PROTECTED
+void MonitorWidget::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_F9)
+    {
+        emit runKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F10)
+    {
+        emit stepKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F11)
+    {
+        emit pauseKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F12 || event->matches(QKeySequence::Quit))
+    {
+        emit stopKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F6)
+    {
+        emit binaryViewerKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F7)
+    {
+        emit cpuStateViewerKeyPressed();
+    }
+}
+
 void MonitorWidget::closeEvent(QCloseEvent *event)
 {
     if (event->spontaneous())
@@ -213,7 +243,7 @@ void MonitorWidget::closeEvent(QCloseEvent *event)
 }
 
 // PRIVATE
-MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput) : QOpenGLWidget(nullptr)
+MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin) : QOpenGLWidget(nullptr)
 {
     m_width = 0;
     m_height = 0;
@@ -264,6 +294,13 @@ MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Consol
 
     setWindowTitle(projectName + " - HBC-2 Monitor");
     setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    connect(this, SIGNAL(runKeyPressed()), mainWin, SLOT(onRunKeyPressed()));
+    connect(this, SIGNAL(stepKeyPressed()), mainWin, SLOT(onStepKeyPressed()));
+    connect(this, SIGNAL(pauseKeyPressed()), mainWin, SLOT(onPauseKeyPressed()));
+    connect(this, SIGNAL(stopKeyPressed()), mainWin, SLOT(onStopKeyPressed()));
+    connect(this, SIGNAL(cpuStateViewerKeyPressed()), mainWin, SLOT(onCpuStateViewerKeyPressed()));
+    connect(this, SIGNAL(binaryViewerKeyPressed()), mainWin, SLOT(onBinaryViewerKeyPressed()));
 
     update();
 
@@ -394,7 +431,7 @@ void MonitorWidget::convertToPixelBuffer(Byte *pixelBuffer)
         {
             index = x + y * MONITOR_WIDTH;
 
-            m_pixelBuffer[index] = Monitor::colorArray[pixelBuffer[index]];
+            m_pixelBuffer[index] = Monitor::colorArray[pixelBuffer[index] & 0x0F];
         }
     }
 }

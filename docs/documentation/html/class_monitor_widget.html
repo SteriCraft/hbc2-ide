@@ -97,6 +97,24 @@ Collaboration diagram for MonitorWidget:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="signals"></a>
 Signals</h2></td></tr>
+<tr class="memitem:a3f9dc766102099f81efa38061a850fbf"><td class="memItemLeft" align="right" valign="top"><a id="a3f9dc766102099f81efa38061a850fbf"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>runKeyPressed</b> ()</td></tr>
+<tr class="separator:a3f9dc766102099f81efa38061a850fbf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a06f0a591bfd6e4bde2ccdfb44bb70dbf"><td class="memItemLeft" align="right" valign="top"><a id="a06f0a591bfd6e4bde2ccdfb44bb70dbf"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>stepKeyPressed</b> ()</td></tr>
+<tr class="separator:a06f0a591bfd6e4bde2ccdfb44bb70dbf"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa65bcc9826564effc951b58b8709a3dd"><td class="memItemLeft" align="right" valign="top"><a id="aa65bcc9826564effc951b58b8709a3dd"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>pauseKeyPressed</b> ()</td></tr>
+<tr class="separator:aa65bcc9826564effc951b58b8709a3dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa789ed4bb57db4a9f197e510907e22e8"><td class="memItemLeft" align="right" valign="top"><a id="aa789ed4bb57db4a9f197e510907e22e8"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>stopKeyPressed</b> ()</td></tr>
+<tr class="separator:aa789ed4bb57db4a9f197e510907e22e8"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af0ace66ca4e48d374464a2cbcdeffd09"><td class="memItemLeft" align="right" valign="top"><a id="af0ace66ca4e48d374464a2cbcdeffd09"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>cpuStateViewerKeyPressed</b> ()</td></tr>
+<tr class="separator:af0ace66ca4e48d374464a2cbcdeffd09"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:af3b65869c5a3ff0721b74b86fee6a439"><td class="memItemLeft" align="right" valign="top"><a id="af3b65869c5a3ff0721b74b86fee6a439"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>binaryViewerKeyPressed</b> ()</td></tr>
+<tr class="separator:af3b65869c5a3ff0721b74b86fee6a439"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5b881594af5c48d3586a1a82d344f8ec"><td class="memItemLeft" align="right" valign="top"><a id="a5b881594af5c48d3586a1a82d344f8ec"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>closed</b> ()</td></tr>
 <tr class="separator:a5b881594af5c48d3586a1a82d344f8ec"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -112,12 +130,15 @@ int&#160;</td><td class="memItemRight" valign="bottom"><b>getFPS</b> ()</td></tr
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
-<tr class="memitem:a517c0c90543e65567507192b835487b4"><td class="memItemLeft" align="right" valign="top"><a id="a517c0c90543e65567507192b835487b4"></a>
-static <a class="el" href="class_monitor_widget.html">MonitorWidget</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getInstance</b> (QString projectName, <a class="el" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="el" href="class_console.html">Console</a> *consoleOutput)</td></tr>
-<tr class="separator:a517c0c90543e65567507192b835487b4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a67e6a7ff482cc71e484fa7830bd5241d"><td class="memItemLeft" align="right" valign="top"><a id="a67e6a7ff482cc71e484fa7830bd5241d"></a>
+static <a class="el" href="class_monitor_widget.html">MonitorWidget</a> *&#160;</td><td class="memItemRight" valign="bottom"><b>getInstance</b> (QString projectName, <a class="el" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="el" href="class_console.html">Console</a> *consoleOutput, <a class="el" href="class_main_window.html">MainWindow</a> *mainWin)</td></tr>
+<tr class="separator:a67e6a7ff482cc71e484fa7830bd5241d"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pro-methods"></a>
 Protected Member Functions</h2></td></tr>
+<tr class="memitem:aa094e631443ff9e1c9d0e7f371ac80c0"><td class="memItemLeft" align="right" valign="top"><a id="aa094e631443ff9e1c9d0e7f371ac80c0"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>keyPressEvent</b> (QKeyEvent *event) override</td></tr>
+<tr class="separator:aa094e631443ff9e1c9d0e7f371ac80c0"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae4b960eb766c0b13a903894a7b691d47"><td class="memItemLeft" align="right" valign="top"><a id="ae4b960eb766c0b13a903894a7b691d47"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>closeEvent</b> (QCloseEvent *event) override</td></tr>
 <tr class="separator:ae4b960eb766c0b13a903894a7b691d47"><td class="memSeparator" colspan="2">&#160;</td></tr>

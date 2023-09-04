@@ -54,6 +54,7 @@ MainWindow::~MainWindow()
     }
 
     BinaryViewer::close();
+    CpuStateViewer::close();
 
     delete m_emulator;
     delete m_configManager;
@@ -698,6 +699,69 @@ void MainWindow::dontShowAgainReassemblyWarnings()
     m_configManager->setDismissReassemblyWarnings(true);
 }
 
+// Monitor signals
+void MainWindow::onRunKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state == Emulator::State::READY || state == Emulator::State::PAUSED)
+    {
+        runEmulatorAction();
+    }
+}
+
+void MainWindow::onStepKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state == Emulator::State::PAUSED)
+    {
+        stepEmulatorAction();
+    }
+}
+
+void MainWindow::onPauseKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state == Emulator::State::RUNNING)
+    {
+        pauseEmulatorAction();
+    }
+}
+
+void MainWindow::onStopKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state == Emulator::State::RUNNING || state == Emulator::State::PAUSED)
+    {
+        stopEmulatorAction();
+    }
+}
+
+void MainWindow::onCpuStateViewerKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state != Emulator::State::NOT_INITIALIZED)
+    {
+        openCpuStateViewer();
+    }
+}
+
+void MainWindow::onBinaryViewerKeyPressed()
+{
+    if (m_assembler != nullptr)
+    {
+        if (m_assembler->isBinaryReady())
+        {
+            showBinaryAction();
+        }
+    }
+}
+
+// PROTECTED
 void MainWindow::onClose()
 {
     closeEvent(nullptr);
@@ -1173,7 +1237,7 @@ void MainWindow::runEmulatorAction()
     {
         if (m_monitorToggle->isChecked())
         {
-            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_consoleOutput);
+            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_consoleOutput, this);
             m_monitor->show();
 
             connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));

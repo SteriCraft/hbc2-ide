@@ -6,7 +6,7 @@
  * \brief Creates and manages the IDE main window
  * \author Gianni Leclercq
  * \version 0.1
- * \date 28/08/2023
+ * \date 04/09/2023
  */
 #include <QMainWindow>
 #include <QVBoxLayout>
@@ -80,6 +80,13 @@ class MainWindow : public QMainWindow
         void onTickCountReceived(int countIn100Ms);
         void onMonitorClosed();
         void dontShowAgainReassemblyWarnings();
+        // Monitor signals
+        void onRunKeyPressed();
+        void onStepKeyPressed();
+        void onPauseKeyPressed();
+        void onStopKeyPressed();
+        void onCpuStateViewerKeyPressed();
+        void onBinaryViewerKeyPressed();
 
     protected:
         void closeEvent(QCloseEvent *event) override; //!< Called when the window's cross is clicked
