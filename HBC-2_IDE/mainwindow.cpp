@@ -1239,7 +1239,7 @@ void MainWindow::runEmulatorAction()
     {
         if (m_monitorToggle->isChecked())
         {
-            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_consoleOutput, this);
+            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
             m_monitor->show();
 
             connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));

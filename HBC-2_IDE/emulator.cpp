@@ -138,6 +138,12 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
                 m_computer.rtc = dynamic_cast<RealTimeClock::HbcRealTimeClock*>(m_computer.peripherals.back());
             }
 
+            if (m_status.useKeyboard)
+            {
+                m_computer.peripherals.push_back(new Keyboard::HbcKeyboard(&m_computer.motherboard.m_iod, m_consoleOutput));
+                m_computer.keyboard = dynamic_cast<Keyboard::HbcKeyboard*>(m_computer.peripherals.back());
+            }
+
             initComputer();
 
             m_status.state = Emulator::State::READY;
@@ -199,6 +205,11 @@ void HbcEmulator::useRTC(bool enable)
     m_status.useRTC = enable;
 }
 
+void HbcEmulator::useKeyboard(bool enable)
+{
+    m_status.useKeyboard = enable;
+}
+
 void HbcEmulator::setStartPaused(bool enable)
 {
     m_status.startPaused = enable;
@@ -236,6 +247,11 @@ RealTimeClock::HbcRealTimeClock* HbcEmulator::getHbcRealTimeClock()
     return m_computer.rtc;
 }
 
+Keyboard::HbcKeyboard* HbcEmulator::getHbcKeyboard()
+{
+    return m_computer.keyboard;
+}
+
 void HbcEmulator::setFrequencyTarget(Emulator::FrequencyTarget target)
 {
     m_status.mutex.lock();
@@ -251,6 +267,7 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
     m_status.frequencyTarget = Emulator::FrequencyTarget::MHZ_2; // Default
     m_status.useMonitor = true;
     m_status.useRTC = true;
+    m_status.useKeyboard = true;
 
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;

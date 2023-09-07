@@ -40,6 +40,7 @@ namespace Emulator
 
         bool useMonitor; //!< Defined by user before an emulator run
         bool useRTC; //!< Defined by user before an emulator run
+        bool useKeyboard; //!< Defined by user before an emulator run
         bool startPaused; //!< Defined by user before an emulator run
 
         std::string projectName;
@@ -54,6 +55,7 @@ namespace Emulator
 
         HbcMonitor *monitor;
         RealTimeClock::HbcRealTimeClock *rtc;
+        Keyboard::HbcKeyboard *keyboard;
         std::vector<HbcPeripheral*> peripherals; //!< General vector of the peripherals for simpler systemwide iterations
 
         QByteArray initialRamData; //!< Binary data used on emulator first run
@@ -222,6 +224,7 @@ class HbcEmulator : public QThread
 
         void useMonitor(bool enable);
         void useRTC(bool enable);
+        void useKeyboard(bool enable);
         void setStartPaused(bool enable);
 
         /*!
@@ -243,6 +246,11 @@ class HbcEmulator : public QThread
          * \return a pointer to the RTC peripheral <i>(<b>nullptr</b> if no RTC plugged in)</i>
          */
         RealTimeClock::HbcRealTimeClock* getHbcRealTimeClock();
+
+        /*!
+         * \return a pointer to the keyboard peripheral <i>(<b>nullptr</b> if no keyboard plugged in)</i>
+         */
+        Keyboard::HbcKeyboard* getHbcKeyboard();
 
         /*!
          * \param target Desired frequency target

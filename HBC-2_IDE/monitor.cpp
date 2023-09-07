@@ -19,9 +19,9 @@ HbcMonitor::~HbcMonitor()
 
 void HbcMonitor::init()
 {
-    m_sockets = Iod::requestPortsConnexions(*m_iod, MONITOR_DEVICE_ID, SCREEN_PORTS_NB);
+    m_sockets = Iod::requestPortsConnexions(*m_iod, DEVICE_ID, PORTS_NB);
 
-    if (m_sockets.size() < SCREEN_PORTS_NB)
+    if (m_sockets.size() < PORTS_NB)
     {
         m_consoleOutput->log("Cannot plug the monitor, not enough available ports");
     }
@@ -29,11 +29,11 @@ void HbcMonitor::init()
     m_mode = Monitor::Mode::TEXT; // Default
 
     int index;
-    for (unsigned int x(0); x < MONITOR_WIDTH; x++)
+    for (unsigned int x(0); x < WIDTH; x++)
     {
-        for (unsigned int y(0); y < MONITOR_HEIGHT; y++)
+        for (unsigned int y(0); y < HEIGHT; y++)
         {
-            index = x + y * MONITOR_WIDTH;
+            index = x + y * WIDTH;
 
             m_videoData.pixelBuffer[index] = 0x00;
 
@@ -54,7 +54,7 @@ void HbcMonitor::tick(bool step)
     // Check command
     if (command != Monitor::Command::NOP)
     {
-        videoIndex = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * MONITOR_WIDTH;
+        videoIndex = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * WIDTH;
         textIndex = *m_sockets[(int)Monitor::Port::POS_X].portDataPointer + *m_sockets[(int)Monitor::Port::POS_Y].portDataPointer * TEXT_MODE_COLUMNS;
 
         if (command == Monitor::Command::WRITE)
@@ -165,10 +165,10 @@ Monitor::Mode HbcMonitor::getMode()
 MonitorWidget* MonitorWidget::m_singleton = nullptr;
 
 // PUBLIC
-MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin)
+MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
 {
     if (m_singleton == nullptr)
-        m_singleton = new MonitorWidget(projectName, hbcMonitor, consoleOutput, mainWin);
+        m_singleton = new MonitorWidget(projectName, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
 
     return m_singleton;
 }
@@ -236,6 +236,15 @@ void MonitorWidget::keyPressEvent(QKeyEvent *event)
     {
         emit cpuStateViewerKeyPressed();
     }
+    else
+    {
+        m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), false);
+    }
+}
+
+void MonitorWidget::keyReleaseEvent(QKeyEvent *event)
+{
+    m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), true);
 }
 
 void MonitorWidget::closeEvent(QCloseEvent *event)
@@ -252,25 +261,26 @@ void MonitorWidget::closeEvent(QCloseEvent *event)
 }
 
 // PRIVATE
-MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin) : QOpenGLWidget(nullptr)
+MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QOpenGLWidget(nullptr)
 {
     m_width = 0;
     m_height = 0;
 
     m_texture = 0;
 
-    setSize(MONITOR_WIDTH, MONITOR_HEIGHT);
+    setSize(WIDTH, HEIGHT);
 
     m_pixelBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
-    for (unsigned int x(0); x < MONITOR_WIDTH; x++)
+    for (unsigned int x(0); x < WIDTH; x++)
     {
-        for (unsigned int y(0); y < MONITOR_HEIGHT; y++)
+        for (unsigned int y(0); y < HEIGHT; y++)
         {
-            m_pixelBuffer[x + y * MONITOR_WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
+            m_pixelBuffer[x + y * WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
         }
     }
 
     m_hbcMonitor = hbcMonitor;
+    m_hbcKeyboard = hbcKeyboard;
 
     m_font.load(":/font/res/charMap.png");
 
@@ -401,7 +411,7 @@ void MonitorWidget::convertToPixelBuffer(Monitor::CharData *textBuffer)
                 {
                     for (unsigned int y(0); y < CHARACTER_HEIGHT; y++)
                     {
-                        index = (column * CHARACTER_WIDTH + x) + (row * CHARACTER_HEIGHT + y) * MONITOR_WIDTH;
+                        index = (column * CHARACTER_WIDTH + x) + (row * CHARACTER_HEIGHT + y) * WIDTH;
 
                         if (m_charMap[asciiCode - 32][x + y * CHARACTER_WIDTH])
                         {
@@ -420,7 +430,7 @@ void MonitorWidget::convertToPixelBuffer(Monitor::CharData *textBuffer)
                 {
                     for (unsigned int y(0); y < CHARACTER_HEIGHT; y++)
                     {
-                        index = (column * CHARACTER_WIDTH + x) + (row * CHARACTER_HEIGHT + y) * MONITOR_WIDTH;
+                        index = (column * CHARACTER_WIDTH + x) + (row * CHARACTER_HEIGHT + y) * WIDTH;
 
                         m_pixelBuffer[index] = Monitor::colorArray[colors & 0x0F];
                     }
@@ -434,11 +444,11 @@ void MonitorWidget::convertToPixelBuffer(Byte *pixelBuffer)
 {
     int index;
 
-    for (unsigned int x(0); x < MONITOR_WIDTH; x++)
+    for (unsigned int x(0); x < WIDTH; x++)
     {
-        for (unsigned int y(0); y < MONITOR_HEIGHT; y++)
+        for (unsigned int y(0); y < HEIGHT; y++)
         {
-            index = x + y * MONITOR_WIDTH;
+            index = x + y * WIDTH;
 
             m_pixelBuffer[index] = Monitor::colorArray[pixelBuffer[index] & 0x0F];
         }

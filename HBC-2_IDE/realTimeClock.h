@@ -18,9 +18,9 @@
  */
 namespace RealTimeClock
 {
-    constexpr Byte RTC_DEVICE_ID = 0x95; //!< Random to "look" nice
+    constexpr Byte DEVICE_ID = 0x95; //!< Random to "look" nice
 
-    constexpr int RTC_PORTS_NB = 7;
+    constexpr int PORTS_NB = 7;
     constexpr int INTERRUPTS_PER_SECOND = 1;
     constexpr int YEAR_0 = 1900; //!< Starts counting from year 1900 to year 2155
 

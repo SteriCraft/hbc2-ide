@@ -43,6 +43,8 @@ add_executable(HBC-2_IDE
   emulator.h
   fileManager.cpp
   fileManager.h
+  keyboard.cpp
+  keyboard.h
   iod.cpp
   iod.h
   mainwindow.cpp

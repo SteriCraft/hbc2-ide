@@ -8,9 +8,9 @@ HbcRealTimeClock::HbcRealTimeClock(HbcIod *iod, Console *consoleOutput) : HbcPer
 
 void HbcRealTimeClock::init()
 {
-    m_sockets = Iod::requestPortsConnexions(*m_iod, RTC_DEVICE_ID, RTC_PORTS_NB);
+    m_sockets = Iod::requestPortsConnexions(*m_iod, DEVICE_ID, PORTS_NB);
 
-    if (m_sockets.size() < RTC_PORTS_NB)
+    if (m_sockets.size() < PORTS_NB)
     {
         m_consoleOutput->log("Cannot plug the RTC, not enough available ports");
     }

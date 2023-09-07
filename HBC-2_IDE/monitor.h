@@ -13,7 +13,7 @@
 #include <QMutex>
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
-#include "peripheral.h"
+#include "keyboard.h"
 
 /*!
  * \namespace Monitor
@@ -21,22 +21,22 @@
  */
 namespace Monitor
 {
-    constexpr Byte MONITOR_DEVICE_ID = 0x4A; //!< Random to "look" nice
+    constexpr Byte DEVICE_ID = 0x4A; //!< Random to "look" nice
 
-    constexpr int MONITOR_WIDTH = 256;
-    constexpr int MONITOR_HEIGHT = 192;
+    constexpr int WIDTH = 256;
+    constexpr int HEIGHT = 192;
     constexpr int PIXEL_SCALE = 4;
 
-    constexpr int MONITOR_WINDOW_WIDTH = (MONITOR_WIDTH * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
-    constexpr int MONITOR_WINDOW_HEIGHT = (MONITOR_HEIGHT * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
+    constexpr int WINDOW_WIDTH = (WIDTH * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
+    constexpr int WINDOW_HEIGHT = (HEIGHT * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
 
     constexpr int CHARACTER_WIDTH = 6;
     constexpr int CHARACTER_HEIGHT = 8;
     constexpr int TEXT_MODE_COLUMNS = 42;
     constexpr int TEXT_MODE_ROWS = 24;
 
-    constexpr int SCREEN_PORTS_NB = 5;
-    constexpr int PIXEL_MODE_BUFFER_SIZE = (MONITOR_WIDTH * MONITOR_HEIGHT); //!< The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), <b>dropped here</b>
+    constexpr int PORTS_NB = 5;
+    constexpr int PIXEL_MODE_BUFFER_SIZE = (WIDTH * HEIGHT); //!< The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), <b>dropped here</b>
     constexpr int TEXT_MODE_BUFFER_SIZE = (TEXT_MODE_COLUMNS * TEXT_MODE_ROWS);
 
     constexpr int DISPLAYABLE_CHARS = 95;
@@ -236,7 +236,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
     static MonitorWidget *m_singleton;
 
     public:
-        static MonitorWidget* getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin);
+        static MonitorWidget* getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
         ~MonitorWidget();
 
         static void close();
@@ -255,10 +255,11 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
 
     protected:
         void keyPressEvent(QKeyEvent *event) override;
+        void keyReleaseEvent(QKeyEvent *event) override;
         void closeEvent(QCloseEvent *event) override;
 
     private:
-        explicit MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin);
+        explicit MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
 
         void setSize(unsigned int width, unsigned int height);
         void setBuffer(uint32_t *pixelBuffer);
@@ -271,6 +272,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
         void convertToPixelBuffer(Byte *pixelBuffer);
 
         HbcMonitor *m_hbcMonitor;
+        Keyboard::HbcKeyboard *m_hbcKeyboard;
         QImage m_font;
         std::vector<bool*> m_charMap;
         MonitorThread *m_thread;
