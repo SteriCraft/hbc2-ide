@@ -37,7 +37,7 @@ class HbcPeripheral
          * After initialization, it must trigger an interrupt giving the peripheral's ID.
          */
         virtual void init() = 0;
-        virtual void tick() = 0; //!< Must be overriden to tick the derived peripheral
+        virtual void tick(bool step) = 0; //!< Must be overriden to tick the derived peripheral
 
     protected:
         /*!

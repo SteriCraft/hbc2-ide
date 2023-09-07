@@ -12,6 +12,7 @@
 #include <QMutex>
 #include "motherboard.h"
 #include "monitor.h"
+#include "realTimeClock.h"
 #include "console.h"
 
 /*!
@@ -38,6 +39,7 @@ namespace Emulator
         FrequencyTarget frequencyTarget; //!< Selected frequency target
 
         bool useMonitor; //!< Defined by user before an emulator run
+        bool useRTC; //!< Defined by user before an emulator run
         bool startPaused; //!< Defined by user before an emulator run
 
         std::string projectName;
@@ -51,7 +53,8 @@ namespace Emulator
         HbcMotherboard motherboard;
 
         HbcMonitor *monitor;
-        std::vector<HbcPeripheral*> peripherals; //!< General vector of the peripherals for simpler systemwide iterations (to cast dynamically)
+        RealTimeClock::HbcRealTimeClock *rtc;
+        std::vector<HbcPeripheral*> peripherals; //!< General vector of the peripherals for simpler systemwide iterations
 
         QByteArray initialRamData; //!< Binary data used on emulator first run
         CpuStatus cpuState; //!< Only updated when the emulator is stopped or when requested
@@ -218,6 +221,7 @@ class HbcEmulator : public QThread
         const Word getCurrentProgramCounter();
 
         void useMonitor(bool enable);
+        void useRTC(bool enable);
         void setStartPaused(bool enable);
 
         /*!
@@ -234,6 +238,11 @@ class HbcEmulator : public QThread
          * \return a pointer to the monitor peripheral <i>(<b>nullptr</b> if no monitor plugged in)</i>
          */
         HbcMonitor* getHbcMonitor();
+
+        /*!
+         * \return a pointer to the RTC peripheral <i>(<b>nullptr</b> if no RTC plugged in)</i>
+         */
+        RealTimeClock::HbcRealTimeClock* getHbcRealTimeClock();
 
         /*!
          * \param target Desired frequency target
@@ -266,7 +275,7 @@ class HbcEmulator : public QThread
         void run() override;
 
         void initComputer();
-        void tickComputer();
+        void tickComputer(bool step = false);
 
         void storeCpuStatus(bool lastState = false);
 

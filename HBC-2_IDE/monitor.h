@@ -214,7 +214,7 @@ class HbcMonitor : public HbcPeripheral
         ~HbcMonitor();
 
         void init() override; //!< See HbcPeripheral for the overriden method
-        void tick() override;
+        void tick(bool step) override;
 
         Monitor::CharData* getTextBuffer();
         Byte* getPixelBuffer();
@@ -238,6 +238,8 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
     public:
         static MonitorWidget* getInstance(QString projectName, HbcMonitor *hbcMonitor, Console *consoleOutput, MainWindow *mainWin);
         ~MonitorWidget();
+
+        static void close();
 
         void updateBuffer();
         int getFPS();

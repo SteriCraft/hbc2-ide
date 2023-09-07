@@ -143,6 +143,7 @@ class MainWindow : public QMainWindow
         void stopEmulatorAction();
         void setFrequencyTargetAction(Emulator::FrequencyTarget target);
         void plugMonitorPeripheralAction();
+        void plugRTCPeripheralAction();
         void startPausedAction();
         // Tools actions
         void openCpuStateViewer();
@@ -206,6 +207,7 @@ class MainWindow : public QMainWindow
         QAction *m_maxFrequencyToggle;
         QMenu *m_emulatorPeripheralsMenu;
         QAction *m_monitorToggle;
+        QAction *m_rtcToggle;
         QAction *m_startPausedToggle;
         QMenu *m_toolsMenu;
         QAction *m_openCpuStateViewerAction;

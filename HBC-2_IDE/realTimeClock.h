@@ -126,7 +126,7 @@ namespace RealTimeClock
              *
              * \sa init()
              */
-            void tick() override;
+            void tick(bool step) override;
 
         private:
             void putDateTimeOnPorts();

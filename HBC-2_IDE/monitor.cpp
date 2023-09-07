@@ -46,7 +46,7 @@ void HbcMonitor::init()
     }
 }
 
-void HbcMonitor::tick()
+void HbcMonitor::tick(bool step)
 {
     Monitor::Command command = (Monitor::Command)*m_sockets[(int)Monitor::Port::CMD].portDataPointer;
     int videoIndex, textIndex;
@@ -178,6 +178,15 @@ MonitorWidget::~MonitorWidget()
     delete m_thread;
 
     m_singleton = nullptr;
+}
+
+void MonitorWidget::close()
+{
+    if (m_singleton != nullptr)
+    {
+        delete m_singleton;
+        m_singleton = nullptr;
+    }
 }
 
 void MonitorWidget::updateBuffer()

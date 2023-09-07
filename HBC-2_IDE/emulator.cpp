@@ -120,12 +120,22 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
             m_status.projectName = projectName;
             m_computer.initialRamData = initialRamData;
 
+            for (unsigned int i(0); i < m_computer.peripherals.size(); i++)
+            {
+                delete m_computer.peripherals[i];
+            }
             m_computer.peripherals.clear();
 
             if (m_status.useMonitor)
             {
                 m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
                 m_computer.monitor = dynamic_cast<HbcMonitor*>(m_computer.peripherals.back());
+            }
+
+            if (m_status.useRTC)
+            {
+                m_computer.peripherals.push_back(new RealTimeClock::HbcRealTimeClock(&m_computer.motherboard.m_iod, m_consoleOutput));
+                m_computer.rtc = dynamic_cast<RealTimeClock::HbcRealTimeClock*>(m_computer.peripherals.back());
             }
 
             initComputer();
@@ -184,6 +194,11 @@ void HbcEmulator::useMonitor(bool enable)
     m_status.useMonitor = enable;
 }
 
+void HbcEmulator::useRTC(bool enable)
+{
+    m_status.useRTC = enable;
+}
+
 void HbcEmulator::setStartPaused(bool enable)
 {
     m_status.startPaused = enable;
@@ -216,6 +231,10 @@ HbcMonitor* HbcEmulator::getHbcMonitor()
     return m_computer.monitor;
 }
 
+RealTimeClock::HbcRealTimeClock* HbcEmulator::getHbcRealTimeClock()
+{
+    return m_computer.rtc;
+}
 
 void HbcEmulator::setFrequencyTarget(Emulator::FrequencyTarget target)
 {
@@ -231,6 +250,7 @@ HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
     m_status.command = Emulator::Command::NONE;
     m_status.frequencyTarget = Emulator::FrequencyTarget::MHZ_2; // Default
     m_status.useMonitor = true;
+    m_status.useRTC = true;
 
     m_consoleOutput = consoleOutput;
     m_mainWindow = mainWin;
@@ -315,7 +335,7 @@ void HbcEmulator::run()
             {
                 m_status.command = Emulator::Command::NONE;
 
-                tickComputer();
+                tickComputer(true);
                 storeCpuStatus();
                 emit stepped();
             }
@@ -367,13 +387,13 @@ void HbcEmulator::initComputer()
     }
 }
 
-void HbcEmulator::tickComputer()
+void HbcEmulator::tickComputer(bool step)
 {
     Motherboard::tick(m_computer.motherboard);
 
     for (unsigned int i(0); i < m_computer.peripherals.size(); i++)
     {
-        m_computer.peripherals[i]->tick();
+        m_computer.peripherals[i]->tick(step);
     }
 }
 

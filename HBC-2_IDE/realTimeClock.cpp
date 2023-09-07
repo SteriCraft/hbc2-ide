@@ -21,7 +21,7 @@ void HbcRealTimeClock::init()
     m_clock.start();
 }
 
-void HbcRealTimeClock::tick()
+void HbcRealTimeClock::tick(bool step)
 {
     if ((Command)*m_sockets[(int)Port::CMD].portDataPointer == Command::GET_TIME)
     {
@@ -46,7 +46,7 @@ void HbcRealTimeClock::tick()
             }
         }
     }
-    else
+    else if (!step)
     {
         if (m_clock.elapsed() >= (1000.f / INTERRUPTS_PER_SECOND))
         {

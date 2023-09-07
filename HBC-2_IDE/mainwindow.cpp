@@ -47,12 +47,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
 
 MainWindow::~MainWindow()
 {
-    if (m_monitor != nullptr)
-    {
-        delete m_monitor;
-        m_monitor = nullptr;
-    }
-
+    MonitorWidget::close();
     BinaryViewer::close();
     CpuStateViewer::close();
 
@@ -190,12 +185,17 @@ void MainWindow::setupMenuBar()
     m_monitorToggle->setCheckable(true);
     m_monitorToggle->setChecked(m_configManager->getMonitorPlugged());
 
+    m_rtcToggle = m_emulatorPeripheralsMenu->addAction(tr("Real Time Clock"), this, &MainWindow::plugRTCPeripheralAction);
+    m_rtcToggle->setCheckable(true);
+    m_rtcToggle->setChecked(m_configManager->getRTCPlugged());
+
     m_emulatorMenu->addSeparator();
 
     m_startPausedToggle = m_emulatorMenu->addAction(tr("Start paused"), this, &MainWindow::startPausedAction);
     m_startPausedToggle->setCheckable(true);
     m_startPausedToggle->setChecked(m_configManager->getStartEmulatorPaused());
 
+    // - Tools menu -
     m_toolsMenu = menuBar()->addMenu(tr("Tools"));
 
     m_openCpuStateViewerAction = m_toolsMenu->addAction(tr("Show CPU state"), this, &MainWindow::openCpuStateViewer);
@@ -1177,6 +1177,11 @@ void MainWindow::assembleAction()
 
     m_assembler->assembleProject(m_projectManager->getCurrentProject());
 
+    // Init emulator
+    plugMonitorPeripheralAction();
+    plugRTCPeripheralAction();
+    startPausedAction();
+
     const QByteArray &data = m_assembler->getBinaryData();
     m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
 
@@ -1208,9 +1213,6 @@ void MainWindow::showBinaryAction()
 
 void MainWindow::runEmulatorAction()
 {
-    plugMonitorPeripheralAction();
-    startPausedAction();
-
     if (!m_projectManager->getCurrentProject()->getAssembled())
     {
         if (!m_configManager->getDismissReassemblyWarnings())
@@ -1259,11 +1261,7 @@ void MainWindow::pauseEmulatorAction()
 
 void MainWindow::stopEmulatorAction()
 {
-    if (m_monitor != nullptr)
-    {
-        delete m_monitor;
-        m_monitor = nullptr;
-    }
+    MonitorWidget::close();
 
     m_emulator->stopCmd();
 
@@ -1286,6 +1284,11 @@ void MainWindow::setFrequencyTargetAction(Emulator::FrequencyTarget target)
 void MainWindow::plugMonitorPeripheralAction()
 {
     m_emulator->useMonitor(m_monitorToggle->isChecked());
+}
+
+void MainWindow::plugRTCPeripheralAction()
+{
+    m_emulator->useRTC(m_rtcToggle->isChecked());
 }
 
 void MainWindow::startPausedAction()
@@ -1809,6 +1812,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     }
 
     m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
+    m_rtcToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
     m_startPausedToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
 
     for (unsigned int i(0); i < m_assemblyEditor->count(); i++)

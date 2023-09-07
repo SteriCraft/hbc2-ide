@@ -40,7 +40,8 @@ struct ConfigurationSettings
 
     // Emulator settings
     bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
-    bool monitorPlugged = true; //!< Sets if the emulator starts with the monitor plugged in
+    bool monitorPlugged = true; //!< Sets if the emulator starts with the HbcMonitor plugged in
+    bool rtcPlugged = true; //!< Sets if the emulator starts with the HbcRealTimeClock plugged in
     bool dismissReassemblyWarnings = false; //!< Sets if warnings are thrown when trying to run a project which was modified or not yet assembled
 
     // IDE settings
@@ -131,6 +132,11 @@ class ConfigManager
         void setMonitorPlugged(bool plugged);
 
         /*!
+         * \param plugged Desired behaviour for the real-time clock on emulator start
+         */
+        void setRTCPlugged(bool plugged);
+
+        /*!
          * \param dismiss Desired reassembly warnings
          */
         void setDismissReassemblyWarnings(bool dismiss);
@@ -185,6 +191,11 @@ class ConfigManager
         bool getMonitorPlugged();
 
         /*!
+         * \return <b>true</b> if the emulator starts with the real-time clock plugged in
+         */
+        bool getRTCPlugged();
+
+        /*!
          * \return <b>true</b> if warnings on emulator run with non assembled project are dismissed
          */
         bool getDismissReassemblyWarnings();
@@ -232,6 +243,7 @@ class SettingsDialog : public QDialog
 
         void startPausedChanged();
         void plugMonitorChanged();
+        void plugRTCChanged();
         void dismissReassemblyWarningsChanged();
 
         void browseProjectsPathClicked();
@@ -249,6 +261,7 @@ class SettingsDialog : public QDialog
 
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;
+        QCheckBox *m_plugRTCCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
 
         QLineEdit *m_defaultProjectsPathLineEdit;

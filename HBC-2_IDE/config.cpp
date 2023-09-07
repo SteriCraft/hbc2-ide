@@ -91,6 +91,12 @@ void ConfigManager::setMonitorPlugged(bool plugged)
     saveConfigFile();
 }
 
+void ConfigManager::setRTCPlugged(bool plugged)
+{
+    m_settings.rtcPlugged = plugged;
+    saveConfigFile();
+}
+
 void ConfigManager::setDismissReassemblyWarnings(bool dismiss)
 {
     m_settings.dismissReassemblyWarnings = dismiss;
@@ -152,6 +158,11 @@ bool ConfigManager::getStartEmulatorPaused()
 bool ConfigManager::getMonitorPlugged()
 {
     return m_settings.monitorPlugged;
+}
+
+bool ConfigManager::getRTCPlugged()
+{
+    return m_settings.rtcPlugged;
 }
 
 bool ConfigManager::getDismissReassemblyWarnings()
@@ -225,6 +236,10 @@ ConfigManager::ConfigManager()
                     else if (key == "MONITOR_PLUGGED")
                     {
                         m_settings.monitorPlugged = (value == "TRUE");
+                    }
+                    else if (key == "RTC_PLUGGED")
+                    {
+                        m_settings.rtcPlugged = (value == "TRUE");
                     }
                     else if (key == "DISMISS_REASSEMBLY_WARNINGS")
                     {
@@ -301,6 +316,7 @@ bool ConfigManager::saveConfigFile()
         out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openBinaryViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
+        out << "RTC_PLUGGED=" << (m_settings.rtcPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
         out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
 
@@ -443,12 +459,16 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), this);
     m_plugMonitorCheckBox->setChecked(configManager->getMonitorPlugged());
 
+    m_plugRTCCheckBox = new QCheckBox(tr("Real Time Clock plugged-in by default"), this);
+    m_plugRTCCheckBox->setChecked(configManager->getRTCPlugged());
+
     m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), this);
     m_dismissReassemblyWarningsCheckBox->setChecked(configManager->getDismissReassemblyWarnings());
 
     QVBoxLayout *emulatorSettingsLayout = new QVBoxLayout;
     emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
     emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
+    emulatorSettingsLayout->addWidget(m_plugRTCCheckBox);
     emulatorSettingsLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
     emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
 
@@ -475,6 +495,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     connect(m_openBinaryViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorStoppedChanged()));
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
+    connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
     connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
     connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
     connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
@@ -520,6 +541,11 @@ void SettingsDialog::startPausedChanged()
 void SettingsDialog::plugMonitorChanged()
 {
     m_configManager->setMonitorPlugged(m_plugMonitorCheckBox->isChecked());
+}
+
+void SettingsDialog::plugRTCChanged()
+{
+    m_configManager->setRTCPlugged(m_plugRTCCheckBox->isChecked());
 }
 
 void SettingsDialog::dismissReassemblyWarningsChanged()
