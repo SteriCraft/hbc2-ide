@@ -187,37 +187,41 @@ $(function() {
 <div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
 <div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;        ~<a class="code" href="class_binary_viewer.html">BinaryViewer</a>();</div>
 <div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160; </div>
-<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;    <span class="keyword">private</span> slots:</div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;        <span class="keywordtype">void</span> showRamContent();</div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160;        <span class="keywordtype">void</span> showEepromContent(<span class="keywordtype">bool</span> toggled);</div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;        <span class="keywordtype">void</span> gotoAddress();</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160; </div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_WIDTH = 610;</div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_HEIGHT = 600;</div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160; </div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;        <a class="code" href="class_binary_viewer.html">BinaryViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160; </div>
-<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160;        <span class="keywordtype">bool</span> m_showRam;</div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;        QByteArray m_ramData;</div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;        QByteArray m_eepromData;</div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;    <span class="keyword">protected</span>:</div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;        <span class="keywordtype">void</span> showEvent(QShowEvent* event);</div>
+<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160; </div>
+<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;    <span class="keyword">private</span> slots:</div>
+<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160;        <span class="keywordtype">void</span> showRamContent();</div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;        <span class="keywordtype">void</span> showEepromContent(<span class="keywordtype">bool</span> toggled);</div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        <span class="keywordtype">void</span> gotoAddress();</div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160; </div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_WIDTH = 610;</div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BINARY_DIALOG_HEIGHT = 600;</div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160; </div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;        <a class="code" href="class_binary_viewer.html">BinaryViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;        <span class="keywordtype">void</span> setPosition();</div>
 <div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160; </div>
-<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;        QRadioButton *m_selectRamButton;</div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;        QRadioButton *m_selectEepromButton;</div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160; </div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;        <a class="code" href="class_hex_spin_box.html">HexSpinBox</a> *m_addressSpinBox;</div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160; </div>
-<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;        <a class="code" href="class_q_hex_edit.html">QHexEdit</a> *m_hexEditor;</div>
-<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;};</div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160; </div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// BINARYVIEWER_H</span></div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;        <span class="keywordtype">bool</span> m_showRam;</div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;        QByteArray m_ramData;</div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;        QByteArray m_eepromData;</div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160; </div>
+<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;        QRadioButton *m_selectRamButton;</div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;        QRadioButton *m_selectEepromButton;</div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160; </div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;        <a class="code" href="class_hex_spin_box.html">HexSpinBox</a> *m_addressSpinBox;</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160; </div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;        <a class="code" href="class_q_hex_edit.html">QHexEdit</a> *m_hexEditor;</div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;};</div>
+<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160; </div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// BINARYVIEWER_H</span></div>
 <div class="ttc" id="aclass_binary_viewer_html"><div class="ttname"><a href="class_binary_viewer.html">BinaryViewer</a></div><div class="ttdoc">Singleton of the binary viewer.</div><div class="ttdef"><b>Definition:</b> binaryViewer.h:111</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_aa213a1160457e6b4ab9ce71c7bd75708"><div class="ttname"><a href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">BinaryViewer::highlightInstruction</a></div><div class="ttdeci">static void highlightInstruction(Word programCounter)</div><div class="ttdoc">Highlights the 4 bytes of the instruction at the address passed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:43</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_aae49663e6ace46795a1ee555341f76e4"><div class="ttname"><a href="class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4">BinaryViewer::update</a></div><div class="ttdeci">static void update(const QByteArray ramData)</div><div class="ttdoc">Set RAM as the only displayable content and updates displayed content.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:22</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_aba21ce293392e2af0daf364263c42aea"><div class="ttname"><a href="class_binary_viewer.html#aba21ce293392e2af0daf364263c42aea">BinaryViewer::enableEepromSelect</a></div><div class="ttdeci">static void enableEepromSelect(bool enable)</div><div class="ttdoc">Sets the EEPROM select button checkable.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:72</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_ac61431cd606974288dd3bb7e92c4dce6"><div class="ttname"><a href="class_binary_viewer.html#ac61431cd606974288dd3bb7e92c4dce6">BinaryViewer::showEeprom</a></div><div class="ttdeci">static void showEeprom()</div><div class="ttdoc">Selects the EEPROM content as the one to be displayed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:61</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_ad961b26f1bde7d6901fdabd944e853c7"><div class="ttname"><a href="class_binary_viewer.html#ad961b26f1bde7d6901fdabd944e853c7">BinaryViewer::showRam</a></div><div class="ttdeci">static void showRam()</div><div class="ttdoc">Selects the RAM content as the one to be displayed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:51</div></div>
-<div class="ttc" id="aclass_binary_viewer_html_afe0baeb628c7ce810122791049e29c02"><div class="ttname"><a href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">BinaryViewer::getInstance</a></div><div class="ttdeci">static BinaryViewer * getInstance(QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:12</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_aa213a1160457e6b4ab9ce71c7bd75708"><div class="ttname"><a href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">BinaryViewer::highlightInstruction</a></div><div class="ttdeci">static void highlightInstruction(Word programCounter)</div><div class="ttdoc">Highlights the 4 bytes of the instruction at the address passed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:45</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_aae49663e6ace46795a1ee555341f76e4"><div class="ttname"><a href="class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4">BinaryViewer::update</a></div><div class="ttdeci">static void update(const QByteArray ramData)</div><div class="ttdoc">Set RAM as the only displayable content and updates displayed content.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:24</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_aba21ce293392e2af0daf364263c42aea"><div class="ttname"><a href="class_binary_viewer.html#aba21ce293392e2af0daf364263c42aea">BinaryViewer::enableEepromSelect</a></div><div class="ttdeci">static void enableEepromSelect(bool enable)</div><div class="ttdoc">Sets the EEPROM select button checkable.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:74</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_ac61431cd606974288dd3bb7e92c4dce6"><div class="ttname"><a href="class_binary_viewer.html#ac61431cd606974288dd3bb7e92c4dce6">BinaryViewer::showEeprom</a></div><div class="ttdeci">static void showEeprom()</div><div class="ttdoc">Selects the EEPROM content as the one to be displayed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:63</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_ad961b26f1bde7d6901fdabd944e853c7"><div class="ttname"><a href="class_binary_viewer.html#ad961b26f1bde7d6901fdabd944e853c7">BinaryViewer::showRam</a></div><div class="ttdeci">static void showRam()</div><div class="ttdoc">Selects the RAM content as the one to be displayed.</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:53</div></div>
+<div class="ttc" id="aclass_binary_viewer_html_afe0baeb628c7ce810122791049e29c02"><div class="ttname"><a href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">BinaryViewer::getInstance</a></div><div class="ttdeci">static BinaryViewer * getInstance(QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> binaryViewer.cpp:14</div></div>
 <div class="ttc" id="aclass_hex_spin_box_html"><div class="ttname"><a href="class_hex_spin_box.html">HexSpinBox</a></div><div class="ttdoc">A hexadecimal spin box capable of doing 20 or 16 bits long values.</div><div class="ttdef"><b>Definition:</b> binaryViewer.h:22</div></div>
 <div class="ttc" id="aclass_q_hex_edit_html"><div class="ttname"><a href="class_q_hex_edit.html">QHexEdit</a></div><div class="ttdef"><b>Definition:</b> qhexedit.h:71</div></div>
 <div class="ttc" id="anamespace_ram_html_a38cc2f7fe7f3233d20ed9ed6bf63a0ec"><div class="ttname"><a href="namespace_ram.html#a38cc2f7fe7f3233d20ed9ed6bf63a0ec">Ram::MEMORY_SIZE</a></div><div class="ttdeci">constexpr int MEMORY_SIZE</div><div class="ttdoc">65,536 bytes</div><div class="ttdef"><b>Definition:</b> computerDetails.h:118</div></div>

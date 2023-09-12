@@ -158,6 +158,9 @@ class BinaryViewer : public QDialog // SINGLETON
         static void close();
         ~BinaryViewer();
 
+    protected:
+        void showEvent(QShowEvent* event);
+
     private slots:
         void showRamContent();
         void showEepromContent(bool toggled);
@@ -168,6 +171,7 @@ class BinaryViewer : public QDialog // SINGLETON
         static constexpr int BINARY_DIALOG_HEIGHT = 600;
 
         BinaryViewer(QWidget *parent = nullptr);
+        void setPosition();
 
         bool m_showRam;
         QByteArray m_ramData;

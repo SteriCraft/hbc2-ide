@@ -1,4 +1,5 @@
 #include "binaryViewer.h"
+#include "qscreen.h"
 
 #include <QIcon>
 #include <QDebug>
@@ -6,6 +7,7 @@
 #include <QButtonGroup>
 #include <QVBoxLayout>
 #include <QDialogButtonBox>
+#include <QGuiApplication>
 
 BinaryViewer* BinaryViewer::m_singleton = nullptr;
 
@@ -92,6 +94,13 @@ BinaryViewer::~BinaryViewer()
     delete m_hexEditor;
 }
 
+// PROTECTED
+void BinaryViewer::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    setPosition();
+}
+
 // PRIVATE SLOTS
 void BinaryViewer::showRamContent()
 {
@@ -122,6 +131,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 {
     m_showRam = true;
 
+    move(1, 1);
     setWindowTitle(tr("Binary viewer"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
@@ -170,4 +180,32 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     connect(m_selectEepromButton, SIGNAL(toggled(bool)), this, SLOT(showEepromContent(bool)));
     connect(gotoAddressButton, SIGNAL(clicked()), this, SLOT(gotoAddress()));
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+}
+
+void BinaryViewer::setPosition()
+{
+    QSize screenSize;
+    screenSize = QGuiApplication::primaryScreen()->geometry().size();
+
+    QPoint topLeftMainWinPos;
+    topLeftMainWinPos.setX(parentWidget()->geometry().left());
+    topLeftMainWinPos.setY(parentWidget()->geometry().top());
+
+    QPoint dialogPos;
+
+    if (topLeftMainWinPos.x() < 1)
+        dialogPos.setX(1);
+    else if (topLeftMainWinPos.x() > screenSize.width())
+        dialogPos.setX(screenSize.width());
+    else
+        dialogPos.setX(topLeftMainWinPos.x() - size().width());
+
+    if (topLeftMainWinPos.y() < 1)
+        dialogPos.setY(1);
+    else if (topLeftMainWinPos.y() > screenSize.height())
+        dialogPos.setY(screenSize.height());
+    else
+        dialogPos.setY(topLeftMainWinPos.y());
+
+    move(dialogPos);
 }

@@ -7,6 +7,7 @@
 #include <QIcon>
 #include <QCloseEvent>
 #include <QRandomGenerator>
+#include <QGuiApplication>
 
 using namespace Monitor;
 
@@ -269,6 +270,7 @@ MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboa
     m_texture = 0;
 
     setSize(WIDTH, HEIGHT);
+    setPosition(mainWin);
 
     m_pixelBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
     for (unsigned int x(0); x < WIDTH; x++)
@@ -325,6 +327,34 @@ MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboa
 
     m_thread = new MonitorThread(this);
     m_thread->start();
+}
+
+void MonitorWidget::setPosition(MainWindow *mainWin)
+{
+    QSize screenSize;
+    screenSize = QGuiApplication::primaryScreen()->geometry().size();
+
+    QPoint middleBottomMainWinPos;
+    middleBottomMainWinPos.setX(mainWin->geometry().left() + mainWin->geometry().width() / 2);
+    middleBottomMainWinPos.setY(mainWin->geometry().bottom());
+
+    QPoint monitorWidgetPos;
+
+    if (middleBottomMainWinPos.x() < 1)
+        monitorWidgetPos.setX(1);
+    else if (middleBottomMainWinPos.x() > screenSize.width())
+        monitorWidgetPos.setX(screenSize.width());
+    else
+        monitorWidgetPos.setX(middleBottomMainWinPos.x() - (size().width() / 2));
+
+    if (middleBottomMainWinPos.y() < 1)
+        monitorWidgetPos.setY(1);
+    else if (middleBottomMainWinPos.y() > screenSize.height())
+        monitorWidgetPos.setY(screenSize.height());
+    else
+        monitorWidgetPos.setY(middleBottomMainWinPos.y());
+
+    move(monitorWidgetPos);
 }
 
 void MonitorWidget::setSize(unsigned int width, unsigned int height)

@@ -198,53 +198,54 @@ $(function() {
 <div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    <span class="keyword">private</span>:</div>
 <div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        <span class="keyword">explicit</span> <a class="code" href="class_monitor_widget.html">MonitorWidget</a>(QString projectName, <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *hbcKeyboard, <a class="code" href="class_console.html">Console</a> *consoleOutput, <a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
 <div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        <span class="keywordtype">void</span> setSize(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> width, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> height);</div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        <span class="keywordtype">void</span> setBuffer(uint32_t *pixelBuffer);</div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160; </div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;        <span class="keywordtype">void</span> initializeGL() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;        <span class="keywordtype">void</span> resizeGL(<span class="keywordtype">int</span> w, <span class="keywordtype">int</span> h) <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;        <span class="keywordtype">void</span> paintGL() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160; </div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(<a class="code" href="struct_monitor_1_1_char_data.html">Monitor::CharData</a> *textBuffer);</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(Byte *pixelBuffer);</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *m_hbcMonitor;</div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *m_hbcKeyboard;</div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;        QImage m_font;</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        std::vector&lt;bool*&gt; m_charMap;</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a> *m_thread;</div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160; </div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_width;</div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_height;</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160; </div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;        GLuint m_texture;</div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160; </div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;        uint32_t *m_pixelBuffer;</div>
-<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;};</div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160; </div>
-<div class="line"><a name="l00290"></a><span class="lineno"><a class="line" href="class_monitor_thread.html">  290</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_monitor_thread.html">MonitorThread</a> : <span class="keyword">public</span> QThread</div>
-<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;{</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a>(<a class="code" href="class_monitor_widget.html">MonitorWidget</a> *monitor);</div>
-<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        ~<a class="code" href="class_monitor_thread.html">MonitorThread</a>();</div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160; </div>
-<div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
-<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160; </div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;        <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_monitor;</div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;        <a class="code" href="struct_monitor_1_1_status.html">Monitor::Status</a> m_status;</div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;};</div>
-<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160; </div>
-<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MONITOR_H</span></div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        <span class="keywordtype">void</span> setPosition(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        <span class="keywordtype">void</span> setSize(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> width, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> height);</div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        <span class="keywordtype">void</span> setBuffer(uint32_t *pixelBuffer);</div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160; </div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;        <span class="keywordtype">void</span> initializeGL() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;        <span class="keywordtype">void</span> resizeGL(<span class="keywordtype">int</span> w, <span class="keywordtype">int</span> h) <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;        <span class="keywordtype">void</span> paintGL() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160; </div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(<a class="code" href="struct_monitor_1_1_char_data.html">Monitor::CharData</a> *textBuffer);</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(Byte *pixelBuffer);</div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160; </div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *m_hbcMonitor;</div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *m_hbcKeyboard;</div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        QImage m_font;</div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;        std::vector&lt;bool*&gt; m_charMap;</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a> *m_thread;</div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160; </div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_width;</div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_height;</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;        GLuint m_texture;</div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160; </div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;        uint32_t *m_pixelBuffer;</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;};</div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160; </div>
+<div class="line"><a name="l00291"></a><span class="lineno"><a class="line" href="class_monitor_thread.html">  291</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_monitor_thread.html">MonitorThread</a> : <span class="keyword">public</span> QThread</div>
+<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;{</div>
+<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a>(<a class="code" href="class_monitor_widget.html">MonitorWidget</a> *monitor);</div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;        ~<a class="code" href="class_monitor_thread.html">MonitorThread</a>();</div>
+<div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160; </div>
+<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
+<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160; </div>
+<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;        <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_monitor;</div>
+<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;        <a class="code" href="struct_monitor_1_1_status.html">Monitor::Status</a> m_status;</div>
+<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;};</div>
+<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160; </div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MONITOR_H</span></div>
 <div class="ttc" id="aclass_console_html"><div class="ttname"><a href="class_console.html">Console</a></div><div class="ttdoc">A console widget to show events and provide information to the user.</div><div class="ttdef"><b>Definition:</b> console.h:23</div></div>
 <div class="ttc" id="aclass_hbc_monitor_html"><div class="ttname"><a href="class_hbc_monitor.html">HbcMonitor</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the Monitor device.</div><div class="ttdef"><b>Definition:</b> monitor.h:213</div></div>
-<div class="ttc" id="aclass_hbc_monitor_html_a4213c05aa328f2a55f271080cfcc956a"><div class="ttname"><a href="class_hbc_monitor.html#a4213c05aa328f2a55f271080cfcc956a">HbcMonitor::tick</a></div><div class="ttdeci">void tick(bool step) override</div><div class="ttdoc">Must be overriden to tick the derived peripheral.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:49</div></div>
-<div class="ttc" id="aclass_hbc_monitor_html_a9244cf50b8126a53c0aa427c9c8bd8ba"><div class="ttname"><a href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor::init</a></div><div class="ttdeci">void init() override</div><div class="ttdoc">See HbcPeripheral for the overriden method.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:20</div></div>
+<div class="ttc" id="aclass_hbc_monitor_html_a4213c05aa328f2a55f271080cfcc956a"><div class="ttname"><a href="class_hbc_monitor.html#a4213c05aa328f2a55f271080cfcc956a">HbcMonitor::tick</a></div><div class="ttdeci">void tick(bool step) override</div><div class="ttdoc">Must be overriden to tick the derived peripheral.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:50</div></div>
+<div class="ttc" id="aclass_hbc_monitor_html_a9244cf50b8126a53c0aa427c9c8bd8ba"><div class="ttname"><a href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor::init</a></div><div class="ttdeci">void init() override</div><div class="ttdoc">See HbcPeripheral for the overriden method.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:21</div></div>
 <div class="ttc" id="aclass_hbc_peripheral_html"><div class="ttname"><a href="class_hbc_peripheral.html">HbcPeripheral</a></div><div class="ttdoc">Virtual class used to derive new peripherals.</div><div class="ttdef"><b>Definition:</b> peripheral.h:24</div></div>
 <div class="ttc" id="aclass_keyboard_1_1_hbc_keyboard_html"><div class="ttname"><a href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the Keyboard device.</div><div class="ttdef"><b>Definition:</b> keyboard.h:146</div></div>
 <div class="ttc" id="aclass_main_window_html"><div class="ttname"><a href="class_main_window.html">MainWindow</a></div><div class="ttdoc">Creates and manages the IDE main window.</div><div class="ttdef"><b>Definition:</b> mainwindow.h:55</div></div>
-<div class="ttc" id="aclass_monitor_thread_html"><div class="ttname"><a href="class_monitor_thread.html">MonitorThread</a></div><div class="ttdef"><b>Definition:</b> monitor.h:291</div></div>
+<div class="ttc" id="aclass_monitor_thread_html"><div class="ttname"><a href="class_monitor_thread.html">MonitorThread</a></div><div class="ttdef"><b>Definition:</b> monitor.h:292</div></div>
 <div class="ttc" id="aclass_monitor_widget_html"><div class="ttname"><a href="class_monitor_widget.html">MonitorWidget</a></div><div class="ttdef"><b>Definition:</b> monitor.h:235</div></div>
 <div class="ttc" id="akeyboard_8h_html"><div class="ttname"><a href="keyboard_8h.html">keyboard.h</a></div><div class="ttdoc">Keyboard device derived from HbcPeripheral.</div></div>
 <div class="ttc" id="anamespace_monitor_html"><div class="ttname"><a href="namespace_monitor.html">Monitor</a></div><div class="ttdoc">See HbcMonitor for detailed specifications.</div></div>

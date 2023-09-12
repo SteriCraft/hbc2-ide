@@ -72,6 +72,9 @@ class CpuStateViewer : public QDialog // SINGLETON
 
         static void close();
 
+    protected:
+        void showEvent(QShowEvent* event);
+
     private slots:
         void switchToBinaryBase();
         void switchToDecimalBase();
@@ -94,6 +97,7 @@ class CpuStateViewer : public QDialog // SINGLETON
         static constexpr int WORD_ITEM_WIDTH_BINARY = 130;
 
         CpuStateViewer(QWidget *parent = nullptr);
+        void setPosition();
         void updateStatus();
         void changeValueBase();
 

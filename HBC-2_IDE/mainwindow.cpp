@@ -1318,17 +1318,6 @@ void MainWindow::runEmulatorAction()
     {
         if (m_emulator->getState() != Emulator::State::PAUSED)
         {
-            if (!m_assembler->isAssembledForEeprom() && m_eepromToggle->isChecked())
-            {
-                QMessageBox::warning(this, tr("EEPROM / RAM conflict"), tr("The EEPROM is plugged in.\n\nThe first 512 bytes of the RAM will be overwritten on startup by the EEPROM.\nThe emulator cannot run.\n\nYou may consider assembling for the EEPROM or unplugging it."));
-                return;
-            }
-            else if (m_assembler->isAssembledForEeprom() && !m_eepromToggle->isChecked())
-            {
-                QMessageBox::warning(this, tr("Non-executable code"), tr("The EEPROM is unplugged but the code was assembled to load it.\n\nThe instructions will never reach the RAM.\nThe emulator cannot run.\n\nYou may consider targeting the RAM or plug in the EEPROM."));
-                return;
-            }
-
             if (m_monitorToggle->isChecked())
             {
                 m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);

@@ -263,6 +263,7 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
     private:
         explicit MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
 
+        void setPosition(MainWindow *mainWin);
         void setSize(unsigned int width, unsigned int height);
         void setBuffer(uint32_t *pixelBuffer);
 

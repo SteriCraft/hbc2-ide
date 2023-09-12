@@ -1,6 +1,8 @@
 #include "cpuStateViewer.h"
+#include "qscreen.h"
 
 #include <QHeaderView>
+#include <QGuiApplication>
 
 CpuStateViewer* CpuStateViewer::m_singleton = nullptr;
 CpuStatus CpuStateViewer::m_savedState;
@@ -149,6 +151,13 @@ void CpuStateViewer::close()
     }
 }
 
+// PROTECTED
+void CpuStateViewer::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    setPosition();
+}
+
 // PRIVATE SLOTS
 void CpuStateViewer::switchToBinaryBase()
 {
@@ -168,7 +177,6 @@ void CpuStateViewer::switchToHexadecimalBase()
     changeValueBase();
 }
 
-
 // PRIVATE
 CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
 {
@@ -178,6 +186,7 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     setFixedWidth(CPU_STATE_VIEWER_WIDTH);
+    setPosition();
 
     m_base = Base::HEXADECIMAL;
 
@@ -504,6 +513,34 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
     updateStatus();
+}
+
+void CpuStateViewer::setPosition()
+{
+    QSize screenSize;
+    screenSize = QGuiApplication::primaryScreen()->geometry().size();
+
+    QPoint topRightMainWinPos;
+    topRightMainWinPos.setX(parentWidget()->geometry().right());
+    topRightMainWinPos.setY(parentWidget()->geometry().top());
+
+    QPoint dialogPos;
+
+    if (topRightMainWinPos.x() < 1)
+        dialogPos.setX(1);
+    else if (topRightMainWinPos.x() > screenSize.width())
+        dialogPos.setX(screenSize.width());
+    else
+        dialogPos.setX(topRightMainWinPos.x());
+
+    if (topRightMainWinPos.y() < 1)
+        dialogPos.setY(1);
+    else if (topRightMainWinPos.y() > screenSize.height())
+        dialogPos.setY(screenSize.height());
+    else
+        dialogPos.setY(topRightMainWinPos.y());
+
+    move(dialogPos);
 }
 
 void CpuStateViewer::updateStatus()
