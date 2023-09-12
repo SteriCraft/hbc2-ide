@@ -15,11 +15,13 @@
 #include <QCheckBox>
 #include <QLineEdit>
 #include <QLabel>
-#include <QGroupBox>
 #include <QPushButton>
 #include <QFileDialog>
-#include <QMessageBox>
 #include <QSpinBox>
+#include <QTabWidget>
+#include <QListWidget>
+#include <QStackedWidget>
+#include <QMessageBox>
 
 /*!
  * \brief Stores the IDE settings on runtime.
@@ -272,17 +274,17 @@ class SettingsDialog : public QDialog
         SettingsDialog(ConfigManager *configManager, QWidget *parent = nullptr);
 
     private slots:
-        void tabSizeChanged(int nbOfSpaces);
+        void menuSelected(int tabIndex);
 
+        // Editor
+        void tabSizeChanged(int nbOfSpaces);
+        void browseProjectsPathClicked();
+        void defaultProjectsPathChanged(QString newPath);
+
+        // Assembler
         void ramAsDefaultMemoryTargetChanged();
 
-        void openCpuStateViewerOnEmulatorPausedChanged();
-        void openCpuStateViewerOnEmulatorStoppedChanged();
-
-        void openBinaryViewerOnAssemblyChanged();
-        void openBinaryViewerOnEmulatorPausedChanged();
-        void openBinaryViewerOnEmulatorStoppedChanged();
-
+        // Emulator
         void startPausedChanged();
         void plugMonitorChanged();
         void plugRTCChanged();
@@ -290,29 +292,76 @@ class SettingsDialog : public QDialog
         void plugEepromChanged();
         void dismissReassemblyWarningsChanged();
 
-        void browseProjectsPathClicked();
-        void defaultProjectsPathChanged(QString newPath);
+        // CpuStateViewer
+        void openCpuStateViewerOnEmulatorPausedChanged();
+        void openCpuStateViewerOnEmulatorStoppedChanged();
+
+        // BinaryViewer
+        void openBinaryViewerOnAssemblyChanged();
+        void openBinaryViewerOnEmulatorPausedChanged();
+        void openBinaryViewerOnEmulatorStoppedChanged();
 
     private:
+        static constexpr int DIALOG_WIDTH = 640;
+        static constexpr int DIALOG_HEIGHT = 350;
+        static constexpr int ITEM_HEIGHT = 50;
+        static constexpr int SPACING = 20;
+
+        void initMenu();
+        void setWindowSettings();
+        void initEditorSettingsLayout();
+        void initAssemblerSettingsLayout();
+        void initEmulatorSettingsLayout();
+        void initCpuStateViewerSettingsLayout();
+        void initBinaryViewerSettingsLayout();
+
+        void addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);
+
+        QListWidget *m_menuList;
+        QStackedWidget *m_menuWidgets;
+        std::vector<QWidget*> m_menuWidgetsList;
+
+        // Editor tab widgets
+        QPushButton *m_browseProjectsPath;
+        QLineEdit *m_defaultProjectsPathLineEdit;
         QSpinBox *m_tabSizeSpinBox;
+        QVBoxLayout *m_editorSettingsLayout;
+        QWidget *m_editorSettingsWidget;
+        QListWidgetItem *m_editorSettingsItem;
 
+        // Assembler tab widgets
         QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;
+        QVBoxLayout *m_assemblerSettingsLayout;
+        QWidget *m_assemblerSettingsWidget;
+        QListWidgetItem *m_assemblerSettingsItem;
 
-        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
-        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
-
-        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;
-        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;
-        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;
-
+        // Emulator tab widgets
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;
         QCheckBox *m_plugRTCCheckBox;
         QCheckBox *m_plugKeyboardCheckBox;
         QCheckBox *m_plugEepromCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
+        QVBoxLayout *m_emulatorSettingsLayout;
+        QWidget *m_emulatorSettingsWidget;
+        QListWidgetItem *m_emulatorSettingsItem;
 
-        QLineEdit *m_defaultProjectsPathLineEdit;
+        // Cpu state viewer tab widgets
+        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
+        QVBoxLayout *m_cpuStateViewerSettingsLayout;
+        QWidget *m_cpuStateViewerSettingsWidget;
+        QListWidgetItem *m_cpuStateViewerSettingsItem;
+
+        // Binary viewer tab widgets
+        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;
+        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;
+        QVBoxLayout *m_binaryViewerSettingsLayout;
+        QWidget *m_binaryViewerSettingsWidget;
+        QListWidgetItem *m_binaryViewerSettingsItem;
+
+        QPushButton *m_closeButton;
 
         ConfigManager *m_configManager;
 };

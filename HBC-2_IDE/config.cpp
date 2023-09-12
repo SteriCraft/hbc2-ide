@@ -429,150 +429,32 @@ void ConfigManager::flushRecentProjects()
 }
 
 
-// SettingsDialog class
+// ========= SettingsDialog class =========
 SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : QDialog(parent)
 {
     m_configManager = configManager;
+    setWindowSettings();
 
-    setWindowTitle(tr("Settings"));
-    setWindowIcon(QIcon(":/icons/res/logo.png"));
+    initMenu();
 
-    // IDE settings
-    QGroupBox *ideSettingsGroupBox = new QGroupBox(tr("Editor"), this);
+    QHBoxLayout *panelLayout = new QHBoxLayout;
+    panelLayout->addWidget(m_menuList);
+    panelLayout->addWidget(m_menuWidgets);
 
-    QLabel *defaultProjectsPathLabel = new QLabel(tr("Projects directory"), this);
-    QPushButton *browseProjectsPath = new QPushButton(tr("Browse"), this);
-    m_defaultProjectsPathLineEdit = new QLineEdit(this);
-    m_defaultProjectsPathLineEdit->setText(configManager->getDefaultProjectsPath());
-    m_defaultProjectsPathLineEdit->setMinimumWidth(250);
-    QHBoxLayout *defaultProjectsPathLayout = new QHBoxLayout;
-    defaultProjectsPathLayout->addWidget(m_defaultProjectsPathLineEdit);
-    defaultProjectsPathLayout->addWidget(browseProjectsPath);
-
-    QLabel *tabSizeLabel = new QLabel(tr("Tab size"), this);
-    m_tabSizeSpinBox = new QSpinBox(this);
-    m_tabSizeSpinBox->setSuffix(" spaces");
-    m_tabSizeSpinBox->setRange(1, 16);
-    m_tabSizeSpinBox->setValue(configManager->getTabSize());
-    QHBoxLayout *tabSizeLayout = new QHBoxLayout;
-    tabSizeLayout->addWidget(tabSizeLabel);
-    tabSizeLayout->addWidget(m_tabSizeSpinBox);
-
-    QVBoxLayout *ideSettingsLayout = new QVBoxLayout;
-    ideSettingsLayout->addWidget(defaultProjectsPathLabel);
-    ideSettingsLayout->addLayout(defaultProjectsPathLayout);
-    ideSettingsLayout->addLayout(tabSizeLayout);
-    ideSettingsGroupBox->setLayout(ideSettingsLayout);
-
-
-    // Assembler settings
-    QGroupBox *assemblerSettingsGroupBox = new QGroupBox(tr("Assembler"), this);
-
-    m_ramAsDefaultMemoryTargetCheckBox = new QCheckBox(tr("RAM as default memory target"), this);
-    m_ramAsDefaultMemoryTargetCheckBox->setChecked(configManager->getRamAsDefaultMemoryTarget());
-
-    QVBoxLayout *assemblerSettingsLayout = new QVBoxLayout;
-    assemblerSettingsLayout->addWidget(m_ramAsDefaultMemoryTargetCheckBox);
-    assemblerSettingsGroupBox->setLayout(assemblerSettingsLayout);
-
-
-    // Cpu state viewer settings
-    QGroupBox *cpuStateViewerSettingsGroupBox = new QGroupBox(tr("CPU status viewer"), this);
-
-    m_openCpuStateViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
-    m_openCpuStateViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenCpuStateViewerOnEmulatorPaused());
-
-    m_openCpuStateViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
-    m_openCpuStateViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenCpuStateViewerOnEmulatorStopped());
-
-    QVBoxLayout *cpuStateViewerSettingsLayout = new QVBoxLayout;
-    cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorPausedCheckBox);
-    cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorStoppedCheckBox);
-    cpuStateViewerSettingsGroupBox->setLayout(cpuStateViewerSettingsLayout);
-
-
-    // Binary viewer settings
-    QGroupBox *binaryViewerSettingsGroupBox = new QGroupBox(tr("Binary viewer"), this);
-
-    m_openBinaryViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), this);
-    m_openBinaryViewerOnAssemblyCheckBox->setChecked(configManager->getOpenBinaryViewerOnAssembly());
-
-    m_openBinaryViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), this);
-    m_openBinaryViewerOnEmulatorPausedCheckBox->setChecked(configManager->getOpenBinaryViewerOnEmulatorPaused());
-
-    m_openBinaryViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), this);
-    m_openBinaryViewerOnEmulatorStoppedCheckBox->setChecked(configManager->getOpenBinaryViewerOnEmulatorStopped());
-
-    QVBoxLayout *binaryViewerSettingsLayout = new QVBoxLayout;
-    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnAssemblyCheckBox);
-    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorPausedCheckBox);
-    binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorStoppedCheckBox);
-    binaryViewerSettingsGroupBox->setLayout(binaryViewerSettingsLayout);
-
-
-    // Emulator settings
-    QGroupBox *emulatorSettingsGroupBox = new QGroupBox(tr("Emulator"), this);
-
-    m_startPausedCheckBox = new QCheckBox(tr("Start paused"), this);
-    m_startPausedCheckBox->setChecked(configManager->getStartEmulatorPaused());
-
-    m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), this);
-    m_plugMonitorCheckBox->setChecked(configManager->getMonitorPlugged());
-
-    m_plugRTCCheckBox = new QCheckBox(tr("Real Time Clock plugged-in by default"), this);
-    m_plugRTCCheckBox->setChecked(configManager->getRTCPlugged());
-
-    m_plugKeyboardCheckBox = new QCheckBox(tr("Keyboard plugged-in by default"), this);
-    m_plugKeyboardCheckBox->setChecked(configManager->getKeyboardPlugged());
-
-    m_plugEepromCheckBox = new QCheckBox(tr("EEPROM plugged-in by default"), this);
-    m_plugEepromCheckBox->setChecked(configManager->getEepromPlugged());
-
-    m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), this);
-    m_dismissReassemblyWarningsCheckBox->setChecked(configManager->getDismissReassemblyWarnings());
-
-    QVBoxLayout *emulatorSettingsLayout = new QVBoxLayout;
-    emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
-    emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
-    emulatorSettingsLayout->addWidget(m_plugRTCCheckBox);
-    emulatorSettingsLayout->addWidget(m_plugKeyboardCheckBox);
-    emulatorSettingsLayout->addWidget(m_plugEepromCheckBox);
-    emulatorSettingsLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
-    emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
-
-
-    QPushButton *closeButton = new QPushButton(tr("Close"), this);
-
+    m_closeButton = new QPushButton(tr("Close"), this);
+    connect(m_closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(cpuStateViewerSettingsGroupBox);
-    mainLayout->addWidget(binaryViewerSettingsGroupBox);
-    mainLayout->addWidget(ideSettingsGroupBox);
-    mainLayout->addWidget(assemblerSettingsGroupBox);
-    mainLayout->addWidget(emulatorSettingsGroupBox);
-    mainLayout->addWidget(closeButton);
+    mainLayout->addLayout(panelLayout);
+    mainLayout->addWidget(m_closeButton);
 
     setLayout(mainLayout);
+}
 
-
-    // Connections
-    connect(m_tabSizeSpinBox, SIGNAL(valueChanged(int)), this, SLOT(tabSizeChanged(int)));
-    connect(m_ramAsDefaultMemoryTargetCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ramAsDefaultMemoryTargetChanged()));
-    connect(m_openCpuStateViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorPausedChanged()));
-    connect(m_openCpuStateViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorStoppedChanged()));
-    connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
-    connect(m_openBinaryViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorPausedChanged()));
-    connect(m_openBinaryViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorStoppedChanged()));
-    connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
-    connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
-    connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
-    connect(m_plugKeyboardCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugKeyboardChanged()));
-    connect(m_plugEepromCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugEepromChanged()));
-    connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
-    connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
-    connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
-
-    connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+// PRIVATE SLOTS
+void SettingsDialog::menuSelected(int tabIndex)
+{
+    m_menuWidgets->setCurrentWidget(m_menuWidgetsList[tabIndex]);
 }
 
 void SettingsDialog::tabSizeChanged(int nbOfSpaces)
@@ -657,4 +539,242 @@ void SettingsDialog::defaultProjectsPathChanged(QString newPath)
     {
         m_configManager->setDefaultProjectsPath(newPath);
     }
+}
+
+// PRIVATE
+void SettingsDialog::initMenu()
+{
+    // Init layouts
+    initEditorSettingsLayout();
+    initAssemblerSettingsLayout();
+    initEmulatorSettingsLayout();
+    initCpuStateViewerSettingsLayout();
+    initBinaryViewerSettingsLayout();
+
+    // Set the window main layout
+    m_menuList = new QListWidget(this);
+    addMenu(m_editorSettingsItem, m_editorSettingsWidget);
+    addMenu(m_assemblerSettingsItem, m_assemblerSettingsWidget);
+    addMenu(m_emulatorSettingsItem, m_emulatorSettingsWidget);
+    addMenu(m_cpuStateViewerSettingsItem, m_cpuStateViewerSettingsWidget);
+    addMenu(m_binaryViewerSettingsItem, m_binaryViewerSettingsWidget);
+    m_menuList->setCurrentRow(0);
+
+    // Stacked widget
+    m_menuWidgets = new QStackedWidget(this);
+    m_menuWidgets->addWidget(m_editorSettingsWidget);
+    m_menuWidgets->addWidget(m_assemblerSettingsWidget);
+    m_menuWidgets->addWidget(m_emulatorSettingsWidget);
+    m_menuWidgets->addWidget(m_cpuStateViewerSettingsWidget);
+    m_menuWidgets->addWidget(m_binaryViewerSettingsWidget);
+    m_menuWidgets->setCurrentIndex(0);
+
+    connect(m_menuList, SIGNAL(currentRowChanged(int)), this, SLOT(menuSelected(int)));
+}
+
+void SettingsDialog::setWindowSettings()
+{
+    resize(DIALOG_WIDTH, DIALOG_HEIGHT);
+    setWindowTitle(tr("Settings"));
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+}
+
+void SettingsDialog::initEditorSettingsLayout()
+{
+    // Layout init
+    m_editorSettingsWidget = new QWidget(this);
+    m_editorSettingsLayout = new QVBoxLayout;
+
+    m_editorSettingsItem = new QListWidgetItem(tr("Editor"));
+    m_editorSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("Editor"), qobject_cast<QWidget*>(m_editorSettingsLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    QLabel *defaultProjectsPathLabel = new QLabel(tr("Projects directory"), qobject_cast<QWidget*>(m_editorSettingsLayout));
+    m_browseProjectsPath = new QPushButton(tr("Browse"), qobject_cast<QWidget*>(m_editorSettingsLayout));
+    m_defaultProjectsPathLineEdit = new QLineEdit(qobject_cast<QWidget*>(m_editorSettingsLayout));
+    m_defaultProjectsPathLineEdit->setText(m_configManager->getDefaultProjectsPath());
+    m_defaultProjectsPathLineEdit->setMinimumWidth(250);
+    QHBoxLayout *defaultProjectsPathLayout = new QHBoxLayout;
+    defaultProjectsPathLayout->addWidget(m_defaultProjectsPathLineEdit);
+    defaultProjectsPathLayout->addWidget(m_browseProjectsPath);
+
+    QLabel *tabSizeLabel = new QLabel(tr("Tab size"), qobject_cast<QWidget*>(m_editorSettingsLayout));
+    m_tabSizeSpinBox = new QSpinBox(qobject_cast<QWidget*>(m_editorSettingsLayout));
+    m_tabSizeSpinBox->setSuffix(" spaces");
+    m_tabSizeSpinBox->setRange(1, 16);
+    m_tabSizeSpinBox->setValue(m_configManager->getTabSize());
+    QHBoxLayout *tabSizeLayout = new QHBoxLayout;
+    tabSizeLayout->addWidget(tabSizeLabel);
+    tabSizeLayout->addWidget(m_tabSizeSpinBox);
+    // ------------------
+
+    // Final layout configuration
+    m_editorSettingsLayout->addWidget(mainLabel);
+    m_editorSettingsLayout->addWidget(defaultProjectsPathLabel);
+    m_editorSettingsLayout->addLayout(defaultProjectsPathLayout);
+    m_editorSettingsLayout->addLayout(tabSizeLayout);
+    m_editorSettingsLayout->addStretch();
+    m_editorSettingsWidget->setLayout(m_editorSettingsLayout);
+
+    // Connections
+    connect(m_tabSizeSpinBox, SIGNAL(valueChanged(int)), this, SLOT(tabSizeChanged(int)));
+    connect(m_browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
+    connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
+}
+
+void SettingsDialog::initAssemblerSettingsLayout()
+{
+    // Layout init
+    m_assemblerSettingsWidget = new QWidget(this);
+    m_assemblerSettingsLayout = new QVBoxLayout;
+
+    m_assemblerSettingsItem = new QListWidgetItem(tr("Assembler"));
+    m_assemblerSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("Assembler"), qobject_cast<QWidget*>(m_assemblerSettingsLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    m_ramAsDefaultMemoryTargetCheckBox = new QCheckBox(tr("RAM as default memory target"), qobject_cast<QWidget*>(m_assemblerSettingsLayout));
+    m_ramAsDefaultMemoryTargetCheckBox->setChecked(m_configManager->getRamAsDefaultMemoryTarget());
+    // ------------------
+
+    // Final layout configuration
+    m_assemblerSettingsLayout->addWidget(mainLabel);
+    m_assemblerSettingsLayout->addWidget(m_ramAsDefaultMemoryTargetCheckBox);
+    m_assemblerSettingsLayout->addStretch();
+    m_assemblerSettingsWidget->setLayout(m_assemblerSettingsLayout);
+
+    // Connections
+    connect(m_ramAsDefaultMemoryTargetCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ramAsDefaultMemoryTargetChanged()));
+}
+
+void SettingsDialog::initEmulatorSettingsLayout()
+{
+    // Layout init
+    m_emulatorSettingsWidget = new QWidget(this);
+    m_emulatorSettingsLayout = new QVBoxLayout;
+
+    m_emulatorSettingsItem = new QListWidgetItem(tr("Emulator"));
+    m_emulatorSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("Emulator"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    m_startPausedCheckBox = new QCheckBox(tr("Start paused"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_startPausedCheckBox->setChecked(m_configManager->getStartEmulatorPaused());
+
+    m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_plugMonitorCheckBox->setChecked(m_configManager->getMonitorPlugged());
+
+    m_plugRTCCheckBox = new QCheckBox(tr("Real Time Clock plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_plugRTCCheckBox->setChecked(m_configManager->getRTCPlugged());
+
+    m_plugKeyboardCheckBox = new QCheckBox(tr("Keyboard plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_plugKeyboardCheckBox->setChecked(m_configManager->getKeyboardPlugged());
+
+    m_plugEepromCheckBox = new QCheckBox(tr("EEPROM plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_plugEepromCheckBox->setChecked(m_configManager->getEepromPlugged());
+
+    m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), qobject_cast<QWidget*>(m_emulatorSettingsLayout));
+    m_dismissReassemblyWarningsCheckBox->setChecked(m_configManager->getDismissReassemblyWarnings());
+    // ------------------
+
+    // Final layout configuration
+    m_emulatorSettingsLayout->addWidget(mainLabel);
+    m_emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
+    m_emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
+    m_emulatorSettingsLayout->addWidget(m_plugRTCCheckBox);
+    m_emulatorSettingsLayout->addWidget(m_plugKeyboardCheckBox);
+    m_emulatorSettingsLayout->addWidget(m_plugEepromCheckBox);
+    m_emulatorSettingsLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
+    m_emulatorSettingsLayout->addStretch();
+    m_emulatorSettingsWidget->setLayout(m_emulatorSettingsLayout);
+
+    // Connections
+    connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
+    connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
+    connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
+    connect(m_plugKeyboardCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugKeyboardChanged()));
+    connect(m_plugEepromCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugEepromChanged()));
+    connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
+}
+
+void SettingsDialog::initCpuStateViewerSettingsLayout()
+{
+    // Layout init
+    m_cpuStateViewerSettingsWidget = new QWidget(this);
+    m_cpuStateViewerSettingsLayout = new QVBoxLayout;
+
+    m_cpuStateViewerSettingsItem = new QListWidgetItem(tr("CPU State Viewer"));
+    m_cpuStateViewerSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("CPU State Viewer"), qobject_cast<QWidget*>(m_cpuStateViewerSettingsLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    m_openCpuStateViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), qobject_cast<QWidget*>(m_cpuStateViewerSettingsLayout));
+    m_openCpuStateViewerOnEmulatorPausedCheckBox->setChecked(m_configManager->getOpenCpuStateViewerOnEmulatorPaused());
+
+    m_openCpuStateViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), qobject_cast<QWidget*>(m_cpuStateViewerSettingsLayout));
+    m_openCpuStateViewerOnEmulatorStoppedCheckBox->setChecked(m_configManager->getOpenCpuStateViewerOnEmulatorStopped());
+    // ------------------
+
+    // Final layout configuration
+    m_cpuStateViewerSettingsLayout->addWidget(mainLabel);
+    m_cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorPausedCheckBox);
+    m_cpuStateViewerSettingsLayout->addWidget(m_openCpuStateViewerOnEmulatorStoppedCheckBox);
+    m_cpuStateViewerSettingsLayout->addStretch();
+    m_cpuStateViewerSettingsWidget->setLayout(m_cpuStateViewerSettingsLayout);
+
+    // Connections
+    connect(m_openCpuStateViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorPausedChanged()));
+    connect(m_openCpuStateViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorStoppedChanged()));
+}
+
+void SettingsDialog::initBinaryViewerSettingsLayout()
+{
+    // Layout init
+    m_binaryViewerSettingsWidget = new QWidget(this);
+    m_binaryViewerSettingsLayout = new QVBoxLayout;
+
+    m_binaryViewerSettingsItem = new QListWidgetItem(tr("Binary Viewer"));
+    m_binaryViewerSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("Binary Viewer"), qobject_cast<QWidget*>(m_binaryViewerSettingsLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    m_openBinaryViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), qobject_cast<QWidget*>(m_binaryViewerSettingsLayout));
+    m_openBinaryViewerOnAssemblyCheckBox->setChecked(m_configManager->getOpenBinaryViewerOnAssembly());
+
+    m_openBinaryViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), qobject_cast<QWidget*>(m_binaryViewerSettingsLayout));
+    m_openBinaryViewerOnEmulatorPausedCheckBox->setChecked(m_configManager->getOpenBinaryViewerOnEmulatorPaused());
+
+    m_openBinaryViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), qobject_cast<QWidget*>(m_binaryViewerSettingsLayout));
+    m_openBinaryViewerOnEmulatorStoppedCheckBox->setChecked(m_configManager->getOpenBinaryViewerOnEmulatorStopped());
+    // ------------------
+
+    // Final layout configuration
+    m_binaryViewerSettingsLayout->addWidget(mainLabel);
+    m_binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnAssemblyCheckBox);
+    m_binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorPausedCheckBox);
+    m_binaryViewerSettingsLayout->addWidget(m_openBinaryViewerOnEmulatorStoppedCheckBox);
+    m_binaryViewerSettingsLayout->addStretch();
+    m_binaryViewerSettingsWidget->setLayout(m_binaryViewerSettingsLayout);
+
+    // Connections
+    connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
+    connect(m_openBinaryViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorPausedChanged()));
+    connect(m_openBinaryViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorStoppedChanged()));
+}
+
+void SettingsDialog::addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget)
+{
+    m_menuList->addItem(newMenuItem);
+    m_menuWidgetsList.push_back(newMenuWidget);
 }
