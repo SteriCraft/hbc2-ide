@@ -302,8 +302,9 @@ class SettingsDialog : public QDialog
         void openBinaryViewerOnEmulatorStoppedChanged();
 
     private:
-        static constexpr int DIALOG_WIDTH = 640;
-        static constexpr int DIALOG_HEIGHT = 350;
+        static constexpr int DIALOG_WIDTH = 800;
+        static constexpr int DIALOG_HEIGHT = 400;
+        static constexpr int MENU_LIST_WIDTH = 160;
         static constexpr int ITEM_HEIGHT = 50;
         static constexpr int SPACING = 20;
 
@@ -321,44 +322,77 @@ class SettingsDialog : public QDialog
         QStackedWidget *m_menuWidgets;
         std::vector<QWidget*> m_menuWidgetsList;
 
-        // Editor tab widgets
+        // Editor page widgets
         QPushButton *m_browseProjectsPath;
         QLineEdit *m_defaultProjectsPathLineEdit;
         QSpinBox *m_tabSizeSpinBox;
-        QVBoxLayout *m_editorSettingsLayout;
-        QWidget *m_editorSettingsWidget;
+        QVBoxLayout *m_editorSettingsGeneralTabLayout;
+        QWidget *m_editorSettingsGeneralTabWidget;
+
+        QTabWidget *m_editorSettingsTabWidget;
+        QVBoxLayout *m_editorSettingsPageLayout;
+        QWidget *m_editorSettingsPageWidget;
         QListWidgetItem *m_editorSettingsItem;
 
-        // Assembler tab widgets
+        // Assembler page widgets
         QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;
-        QVBoxLayout *m_assemblerSettingsLayout;
-        QWidget *m_assemblerSettingsWidget;
+        QVBoxLayout *m_assemblerSettingsGeneralTabLayout;
+        QWidget *m_assemblerSettingsGeneralTabWidget;
+
+        QTabWidget *m_assemblerSettingsTabWidget;
+        QVBoxLayout *m_assemblerSettingsPageLayout;
+        QWidget *m_assemblerSettingsPageWidget;
         QListWidgetItem *m_assemblerSettingsItem;
 
-        // Emulator tab widgets
+        // Emulator page widgets
+        // General tab
         QCheckBox *m_startPausedCheckBox;
-        QCheckBox *m_plugMonitorCheckBox;
-        QCheckBox *m_plugRTCCheckBox;
-        QCheckBox *m_plugKeyboardCheckBox;
-        QCheckBox *m_plugEepromCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
-        QVBoxLayout *m_emulatorSettingsLayout;
-        QWidget *m_emulatorSettingsWidget;
+        QVBoxLayout *m_emulatorSettingsGeneralTabLayout;
+        QWidget *m_emulatorSettingsGeneralTabWidget;
+        // Monitor tab
+        QCheckBox *m_plugMonitorCheckBox;
+        QVBoxLayout *m_emulatorSettingsMonitorTabLayout;
+        QWidget *m_emulatorSettingsMonitorTabWidget;
+        // RTC tab
+        QCheckBox *m_plugRTCCheckBox;
+        QVBoxLayout *m_emulatorSettingsRtcTabLayout;
+        QWidget *m_emulatorSettingsRtcTabWidget;
+        // Keyboard tab
+        QCheckBox *m_plugKeyboardCheckBox;
+        QVBoxLayout *m_emulatorSettingsKeyboardTabLayout;
+        QWidget *m_emulatorSettingsKeyboardTabWidget;
+        // EEPROM tab
+        QCheckBox *m_plugEepromCheckBox;
+        QVBoxLayout *m_emulatorSettingsEepromTabLayout;
+        QWidget *m_emulatorSettingsEepromTabWidget;
+
+        QTabWidget *m_emulatorSettingsTabWidget;
+        QVBoxLayout *m_emulatorSettingsPageLayout;
+        QWidget *m_emulatorSettingsPageWidget;
         QListWidgetItem *m_emulatorSettingsItem;
 
-        // Cpu state viewer tab widgets
+        // Cpu state viewer page widgets
         QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
         QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
-        QVBoxLayout *m_cpuStateViewerSettingsLayout;
-        QWidget *m_cpuStateViewerSettingsWidget;
+        QVBoxLayout *m_cpuStateViewerSettingsGeneralTabLayout;
+        QWidget *m_cpuStateViewerSettingsGeneralTabWidget;
+
+        QTabWidget *m_cpuStateViewerSettingsTabWidget;
+        QVBoxLayout *m_cpuStateViewerSettingsPageLayout;
+        QWidget *m_cpuStateViewerSettingsPageWidget;
         QListWidgetItem *m_cpuStateViewerSettingsItem;
 
         // Binary viewer tab widgets
         QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;
         QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;
         QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;
-        QVBoxLayout *m_binaryViewerSettingsLayout;
-        QWidget *m_binaryViewerSettingsWidget;
+        QVBoxLayout *m_binaryViewerSettingsGeneralTabLayout;
+        QWidget *m_binaryViewerSettingsGeneralTabWidget;
+
+        QTabWidget *m_binaryViewerSettingsTabWidget;
+        QVBoxLayout *m_binaryViewerSettingsPageLayout;
+        QWidget *m_binaryViewerSettingsPageWidget;
         QListWidgetItem *m_binaryViewerSettingsItem;
 
         QPushButton *m_closeButton;

@@ -253,71 +253,105 @@ $(function() {
 <div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnEmulatorStoppedChanged();</div>
 <div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160; </div>
 <div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_WIDTH = 640;</div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_HEIGHT = 350;</div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ITEM_HEIGHT = 50;</div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> SPACING = 20;</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160; </div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;        <span class="keywordtype">void</span> initMenu();</div>
-<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;        <span class="keywordtype">void</span> setWindowSettings();</div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;        <span class="keywordtype">void</span> initEditorSettingsLayout();</div>
-<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;        <span class="keywordtype">void</span> initAssemblerSettingsLayout();</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;        <span class="keywordtype">void</span> initEmulatorSettingsLayout();</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;        <span class="keywordtype">void</span> initCpuStateViewerSettingsLayout();</div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;        <span class="keywordtype">void</span> initBinaryViewerSettingsLayout();</div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160; </div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;        <span class="keywordtype">void</span> addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);</div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160; </div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;        QListWidget *m_menuList;</div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;        QStackedWidget *m_menuWidgets;</div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;        std::vector&lt;QWidget*&gt; m_menuWidgetsList;</div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160; </div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;        <span class="comment">// Editor tab widgets</span></div>
-<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;        QPushButton *m_browseProjectsPath;</div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;        QLineEdit *m_defaultProjectsPathLineEdit;</div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;        QSpinBox *m_tabSizeSpinBox;</div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;        QVBoxLayout *m_editorSettingsLayout;</div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;        QWidget *m_editorSettingsWidget;</div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;        QListWidgetItem *m_editorSettingsItem;</div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_WIDTH = 800;</div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_HEIGHT = 400;</div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> MENU_LIST_WIDTH = 160;</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ITEM_HEIGHT = 50;</div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> SPACING = 20;</div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160; </div>
+<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;        <span class="keywordtype">void</span> initMenu();</div>
+<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;        <span class="keywordtype">void</span> setWindowSettings();</div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;        <span class="keywordtype">void</span> initEditorSettingsLayout();</div>
+<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;        <span class="keywordtype">void</span> initAssemblerSettingsLayout();</div>
+<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;        <span class="keywordtype">void</span> initEmulatorSettingsLayout();</div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;        <span class="keywordtype">void</span> initCpuStateViewerSettingsLayout();</div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;        <span class="keywordtype">void</span> initBinaryViewerSettingsLayout();</div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160; </div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        <span class="keywordtype">void</span> addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);</div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160; </div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;        QListWidget *m_menuList;</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;        QStackedWidget *m_menuWidgets;</div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;        std::vector&lt;QWidget*&gt; m_menuWidgetsList;</div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160; </div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;        <span class="comment">// Editor page widgets</span></div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;        QPushButton *m_browseProjectsPath;</div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;        QLineEdit *m_defaultProjectsPathLineEdit;</div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;        QSpinBox *m_tabSizeSpinBox;</div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;        QVBoxLayout *m_editorSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;        QWidget *m_editorSettingsGeneralTabWidget;</div>
 <div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160; </div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;        <span class="comment">// Assembler tab widgets</span></div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;        QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;</div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;        QVBoxLayout *m_assemblerSettingsLayout;</div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;        QWidget *m_assemblerSettingsWidget;</div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;        QListWidgetItem *m_assemblerSettingsItem;</div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160; </div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;        <span class="comment">// Emulator tab widgets</span></div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;        QCheckBox *m_startPausedCheckBox;</div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;        QCheckBox *m_plugMonitorCheckBox;</div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;        QCheckBox *m_plugRTCCheckBox;</div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;        QCheckBox *m_plugKeyboardCheckBox;</div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;        QCheckBox *m_plugEepromCheckBox;</div>
-<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;        QCheckBox *m_dismissReassemblyWarningsCheckBox;</div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;        QVBoxLayout *m_emulatorSettingsLayout;</div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;        QWidget *m_emulatorSettingsWidget;</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;        QListWidgetItem *m_emulatorSettingsItem;</div>
-<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160; </div>
-<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;        <span class="comment">// Cpu state viewer tab widgets</span></div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;</div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;</div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsLayout;</div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;        QWidget *m_cpuStateViewerSettingsWidget;</div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;        QListWidgetItem *m_cpuStateViewerSettingsItem;</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160; </div>
-<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;        <span class="comment">// Binary viewer tab widgets</span></div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;</div>
-<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;</div>
-<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;</div>
-<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;        QVBoxLayout *m_binaryViewerSettingsLayout;</div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;        QWidget *m_binaryViewerSettingsWidget;</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;        QListWidgetItem *m_binaryViewerSettingsItem;</div>
-<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160; </div>
-<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;        QPushButton *m_closeButton;</div>
-<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160; </div>
-<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
-<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;};</div>
-<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160; </div>
-<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CONFIG_H</span></div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;        QTabWidget *m_editorSettingsTabWidget;</div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;        QVBoxLayout *m_editorSettingsPageLayout;</div>
+<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;        QWidget *m_editorSettingsPageWidget;</div>
+<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160;        QListWidgetItem *m_editorSettingsItem;</div>
+<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160; </div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;        <span class="comment">// Assembler page widgets</span></div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;        QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;</div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;        QVBoxLayout *m_assemblerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;        QWidget *m_assemblerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160; </div>
+<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;        QTabWidget *m_assemblerSettingsTabWidget;</div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;        QVBoxLayout *m_assemblerSettingsPageLayout;</div>
+<div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160;        QWidget *m_assemblerSettingsPageWidget;</div>
+<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;        QListWidgetItem *m_assemblerSettingsItem;</div>
+<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160; </div>
+<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;        <span class="comment">// Emulator page widgets</span></div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;        <span class="comment">// General tab</span></div>
+<div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160;        QCheckBox *m_startPausedCheckBox;</div>
+<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;        QCheckBox *m_dismissReassemblyWarningsCheckBox;</div>
+<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;        QVBoxLayout *m_emulatorSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;        QWidget *m_emulatorSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;        <span class="comment">// Monitor tab</span></div>
+<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;        QCheckBox *m_plugMonitorCheckBox;</div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;        QVBoxLayout *m_emulatorSettingsMonitorTabLayout;</div>
+<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;        QWidget *m_emulatorSettingsMonitorTabWidget;</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;        <span class="comment">// RTC tab</span></div>
+<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;        QCheckBox *m_plugRTCCheckBox;</div>
+<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;        QVBoxLayout *m_emulatorSettingsRtcTabLayout;</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;        QWidget *m_emulatorSettingsRtcTabWidget;</div>
+<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;        <span class="comment">// Keyboard tab</span></div>
+<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;        QCheckBox *m_plugKeyboardCheckBox;</div>
+<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;        QVBoxLayout *m_emulatorSettingsKeyboardTabLayout;</div>
+<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;        QWidget *m_emulatorSettingsKeyboardTabWidget;</div>
+<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;        <span class="comment">// EEPROM tab</span></div>
+<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;        QCheckBox *m_plugEepromCheckBox;</div>
+<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160;        QVBoxLayout *m_emulatorSettingsEepromTabLayout;</div>
+<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;        QWidget *m_emulatorSettingsEepromTabWidget;</div>
+<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160; </div>
+<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;        QTabWidget *m_emulatorSettingsTabWidget;</div>
+<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160;        QVBoxLayout *m_emulatorSettingsPageLayout;</div>
+<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;        QWidget *m_emulatorSettingsPageWidget;</div>
+<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;        QListWidgetItem *m_emulatorSettingsItem;</div>
+<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160; </div>
+<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;        <span class="comment">// Cpu state viewer page widgets</span></div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;</div>
+<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;</div>
+<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;        QWidget *m_cpuStateViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160; </div>
+<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;        QTabWidget *m_cpuStateViewerSettingsTabWidget;</div>
+<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsPageLayout;</div>
+<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;        QWidget *m_cpuStateViewerSettingsPageWidget;</div>
+<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;        QListWidgetItem *m_cpuStateViewerSettingsItem;</div>
+<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160; </div>
+<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;        <span class="comment">// Binary viewer tab widgets</span></div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;</div>
+<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;</div>
+<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;        QVBoxLayout *m_binaryViewerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;        QWidget *m_binaryViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160; </div>
+<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;        QTabWidget *m_binaryViewerSettingsTabWidget;</div>
+<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;        QVBoxLayout *m_binaryViewerSettingsPageLayout;</div>
+<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;        QWidget *m_binaryViewerSettingsPageWidget;</div>
+<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;        QListWidgetItem *m_binaryViewerSettingsItem;</div>
+<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160; </div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;        QPushButton *m_closeButton;</div>
+<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160; </div>
+<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;};</div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160; </div>
+<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CONFIG_H</span></div>
 <div class="ttc" id="aclass_config_manager_html"><div class="ttname"><a href="class_config_manager.html">ConfigManager</a></div><div class="ttdoc">Singleton of the configuration manager, that handles IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:70</div></div>
 <div class="ttc" id="aclass_config_manager_html_a02ac7fc5157cde303cebac654e3e188a"><div class="ttname"><a href="class_config_manager.html#a02ac7fc5157cde303cebac654e3e188a">ConfigManager::getDefaultProjectsPath</a></div><div class="ttdeci">QString getDefaultProjectsPath()</div><div class="ttdef"><b>Definition:</b> config.cpp:208</div></div>
 <div class="ttc" id="aclass_config_manager_html_a02c5e604d03e24033ca248c9d46b1063"><div class="ttname"><a href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">ConfigManager::setMonitorPlugged</a></div><div class="ttdeci">void setMonitorPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:94</div></div>
