@@ -1,5 +1,4 @@
 #include "binaryViewer.h"
-#include "qspinbox.h"
 
 #include <QIcon>
 #include <QDebug>
