@@ -1233,6 +1233,8 @@ void MainWindow::assembleAction()
             showBinaryAction();
         }
     }
+
+    m_consoleOutput->log("test");
 }
 
 void MainWindow::memoryTargetAction(bool ramToggle)
