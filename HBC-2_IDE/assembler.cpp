@@ -1,4 +1,5 @@
 #include "assembler.h"
+#include "eeprom.h"
 
 using namespace Assembly;
 
@@ -38,7 +39,17 @@ ByteDebugSymbol Assembler::getSymbolFromAddress(Word address)
     return m_finalBinary.origin[address];
 }
 
-bool Assembler::assembleProject(std::shared_ptr<Project> p)
+QString Assembler::getBinaryFilePath()
+{
+    return m_finalBinary.binaryFilePath;
+}
+
+bool Assembler::isAssembledForEeprom()
+{
+    return m_finalBinary.binaryData.size() == Eeprom::MEMORY_SIZE;
+}
+
+bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
 {
     m_consoleOutput->clear();
     m_consoleOutput->log("Assembling project \"" + p->getName() + "\"...");
@@ -69,17 +80,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     m_finalFile.m_lines.clear();
     m_tokenFiles.clear();
 
-    m_finalBinary.binaryData.clear();
-    m_finalBinary.origin.clear();
-
-    quint8 nullChar(0);
-    for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
-    {
-        ByteDebugSymbol newSymbol;
-
-        m_finalBinary.binaryData.push_back(nullChar);
-        m_finalBinary.origin.push_back(newSymbol);
-    }
+    initBinary(targetEeprom);
 
 
 // === INIT ===
@@ -196,7 +197,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     m_consoleOutput->log("Listing variables...");
 
 // -> Minor pass 1: List defined and undefined data definitions
-    if (!listVariables())
+    if (!listVariables(targetEeprom))
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
@@ -208,7 +209,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     m_consoleOutput->returnLine();
 
 // -> Minor pass 2: Calculate total memory usage
-    if (!calculateMemoryUsage())
+    if (!calculateMemoryUsage(targetEeprom))
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
@@ -220,7 +221,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     m_consoleOutput->log("Identifying routine blocks...");
 
 // -> Minor pass 1: Construct routine blocks, calculate their sizes and list labels
-    if (!constructRoutineBlocks())
+    if (!constructRoutineBlocks(targetEeprom))
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
@@ -228,7 +229,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
     }
 
 // -> Minor pass 2: List free memory spaces between defined .data
-    if (!findFreeMemorySpaces())
+    if (!findFreeMemorySpaces(targetEeprom))
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
@@ -290,22 +291,21 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p)
         return false;
     }
 
-// -> Minor pass 3: Binary save in file
-    if (!saveBinaryToFile())
+// -> Minor pass 3: Binary save in file (only if the EEPROM is the target)
+    if (targetEeprom)
     {
-        m_consoleOutput->log("Assembly failed");
-        m_consoleOutput->returnLine();
-        return false;
+        if (!saveBinaryToFile())
+        {
+            m_consoleOutput->log("Assembly failed");
+            m_consoleOutput->returnLine();
+            return false;
+        }
+
+        m_consoleOutput->log("EEPROM binary file written");
     }
 
-    m_consoleOutput->log("Binary file written");
-
-
-    // IDEAS: .len to get a string length and store it as data (consider it an argument type)
-
-
     m_consoleOutput->log("Assembly terminated successfuly");
-    m_consoleOutput->log("Memory usage: " + std::to_string(m_totalMemoryUse) + " / " + std::to_string(Ram::MEMORY_SIZE) + " bytes (" + std::to_string(m_totalMemoryUse / Ram::MEMORY_SIZE) + " %)");
+    m_consoleOutput->log("Memory usage: " + std::to_string(m_totalMemoryUse) + " / " + std::to_string(targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) + " bytes (" + std::to_string(m_totalMemoryUse * 100 / (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE)) + " %)");
     m_consoleOutput->returnLine();
 
     m_binaryReady = true;
@@ -360,6 +360,26 @@ void Assembler::logError()
 
     m_consoleOutput->log(Token::errStr[(int)m_error.type] + m_error.additionalInfo);
     m_consoleOutput->returnLine();
+}
+
+void Assembler::initBinary(bool targetEeprom)
+{
+    int memorySize(0);
+
+    m_finalBinary.binaryData.clear();
+    m_finalBinary.origin.clear();
+    m_finalBinary.binaryFilePath = ""; // Will be set by saveBinaryToFile() if the EEPROM is the memory target
+
+    memorySize = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE);
+
+    quint8 nullChar(0);
+    for (unsigned int i(0); i < memorySize; i++)
+    {
+        ByteDebugSymbol newSymbol;
+
+        m_finalBinary.binaryData.push_back(nullChar);
+        m_finalBinary.origin.push_back(newSymbol);
+    }
 }
 
 // -- Major pass 1 --
@@ -889,7 +909,7 @@ bool Assembler::checkArgumentsValidity()
 }
 
 // -- Major pass 4 --
-bool Assembler::listVariables()
+bool Assembler::listVariables(bool targetEeprom)
 {
     Token::TokenLine *line;
     Variable var;
@@ -959,7 +979,8 @@ bool Assembler::listVariables()
             var.originFile = m_finalFile.m_lines[i].m_originFilePath;
             var.originLineNb = m_finalFile.m_lines[i].m_originLineNb;
 
-            if (line->getDataType() == Token::DataType::STRING_DEFINED || line->getDataType() == Token::DataType::SINGLE_VALUE_DEFINED || line->getDataType() == Token::DataType::MULTIPLE_VALUES_DEFINED)
+            if (line->getDataType() == Token::DataType::STRING_DEFINED || line->getDataType() == Token::DataType::SINGLE_VALUE_DEFINED
+             || line->getDataType() == Token::DataType::MULTIPLE_VALUES_DEFINED)
             {
                 var.range.begin = line->m_tokens[2].getAddress();
                 var.range.end = var.range.begin + var.size - 1;
@@ -983,6 +1004,17 @@ bool Assembler::listVariables()
             }
             else
             {
+                if (targetEeprom)
+                {
+                    m_error.originFilePath = var.originFile;
+                    m_error.originLineNb = var.originLineNb;
+                    m_error.type = Token::ErrorType::UNDEFINED_ADDRESS_EEPROM;
+                    m_error.additionalInfo = "";
+
+                    logError();
+                    return false;
+                }
+
                 var.range.begin = Assembly::ADDRESS_NOT_SET;
                 m_undefinedVars.push_back(var);
             }
@@ -997,7 +1029,7 @@ bool Assembler::listVariables()
     // Insuring defined data definitions last address do not exceed memory size
     for (unsigned int i(0); i < m_definedVars.size(); i++)
     {
-        if ((unsigned int)m_definedVars[i].range.begin + m_definedVars[i].size - 1 >= Ram::MEMORY_SIZE)
+        if ((unsigned int)m_definedVars[i].range.begin + m_definedVars[i].size - 1 >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
         {
             m_error.originFilePath = m_definedVars[i].originFile;
             m_error.originLineNb = m_definedVars[i].originLineNb;
@@ -1012,7 +1044,7 @@ bool Assembler::listVariables()
     return true;
 }
 
-bool Assembler::calculateMemoryUsage()
+bool Assembler::calculateMemoryUsage(bool targetEeprom)
 {
     for (unsigned int i(0); i < m_finalFile.m_lines.size(); i++)
     {
@@ -1030,22 +1062,38 @@ bool Assembler::calculateMemoryUsage()
         m_totalMemoryUse += m_undefinedVars[i].size;
     }
 
-    if (m_totalMemoryUse >= Ram::MEMORY_SIZE)
+    if (targetEeprom)
     {
-        m_error.originFilePath = "";
-        m_error.originLineNb = 0;
-        m_error.type = Token::ErrorType::MEM_SIZE;
-        m_error.additionalInfo = " / " + std::to_string(Ram::MEMORY_SIZE) + " bytes";
+        if (m_totalMemoryUse >= Eeprom::MEMORY_SIZE)
+        {
+            m_error.originFilePath = "";
+            m_error.originLineNb = 0;
+            m_error.type = Token::ErrorType::MEM_SIZE;
+            m_error.additionalInfo = " / " + std::to_string(Eeprom::MEMORY_SIZE) + " bytes";
 
-        logError();
-        return false;
+            logError();
+            return false;
+        }
+    }
+    else
+    {
+        if (m_totalMemoryUse >= Ram::MEMORY_SIZE)
+        {
+            m_error.originFilePath = "";
+            m_error.originLineNb = 0;
+            m_error.type = Token::ErrorType::MEM_SIZE_RAM;
+            m_error.additionalInfo = " / " + std::to_string(Ram::MEMORY_SIZE) + " bytes";
+
+            logError();
+            return false;
+        }
     }
 
     return true;
 }
 
 // -- Major pass 5 --
-bool Assembler::constructRoutineBlocks()
+bool Assembler::constructRoutineBlocks(bool targetEeprom)
 {
     // Separated defined and undefined routine blocks for later update and free memory spaces calculations
 
@@ -1081,7 +1129,7 @@ bool Assembler::constructRoutineBlocks()
             {
                 if (block.range.begin != ADDRESS_NOT_SET)
                 {
-                    if (((unsigned int)block.range.begin + block.size()) >= Ram::MEMORY_SIZE)
+                    if (((unsigned int)block.range.begin + block.size()) >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
                     {
                         m_error.originFilePath = line->m_originFilePath;
                         m_error.originLineNb = line->m_originLineNb;
@@ -1162,7 +1210,7 @@ bool Assembler::constructRoutineBlocks()
     {
         if (block.range.begin != ADDRESS_NOT_SET)
         {
-            if (((unsigned int)block.range.begin + block.size()) >= Ram::MEMORY_SIZE)
+            if (((unsigned int)block.range.begin + block.size()) >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
             {
                 m_error.originFilePath = line->m_originFilePath;
                 m_error.originLineNb = line->m_originLineNb;
@@ -1249,7 +1297,7 @@ bool Assembler::constructRoutineBlocks()
     return true;
 }
 
-bool Assembler::findFreeMemorySpaces()
+bool Assembler::findFreeMemorySpaces(bool targetEeprom)
 {
     std::sort(m_definedVars.begin(), m_definedVars.end(), variableAddressInferiorComparator);
     std::sort(m_definedRoutineBlocks.begin(), m_definedRoutineBlocks.end(), routineBlockAddressInferiorComparator);
@@ -1266,7 +1314,7 @@ bool Assembler::findFreeMemorySpaces()
         {
             newSpace.range.begin += m_definedRoutineBlocks[i].size();
 
-            if ((unsigned int)newSpace.range.begin + m_definedRoutineBlocks[i].size() >= Ram::MEMORY_SIZE)
+            if ((unsigned int)newSpace.range.begin + m_definedRoutineBlocks[i].size() >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
                 endReached = true;
         }
         else // Free space found
@@ -1274,13 +1322,13 @@ bool Assembler::findFreeMemorySpaces()
             newSpace.range.end = m_definedRoutineBlocks[i].range.begin - 1;
             m_freeMemorySpaces.push_back(newSpace);
 
-            if ((unsigned int)m_definedRoutineBlocks[i].range.end + 1 < Ram::MEMORY_SIZE)
+            if ((unsigned int)m_definedRoutineBlocks[i].range.end + 1 < (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
             {
                 newSpace.range.begin = m_definedRoutineBlocks[i].range.end + 1; // First address after currently studied routine block
 
                 if (i + 1 == m_definedRoutineBlocks.size()) // No routine blocks following
                 {
-                    newSpace.range.end = Ram::MEMORY_SIZE - 1;
+                    newSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
                     m_freeMemorySpaces.push_back(newSpace);
                 }
             }
@@ -1293,7 +1341,7 @@ bool Assembler::findFreeMemorySpaces()
 
     if (!endReached)
     {
-        newSpace.range.end = Ram::MEMORY_SIZE - 1;
+        newSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
         m_freeMemorySpaces.push_back(newSpace);
     }
 
@@ -1566,13 +1614,15 @@ bool Assembler::saveBinaryToFile()
 
     QDataStream out(&file);
 
-    for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
+    for (unsigned int i(0); i < Eeprom::MEMORY_SIZE; i++)
     {
         out << m_finalBinary.binaryData[i];
     }
 
     file.flush();
     file.close();
+
+    m_finalBinary.binaryFilePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
 
     return true;
 }

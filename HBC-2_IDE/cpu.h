@@ -55,13 +55,13 @@ struct HbcCpu
 // Already documented in computerDetails.h
 namespace Cpu
 {
-    void init(HbcCpu &cpu, HbcMotherboard* mb); //!< Initializes the CPU
-
     /*!
-     * \brief <b>Used internaly: </b> Step 1 of Cpu::tick
+     * \brief Initializes the CPU
      *
-     * \param cpu Reference to HbcCpu
+     * The CPU starts <b>interrupt ready</b>.
      */
+    void init(HbcCpu &cpu, HbcMotherboard* mb);
+
     void tick(HbcCpu &cpu); //!< Executes one instruction completely
 
     /*!

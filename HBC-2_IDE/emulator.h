@@ -13,6 +13,7 @@
 #include "motherboard.h"
 #include "monitor.h"
 #include "realTimeClock.h"
+#include "eeprom.h"
 #include "console.h"
 
 /*!
@@ -56,6 +57,7 @@ namespace Emulator
         HbcMonitor *monitor;
         RealTimeClock::HbcRealTimeClock *rtc;
         Keyboard::HbcKeyboard *keyboard;
+        Eeprom::HbcEeprom *eeprom;
         std::vector<HbcPeripheral*> peripherals; //!< General vector of the peripherals for simpler systemwide iterations
 
         QByteArray initialRamData; //!< Binary data used on emulator first run
@@ -204,13 +206,31 @@ class HbcEmulator : public QThread
          */
         bool stopCmd();
 
-        bool loadProject(QByteArray initialRamData, std::string projectName);
+        /*!
+         * \brief Loads the emulator with EEPROM data before running
+         * \param romBinaryFilePath Path to the project binary file (1'048'576 bytes)
+         * \param projectName Name of the project loaded
+         * \return <b>false</b> if loading fails
+         */
+        bool loadProject(QString romBinaryFilePath, QString projectName);
+
+        /*!
+         * \brief Loads the emulator with RAM data before running
+         * \param initialRamData Array of 65,536 bytes aimed at the RAM
+         * \param projectName Name of the project loaded
+         * \return <b>false</b> if loading fails
+         */
         bool loadProject(QByteArray initialRamData, QString projectName);
 
         /*!
-         * \return the current content of memory
+         * \return the current content of RAM
          */
-        const QByteArray getCurrentBinaryData();
+        const QByteArray getCurrentRamBinaryData();
+
+        /*!
+         * \return the current content of EEPROM
+         */
+        const QByteArray getCurrentEepromBinaryData();
 
         /*!
          * \return the current HbcCpu status

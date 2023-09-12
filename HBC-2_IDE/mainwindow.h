@@ -23,7 +23,6 @@
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
-//#include "cpuStateViewer.h"
 
 #define IDE_VERSION QString("0.1")
 
@@ -135,6 +134,7 @@ class MainWindow : public QMainWindow
         void settingsAction();
         // Assembly actions
         void assembleAction();
+        void memoryTargetAction(bool ramToggle);
         void showBinaryAction();
         // Emulator actions
         void runEmulatorAction();
@@ -144,6 +144,8 @@ class MainWindow : public QMainWindow
         void setFrequencyTargetAction(Emulator::FrequencyTarget target);
         void plugMonitorPeripheralAction();
         void plugRTCPeripheralAction();
+        void plugKeyboardPeripheralAction();
+        void plugEepromPeripheralAction();
         void startPausedAction();
         // Tools actions
         void openCpuStateViewer();
@@ -191,6 +193,9 @@ class MainWindow : public QMainWindow
         QAction *m_quitAction;
         QMenu *m_assemblerMenu;
         QAction *m_assembleAction;
+        QMenu *m_memoryTargetMenu;
+        QAction *m_ramTargetToggle;
+        QAction *m_eepromTargetToggle;
         QAction *m_showBinOutputAction;
         QMenu *m_emulatorMenu;
         QAction *m_runEmulatorAction;
@@ -208,6 +213,8 @@ class MainWindow : public QMainWindow
         QMenu *m_emulatorPeripheralsMenu;
         QAction *m_monitorToggle;
         QAction *m_rtcToggle;
+        QAction *m_keyboardToggle;
+        QAction *m_eepromToggle;
         QAction *m_startPausedToggle;
         QMenu *m_toolsMenu;
         QAction *m_openCpuStateViewerAction;

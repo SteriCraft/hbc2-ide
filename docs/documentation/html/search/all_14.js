@@ -1,9 +1,8 @@
 var searchData=
 [
-  ['v1_5fmask_340',['V1_MASK',['../namespace_cpu.html#a17d4d59c148e39a8318e7f826610b3b4',1,'Cpu']]],
-  ['v2_5fmask_341',['V2_MASK',['../namespace_cpu.html#ab1e4a0b3c47a6ac20a4a0ae2fd7b7c9b',1,'Cpu']]],
-  ['values_342',['values',['../struct_assembly_1_1_variable.html#a277c0411e39cf4216f7049c5ad7a441d',1,'Assembly::Variable']]],
-  ['variable_343',['Variable',['../struct_assembly_1_1_variable.html',1,'Assembly']]],
-  ['videodata_344',['VideoData',['../struct_monitor_1_1_video_data.html',1,'Monitor']]],
-  ['vx_5fmask_345',['VX_MASK',['../namespace_cpu.html#a4ea699c1f85e0f979f3367107a44e91d',1,'Cpu']]]
+  ['undo_364',['undo',['../class_q_hex_edit.html#a57a6f775cd612f901567cc005988c6de',1,'QHexEdit']]],
+  ['update_365',['update',['../class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4',1,'BinaryViewer::update(const QByteArray ramData)'],['../class_binary_viewer.html#a17a1ca09dbab465c4371817101b371b8',1,'BinaryViewer::update(const QByteArray ramData, const QByteArray eepromData)'],['../class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4',1,'CpuStateViewer::update()']]],
+  ['usekeyboard_366',['useKeyboard',['../struct_emulator_1_1_status.html#a6ed265a6c144748d0409a011f123987a',1,'Emulator::Status']]],
+  ['usemonitor_367',['useMonitor',['../struct_emulator_1_1_status.html#a66a14d5f17f212d17af08818ff5f8977',1,'Emulator::Status']]],
+  ['usertc_368',['useRTC',['../struct_emulator_1_1_status.html#ad3b2b2dda731e40fec15dfee05130c38',1,'Emulator::Status']]]
 ];

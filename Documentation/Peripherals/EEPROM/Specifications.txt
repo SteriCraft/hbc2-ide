@@ -1,0 +1,10 @@
+=== EEPROM Specifications ===
+ROM can hold up to 1 Megabyte of data (20-bit addresses)
+It has 5 ports (one for command, one for data, 3 for address)
+
+-- Pinout--
+The CPU has a "HALT" pin to prevent it from executing instructions.
+The ROM uses that pin to hold the CPU on startup, while it's dumping data.
+
+-- DATA DUMP --
+On initialization, the EEPROM copies the IVT (0x100-0x1FF), the first 512 bytes of program (0x300-0x4FF) and interrupts handlers (0xF000-0xFFFF) in the RAM.

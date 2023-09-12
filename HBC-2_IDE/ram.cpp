@@ -2,18 +2,18 @@
 
 void Ram::write(HbcRam &ram, Word address, Byte data)
 {
-    ram.m_lock.lock();
-    ram.m_memory[address] = data;
-    ram.m_lock.unlock();
+    ram.mutex.lock();
+    ram.memory[address] = data;
+    ram.mutex.unlock();
 }
 
 Byte Ram::read(HbcRam &ram, Word address)
 {
     Byte valueRead;
 
-    ram.m_lock.lock();
-    valueRead = ram.m_memory[address];
-    ram.m_lock.unlock();
+    ram.mutex.lock();
+    valueRead = ram.memory[address];
+    ram.mutex.unlock();
 
     return valueRead;
 }
@@ -22,12 +22,12 @@ bool Ram::setContent(HbcRam &ram, QByteArray data)
 {
     if (data.size() == MEMORY_SIZE)
     {
-        ram.m_lock.lock();
+        ram.mutex.lock();
         for (unsigned int i(0); i < data.size(); i++)
         {
-            ram.m_memory[i] = data[i];
+            ram.memory[i] = data[i];
         }
-        ram.m_lock.unlock();
+        ram.mutex.unlock();
 
         return true;
     }
@@ -35,4 +35,14 @@ bool Ram::setContent(HbcRam &ram, QByteArray data)
     {
         return false;
     }
+}
+
+void Ram::fillNull(HbcRam &ram)
+{
+    ram.mutex.lock();
+    for (unsigned int i(0); i < MEMORY_SIZE; i++)
+    {
+        ram.memory[i] = 0x00;
+    }
+    ram.mutex.unlock();
 }

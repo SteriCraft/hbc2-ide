@@ -1,8 +1,12 @@
 #include "binaryViewer.h"
+#include "qspinbox.h"
 
 #include <QIcon>
 #include <QDebug>
 #include <QPushButton>
+#include <QButtonGroup>
+#include <QVBoxLayout>
+#include <QDialogButtonBox>
 
 BinaryViewer* BinaryViewer::m_singleton = nullptr;
 
@@ -16,10 +20,25 @@ BinaryViewer* BinaryViewer::getInstance(QWidget *parent)
     return m_singleton;
 }
 
-void BinaryViewer::update(const QByteArray data)
+void BinaryViewer::update(const QByteArray ramData)
 {
     if (m_singleton != nullptr)
-        m_singleton->m_hexEditor->setData(data);
+    {
+        m_singleton->m_ramData = ramData;
+        m_singleton->m_selectEepromButton->setChecked(false);
+        m_singleton->m_selectRamButton->setChecked(true);
+
+        m_singleton->showRamContent();
+    }
+}
+
+void BinaryViewer::update(const QByteArray ramData, const QByteArray eepromData)
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->m_ramData = ramData;
+        m_singleton->m_eepromData = eepromData;
+    }
 }
 
 void BinaryViewer::highlightInstruction(Word programCounter)
@@ -27,6 +46,35 @@ void BinaryViewer::highlightInstruction(Word programCounter)
     if (m_singleton != nullptr)
     {
         m_singleton->m_hexEditor->selectData(programCounter, Cpu::INSTRUCTION_SIZE);
+    }
+}
+
+void BinaryViewer::showRam()
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->m_selectEepromButton->setChecked(false);
+        m_singleton->m_selectRamButton->setChecked(true);
+        m_singleton->showRamContent();
+    }
+}
+
+void BinaryViewer::showEeprom()
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->m_selectEepromButton->setCheckable(true);
+        m_singleton->m_selectEepromButton->setChecked(true);
+        m_singleton->m_selectRamButton->setChecked(false);
+        m_singleton->showEepromContent(true);
+    }
+}
+
+void BinaryViewer::enableEepromSelect(bool enable)
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->m_selectEepromButton->setCheckable(enable);
     }
 }
 
@@ -45,11 +93,49 @@ BinaryViewer::~BinaryViewer()
     delete m_hexEditor;
 }
 
+// PRIVATE SLOTS
+void BinaryViewer::showRamContent()
+{
+    m_showRam = true;
+    m_hexEditor->setData(m_ramData);
+    m_addressSpinBox->allow20Bits(false);
+}
+
+void BinaryViewer::showEepromContent(bool toggled)
+{
+    if (toggled)
+    {
+        m_showRam = false;
+        m_hexEditor->setData(m_eepromData);
+        m_addressSpinBox->allow20Bits(true);
+    }
+}
+
+void BinaryViewer::gotoAddress()
+{
+    unsigned int address(m_addressSpinBox->hexValue());
+
+    m_hexEditor->gotoAddress(address);
+}
+
 // PRIVATE
 BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 {
+    m_showRam = true;
+
     setWindowTitle(tr("Binary viewer"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    QButtonGroup *memorySelectionGroup = new QButtonGroup(this);
+    m_selectRamButton = new QRadioButton(tr("RAM"), this);
+    m_selectEepromButton = new QRadioButton(tr("EEPROM"), this);
+    m_selectRamButton->setChecked(true);
+    m_selectEepromButton->setCheckable(false);
+    memorySelectionGroup->addButton(m_selectRamButton);
+    memorySelectionGroup->addButton(m_selectEepromButton);
+    QHBoxLayout *selectButtonsLayout = new QHBoxLayout;
+    selectButtonsLayout->addWidget(m_selectRamButton);
+    selectButtonsLayout->addWidget(m_selectEepromButton);
 
     m_hexEditor = new QHexEdit(this);
 
@@ -66,12 +152,23 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     setFixedWidth(BINARY_DIALOG_WIDTH);
     setFixedHeight(BINARY_DIALOG_WIDTH);
 
+    QPushButton *gotoAddressButton = new QPushButton(tr("Goto address"), this);
+    m_addressSpinBox = new HexSpinBox(false, this);
+    QHBoxLayout *gotoAddressLayout = new QHBoxLayout;
+    gotoAddressLayout->addWidget(gotoAddressButton);
+    gotoAddressLayout->addWidget(m_addressSpinBox);
+
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addLayout(selectButtonsLayout);
     mainLayout->addWidget(m_hexEditor);
+    mainLayout->addLayout(gotoAddressLayout);
     mainLayout->addWidget(closeButton);
     setLayout(mainLayout);
 
+    connect(m_selectRamButton, SIGNAL(toggled(bool)), this, SLOT(showRamContent()));
+    connect(m_selectEepromButton, SIGNAL(toggled(bool)), this, SLOT(showEepromContent(bool)));
+    connect(gotoAddressButton, SIGNAL(clicked()), this, SLOT(gotoAddress()));
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }

@@ -78,28 +78,40 @@ $(function() {
 <p>QDialog to display hexadecimal data.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;QDialog&gt;</code><br />
-<code>#include &lt;QVBoxLayout&gt;</code><br />
-<code>#include &lt;QDialogButtonBox&gt;</code><br />
+<code>#include &lt;QRadioButton&gt;</code><br />
+<code>#include &lt;QSpinBox&gt;</code><br />
 <code>#include &quot;<a class="el" href="qhexedit_8h_source.html">qhexedit.h</a>&quot;</code><br />
-<code>#include &quot;<a class="el" href="computer_details_8h_source.html">computerDetails.h</a>&quot;</code><br />
+<code>#include &quot;eeprom.h&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for binaryViewer.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="binary_viewer_8h__incl.png" border="0" usemap="#a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2binary_viewer_8h" alt=""/></div>
 <map name="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2binary_viewer_8h" id="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2binary_viewer_8h">
-<area shape="rect" title="QDialog to display hexadecimal data." alt="" coords="212,5,409,61"/>
+<area shape="rect" title="QDialog to display hexadecimal data." alt="" coords="184,5,381,61"/>
 <area shape="rect" title=" " alt="" coords="5,109,80,136"/>
-<area shape="rect" title=" " alt="" coords="105,109,215,136"/>
-<area shape="rect" title=" " alt="" coords="239,109,382,136"/>
-<area shape="rect" href="qhexedit_8h.html" title="QHexEdit is a binary editor widget for Qt." alt="" coords="407,109,497,136"/>
-<area shape="rect" href="computer_details_8h.html" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="654,109,797,136"/>
-<area shape="rect" title=" " alt="" coords="112,184,264,211"/>
-<area shape="rect" title=" " alt="" coords="288,184,344,211"/>
-<area shape="rect" title=" " alt="" coords="368,184,437,211"/>
-<area shape="rect" href="chunks_8h_source.html" title=" " alt="" coords="461,184,541,211"/>
-<area shape="rect" href="commands_8h_source.html" title=" " alt="" coords="565,184,672,211"/>
-<area shape="rect" title=" " alt="" coords="696,184,755,211"/>
-<area shape="rect" title=" " alt="" coords="779,184,853,211"/>
+<area shape="rect" title=" " alt="" coords="104,109,216,136"/>
+<area shape="rect" title=" " alt="" coords="240,109,325,136"/>
+<area shape="rect" href="qhexedit_8h.html" title="QHexEdit is a binary editor widget for Qt." alt="" coords="349,109,440,136"/>
+<area shape="rect" href="eeprom_8h_source.html" title=" " alt="" coords="695,109,779,136"/>
+<area shape="rect" title=" " alt="" coords="148,184,300,211"/>
+<area shape="rect" title=" " alt="" coords="324,184,380,211"/>
+<area shape="rect" title=" " alt="" coords="404,184,473,211"/>
+<area shape="rect" href="chunks_8h_source.html" title=" " alt="" coords="497,184,577,211"/>
+<area shape="rect" href="commands_8h_source.html" title=" " alt="" coords="17,184,124,211"/>
+<area shape="rect" href="peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="602,184,702,211"/>
+<area shape="rect" title=" " alt="" coords="935,408,1009,435"/>
+<area shape="rect" href="ram_8h.html" title="HBC&#45;2 Random Access Memory implementation." alt="" coords="803,184,863,211"/>
+<area shape="rect" title=" " alt="" coords="671,259,753,285"/>
+<area shape="rect" title=" " alt="" coords="505,259,567,285"/>
+<area shape="rect" href="iod_8h.html" title="Defines the Input/Output Device." alt="" coords="591,259,646,285"/>
+<area shape="rect" href="console_8h.html" title="Console widget for the IDE." alt="" coords="397,259,481,285"/>
+<area shape="rect" title=" " alt="" coords="587,333,650,360"/>
+<area shape="rect" href="computer_details_8h.html" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="719,333,862,360"/>
+<area shape="rect" title=" " alt="" coords="761,408,820,435"/>
+<area shape="rect" title=" " alt="" coords="315,333,381,360"/>
+<area shape="rect" title=" " alt="" coords="405,333,489,360"/>
+<area shape="rect" title=" " alt="" coords="829,259,926,285"/>
+<area shape="rect" title=" " alt="" coords="951,259,1025,285"/>
 </map>
 </div>
 </div>
@@ -107,6 +119,9 @@ Include dependency graph for binaryViewer.h:</div>
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="nested-classes"></a>
 Classes</h2></td></tr>
+<tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hex_spin_box.html">HexSpinBox</a></td></tr>
+<tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">A hexadecimal spin box capable of doing 20 or 16 bits long values.  <a href="class_hex_spin_box.html#details">More...</a><br /></td></tr>
+<tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:"><td class="memItemLeft" align="right" valign="top">class &#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html">BinaryViewer</a></td></tr>
 <tr class="memdesc:"><td class="mdescLeft">&#160;</td><td class="mdescRight">Singleton of the binary viewer.  <a href="class_binary_viewer.html#details">More...</a><br /></td></tr>
 <tr class="separator:"><td class="memSeparator" colspan="2">&#160;</td></tr>

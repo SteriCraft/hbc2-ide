@@ -100,11 +100,14 @@ This graph shows which files directly or indirectly include this file:</div>
 <map name="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2iod_8hdep" id="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2iod_8hdep">
 <area shape="rect" title="Defines the Input/Output Device." alt="" coords="123,5,295,61"/>
 <area shape="rect" href="motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="5,109,201,165"/>
-<area shape="rect" href="peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="226,109,405,165"/>
-<area shape="rect" href="emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="79,317,251,373"/>
-<area shape="rect" href="mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="67,421,262,477"/>
-<area shape="rect" href="monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="141,213,313,269"/>
-<area shape="rect" href="real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="337,213,544,269"/>
+<area shape="rect" href="peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="269,109,447,165"/>
+<area shape="rect" href="emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="155,421,327,477"/>
+<area shape="rect" href="mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="143,525,338,581"/>
+<area shape="rect" href="eeprom_8h_source.html" title=" " alt="" coords="119,213,291,269"/>
+<area shape="rect" href="keyboard_8h.html" title="Keyboard device derived from HbcPeripheral." alt="" coords="321,213,493,269"/>
+<area shape="rect" href="real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="524,317,731,373"/>
+<area shape="rect" href="binary_viewer_8h.html" title="QDialog to display hexadecimal data." alt="" coords="106,317,303,373"/>
+<area shape="rect" href="monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="328,317,500,373"/>
 </map>
 </div>
 </div>
@@ -138,9 +141,9 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>Iod::tick</b> (<a cla
 <tr class="memitem:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#ae60dea7a3361e3c6c45f2a2b603a2148">Iod::triggerInterrupt</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, Byte peripheralFirstPortID)</td></tr>
 <tr class="memdesc:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="mdescLeft">&#160;</td><td class="mdescRight">Triggers an interrupt for <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a>.  <a href="namespace_iod.html#ae60dea7a3361e3c6c45f2a2b603a2148">More...</a><br /></td></tr>
 <tr class="separator:ae60dea7a3361e3c6c45f2a2b603a2148"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="memItemLeft" align="right" valign="top">std::vector&lt; PortSocket &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#aa5910ac8a10cabd6c74e7da0999ea5dd">Iod::requestPortsConnexions</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, Byte peripheralId, unsigned int nbPortsRequested)</td></tr>
-<tr class="memdesc:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="mdescLeft">&#160;</td><td class="mdescRight">Requests <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> for available ports.  <a href="namespace_iod.html#aa5910ac8a10cabd6c74e7da0999ea5dd">More...</a><br /></td></tr>
-<tr class="separator:aa5910ac8a10cabd6c74e7da0999ea5dd"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aaa30fd041351261eb53612d61f64a40f"><td class="memItemLeft" align="right" valign="top">std::vector&lt; PortSocket &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_iod.html#aaa30fd041351261eb53612d61f64a40f">Iod::requestPortsConnexions</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> &amp;iod, Byte peripheralId, Byte nbPortsRequested)</td></tr>
+<tr class="memdesc:aaa30fd041351261eb53612d61f64a40f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Requests <a class="el" href="struct_hbc_iod.html" title="Stores the Iod state.">HbcIod</a> for available ports.  <a href="namespace_iod.html#aaa30fd041351261eb53612d61f64a40f">More...</a><br /></td></tr>
+<tr class="separator:aaa30fd041351261eb53612d61f64a40f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Defines the Input/Output Device. </p>

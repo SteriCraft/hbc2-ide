@@ -1,3 +1,4 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$struct_iod_1_1_port.html" title="Used by HbcIod to store port information, accessed by peripherals through PortSocket." alt="" coords="5,5,81,32"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,91,32"/>
+<area shape="rect" id="node2" href="$class_hex_spin_box.html" title="A hexadecimal spin box capable of doing 20 or 16 bits long values." alt="" coords="139,5,240,32"/>
 </map>

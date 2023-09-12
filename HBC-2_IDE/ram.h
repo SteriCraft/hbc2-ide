@@ -20,8 +20,8 @@
  */
 struct HbcRam
 {
-    QMutex m_lock;
-    Byte m_memory[Ram::MEMORY_SIZE]; //!< 65,536 bytes
+    QMutex mutex;
+    Byte memory[Ram::MEMORY_SIZE]; //!< 65,536 bytes
 };
 
 // Already documented in computerDetails.h
@@ -48,6 +48,11 @@ namespace Ram
      * \return <b>false</b> if the given binary data size is not equal to Ram::MEMORY_SIZE
      */
     bool setContent(HbcRam &ram, QByteArray data);
+
+    /*!
+     * \brief Fills the memory with value <b>0x00</b>
+     */
+    void fillNull(HbcRam &ram);
 }
 
 #endif // RAM_H

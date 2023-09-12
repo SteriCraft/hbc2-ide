@@ -100,6 +100,8 @@ namespace Monitor
  * This class is responsible for emulating the HBC-2 monitor. It uses a separate thread to increase performance.<br>
  * It uses a thread safe struct (Monitor::Status) to be controlled by the main thread.
  *
+ * <b>Device ID:</b> 0x4A
+ *
  * <h2>Color palette</h2>
  * \image html color_palette.png
  * HbcMonitor uses a 4-bit color palette.<br>

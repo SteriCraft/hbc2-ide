@@ -109,7 +109,58 @@ bool HbcEmulator::stopCmd()
     return success;
 }
 
-bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName)
+bool HbcEmulator::loadProject(QString romBinaryFilePath, QString projectName)
+{
+    bool success = false;
+
+    if (getState() == Emulator::State::NOT_INITIALIZED || getState() == Emulator::State::READY)
+    {
+        m_status.projectName = projectName.toStdString();
+        m_computer.initialRamData.clear();
+
+        for (unsigned int i(0); i < m_computer.peripherals.size(); i++)
+        {
+            delete m_computer.peripherals[i];
+        }
+        m_computer.peripherals.clear();
+
+        if (m_status.useMonitor)
+        {
+            m_computer.peripherals.push_back(new HbcMonitor(&m_computer.motherboard.m_iod, m_consoleOutput));
+            m_computer.monitor = dynamic_cast<HbcMonitor*>(m_computer.peripherals.back());
+        }
+
+        if (m_status.useRTC)
+        {
+            m_computer.peripherals.push_back(new RealTimeClock::HbcRealTimeClock(&m_computer.motherboard.m_iod, m_consoleOutput));
+            m_computer.rtc = dynamic_cast<RealTimeClock::HbcRealTimeClock*>(m_computer.peripherals.back());
+        }
+
+        if (m_status.useKeyboard)
+        {
+            m_computer.peripherals.push_back(new Keyboard::HbcKeyboard(&m_computer.motherboard.m_iod, m_consoleOutput));
+            m_computer.keyboard = dynamic_cast<Keyboard::HbcKeyboard*>(m_computer.peripherals.back());
+        }
+
+        // EEPROM always loaded because this function is called only if the EEPROM is plugged in by the IDE
+        m_computer.peripherals.push_back(new Eeprom::HbcEeprom(romBinaryFilePath, &m_computer.motherboard.m_ram, &m_computer.motherboard.m_iod, m_consoleOutput));
+        m_computer.eeprom = dynamic_cast<Eeprom::HbcEeprom*>(m_computer.peripherals.back());
+
+        initComputer();
+
+        m_status.state = Emulator::State::READY;
+        success = true;
+    }
+    else
+    {
+        m_consoleOutput->log("Unable to set initial binary data because the emulator is running");
+        m_consoleOutput->returnLine();
+    }
+
+    return success;
+}
+
+bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
 {
     bool success = false;
 
@@ -117,7 +168,7 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
     {
         if (initialRamData.size() == Ram::MEMORY_SIZE)
         {
-            m_status.projectName = projectName;
+            m_status.projectName = projectName.toStdString();
             m_computer.initialRamData = initialRamData;
 
             for (unsigned int i(0); i < m_computer.peripherals.size(); i++)
@@ -144,6 +195,8 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
                 m_computer.keyboard = dynamic_cast<Keyboard::HbcKeyboard*>(m_computer.peripherals.back());
             }
 
+            // EEPROM never loaded because this function is only called if the EEPROM is not plugged in by the IDE
+
             initComputer();
 
             m_status.state = Emulator::State::READY;
@@ -164,23 +217,30 @@ bool HbcEmulator::loadProject(QByteArray initialRamData, std::string projectName
     return success;
 }
 
-bool HbcEmulator::loadProject(QByteArray initialRamData, QString projectName)
-{
-    return loadProject(initialRamData, projectName.toStdString());
-}
-
-const QByteArray HbcEmulator::getCurrentBinaryData()
+const QByteArray HbcEmulator::getCurrentRamBinaryData()
 {
     QByteArray exportContent;
 
-    m_computer.motherboard.m_ram.m_lock.lock();
+    m_computer.motherboard.m_ram.mutex.lock();
 
     for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
     {
-        exportContent.push_back(m_computer.motherboard.m_ram.m_memory[i]);
+        exportContent.push_back(m_computer.motherboard.m_ram.memory[i]);
     }
 
-    m_computer.motherboard.m_ram.m_lock.unlock();
+    m_computer.motherboard.m_ram.mutex.unlock();
+
+    return exportContent;
+}
+
+const QByteArray HbcEmulator::getCurrentEepromBinaryData()
+{
+    QByteArray exportContent;
+
+    if (m_computer.eeprom != nullptr)
+    {
+        exportContent = m_computer.eeprom->getMemoryContent();
+    }
 
     return exportContent;
 }
@@ -332,16 +392,16 @@ void HbcEmulator::run()
         // --- COMMANDS CHECKS ---
         if (commandsTimer.elapsed() >= 100) // in ms
         {
+            Emulator::Command executedCommand; // To emit signals later (to avoid threads blocking each other)
             m_status.mutex.lock();
 
             frequencyTarget = m_status.frequencyTarget;
 
+            executedCommand = m_status.command;
             if (m_status.command == Emulator::Command::RUN)
             {
                 m_status.state = Emulator::State::RUNNING;
                 m_status.command = Emulator::Command::NONE;
-
-                emit statusChanged(m_status.state);
 
                 frequencyTimer.restart();
                 frequencyTargetTimer.restart();
@@ -354,7 +414,6 @@ void HbcEmulator::run()
 
                 tickComputer(true);
                 storeCpuStatus();
-                emit stepped();
             }
             else if (m_status.command == Emulator::Command::PAUSE)
             {
@@ -362,7 +421,6 @@ void HbcEmulator::run()
                 m_status.command = Emulator::Command::NONE;
 
                 storeCpuStatus();
-                emit statusChanged(m_status.state);
 
                 m_consoleOutput->log("Emulator paused");
             }
@@ -372,7 +430,6 @@ void HbcEmulator::run()
                 m_status.command = Emulator::Command::NONE;
 
                 storeCpuStatus(true);
-                emit statusChanged(m_status.state);
 
                 initComputer();
 
@@ -388,6 +445,15 @@ void HbcEmulator::run()
 
             currentState = m_status.state;
             m_status.mutex.unlock();
+
+            if (executedCommand == Emulator::Command::RUN || executedCommand == Emulator::Command::PAUSE || executedCommand == Emulator::Command::STOP)
+            {
+                emit statusChanged(currentState);
+            }
+            else if (executedCommand == Emulator::Command::STEP)
+            {
+                emit stepped();
+            }
 
             commandsTimer.restart();
         }

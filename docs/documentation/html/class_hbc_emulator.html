@@ -124,14 +124,16 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a430a463c0a620202bb11c72cc68c3937"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a430a463c0a620202bb11c72cc68c3937">stopCmd</a> ()</td></tr>
 <tr class="memdesc:a430a463c0a620202bb11c72cc68c3937"><td class="mdescLeft">&#160;</td><td class="mdescRight">Stops the emulator.  <a href="class_hbc_emulator.html#a430a463c0a620202bb11c72cc68c3937">More...</a><br /></td></tr>
 <tr class="separator:a430a463c0a620202bb11c72cc68c3937"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a4ce5b46b112bcf9c1af8ae1441c46f2e"><td class="memItemLeft" align="right" valign="top"><a id="a4ce5b46b112bcf9c1af8ae1441c46f2e"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadProject</b> (QByteArray initialRamData, std::string projectName)</td></tr>
-<tr class="separator:a4ce5b46b112bcf9c1af8ae1441c46f2e"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a0445b6b41695e021b9205290c8d1abf7"><td class="memItemLeft" align="right" valign="top"><a id="a0445b6b41695e021b9205290c8d1abf7"></a>
-bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadProject</b> (QByteArray initialRamData, QString projectName)</td></tr>
+<tr class="memitem:a23dd733e87b95f6b75c64825c4936a56"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">loadProject</a> (QString romBinaryFilePath, QString projectName)</td></tr>
+<tr class="memdesc:a23dd733e87b95f6b75c64825c4936a56"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the emulator with EEPROM data before running.  <a href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">More...</a><br /></td></tr>
+<tr class="separator:a23dd733e87b95f6b75c64825c4936a56"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a0445b6b41695e021b9205290c8d1abf7"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a0445b6b41695e021b9205290c8d1abf7">loadProject</a> (QByteArray initialRamData, QString projectName)</td></tr>
+<tr class="memdesc:a0445b6b41695e021b9205290c8d1abf7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Loads the emulator with RAM data before running.  <a href="class_hbc_emulator.html#a0445b6b41695e021b9205290c8d1abf7">More...</a><br /></td></tr>
 <tr class="separator:a0445b6b41695e021b9205290c8d1abf7"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a6f0c5343676ac2c52d9c489f78aeb69c"><td class="memItemLeft" align="right" valign="top">const QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a6f0c5343676ac2c52d9c489f78aeb69c">getCurrentBinaryData</a> ()</td></tr>
-<tr class="separator:a6f0c5343676ac2c52d9c489f78aeb69c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a5da5491e9863b06be8b2f2aceb126299"><td class="memItemLeft" align="right" valign="top">const QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a5da5491e9863b06be8b2f2aceb126299">getCurrentRamBinaryData</a> ()</td></tr>
+<tr class="separator:a5da5491e9863b06be8b2f2aceb126299"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae7d676e0065db2dc7e5085b6949bfc37"><td class="memItemLeft" align="right" valign="top">const QByteArray&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#ae7d676e0065db2dc7e5085b6949bfc37">getCurrentEepromBinaryData</a> ()</td></tr>
+<tr class="separator:ae7d676e0065db2dc7e5085b6949bfc37"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a458fa0c8d1ab304aecec12307758fab5"><td class="memItemLeft" align="right" valign="top">const <a class="el" href="struct_cpu_status.html">CpuStatus</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a458fa0c8d1ab304aecec12307758fab5">getCurrentCpuStatus</a> ()</td></tr>
 <tr class="separator:a458fa0c8d1ab304aecec12307758fab5"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa39abff5c3b253a920e7cef2853ea393"><td class="memItemLeft" align="right" valign="top">const Word&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#aa39abff5c3b253a920e7cef2853ea393">getCurrentProgramCounter</a> ()</td></tr>
@@ -139,6 +141,12 @@ bool&#160;</td><td class="memItemRight" valign="bottom"><b>loadProject</b> (QByt
 <tr class="memitem:a4634273ea4a9602e6d0062c715ec3a29"><td class="memItemLeft" align="right" valign="top"><a id="a4634273ea4a9602e6d0062c715ec3a29"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>useMonitor</b> (bool enable)</td></tr>
 <tr class="separator:a4634273ea4a9602e6d0062c715ec3a29"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acbada330b22bd17f2c32413f7a81cc23"><td class="memItemLeft" align="right" valign="top"><a id="acbada330b22bd17f2c32413f7a81cc23"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>useRTC</b> (bool enable)</td></tr>
+<tr class="separator:acbada330b22bd17f2c32413f7a81cc23"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:adf4a4e1886dfb82f426a8fdce0e641ed"><td class="memItemLeft" align="right" valign="top"><a id="adf4a4e1886dfb82f426a8fdce0e641ed"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><b>useKeyboard</b> (bool enable)</td></tr>
+<tr class="separator:adf4a4e1886dfb82f426a8fdce0e641ed"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:afee3466d62a5da00a3d6ffb5c3defc75"><td class="memItemLeft" align="right" valign="top"><a id="afee3466d62a5da00a3d6ffb5c3defc75"></a>
 void&#160;</td><td class="memItemRight" valign="bottom"><b>setStartPaused</b> (bool enable)</td></tr>
 <tr class="separator:afee3466d62a5da00a3d6ffb5c3defc75"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -148,6 +156,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>setStartPaused</b> (b
 <tr class="separator:ab31889d0b7f5d02621e87b69665ad850"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a21161e5c5dbb2818527bdef02b81823b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_hbc_monitor.html">HbcMonitor</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a21161e5c5dbb2818527bdef02b81823b">getHbcMonitor</a> ()</td></tr>
 <tr class="separator:a21161e5c5dbb2818527bdef02b81823b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a07771ecc30ace6ff8dd416ae012f7df3"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a07771ecc30ace6ff8dd416ae012f7df3">getHbcRealTimeClock</a> ()</td></tr>
+<tr class="separator:a07771ecc30ace6ff8dd416ae012f7df3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a276cf315f4f4acbae6f0c36d2fb327ff"><td class="memItemLeft" align="right" valign="top"><a class="el" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#a276cf315f4f4acbae6f0c36d2fb327ff">getHbcKeyboard</a> ()</td></tr>
+<tr class="separator:a276cf315f4f4acbae6f0c36d2fb327ff"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ad0379729554633eed39562a0d2f874d3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3">setFrequencyTarget</a> (Emulator::FrequencyTarget target)</td></tr>
 <tr class="separator:ad0379729554633eed39562a0d2f874d3"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
@@ -176,7 +188,7 @@ Static Public Member Functions</h2></td></tr>
 <table class="doxtable">
 <caption>List of available commands</caption>
 <tr>
-<th>ID </th><th>Command </th><th>Description </th><th>Keyboard shortcut  </th></tr>
+<th>ID </th><th>Command </th><th>Description </th><th><a class="el" href="namespace_keyboard.html">Keyboard</a> shortcut  </th></tr>
 <tr>
 <td>0 </td><td>NONE </td><td>No operation </td><td></td></tr>
 <tr>
@@ -192,24 +204,6 @@ Static Public Member Functions</h2></td></tr>
 </table>
 <p>Any invalid command will result in <b>NONE</b>. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="a6f0c5343676ac2c52d9c489f78aeb69c"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a6f0c5343676ac2c52d9c489f78aeb69c">&#9670;&nbsp;</a></span>getCurrentBinaryData()</h2>
-
-<div class="memitem">
-<div class="memproto">
-      <table class="memname">
-        <tr>
-          <td class="memname">const QByteArray HbcEmulator::getCurrentBinaryData </td>
-          <td>(</td>
-          <td class="paramname"></td><td>)</td>
-          <td></td>
-        </tr>
-      </table>
-</div><div class="memdoc">
-<dl class="section return"><dt>Returns</dt><dd>the current content of memory </dd></dl>
-
-</div>
-</div>
 <a id="a458fa0c8d1ab304aecec12307758fab5"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a458fa0c8d1ab304aecec12307758fab5">&#9670;&nbsp;</a></span>getCurrentCpuStatus()</h2>
 
@@ -225,6 +219,24 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>the current <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a> status </dd></dl>
+
+</div>
+</div>
+<a id="ae7d676e0065db2dc7e5085b6949bfc37"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae7d676e0065db2dc7e5085b6949bfc37">&#9670;&nbsp;</a></span>getCurrentEepromBinaryData()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const QByteArray HbcEmulator::getCurrentEepromBinaryData </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>the current content of EEPROM </dd></dl>
 
 </div>
 </div>
@@ -246,6 +258,24 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a5da5491e9863b06be8b2f2aceb126299"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a5da5491e9863b06be8b2f2aceb126299">&#9670;&nbsp;</a></span>getCurrentRamBinaryData()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">const QByteArray HbcEmulator::getCurrentRamBinaryData </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>the current content of RAM </dd></dl>
+
+</div>
+</div>
 <a id="ab31889d0b7f5d02621e87b69665ad850"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#ab31889d0b7f5d02621e87b69665ad850">&#9670;&nbsp;</a></span>getFrequencyTarget()</h2>
 
@@ -264,6 +294,24 @@ Static Public Member Functions</h2></td></tr>
 
 </div>
 </div>
+<a id="a276cf315f4f4acbae6f0c36d2fb327ff"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a276cf315f4f4acbae6f0c36d2fb327ff">&#9670;&nbsp;</a></span>getHbcKeyboard()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> * HbcEmulator::getHbcKeyboard </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>a pointer to the keyboard peripheral <em>(<b>nullptr</b> if no keyboard plugged in)</em> </dd></dl>
+
+</div>
+</div>
 <a id="a21161e5c5dbb2818527bdef02b81823b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a21161e5c5dbb2818527bdef02b81823b">&#9670;&nbsp;</a></span>getHbcMonitor()</h2>
 
@@ -279,6 +327,24 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>a pointer to the monitor peripheral <em>(<b>nullptr</b> if no monitor plugged in)</em> </dd></dl>
+
+</div>
+</div>
+<a id="a07771ecc30ace6ff8dd416ae012f7df3"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a07771ecc30ace6ff8dd416ae012f7df3">&#9670;&nbsp;</a></span>getHbcRealTimeClock()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname"><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a> * HbcEmulator::getHbcRealTimeClock </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>a pointer to the RTC peripheral <em>(<b>nullptr</b> if no RTC plugged in)</em> </dd></dl>
 
 </div>
 </div>
@@ -341,6 +407,82 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>current emulator's state </dd></dl>
+
+</div>
+</div>
+<a id="a0445b6b41695e021b9205290c8d1abf7"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a0445b6b41695e021b9205290c8d1abf7">&#9670;&nbsp;</a></span>loadProject() <span class="overload">[1/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool HbcEmulator::loadProject </td>
+          <td>(</td>
+          <td class="paramtype">QByteArray&#160;</td>
+          <td class="paramname"><em>initialRamData</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>projectName</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Loads the emulator with RAM data before running. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">initialRamData</td><td>Array of 65,536 bytes aimed at the RAM </td></tr>
+    <tr><td class="paramname">projectName</td><td>Name of the project loaded </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><b>false</b> if loading fails </dd></dl>
+
+</div>
+</div>
+<a id="a23dd733e87b95f6b75c64825c4936a56"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a23dd733e87b95f6b75c64825c4936a56">&#9670;&nbsp;</a></span>loadProject() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool HbcEmulator::loadProject </td>
+          <td>(</td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>romBinaryFilePath</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">QString&#160;</td>
+          <td class="paramname"><em>projectName</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Loads the emulator with EEPROM data before running. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">romBinaryFilePath</td><td>Path to the project binary file (1'048'576 bytes) </td></tr>
+    <tr><td class="paramname">projectName</td><td>Name of the project loaded </td></tr>
+  </table>
+  </dd>
+</dl>
+<dl class="section return"><dt>Returns</dt><dd><b>false</b> if loading fails </dd></dl>
 
 </div>
 </div>

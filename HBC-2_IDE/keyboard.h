@@ -101,6 +101,7 @@ namespace Keyboard
     { 0x35, 0x58 },
     { 0x1d, 0x59 },
     { 0x19, 0x5a },
+    { 0x12, 0x5b },
     { 0x22, 0x5e },
     { 0x11, 0x5f },
     { 0x10, 0x60 },
@@ -108,6 +109,39 @@ namespace Keyboard
     { 0x77, 0x7f }
     }; //!< Scan code map for azerty keyboards
 
+    /*!
+     * \class HbcKeyboard
+     * \brief Derived from HbcPeripheral, represents the Keyboard device
+     *
+     * This class is responsible for emulating the HBC-2 keyboard.
+     *
+     * <b>Device ID:</b> 0xAA
+     *
+     * <h2>Communication</h2>
+     * Like every HbcPeripheral, HbcKeyboard uses sockets connecting it to HbcIod ports to send its scan code to the HbcCpu.
+     *
+     * <table>
+     *  <caption>List of available ports</caption>
+     *  <tr>
+     *   <th>ID</th>
+     *   <th>Port</th>
+     *   <th>Description</th>
+     *  </tr>
+     *  <tr>
+     *   <td>0</td>
+     *   <td>PRESSED_SCAN_CODE</td>
+     *   <td>Holds the scan code of the pressed key</td>
+     *  </tr>
+     *  <tr>
+     *   <td>1</td>
+     *   <td>RELEASED_SCAN_CODE</td>
+     *   <td>Holds the scan code of the pressed key</td>
+     *  </tr>
+     * </table>
+     *
+     * <b>AZERTY map</b>
+     * \image html keyboard_azerty_map.png
+     */
     class HbcKeyboard : public HbcPeripheral
     {
         public:

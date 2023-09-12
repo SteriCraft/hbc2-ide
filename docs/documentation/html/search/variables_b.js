@@ -1,8 +1,9 @@
 var searchData=
 [
-  ['r1_5fmask_675',['R1_MASK',['../namespace_cpu.html#a9ef6c27456be13abe0b309ede012f5fb',1,'Cpu']]],
-  ['r2_5fmask_676',['R2_MASK',['../namespace_cpu.html#a05c80acd20e959cd6a957073fd1af968',1,'Cpu']]],
-  ['r3_5fmask_677',['R3_MASK',['../namespace_cpu.html#a3bf21d0d9c3604ef232db44c0e15c21c',1,'Cpu']]],
-  ['registers_5fnb_678',['REGISTERS_NB',['../namespace_cpu.html#a05f734653578b5a85faccedb21b71ffc',1,'Cpu']]],
-  ['rtc_5fdevice_5fid_679',['RTC_DEVICE_ID',['../namespace_real_time_clock.html#acf9bef666c3c8622d56ea481d34497fd',1,'RealTimeClock']]]
+  ['peripheralid_727',['peripheralId',['../struct_iod_1_1_port.html#a1f349865e10e100943b162a0b5f566ac',1,'Iod::Port']]],
+  ['peripherals_728',['peripherals',['../struct_emulator_1_1_computer.html#a92faf6ba9fd04a3b342d8fa0338692cf',1,'Emulator::Computer']]],
+  ['pixel_5fmode_5fbuffer_5fsize_729',['PIXEL_MODE_BUFFER_SIZE',['../namespace_monitor.html#a00bf33e995ba375e817a394bf5d4aafb',1,'Monitor']]],
+  ['portdatapointer_730',['portDataPointer',['../struct_iod_1_1_port_socket.html#a13d8ca3d1287b07337ab899a5880a65d',1,'Iod::PortSocket']]],
+  ['portid_731',['portId',['../struct_iod_1_1_port_socket.html#a2fdd991011509bec36bfa6664547606b',1,'Iod::PortSocket']]],
+  ['program_5fstart_5faddress_732',['PROGRAM_START_ADDRESS',['../namespace_cpu.html#ab8947635226f34dc183efa19a21b5d61',1,'Cpu']]]
 ];

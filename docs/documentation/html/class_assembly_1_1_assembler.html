@@ -93,9 +93,13 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="memItemLeft" align="right" valign="top"><a class="el" href="struct_assembly_1_1_byte_debug_symbol.html">ByteDebugSymbol</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a5a33795e5b1f8754ddf8f7b7ddba1b1b">getSymbolFromAddress</a> (Word address)</td></tr>
 <tr class="memdesc:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Get a debug symbol from a memory address.  <a href="class_assembly_1_1_assembler.html#a5a33795e5b1f8754ddf8f7b7ddba1b1b">More...</a><br /></td></tr>
 <tr class="separator:a5a33795e5b1f8754ddf8f7b7ddba1b1b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e">assembleProject</a> (std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; p)</td></tr>
-<tr class="memdesc:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the project and returns true it succeeded.  <a href="class_assembly_1_1_assembler.html#ae37685d2b731dc5ae5a3c8c1221ed76e">More...</a><br /></td></tr>
-<tr class="separator:ae37685d2b731dc5ae5a3c8c1221ed76e"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ae4ba888475d6d262b4fee0758b82a4d2"><td class="memItemLeft" align="right" valign="top">QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#ae4ba888475d6d262b4fee0758b82a4d2">getBinaryFilePath</a> ()</td></tr>
+<tr class="separator:ae4ba888475d6d262b4fee0758b82a4d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab643b080dc8b79de257625c56a5da453"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#ab643b080dc8b79de257625c56a5da453">isAssembledForEeprom</a> ()</td></tr>
+<tr class="separator:ab643b080dc8b79de257625c56a5da453"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a28aa51f1ceaacb713222ad797c72d07a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a28aa51f1ceaacb713222ad797c72d07a">assembleProject</a> (std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; p, bool targetEeprom)</td></tr>
+<tr class="memdesc:a28aa51f1ceaacb713222ad797c72d07a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the project and returns true it succeeded.  <a href="class_assembly_1_1_assembler.html#a28aa51f1ceaacb713222ad797c72d07a">More...</a><br /></td></tr>
+<tr class="separator:a28aa51f1ceaacb713222ad797c72d07a"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
@@ -107,8 +111,8 @@ Static Public Member Functions</h2></td></tr>
 <p>Produces a binary output for a project, usable in the emulator or a real machine.</p>
 <p>Pressing F5 will assemble the active project. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="ae37685d2b731dc5ae5a3c8c1221ed76e"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#ae37685d2b731dc5ae5a3c8c1221ed76e">&#9670;&nbsp;</a></span>assembleProject()</h2>
+<a id="a28aa51f1ceaacb713222ad797c72d07a"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a28aa51f1ceaacb713222ad797c72d07a">&#9670;&nbsp;</a></span>assembleProject()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -117,8 +121,18 @@ Static Public Member Functions</h2></td></tr>
           <td class="memname">bool Assembler::assembleProject </td>
           <td>(</td>
           <td class="paramtype">std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt;&#160;</td>
-          <td class="paramname"><em>p</em></td><td>)</td>
+          <td class="paramname"><em>p</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
           <td></td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>targetEeprom</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
         </tr>
       </table>
 </div><div class="memdoc">
@@ -128,6 +142,7 @@ Static Public Member Functions</h2></td></tr>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">p</td><td>Pointer to the project to assemble </td></tr>
+    <tr><td class="paramname">targetEeprom</td><td>Boolean selecting if the binary will be 64 KiB (RAM) or 1 MiB (EEPROM) </td></tr>
   </table>
   </dd>
 </dl>
@@ -167,6 +182,24 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>binary data after assembly with debug symbols </dd></dl>
+
+</div>
+</div>
+<a id="ae4ba888475d6d262b4fee0758b82a4d2"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ae4ba888475d6d262b4fee0758b82a4d2">&#9670;&nbsp;</a></span>getBinaryFilePath()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">QString Assembler::getBinaryFilePath </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>the path for the EEPROM binary file <b>(empty if the EEPROM was not targeted)</b> </dd></dl>
 
 </div>
 </div>
@@ -229,6 +262,24 @@ Static Public Member Functions</h2></td></tr>
 <dl class="section return"><dt>Returns</dt><dd>a struct with the original file and the line number associated to the address </dd>
 <dd>
 an empty struct if the memory address does not point to the first byte of an instruction </dd></dl>
+
+</div>
+</div>
+<a id="ab643b080dc8b79de257625c56a5da453"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ab643b080dc8b79de257625c56a5da453">&#9670;&nbsp;</a></span>isAssembledForEeprom()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">bool Assembler::isAssembledForEeprom </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd><b>true</b> if the project has been assembled in a binary file for the EEPROM </dd></dl>
 
 </div>
 </div>

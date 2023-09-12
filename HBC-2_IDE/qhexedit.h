@@ -294,6 +294,11 @@ public:
      */
     void selectData(qint64 address, qint64 nbOfBytes);
 
+    /*!
+     * Moves the cursor to a specific byte
+     */
+    void gotoAddress(qint64 address);
+
 
 public slots:
     /*! Redoes the last operation. If there is no operation to redo, i.e.

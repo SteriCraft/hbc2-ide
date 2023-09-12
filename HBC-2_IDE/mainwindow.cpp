@@ -127,6 +127,18 @@ void MainWindow::setupMenuBar()
     m_assembleAction = m_assemblerMenu->addAction(*m_assembleIcon, tr("Assemble"), this, &MainWindow::assembleAction);
     m_assembleAction->setShortcut(QKeySequence(Qt::Key_F5));
 
+    m_memoryTargetMenu = m_assemblerMenu->addMenu(tr("Memory target"));
+
+    m_ramTargetToggle = m_memoryTargetMenu->addAction(tr("RAM"), this, std::bind(&MainWindow::memoryTargetAction, this, true));
+    m_ramTargetToggle->setCheckable(true);
+    m_ramTargetToggle->setChecked(m_configManager->getRamAsDefaultMemoryTarget());
+
+    m_eepromTargetToggle = m_memoryTargetMenu->addAction(tr("EEPROM"), std::bind(&MainWindow::memoryTargetAction, this, false));
+    m_eepromTargetToggle->setCheckable(true);
+    m_eepromTargetToggle->setChecked(!m_configManager->getRamAsDefaultMemoryTarget());
+
+    m_assemblerMenu->addSeparator();
+
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
     m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F6));
 
@@ -181,13 +193,21 @@ void MainWindow::setupMenuBar()
 
     m_emulatorPeripheralsMenu = m_emulatorMenu->addMenu(tr("Peripherals"));
 
-    m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"), this, &MainWindow::plugMonitorPeripheralAction);
+    m_monitorToggle = m_emulatorPeripheralsMenu->addAction(tr("Monitor"));
     m_monitorToggle->setCheckable(true);
     m_monitorToggle->setChecked(m_configManager->getMonitorPlugged());
 
-    m_rtcToggle = m_emulatorPeripheralsMenu->addAction(tr("Real Time Clock"), this, &MainWindow::plugRTCPeripheralAction);
+    m_rtcToggle = m_emulatorPeripheralsMenu->addAction(tr("Real Time Clock"));
     m_rtcToggle->setCheckable(true);
     m_rtcToggle->setChecked(m_configManager->getRTCPlugged());
+
+    m_keyboardToggle = m_emulatorPeripheralsMenu->addAction(tr("Keyboard"));
+    m_keyboardToggle->setCheckable(true);
+    m_keyboardToggle->setChecked(m_configManager->getKeyboardPlugged());
+
+    m_eepromToggle = m_emulatorPeripheralsMenu->addAction(tr("EEPROM"), this, &MainWindow::plugEepromPeripheralAction);
+    m_eepromToggle->setCheckable(true);
+    m_eepromToggle->setChecked(m_configManager->getEepromPlugged());
 
     m_emulatorMenu->addSeparator();
 
@@ -639,7 +659,16 @@ void MainWindow::onEmulatorStepped()
 {
     Word programCounter(m_emulator->getCurrentProgramCounter());
 
-    BinaryViewer::update(m_emulator->getCurrentBinaryData());
+    if (m_eepromToggle->isChecked())
+    {
+        BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
+        BinaryViewer::showRam();
+    }
+    else
+    {
+        BinaryViewer::update(m_emulator->getCurrentRamBinaryData());
+    }
+
     BinaryViewer::highlightInstruction(programCounter);
 
     updateCpuStateViewer();
@@ -1161,8 +1190,10 @@ void MainWindow::settingsAction()
 // === ASSEMBLY AND EMULATOR ACTIONS ===
 void MainWindow::assembleAction()
 {
+    // Assemble the project
     QList<QString> impactedFilesNames = m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList();
     CustomFile *impactedFile;
+    bool assemblySucceeded;
 
     for (int i(0); i < impactedFilesNames.count(); i++)
     {
@@ -1175,39 +1206,85 @@ void MainWindow::assembleAction()
         }
     }
 
-    m_assembler->assembleProject(m_projectManager->getCurrentProject());
+    assemblySucceeded = m_assembler->assembleProject(m_projectManager->getCurrentProject(), m_eepromTargetToggle->isChecked());
 
     // Init emulator
-    plugMonitorPeripheralAction();
-    plugRTCPeripheralAction();
-    startPausedAction();
-
-    const QByteArray &data = m_assembler->getBinaryData();
-    m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
-
-    updateWinTabMenu();
-
-    if (m_configManager->getOpenBinaryViewerOnAssembly())
+    if (assemblySucceeded)
     {
-        showBinaryAction();
+        plugMonitorPeripheralAction();
+        plugRTCPeripheralAction();
+        plugKeyboardPeripheralAction();
+        startPausedAction();
+
+        if (m_eepromTargetToggle->isChecked())
+        {
+            m_emulator->loadProject(m_assembler->getBinaryFilePath(), m_projectManager->getCurrentProject()->getName());
+        }
+        else
+        {
+            const QByteArray &data = m_assembler->getBinaryData();
+            m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
+        }
+
+        updateWinTabMenu();
+
+        if (m_configManager->getOpenBinaryViewerOnAssembly())
+        {
+            showBinaryAction();
+        }
     }
+}
+
+void MainWindow::memoryTargetAction(bool ramToggle)
+{
+    m_ramTargetToggle->setChecked(ramToggle);
+    m_eepromTargetToggle->setChecked(!ramToggle);
+    m_eepromToggle->setChecked(!ramToggle);
 }
 
 void MainWindow::showBinaryAction()
 {
-    QByteArray data;
+    QByteArray ramData, eepromData;
     BinaryViewer *viewer = BinaryViewer::getInstance(this);
 
     if (m_emulator != nullptr)
     {
-        data = m_emulator->getCurrentBinaryData();
+        ramData = m_emulator->getCurrentRamBinaryData();
+
+        if (m_eepromToggle->isChecked())
+        {
+            eepromData = m_emulator->getCurrentEepromBinaryData();
+            viewer->update(ramData, eepromData);
+            viewer->showEeprom();
+        }
+        else
+        {
+            viewer->update(ramData);
+            viewer->enableEepromSelect(false);
+        }
     }
     else
     {
-        data = m_assembler->getBinaryData();
+        if (m_eepromToggle->isChecked())
+        {
+            for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
+            {
+                quint8 nullChar(0x00);
+                ramData.push_back(nullChar);
+            }
+
+            eepromData = m_assembler->getBinaryData();
+            viewer->update(ramData, eepromData);
+            viewer->enableEepromSelect(true);
+        }
+        else
+        {
+            ramData = m_assembler->getBinaryData();
+            viewer->update(ramData);
+            viewer->enableEepromSelect(false);
+        }
     }
 
-    viewer->update(data);
     viewer->show();
 }
 
@@ -1237,12 +1314,26 @@ void MainWindow::runEmulatorAction()
     }
     else
     {
-        if (m_monitorToggle->isChecked())
+        if (m_emulator->getState() != Emulator::State::PAUSED)
         {
-            m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
-            m_monitor->show();
+            if (!m_assembler->isAssembledForEeprom() && m_eepromToggle->isChecked())
+            {
+                QMessageBox::warning(this, tr("EEPROM / RAM conflict"), tr("The EEPROM is plugged in.\n\nThe first 512 bytes of the RAM will be overwritten on startup by the EEPROM.\nThe emulator cannot run.\n\nYou may consider assembling for the EEPROM or unplugging it."));
+                return;
+            }
+            else if (m_assembler->isAssembledForEeprom() && !m_eepromToggle->isChecked())
+            {
+                QMessageBox::warning(this, tr("Non-executable code"), tr("The EEPROM is unplugged but the code was assembled to load it.\n\nThe instructions will never reach the RAM.\nThe emulator cannot run.\n\nYou may consider targeting the RAM or plug in the EEPROM."));
+                return;
+            }
 
-            connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+            if (m_monitorToggle->isChecked())
+            {
+                m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
+                m_monitor->show();
+
+                connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+            }
         }
 
         m_emulator->runCmd();
@@ -1289,6 +1380,17 @@ void MainWindow::plugMonitorPeripheralAction()
 void MainWindow::plugRTCPeripheralAction()
 {
     m_emulator->useRTC(m_rtcToggle->isChecked());
+}
+
+void MainWindow::plugKeyboardPeripheralAction()
+{
+    m_emulator->useKeyboard(m_keyboardToggle->isChecked());
+}
+
+void MainWindow::plugEepromPeripheralAction()
+{
+    m_ramTargetToggle->setChecked(!m_eepromToggle->isChecked());
+    m_eepromTargetToggle->setChecked(m_eepromToggle->isChecked());
 }
 
 void MainWindow::startPausedAction()
@@ -1745,6 +1847,7 @@ void MainWindow::updateWinTabMenu()
     if (m_emulator == nullptr)
     {
         m_assembleAction->setEnabled(m_projectManager->getCurrentProject() != nullptr);
+        m_memoryTargetMenu->setEnabled(m_projectManager->getCurrentProject() != nullptr);
 
         m_runEmulatorAction->setEnabled(false);
         m_stepEmulatorAction->setEnabled(false);
@@ -1791,6 +1894,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     if (m_projectManager->getCurrentProject() != nullptr)
     {
         m_assembleAction->setEnabled(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
+        m_memoryTargetMenu->setEnabled(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
 
         m_runEmulatorAction->setEnabled(newState == Emulator::State::READY || newState == Emulator::State::PAUSED);
         m_stepEmulatorAction->setEnabled(newState == Emulator::State::PAUSED);
@@ -1802,6 +1906,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     else
     {
         m_assembleAction->setEnabled(false);
+        m_memoryTargetMenu->setEnabled(false);
 
         m_runEmulatorAction->setEnabled(false);
         m_stepEmulatorAction->setEnabled(false);
@@ -1811,8 +1916,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
         m_openCpuStateViewerAction->setEnabled(false);
     }
 
-    m_monitorToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
-    m_rtcToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
+    m_emulatorPeripheralsMenu->setEnabled(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
     m_startPausedToggle->setCheckable(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);
 
     for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
@@ -1868,10 +1972,18 @@ int MainWindow::findTab(CustomFile *file)
 
 void MainWindow::updateBinaryViewer(Word programCounter)
 {
-    const QByteArray &data = m_emulator->getCurrentBinaryData();
     BinaryViewer *viewer = BinaryViewer::getInstance(this);
 
-    viewer->update(data);
+    if (m_eepromToggle->isChecked())
+    {
+        BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
+        BinaryViewer::showRam();
+    }
+    else
+    {
+        BinaryViewer::update(m_emulator->getCurrentRamBinaryData());
+    }
+
     viewer->highlightInstruction(programCounter);
     viewer->show();
 }
@@ -1943,7 +2055,7 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
             currentEditor->highlightLine(symbol.lineNb - 1);
         }
     }
-    else
+    else if (!m_eepromToggle->isChecked())
     {
         if (currentEditor != nullptr)
         {
@@ -1951,6 +2063,10 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
         }
 
         QMessageBox::warning(this, tr("Undefined instruction"), "The CPU has jumped to an address that does not correspond to any instruction.\n\nProgram Counter: " + CpuStateViewer::word2QString(programCounter));
+    }
+    else
+    {
+        // TODO: Open the disassembler
     }
 }
 

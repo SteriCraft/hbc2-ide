@@ -52,6 +52,12 @@ void ConfigManager::setTabSize(unsigned int nbOfSpaces)
     m_settings.tabSize = nbOfSpaces;
 }
 
+// Assembler settings
+void ConfigManager::setRamAsDefaultMemoryTarget(bool ramAsDefault)
+{
+    m_settings.ramAsDefaultMemoryTarget = ramAsDefault;
+}
+
 // Cpu state viewer settings
 void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
 {
@@ -97,6 +103,18 @@ void ConfigManager::setRTCPlugged(bool plugged)
     saveConfigFile();
 }
 
+void ConfigManager::setKeyboardPlugged(bool plugged)
+{
+    m_settings.keyboardPlugged = plugged;
+    saveConfigFile();
+}
+
+void ConfigManager::setEepromPlugged(bool plugged)
+{
+    m_settings.eepromPlugged = plugged;
+    saveConfigFile();
+}
+
 void ConfigManager::setDismissReassemblyWarnings(bool dismiss)
 {
     m_settings.dismissReassemblyWarnings = dismiss;
@@ -120,6 +138,12 @@ bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
 unsigned int ConfigManager::getTabSize()
 {
     return m_settings.tabSize;
+}
+
+// Assembler settings
+bool ConfigManager::getRamAsDefaultMemoryTarget()
+{
+    return m_settings.ramAsDefaultMemoryTarget;
 }
 
 // Cpu state viewer settings
@@ -163,6 +187,16 @@ bool ConfigManager::getMonitorPlugged()
 bool ConfigManager::getRTCPlugged()
 {
     return m_settings.rtcPlugged;
+}
+
+bool ConfigManager::getKeyboardPlugged()
+{
+    return m_settings.keyboardPlugged;
+}
+
+bool ConfigManager::getEepromPlugged()
+{
+    return m_settings.eepromPlugged;
 }
 
 bool ConfigManager::getDismissReassemblyWarnings()
@@ -209,6 +243,10 @@ ConfigManager::ConfigManager()
                         if (ok)
                             m_settings.tabSize = tabSize;
                     }
+                    else if (key == "RAM_AS_DEFAULT_MEMORY_TARGET")
+                    {
+                        m_settings.ramAsDefaultMemoryTarget = (value == "TRUE");
+                    }
                     else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
                     {
                         m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
@@ -240,6 +278,14 @@ ConfigManager::ConfigManager()
                     else if (key == "RTC_PLUGGED")
                     {
                         m_settings.rtcPlugged = (value == "TRUE");
+                    }
+                    else if (key == "KEYBOARD_PLUGGED")
+                    {
+                        m_settings.keyboardPlugged = (value == "TRUE");
+                    }
+                    else if (key == "EEPROM_PLUGGED")
+                    {
+                        m_settings.eepromPlugged = (value == "TRUE");
                     }
                     else if (key == "DISMISS_REASSEMBLY_WARNINGS")
                     {
@@ -309,6 +355,7 @@ bool ConfigManager::saveConfigFile()
         QTextStream out(&configFile);
 
         out << "TAB_SIZE=" << QString::number(m_settings.tabSize) << "\n";
+        out << "RAM_AS_DEFAULT_MEMORY_TARGET=" << (m_settings.ramAsDefaultMemoryTarget ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings.openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED=" << (m_settings.openCpuStateViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
@@ -317,6 +364,8 @@ bool ConfigManager::saveConfigFile()
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
         out << "RTC_PLUGGED=" << (m_settings.rtcPlugged ? "TRUE" : "FALSE") << "\n";
+        out << "KEYBOARD_PLUGGED=" << (m_settings.keyboardPlugged ? "TRUE" : "FALSE") << "\n";
+        out << "EEPROM_PLUGGED=" << (m_settings.eepromPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
         out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
 
@@ -416,6 +465,17 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     ideSettingsGroupBox->setLayout(ideSettingsLayout);
 
 
+    // Assembler settings
+    QGroupBox *assemblerSettingsGroupBox = new QGroupBox(tr("Assembler"), this);
+
+    m_ramAsDefaultMemoryTargetCheckBox = new QCheckBox(tr("RAM as default memory target"), this);
+    m_ramAsDefaultMemoryTargetCheckBox->setChecked(configManager->getRamAsDefaultMemoryTarget());
+
+    QVBoxLayout *assemblerSettingsLayout = new QVBoxLayout;
+    assemblerSettingsLayout->addWidget(m_ramAsDefaultMemoryTargetCheckBox);
+    assemblerSettingsGroupBox->setLayout(assemblerSettingsLayout);
+
+
     // Cpu state viewer settings
     QGroupBox *cpuStateViewerSettingsGroupBox = new QGroupBox(tr("CPU status viewer"), this);
 
@@ -462,6 +522,12 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     m_plugRTCCheckBox = new QCheckBox(tr("Real Time Clock plugged-in by default"), this);
     m_plugRTCCheckBox->setChecked(configManager->getRTCPlugged());
 
+    m_plugKeyboardCheckBox = new QCheckBox(tr("Keyboard plugged-in by default"), this);
+    m_plugKeyboardCheckBox->setChecked(configManager->getKeyboardPlugged());
+
+    m_plugEepromCheckBox = new QCheckBox(tr("EEPROM plugged-in by default"), this);
+    m_plugEepromCheckBox->setChecked(configManager->getEepromPlugged());
+
     m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), this);
     m_dismissReassemblyWarningsCheckBox->setChecked(configManager->getDismissReassemblyWarnings());
 
@@ -469,6 +535,8 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     emulatorSettingsLayout->addWidget(m_startPausedCheckBox);
     emulatorSettingsLayout->addWidget(m_plugMonitorCheckBox);
     emulatorSettingsLayout->addWidget(m_plugRTCCheckBox);
+    emulatorSettingsLayout->addWidget(m_plugKeyboardCheckBox);
+    emulatorSettingsLayout->addWidget(m_plugEepromCheckBox);
     emulatorSettingsLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
     emulatorSettingsGroupBox->setLayout(emulatorSettingsLayout);
 
@@ -480,6 +548,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     mainLayout->addWidget(cpuStateViewerSettingsGroupBox);
     mainLayout->addWidget(binaryViewerSettingsGroupBox);
     mainLayout->addWidget(ideSettingsGroupBox);
+    mainLayout->addWidget(assemblerSettingsGroupBox);
     mainLayout->addWidget(emulatorSettingsGroupBox);
     mainLayout->addWidget(closeButton);
 
@@ -488,6 +557,7 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 
     // Connections
     connect(m_tabSizeSpinBox, SIGNAL(valueChanged(int)), this, SLOT(tabSizeChanged(int)));
+    connect(m_ramAsDefaultMemoryTargetCheckBox, SIGNAL(stateChanged(int)), this, SLOT(ramAsDefaultMemoryTargetChanged()));
     connect(m_openCpuStateViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorPausedChanged()));
     connect(m_openCpuStateViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openCpuStateViewerOnEmulatorStoppedChanged()));
     connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
@@ -496,6 +566,8 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
     connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
+    connect(m_plugKeyboardCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugKeyboardChanged()));
+    connect(m_plugEepromCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugEepromChanged()));
     connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
     connect(browseProjectsPath, SIGNAL(clicked()), this, SLOT(browseProjectsPathClicked()));
     connect(m_defaultProjectsPathLineEdit, SIGNAL(textChanged(QString)), this, SLOT(defaultProjectsPathChanged(QString)));
@@ -506,6 +578,11 @@ SettingsDialog::SettingsDialog(ConfigManager *configManager, QWidget *parent) : 
 void SettingsDialog::tabSizeChanged(int nbOfSpaces)
 {
     m_configManager->setTabSize(nbOfSpaces);
+}
+
+void SettingsDialog::ramAsDefaultMemoryTargetChanged()
+{
+    m_configManager->setRamAsDefaultMemoryTarget(m_ramAsDefaultMemoryTargetCheckBox->isChecked());
 }
 
 void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
@@ -546,6 +623,16 @@ void SettingsDialog::plugMonitorChanged()
 void SettingsDialog::plugRTCChanged()
 {
     m_configManager->setRTCPlugged(m_plugRTCCheckBox->isChecked());
+}
+
+void SettingsDialog::plugKeyboardChanged()
+{
+    m_configManager->setKeyboardPlugged(m_plugKeyboardCheckBox->isChecked());
+}
+
+void SettingsDialog::plugEepromChanged()
+{
+    m_configManager->setEepromPlugged(m_plugEepromCheckBox->isChecked());
 }
 
 void SettingsDialog::dismissReassemblyWarningsChanged()

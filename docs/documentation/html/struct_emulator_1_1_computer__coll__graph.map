@@ -1,13 +1,16 @@
 <map id="Emulator::Computer" name="Emulator::Computer">
-<area shape="rect" id="node1" title="Stores the computer information for the emulator (only used in the emulator thread)" alt="" coords="103,363,256,389"/>
-<area shape="rect" id="node2" href="$struct_cpu_status.html" title="Used to send the current HbcCpu state to the CpuStateViewer." alt="" coords="18,273,106,300"/>
-<area shape="rect" id="node3" href="$class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="131,273,228,300"/>
-<area shape="rect" id="node4" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="108,184,221,211"/>
-<area shape="rect" id="node5" href="$class_console.html" title="A console widget to show events and provide information to the user." alt="" coords="10,95,85,121"/>
-<area shape="rect" id="node6" title=" " alt="" coords="5,5,89,32"/>
-<area shape="rect" id="node7" href="$struct_hbc_iod.html" title="Stores the Iod state." alt="" coords="239,95,306,121"/>
-<area shape="rect" id="node9" href="$struct_hbc_motherboard.html" title="Stores the Motherboard state." alt="" coords="283,184,414,211"/>
-<area shape="rect" id="node8" href="$struct_iod_1_1_port.html" title="Used by HbcIod to store port information, accessed by peripherals through PortSocket." alt="" coords="235,5,311,32"/>
-<area shape="rect" id="node11" href="$struct_hbc_cpu.html" title="Stores the Cpu state." alt="" coords="282,273,354,300"/>
-<area shape="rect" id="node10" href="$struct_hbc_ram.html" title="Stores the Ram state." alt="" coords="450,95,527,121"/>
+<area shape="rect" id="node1" title="Stores the computer information for the emulator (only used in the emulator thread)" alt="" coords="1055,140,1208,167"/>
+<area shape="rect" id="node2" href="$class_real_time_clock_1_1_hbc_real_time_clock.html" title="Derived from HbcPeripheral, represents the RTC device." alt="" coords="727,158,941,199"/>
+<area shape="rect" id="node3" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="447,99,561,125"/>
+<area shape="rect" id="node11" href="$class_eeprom_1_1_hbc_eeprom.html" title="Derived from HbcPeripheral, represents the EEPROM device." alt="" coords="757,5,911,32"/>
+<area shape="rect" id="node12" href="$class_keyboard_1_1_hbc_keyboard.html" title="Derived from HbcPeripheral, represents the Keyboard device." alt="" coords="745,56,923,83"/>
+<area shape="rect" id="node14" href="$class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="785,107,883,133"/>
+<area shape="rect" id="node4" href="$class_console.html" title="A console widget to show events and provide information to the user." alt="" coords="196,96,271,123"/>
+<area shape="rect" id="node5" title=" " alt="" coords="5,96,89,123"/>
+<area shape="rect" id="node6" href="$struct_hbc_iod.html" title="Stores the Iod state." alt="" coords="200,187,267,213"/>
+<area shape="rect" id="node8" href="$struct_hbc_motherboard.html" title="Stores the Motherboard state." alt="" coords="439,232,569,259"/>
+<area shape="rect" id="node7" href="$struct_iod_1_1_port.html" title="Used by HbcIod to store port information, accessed by peripherals through PortSocket." alt="" coords="9,187,85,213"/>
+<area shape="rect" id="node10" href="$struct_hbc_cpu.html" title="Stores the Cpu state." alt="" coords="798,224,870,251"/>
+<area shape="rect" id="node9" href="$struct_hbc_ram.html" title="Stores the Ram state." alt="" coords="195,277,272,304"/>
+<area shape="rect" id="node13" href="$struct_cpu_status.html" title="Used to send the current HbcCpu state to the CpuStateViewer." alt="" coords="790,337,878,364"/>
 </map>

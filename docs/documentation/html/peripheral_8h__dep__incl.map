@@ -1,7 +1,10 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/peripheral.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/peripheral.h">
-<area shape="rect" id="node1" title="HBC&#45;2 Peripheral implementation." alt="" coords="120,5,299,61"/>
-<area shape="rect" id="node2" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="17,109,189,165"/>
-<area shape="rect" id="node5" href="$real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="213,109,419,165"/>
-<area shape="rect" id="node3" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,213,189,269"/>
-<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,317,200,373"/>
+<area shape="rect" id="node1" title="HBC&#45;2 Peripheral implementation." alt="" coords="297,5,476,61"/>
+<area shape="rect" id="node2" href="$eeprom_8h_source.html" title=" " alt="" coords="105,109,277,165"/>
+<area shape="rect" id="node6" href="$keyboard_8h.html" title="Keyboard device derived from HbcPeripheral." alt="" coords="301,109,473,165"/>
+<area shape="rect" id="node8" href="$real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="474,213,681,269"/>
+<area shape="rect" id="node3" href="$binary_viewer_8h.html" title="QDialog to display hexadecimal data." alt="" coords="5,213,203,269"/>
+<area shape="rect" id="node4" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="278,317,450,373"/>
+<area shape="rect" id="node5" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="267,421,461,477"/>
+<area shape="rect" id="node7" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="278,213,450,269"/>
 </map>

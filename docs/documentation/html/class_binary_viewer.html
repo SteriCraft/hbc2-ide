@@ -99,12 +99,27 @@ Collaboration diagram for BinaryViewer:</div>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:afe0baeb628c7ce810122791049e29c02"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_binary_viewer.html">BinaryViewer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#afe0baeb628c7ce810122791049e29c02">getInstance</a> (QWidget *parent=nullptr)</td></tr>
 <tr class="separator:afe0baeb628c7ce810122791049e29c02"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a8955c8c28aacac0b989c17d0f8369bce"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">update</a> (const QByteArray data)</td></tr>
-<tr class="memdesc:a8955c8c28aacac0b989c17d0f8369bce"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates displayed content.  <a href="class_binary_viewer.html#a8955c8c28aacac0b989c17d0f8369bce">More...</a><br /></td></tr>
-<tr class="separator:a8955c8c28aacac0b989c17d0f8369bce"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aae49663e6ace46795a1ee555341f76e4"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4">update</a> (const QByteArray ramData)</td></tr>
+<tr class="memdesc:aae49663e6ace46795a1ee555341f76e4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Set RAM as the only displayable content and updates displayed content.  <a href="class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4">More...</a><br /></td></tr>
+<tr class="separator:aae49663e6ace46795a1ee555341f76e4"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a17a1ca09dbab465c4371817101b371b8"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#a17a1ca09dbab465c4371817101b371b8">update</a> (const QByteArray ramData, const QByteArray eepromData)</td></tr>
+<tr class="memdesc:a17a1ca09dbab465c4371817101b371b8"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates contents and resets the hex viewer depending on what memory is selected to be displayed.  <a href="class_binary_viewer.html#a17a1ca09dbab465c4371817101b371b8">More...</a><br /></td></tr>
+<tr class="separator:a17a1ca09dbab465c4371817101b371b8"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa213a1160457e6b4ab9ce71c7bd75708"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">highlightInstruction</a> (Word programCounter)</td></tr>
 <tr class="memdesc:aa213a1160457e6b4ab9ce71c7bd75708"><td class="mdescLeft">&#160;</td><td class="mdescRight">Highlights the 4 bytes of the instruction at the address passed.  <a href="class_binary_viewer.html#aa213a1160457e6b4ab9ce71c7bd75708">More...</a><br /></td></tr>
 <tr class="separator:aa213a1160457e6b4ab9ce71c7bd75708"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad961b26f1bde7d6901fdabd944e853c7"><td class="memItemLeft" align="right" valign="top"><a id="ad961b26f1bde7d6901fdabd944e853c7"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#ad961b26f1bde7d6901fdabd944e853c7">showRam</a> ()</td></tr>
+<tr class="memdesc:ad961b26f1bde7d6901fdabd944e853c7"><td class="mdescLeft">&#160;</td><td class="mdescRight">Selects the RAM content as the one to be displayed. <br /></td></tr>
+<tr class="separator:ad961b26f1bde7d6901fdabd944e853c7"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac61431cd606974288dd3bb7e92c4dce6"><td class="memItemLeft" align="right" valign="top"><a id="ac61431cd606974288dd3bb7e92c4dce6"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#ac61431cd606974288dd3bb7e92c4dce6">showEeprom</a> ()</td></tr>
+<tr class="memdesc:ac61431cd606974288dd3bb7e92c4dce6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Selects the EEPROM content as the one to be displayed. <br /></td></tr>
+<tr class="separator:ac61431cd606974288dd3bb7e92c4dce6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aba21ce293392e2af0daf364263c42aea"><td class="memItemLeft" align="right" valign="top"><a id="aba21ce293392e2af0daf364263c42aea"></a>
+static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_binary_viewer.html#aba21ce293392e2af0daf364263c42aea">enableEepromSelect</a> (bool enable)</td></tr>
+<tr class="memdesc:aba21ce293392e2af0daf364263c42aea"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the EEPROM select button checkable. <br /></td></tr>
+<tr class="separator:aba21ce293392e2af0daf364263c42aea"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memItemLeft" align="right" valign="top"><a id="a3252471a8cf56315936ae2e82a4e6d9c"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</td></tr>
 <tr class="separator:a3252471a8cf56315936ae2e82a4e6d9c"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -181,8 +196,8 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</
 
 </div>
 </div>
-<a id="a8955c8c28aacac0b989c17d0f8369bce"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a8955c8c28aacac0b989c17d0f8369bce">&#9670;&nbsp;</a></span>update()</h2>
+<a id="aae49663e6ace46795a1ee555341f76e4"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#aae49663e6ace46795a1ee555341f76e4">&#9670;&nbsp;</a></span>update() <span class="overload">[1/2]</span></h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -194,7 +209,7 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</
           <td class="memname">void BinaryViewer::update </td>
           <td>(</td>
           <td class="paramtype">const QByteArray&#160;</td>
-          <td class="paramname"><em>data</em></td><td>)</td>
+          <td class="paramname"><em>ramData</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -205,10 +220,55 @@ static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</
 </table>
 </div><div class="memdoc">
 
-<p>Updates displayed content. </p>
+<p>Set RAM as the only displayable content and updates displayed content. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">data</td><td>New binary data </td></tr>
+    <tr><td class="paramname">ramData</td><td>New RAM binary data </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a17a1ca09dbab465c4371817101b371b8"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a17a1ca09dbab465c4371817101b371b8">&#9670;&nbsp;</a></span>update() <span class="overload">[2/2]</span></h2>
+
+<div class="memitem">
+<div class="memproto">
+<table class="mlabels">
+  <tr>
+  <td class="mlabels-left">
+      <table class="memname">
+        <tr>
+          <td class="memname">void BinaryViewer::update </td>
+          <td>(</td>
+          <td class="paramtype">const QByteArray&#160;</td>
+          <td class="paramname"><em>ramData</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">const QByteArray&#160;</td>
+          <td class="paramname"><em>eepromData</em>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+  </td>
+  <td class="mlabels-right">
+<span class="mlabels"><span class="mlabel">static</span></span>  </td>
+  </tr>
+</table>
+</div><div class="memdoc">
+
+<p>Updates contents and resets the hex viewer depending on what memory is selected to be displayed. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">ramData</td><td>New RAM binary data </td></tr>
+    <tr><td class="paramname">eepromData</td><td>New EEPROM binary data </td></tr>
   </table>
   </dd>
 </dl>

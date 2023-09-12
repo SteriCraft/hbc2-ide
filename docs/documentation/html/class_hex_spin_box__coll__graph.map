@@ -1,0 +1,4 @@
+<map id="HexSpinBox" name="HexSpinBox">
+<area shape="rect" id="node1" title="A hexadecimal spin box capable of doing 20 or 16 bits long values." alt="" coords="5,80,107,107"/>
+<area shape="rect" id="node2" title=" " alt="" coords="13,5,99,32"/>
+</map>

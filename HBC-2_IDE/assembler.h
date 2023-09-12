@@ -113,6 +113,7 @@ namespace Assembly
      */
     struct BinaryWithSymbols
     {
+        QString binaryFilePath = "";
         QByteArray binaryData;
         std::vector<ByteDebugSymbol> origin;
     };
@@ -162,13 +163,24 @@ namespace Assembly
             ByteDebugSymbol getSymbolFromAddress(Word address);
 
             /*!
+             * \return the path for the EEPROM binary file <b>(empty if the EEPROM was not targeted)</b>
+             */
+            QString getBinaryFilePath();
+
+            /*!
+             * \return <b>true</b> if the project has been assembled in a binary file for the EEPROM
+             */
+            bool isAssembledForEeprom();
+
+            /*!
              * \brief Assembles the project and returns true it succeeded.
              *
              * Prompts in the console output statistics and error (if any).
              *
              * \param p Pointer to the project to assemble
+             * \param targetEeprom Boolean selecting if the binary will be 64 KiB (RAM) or 1 MiB (EEPROM)
              */
-            bool assembleProject(std::shared_ptr<Project> p);
+            bool assembleProject(std::shared_ptr<Project> p, bool targetEeprom);
 
         private:
             Assembler(Console *consoleOutput);
@@ -176,6 +188,7 @@ namespace Assembly
             // Methods
             Token::TokenFile retrieveContent(QString filePath);
             void logError();
+            void initBinary(bool targetEeprom);
 
             // Major pass 1 = TOKENS GENERATION
             void replaceTabsBySpaces(Token::TokenFile &f);
@@ -194,12 +207,12 @@ namespace Assembly
             bool checkArgumentsValidity();
 
             // Major pass 4 = DATA ANALYSIS
-            bool listVariables();
-            bool calculateMemoryUsage();
+            bool listVariables(bool targetEeprom);
+            bool calculateMemoryUsage(bool targetEeprom);
 
             // Major pass 5 = LABEL ANALYSIS
-            bool constructRoutineBlocks();
-            bool findFreeMemorySpaces();
+            bool constructRoutineBlocks(bool targetEeprom);
+            bool findFreeMemorySpaces(bool targetEeprom);
             bool calculateRoutineBlocksAddresses();
 
             // Major pass 6 = DATA PROCESS
@@ -234,7 +247,6 @@ namespace Assembly
             std::vector<RoutineBlock> m_definedRoutineBlocks;
 
             BinaryWithSymbols m_finalBinary;
-            //QByteArray m_finalBinary;
             bool m_binaryReady;
 
             unsigned int m_definesCount;

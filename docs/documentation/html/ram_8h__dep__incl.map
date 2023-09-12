@@ -1,6 +1,8 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/ram.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/ram.h">
-<area shape="rect" id="node1" title="HBC&#45;2 Random Access Memory implementation." alt="" coords="17,5,189,61"/>
-<area shape="rect" id="node2" href="$motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="5,109,201,165"/>
-<area shape="rect" id="node3" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,213,189,269"/>
-<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="6,317,201,373"/>
+<area shape="rect" id="node1" title="HBC&#45;2 Random Access Memory implementation." alt="" coords="123,5,295,61"/>
+<area shape="rect" id="node2" href="$eeprom_8h_source.html" title=" " alt="" coords="19,109,191,165"/>
+<area shape="rect" id="node6" href="$motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="215,109,411,165"/>
+<area shape="rect" id="node3" href="$binary_viewer_8h.html" title="QDialog to display hexadecimal data." alt="" coords="5,213,203,269"/>
+<area shape="rect" id="node4" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="227,213,399,269"/>
+<area shape="rect" id="node5" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="216,317,411,373"/>
 </map>

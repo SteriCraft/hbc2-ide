@@ -112,8 +112,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:a6a0b423c26cb37dc4f2bf0a833fb1778"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab764199e726eb9f85869b59396bb1d73"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">init</a> () override</td></tr>
 <tr class="separator:ab764199e726eb9f85869b59396bb1d73"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a349f20c4c6024299ff3bf2bc9138b4a3"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">tick</a> () override</td></tr>
-<tr class="separator:a349f20c4c6024299ff3bf2bc9138b4a3"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:acb8c46f14cc7a2df84c8f9ff65932c05"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#acb8c46f14cc7a2df84c8f9ff65932c05">tick</a> (bool step) override</td></tr>
+<tr class="separator:acb8c46f14cc7a2df84c8f9ff65932c05"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="inherit_header pub_methods_class_hbc_peripheral"><td colspan="2" onclick="javascript:toggleInherit('pub_methods_class_hbc_peripheral')"><img src="closed.png" alt="-"/>&#160;Public Member Functions inherited from <a class="el" href="class_hbc_peripheral.html">HbcPeripheral</a></td></tr>
 <tr class="memitem:a5f4e4d72ac525a998808335243e5c575 inherit pub_methods_class_hbc_peripheral"><td class="memItemLeft" align="right" valign="top">&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_hbc_peripheral.html#a5f4e4d72ac525a998808335243e5c575">HbcPeripheral</a> (<a class="el" href="struct_hbc_iod.html">HbcIod</a> *iod, <a class="el" href="class_console.html">Console</a> *consoleOutput)</td></tr>
 <tr class="memdesc:a5f4e4d72ac525a998808335243e5c575 inherit pub_methods_class_hbc_peripheral"><td class="mdescLeft">&#160;</td><td class="mdescRight"><a class="el" href="class_hbc_peripheral.html" title="Virtual class used to derive new peripherals.">HbcPeripheral</a>.  <a href="class_hbc_peripheral.html#a5f4e4d72ac525a998808335243e5c575">More...</a><br /></td></tr>
@@ -147,6 +147,7 @@ std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSo
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p>Derived from <a class="el" href="class_hbc_peripheral.html" title="Virtual class used to derive new peripherals.">HbcPeripheral</a>, represents the RTC device. </p>
 <p>The <b>Real Time Clock</b> (or RTC) is a self-powered device that stores and keeps track of date and time. See <a href="https://doc.qt.io/qt-6/qdate.html">QDate</a> and <a href="https://doc.qt.io/qt-6/qtime.htmll">QTime</a> for more information about date and time storage.</p>
+<p><b>Device ID:</b> 0x95</p>
 <table class="doxtable">
 <caption>List of available ports</caption>
 <tr>
@@ -238,14 +239,14 @@ std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSo
 </table>
 </div><div class="memdoc">
 <p>Initializes the clock's sockets, date and time, and starts the internal clock. Default date and time is 01/01/2000 00:00:00</p>
-<dl class="section see"><dt>See also</dt><dd><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#a349f20c4c6024299ff3bf2bc9138b4a3">tick()</a> </dd></dl>
+<dl class="section see"><dt>See also</dt><dd><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#acb8c46f14cc7a2df84c8f9ff65932c05">tick()</a> </dd></dl>
 
 <p>Implements <a class="el" href="class_hbc_peripheral.html#a7f415ca7bf6dd379fb94b74801bb4eb5">HbcPeripheral</a>.</p>
 
 </div>
 </div>
-<a id="a349f20c4c6024299ff3bf2bc9138b4a3"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a349f20c4c6024299ff3bf2bc9138b4a3">&#9670;&nbsp;</a></span>tick()</h2>
+<a id="acb8c46f14cc7a2df84c8f9ff65932c05"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#acb8c46f14cc7a2df84c8f9ff65932c05">&#9670;&nbsp;</a></span>tick()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -256,7 +257,8 @@ std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSo
         <tr>
           <td class="memname">void HbcRealTimeClock::tick </td>
           <td>(</td>
-          <td class="paramname"></td><td>)</td>
+          <td class="paramtype">bool&#160;</td>
+          <td class="paramname"><em>step</em></td><td>)</td>
           <td></td>
         </tr>
       </table>
@@ -269,7 +271,7 @@ std::vector&lt; <a class="el" href="struct_iod_1_1_port_socket.html">Iod::PortSo
 <p>Checks for incoming command on sockets and executes them.</p>
 <dl class="section see"><dt>See also</dt><dd><a class="el" href="class_real_time_clock_1_1_hbc_real_time_clock.html#ab764199e726eb9f85869b59396bb1d73">init()</a> </dd></dl>
 
-<p>Implements <a class="el" href="class_hbc_peripheral.html#a6b2aefb3d69ae68ad92a0f67444bfb6a">HbcPeripheral</a>.</p>
+<p>Implements <a class="el" href="class_hbc_peripheral.html#a98b78d2e23d4912d3b34bd1580c70fc5">HbcPeripheral</a>.</p>
 
 </div>
 </div>

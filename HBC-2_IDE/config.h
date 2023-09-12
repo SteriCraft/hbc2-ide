@@ -29,6 +29,9 @@ struct ConfigurationSettings
     // Editor settings
     unsigned int tabSize = 4; // Number of spaces representing a tab
 
+    // Assembler settings
+    bool ramAsDefaultMemoryTarget = true; //<! Sets if the code will be assembled in the RAM by default
+
     // CPU state viewer settings
     bool openCpuStateViewerOnEmulatorPaused = true;
     bool openCpuStateViewerOnEmulatorStopped = true;
@@ -42,6 +45,8 @@ struct ConfigurationSettings
     bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
     bool monitorPlugged = true; //!< Sets if the emulator starts with the HbcMonitor plugged in
     bool rtcPlugged = true; //!< Sets if the emulator starts with the HbcRealTimeClock plugged in
+    bool keyboardPlugged = true; //!< Sets if the emulator starts with the HbcKeyboard plugged in
+    bool eepromPlugged = false; //!< Sets if the emulator starts with the HbcEeprom plugged in
     bool dismissReassemblyWarnings = false; //!< Sets if warnings are thrown when trying to run a project which was modified or not yet assembled
 
     // IDE settings
@@ -93,6 +98,12 @@ class ConfigManager
          */
         void setTabSize(unsigned int nbOfSpaces);
 
+        // Assembler settings
+        /*!
+         * \brief Sets if the code will be assembled in the RAM
+         */
+        void setRamAsDefaultMemoryTarget(bool ramAsDefault);
+
         // CPU state viewer settings
         /*!
          * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
@@ -137,6 +148,16 @@ class ConfigManager
         void setRTCPlugged(bool plugged);
 
         /*!
+         * \param plugged Desired behaviour for the keyboard on emulator start
+         */
+        void setKeyboardPlugged(bool plugged);
+
+        /*!
+         * \param plugged Desired behaviour for the EEPROM on emulator start
+         */
+        void setEepromPlugged(bool plugged);
+
+        /*!
          * \param dismiss Desired reassembly warnings
          */
         void setDismissReassemblyWarnings(bool dismiss);
@@ -150,7 +171,16 @@ class ConfigManager
 
         // ==== GETTERS ====
         // Editor settings
+        /*!
+         * \return the number of spaces representing a tab char
+         */
         unsigned int getTabSize();
+
+        // Assembler settings
+        /*!
+         * \return <b>true</b> if the code must be assembled in the RAM by default
+         */
+        bool getRamAsDefaultMemoryTarget();
 
         // Cpu state viewer settings
         /*!
@@ -196,6 +226,16 @@ class ConfigManager
         bool getRTCPlugged();
 
         /*!
+         * \return <b>true</b> if the emulator starts with the keyboard plugged in
+         */
+        bool getKeyboardPlugged();
+
+        /*!
+         * \return <b>true</b> if the emulator starts with the EEPROM plugged in
+         */
+        bool getEepromPlugged();
+
+        /*!
          * \return <b>true</b> if warnings on emulator run with non assembled project are dismissed
          */
         bool getDismissReassemblyWarnings();
@@ -234,6 +274,8 @@ class SettingsDialog : public QDialog
     private slots:
         void tabSizeChanged(int nbOfSpaces);
 
+        void ramAsDefaultMemoryTargetChanged();
+
         void openCpuStateViewerOnEmulatorPausedChanged();
         void openCpuStateViewerOnEmulatorStoppedChanged();
 
@@ -244,6 +286,8 @@ class SettingsDialog : public QDialog
         void startPausedChanged();
         void plugMonitorChanged();
         void plugRTCChanged();
+        void plugKeyboardChanged();
+        void plugEepromChanged();
         void dismissReassemblyWarningsChanged();
 
         void browseProjectsPathClicked();
@@ -251,6 +295,8 @@ class SettingsDialog : public QDialog
 
     private:
         QSpinBox *m_tabSizeSpinBox;
+
+        QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;
 
         QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;
         QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;
@@ -262,6 +308,8 @@ class SettingsDialog : public QDialog
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_plugMonitorCheckBox;
         QCheckBox *m_plugRTCCheckBox;
+        QCheckBox *m_plugKeyboardCheckBox;
+        QCheckBox *m_plugEepromCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
 
         QLineEdit *m_defaultProjectsPathLineEdit;

@@ -41,10 +41,10 @@ namespace Motherboard
     /*!
      * \brief Initializes the motherboard
      *
-     * \param data 65,536 bytes of binary data
+     * \param data 65,536 bytes of binary data for the RAM <b>(if its size is 0, RAM will be filled with 0x00)</b>
      * \return <b>false</b> if the given binary data size is not equal to Ram::MEMORY_SIZE
      */
-    bool init(HbcMotherboard &motherboard, QByteArray data);
+    bool init(HbcMotherboard &motherboard, QByteArray ramData);
 
     /*!
      * \brief Executes one clock cycle through the motherboard

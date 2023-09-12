@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['lsreg_626',['lsReg',['../struct_token_1_1_concat_reg.html#adc1f307e31f05629afc8bf5272c1caec',1,'Token::ConcatReg']]]
+  ['keyboardplugged_686',['keyboardPlugged',['../struct_configuration_settings.html#a68763e648b6b47c3541e1208ccb87f35',1,'ConfigurationSettings']]]
 ];

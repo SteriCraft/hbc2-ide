@@ -1,0 +1,4 @@
+<map id="Keyboard::HbcKeyboard" name="Keyboard::HbcKeyboard">
+<area shape="rect" id="node1" title="Derived from HbcPeripheral, represents the Keyboard device." alt="" coords="5,80,183,107"/>
+<area shape="rect" id="node2" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="37,5,151,32"/>
+</map>

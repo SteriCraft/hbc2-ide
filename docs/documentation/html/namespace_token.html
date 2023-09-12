@@ -191,6 +191,8 @@ Enumerations</h2></td></tr>
 , <b>UNKNOWN_VARIABLE</b>
 , <br />
 &#160;&#160;<b>BIN_FILE_OPEN</b>
+, <b>MEM_SIZE_RAM</b>
+, <b>UNDEFINED_ADDRESS_EEPROM</b>
 <br />
  }</td></tr>
 <tr class="memdesc:a013c1f38309e65a52d23fd70b844085d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lists data types (more info in the assembly language documentation) <br /></td></tr>
@@ -234,14 +236,16 @@ Variables</h2></td></tr>
 <div class="line">                                   <span class="stringliteral">&quot;Too few arguments in data definition&quot;</span>, <span class="stringliteral">&quot;Variable name missing in data definition&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Invalid values in data definition (single string, single value and list of values only)&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Invalid argument(s) for that instruction&quot;</span>, <span class="stringliteral">&quot;Too few or too many arguments for that instruction&quot;</span>,</div>
-<div class="line">                                   <span class="stringliteral">&quot;Program size too large (&quot;</span>, <span class="stringliteral">&quot;Exceeding memory size for instructions, try automatic address definition for variables&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Program size too large for the EEPROM (&quot;</span>, <span class="stringliteral">&quot;Exceeding memory size for instructions, try automatic address definition for variables&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Instructions must be part of routine block (defined after a label)&quot;</span>, <span class="stringliteral">&quot;This label name is already used&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;\&quot;_start\&quot; routine is missing&quot;</span>, <span class="stringliteral">&quot;_start label cannot be redefined (address 0x300 by default)&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Data definition overlaps routine \&quot;&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Defined routines exceed memory size&quot;</span>, <span class="stringliteral">&quot;Data definition exceeds memory size&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Error on free memory space split while analyzing defined data&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Routine exceeds memory size&quot;</span>, <span class="stringliteral">&quot;Data definition overlaps \&quot;&quot;</span>, <span class="stringliteral">&quot;Routine overlaps \&quot;&quot;</span>,</div>
-<div class="line">                                   <span class="stringliteral">&quot;Unknown variable&quot;</span>, <span class="stringliteral">&quot;Unable to write the binary file (&quot;</span> }</div>
+<div class="line">                                   <span class="stringliteral">&quot;Unknown variable&quot;</span>, <span class="stringliteral">&quot;Unable to write the binary file (&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Program size too large for the RAM, try targeting the EEPROM or unplugging it (&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Using variables with undefined addresses is prohibited with EEPROM&quot;</span> }</div>
 </div><!-- fragment -->
 <p>More info in the assembly language documentation. </p>
 

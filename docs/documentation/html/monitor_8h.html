@@ -85,28 +85,30 @@ $(function() {
 <code>#include &lt;QMutex&gt;</code><br />
 <code>#include &lt;QOpenGLWidget&gt;</code><br />
 <code>#include &lt;QOpenGLFunctions&gt;</code><br />
-<code>#include &quot;<a class="el" href="peripheral_8h_source.html">peripheral.h</a>&quot;</code><br />
+<code>#include &quot;<a class="el" href="keyboard_8h_source.html">keyboard.h</a>&quot;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for monitor.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="monitor_8h__incl.png" border="0" usemap="#a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2monitor_8h" alt=""/></div>
 <map name="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2monitor_8h" id="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2monitor_8h">
-<area shape="rect" title="Monitor device derived from HbcPeripheral." alt="" coords="177,5,349,61"/>
+<area shape="rect" title="Monitor device derived from HbcPeripheral." alt="" coords="175,5,347,61"/>
 <area shape="rect" title=" " alt="" coords="5,109,80,136"/>
 <area shape="rect" title=" " alt="" coords="104,109,181,136"/>
-<area shape="rect" title=" " alt="" coords="431,333,505,360"/>
-<area shape="rect" title=" " alt="" coords="381,109,509,136"/>
-<area shape="rect" title=" " alt="" coords="534,109,679,136"/>
-<area shape="rect" href="peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="257,109,357,136"/>
-<area shape="rect" title=" " alt="" coords="365,184,448,211"/>
-<area shape="rect" title=" " alt="" coords="473,184,535,211"/>
-<area shape="rect" href="iod_8h.html" title="Defines the Input/Output Device." alt="" coords="559,184,614,211"/>
-<area shape="rect" href="console_8h.html" title="Console widget for the IDE." alt="" coords="257,184,341,211"/>
-<area shape="rect" title=" " alt="" coords="673,259,735,285"/>
-<area shape="rect" href="computer_details_8h.html" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="506,259,649,285"/>
-<area shape="rect" title=" " alt="" coords="548,333,607,360"/>
-<area shape="rect" title=" " alt="" coords="257,259,322,285"/>
-<area shape="rect" title=" " alt="" coords="346,259,430,285"/>
+<area shape="rect" title=" " alt="" coords="431,408,505,435"/>
+<area shape="rect" title=" " alt="" coords="376,109,504,136"/>
+<area shape="rect" title=" " alt="" coords="529,109,674,136"/>
+<area shape="rect" href="keyboard_8h.html" title="Keyboard device derived from HbcPeripheral." alt="" coords="257,109,351,136"/>
+<area shape="rect" title=" " alt="" coords="257,184,351,211"/>
+<area shape="rect" href="peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="410,184,510,211"/>
+<area shape="rect" title=" " alt="" coords="419,259,501,285"/>
+<area shape="rect" title=" " alt="" coords="526,259,589,285"/>
+<area shape="rect" href="iod_8h.html" title="Defines the Input/Output Device." alt="" coords="613,259,667,285"/>
+<area shape="rect" href="console_8h.html" title="Console widget for the IDE." alt="" coords="310,259,394,285"/>
+<area shape="rect" title=" " alt="" coords="673,333,735,360"/>
+<area shape="rect" href="computer_details_8h.html" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="506,333,649,360"/>
+<area shape="rect" title=" " alt="" coords="548,408,607,435"/>
+<area shape="rect" title=" " alt="" coords="257,333,322,360"/>
+<area shape="rect" title=" " alt="" coords="346,333,430,360"/>
 </map>
 </div>
 </div><div class="textblock"><div class="dynheader">
@@ -199,27 +201,27 @@ Enumerations</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
-<tr class="memitem:ae91e64f6be01823ba62ecb452c1889e6"><td class="memItemLeft" align="right" valign="top"><a id="ae91e64f6be01823ba62ecb452c1889e6"></a>
-constexpr Byte&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#ae91e64f6be01823ba62ecb452c1889e6">Monitor::MONITOR_DEVICE_ID</a> = 0x4A</td></tr>
-<tr class="memdesc:ae91e64f6be01823ba62ecb452c1889e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Random to "look" nice. <br /></td></tr>
-<tr class="separator:ae91e64f6be01823ba62ecb452c1889e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a006dde91582cd7d7b89f979d27986ad4"><td class="memItemLeft" align="right" valign="top"><a id="a006dde91582cd7d7b89f979d27986ad4"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::MONITOR_WIDTH</b> = 256</td></tr>
-<tr class="separator:a006dde91582cd7d7b89f979d27986ad4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a36f6c5c241f74c8a7ef28667dd3211c6"><td class="memItemLeft" align="right" valign="top"><a id="a36f6c5c241f74c8a7ef28667dd3211c6"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::MONITOR_HEIGHT</b> = 192</td></tr>
-<tr class="separator:a36f6c5c241f74c8a7ef28667dd3211c6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ab29cb1f27e957c143d0d89db32b2632b"><td class="memItemLeft" align="right" valign="top"><a id="ab29cb1f27e957c143d0d89db32b2632b"></a>
+constexpr Byte&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#ab29cb1f27e957c143d0d89db32b2632b">Monitor::DEVICE_ID</a> = 0x4A</td></tr>
+<tr class="memdesc:ab29cb1f27e957c143d0d89db32b2632b"><td class="mdescLeft">&#160;</td><td class="mdescRight">Random to "look" nice. <br /></td></tr>
+<tr class="separator:ab29cb1f27e957c143d0d89db32b2632b"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a7507edcebc7b9a0defa9f314af5a7ca2"><td class="memItemLeft" align="right" valign="top"><a id="a7507edcebc7b9a0defa9f314af5a7ca2"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::WIDTH</b> = 256</td></tr>
+<tr class="separator:a7507edcebc7b9a0defa9f314af5a7ca2"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ad531bbea0bde7a7819d7671fd21b3e00"><td class="memItemLeft" align="right" valign="top"><a id="ad531bbea0bde7a7819d7671fd21b3e00"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::HEIGHT</b> = 192</td></tr>
+<tr class="separator:ad531bbea0bde7a7819d7671fd21b3e00"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a5192a63efd7b93f2994bb326a04b04df"><td class="memItemLeft" align="right" valign="top"><a id="a5192a63efd7b93f2994bb326a04b04df"></a>
 constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::PIXEL_SCALE</b> = 4</td></tr>
 <tr class="separator:a5192a63efd7b93f2994bb326a04b04df"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a617147eb4179d2cb13ed2098b5f6e263"><td class="memItemLeft" align="right" valign="top"><a id="a617147eb4179d2cb13ed2098b5f6e263"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#a617147eb4179d2cb13ed2098b5f6e263">Monitor::MONITOR_WINDOW_WIDTH</a> = (MONITOR_WIDTH * PIXEL_SCALE + 22)</td></tr>
-<tr class="memdesc:a617147eb4179d2cb13ed2098b5f6e263"><td class="mdescLeft">&#160;</td><td class="mdescRight">A 22px margin is added for a good looking window. <br /></td></tr>
-<tr class="separator:a617147eb4179d2cb13ed2098b5f6e263"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aa87b8cc874472a38081020162f38a6e6"><td class="memItemLeft" align="right" valign="top"><a id="aa87b8cc874472a38081020162f38a6e6"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#aa87b8cc874472a38081020162f38a6e6">Monitor::MONITOR_WINDOW_HEIGHT</a> = (MONITOR_HEIGHT * PIXEL_SCALE + 22)</td></tr>
-<tr class="memdesc:aa87b8cc874472a38081020162f38a6e6"><td class="mdescLeft">&#160;</td><td class="mdescRight">A 22px margin is added for a good looking window. <br /></td></tr>
-<tr class="separator:aa87b8cc874472a38081020162f38a6e6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac7c47fdee437eca3c3a94cc6c2cc5f51"><td class="memItemLeft" align="right" valign="top"><a id="ac7c47fdee437eca3c3a94cc6c2cc5f51"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#ac7c47fdee437eca3c3a94cc6c2cc5f51">Monitor::WINDOW_WIDTH</a> = (WIDTH * PIXEL_SCALE + 22)</td></tr>
+<tr class="memdesc:ac7c47fdee437eca3c3a94cc6c2cc5f51"><td class="mdescLeft">&#160;</td><td class="mdescRight">A 22px margin is added for a good looking window. <br /></td></tr>
+<tr class="separator:ac7c47fdee437eca3c3a94cc6c2cc5f51"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a11606af22388017c7ac80742bb22b1da"><td class="memItemLeft" align="right" valign="top"><a id="a11606af22388017c7ac80742bb22b1da"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#a11606af22388017c7ac80742bb22b1da">Monitor::WINDOW_HEIGHT</a> = (HEIGHT * PIXEL_SCALE + 22)</td></tr>
+<tr class="memdesc:a11606af22388017c7ac80742bb22b1da"><td class="mdescLeft">&#160;</td><td class="mdescRight">A 22px margin is added for a good looking window. <br /></td></tr>
+<tr class="separator:a11606af22388017c7ac80742bb22b1da"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7ddde84a3822cc1c8a2f50e4a341dd33"><td class="memItemLeft" align="right" valign="top"><a id="a7ddde84a3822cc1c8a2f50e4a341dd33"></a>
 constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::CHARACTER_WIDTH</b> = 6</td></tr>
 <tr class="separator:a7ddde84a3822cc1c8a2f50e4a341dd33"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -232,11 +234,11 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::TEX
 <tr class="memitem:a59e30dd01f53d03bbb1d249b84a0fc5b"><td class="memItemLeft" align="right" valign="top"><a id="a59e30dd01f53d03bbb1d249b84a0fc5b"></a>
 constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::TEXT_MODE_ROWS</b> = 24</td></tr>
 <tr class="separator:a59e30dd01f53d03bbb1d249b84a0fc5b"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:ad5d656434c2e300c803f4bf5461a3007"><td class="memItemLeft" align="right" valign="top"><a id="ad5d656434c2e300c803f4bf5461a3007"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::SCREEN_PORTS_NB</b> = 5</td></tr>
-<tr class="separator:ad5d656434c2e300c803f4bf5461a3007"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa0ee65ca42718c9d19b4fc41d5913d7c"><td class="memItemLeft" align="right" valign="top"><a id="aa0ee65ca42718c9d19b4fc41d5913d7c"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>Monitor::PORTS_NB</b> = 5</td></tr>
+<tr class="separator:aa0ee65ca42718c9d19b4fc41d5913d7c"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a00bf33e995ba375e817a394bf5d4aafb"><td class="memItemLeft" align="right" valign="top"><a id="a00bf33e995ba375e817a394bf5d4aafb"></a>
-constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#a00bf33e995ba375e817a394bf5d4aafb">Monitor::PIXEL_MODE_BUFFER_SIZE</a> = (MONITOR_WIDTH * MONITOR_HEIGHT)</td></tr>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_monitor.html#a00bf33e995ba375e817a394bf5d4aafb">Monitor::PIXEL_MODE_BUFFER_SIZE</a> = (WIDTH * HEIGHT)</td></tr>
 <tr class="memdesc:a00bf33e995ba375e817a394bf5d4aafb"><td class="mdescLeft">&#160;</td><td class="mdescRight">The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), <b>dropped here</b> <br /></td></tr>
 <tr class="separator:a00bf33e995ba375e817a394bf5d4aafb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a149be5821d7bcde454c44bff8ab02eb3"><td class="memItemLeft" align="right" valign="top"><a id="a149be5821d7bcde454c44bff8ab02eb3"></a>

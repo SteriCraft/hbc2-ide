@@ -6,7 +6,7 @@ void Cpu::init(HbcCpu &cpu, HbcMotherboard* mb)
         cpu.m_registers[i] = 0x00;
 
     for (unsigned int i(0); i < FLAGS_NB; i++)
-        cpu.m_flags[i] = (i == (int)Cpu::Flags::INTERRUPT) ? true : false; // Interrupt flag up by default
+        cpu.m_flags[i] = (i == (int)Cpu::Flags::INTERRUPT) ? true : false;
 
     cpu.m_instructionRegister = 0x00000000;
 

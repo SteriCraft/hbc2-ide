@@ -105,7 +105,7 @@ $(function() {
 <div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;                           INSTR_ARG_INVAL, INSTR_ARG_NB, MEM_SIZE, MEM_USE, INSTR_ALONE, LABEL_ALREADY_USED,</div>
 <div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;                           START_ROUTINE_MISSING, LABEL_START_REDEFINED, DATA_OVERWRITES_INSTR, MEM_USE_DEF_ROUTINES,</div>
 <div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;                           DATA_MEM_USE, SPLIT_MEM, LABEL_MEM_USE, DATA_OVERLAP, ROUTINE_OVERLAP, UNKNOWN_VARIABLE,</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;                           BIN_FILE_OPEN };</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;                           BIN_FILE_OPEN, MEM_SIZE_RAM, UNDEFINED_ADDRESS_EEPROM };</div>
 <div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160; </div>
 <div class="line"><a name="l00067"></a><span class="lineno"><a class="line" href="namespace_token.html#a287a60cf3a5d94375a84d43c998c7f3d">   67</a></span>&#160;    <span class="keyword">const</span> std::string <a class="code" href="namespace_token.html#a287a60cf3a5d94375a84d43c998c7f3d">errStr</a>[] = { <span class="stringliteral">&quot;No error&quot;</span>, <span class="stringliteral">&quot;Circular dependency on file &quot;</span>, <span class="stringliteral">&quot;Invalid expression or string&quot;</span>,</div>
 <div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;                                   <span class="stringliteral">&quot;Missing &#39;\&quot;&#39; termination character&quot;</span>, <span class="stringliteral">&quot;Expected expression&quot;</span>,</div>
@@ -125,112 +125,114 @@ $(function() {
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;                                   <span class="stringliteral">&quot;Too few arguments in data definition&quot;</span>, <span class="stringliteral">&quot;Variable name missing in data definition&quot;</span>,</div>
 <div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;                                   <span class="stringliteral">&quot;Invalid values in data definition (single string, single value and list of values only)&quot;</span>,</div>
 <div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;                                   <span class="stringliteral">&quot;Invalid argument(s) for that instruction&quot;</span>, <span class="stringliteral">&quot;Too few or too many arguments for that instruction&quot;</span>,</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;                                   <span class="stringliteral">&quot;Program size too large (&quot;</span>, <span class="stringliteral">&quot;Exceeding memory size for instructions, try automatic address definition for variables&quot;</span>,</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;                                   <span class="stringliteral">&quot;Program size too large for the EEPROM (&quot;</span>, <span class="stringliteral">&quot;Exceeding memory size for instructions, try automatic address definition for variables&quot;</span>,</div>
 <div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;                                   <span class="stringliteral">&quot;Instructions must be part of routine block (defined after a label)&quot;</span>, <span class="stringliteral">&quot;This label name is already used&quot;</span>,</div>
 <div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;                                   <span class="stringliteral">&quot;\&quot;_start\&quot; routine is missing&quot;</span>, <span class="stringliteral">&quot;_start label cannot be redefined (address 0x300 by default)&quot;</span>,</div>
 <div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;                                   <span class="stringliteral">&quot;Data definition overlaps routine \&quot;&quot;</span>,</div>
 <div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;                                   <span class="stringliteral">&quot;Defined routines exceed memory size&quot;</span>, <span class="stringliteral">&quot;Data definition exceeds memory size&quot;</span>,</div>
 <div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;                                   <span class="stringliteral">&quot;Error on free memory space split while analyzing defined data&quot;</span>,</div>
 <div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;                                   <span class="stringliteral">&quot;Routine exceeds memory size&quot;</span>, <span class="stringliteral">&quot;Data definition overlaps \&quot;&quot;</span>, <span class="stringliteral">&quot;Routine overlaps \&quot;&quot;</span>,</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;                                   <span class="stringliteral">&quot;Unknown variable&quot;</span>, <span class="stringliteral">&quot;Unable to write the binary file (&quot;</span> }; </div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160; </div>
-<div class="line"><a name="l00100"></a><span class="lineno"><a class="line" href="class_token_1_1_token_item.html">  100</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_token_1_1_token_item.html">TokenItem</a></div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;    {</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;        <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;            <a class="code" href="class_token_1_1_token_item.html#a082cfd848b2207819875930d7f66bbac">TokenItem</a>(std::string str);</div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160; </div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_token_1_1_token_item.html#aab8e99513d793327f220ad40edbd30f1">setStr</a>(std::string str);</div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160; </div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_token_1_1_token_item.html#af395833f219f54b5b061952aa685fee4">setAsAddress</a>(uint16_t address);</div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160; </div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;            <a class="code" href="namespace_token.html#ad80928a0dff686ec8d11da0b5d6944a2">Token::TokenType</a> <a class="code" href="class_token_1_1_token_item.html#ae674e62ac243a6755c1cc2fd625be062">getType</a>();</div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160; </div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;            Cpu::InstructionOpcode <a class="code" href="class_token_1_1_token_item.html#a6bbf52461cb98dd3f1191154471fb5e4">getInstructionOpcode</a>();</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160; </div>
-<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;            <a class="code" href="namespace_cpu.html#a264af03ad1c047d2400ab45d080778ec">Cpu::Register</a> <a class="code" href="class_token_1_1_token_item.html#aa7721e9844a2784981a22a6213001dfc">getRegister</a>();</div>
-<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160; </div>
-<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;            <a class="code" href="struct_token_1_1_concat_reg.html">Token::ConcatReg</a> <a class="code" href="class_token_1_1_token_item.html#a1ff726f58fb18a5745f3bfb98f2d8b46">getConcatRegs</a>();</div>
-<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160; </div>
-<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;            uint8_t <a class="code" href="class_token_1_1_token_item.html#afa8abdcca4173e19de41cc666d12d7cf">getValue</a>();</div>
-<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160; </div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;            uint16_t <a class="code" href="class_token_1_1_token_item.html#a71e584a32eb65ab60a513d4607e5a76c">getAddress</a>();</div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160; </div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a47fa0ffdb3602aa1fc2261d8341e225e">getLabelName</a>();</div>
-<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160; </div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a628ee6d350882789fd0b70d218e1133f">getVariableName</a>();</div>
-<div class="line"><a name="l00165"></a><span class="lineno">  165</span>&#160; </div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#aec136224d025dbf581d867e90274b233">getStr</a>();</div>
-<div class="line"><a name="l00170"></a><span class="lineno">  170</span>&#160; </div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> <a class="code" href="class_token_1_1_token_item.html#a36da8b4d5e164f24534d44e1523e0d80">getErr</a>();</div>
-<div class="line"><a name="l00175"></a><span class="lineno">  175</span>&#160; </div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a915a93cae7b2bd72b8b843979fb95398">print</a>();</div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160; </div>
-<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;        <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160;            <span class="comment">// Methods</span></div>
-<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;            <span class="keywordtype">void</span> determineType();</div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;            <span class="keywordtype">bool</span> identifyInstruction();</div>
-<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;            <span class="keywordtype">void</span> analyseArgument();</div>
-<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160; </div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;            <span class="keywordtype">bool</span> is_digits(<span class="keyword">const</span> std::string&amp; str);</div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;            <span class="keywordtype">bool</span> is_hexDigits(<span class="keyword">const</span> std::string&amp; str);</div>
-<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;            <span class="keywordtype">bool</span> is_address(<span class="keyword">const</span> std::string&amp; str);</div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;            <span class="keywordtype">bool</span> is_register(<span class="keyword">const</span> std::string&amp; str);</div>
-<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;            <span class="keywordtype">bool</span> is_validToken(<span class="keyword">const</span> std::string&amp; str);</div>
-<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160; </div>
-<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;            <span class="comment">// Attributes</span></div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;            <a class="code" href="namespace_token.html#ad80928a0dff686ec8d11da0b5d6944a2">Token::TokenType</a> m_type;</div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160; </div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;            Cpu::InstructionOpcode m_instructionOpcode = Cpu::InstructionOpcode::NOP;</div>
-<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;            <a class="code" href="namespace_cpu.html#a264af03ad1c047d2400ab45d080778ec">Cpu::Register</a> m_reg = Cpu::Register::A;</div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;            <a class="code" href="struct_token_1_1_concat_reg.html">Token::ConcatReg</a> m_concatReg;</div>
-<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;            uint8_t m_value = 0x00;</div>
-<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;            uint16_t m_address = 0x0000;</div>
-<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;            std::string m_labelName = <span class="stringliteral">&quot;&quot;</span>;</div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160; </div>
-<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;            std::string m_str;</div>
-<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> m_err;</div>
-<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;    };</div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160; </div>
-<div class="line"><a name="l00213"></a><span class="lineno"><a class="line" href="class_token_1_1_token_line.html">  213</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_token_1_1_token_line.html">TokenLine</a></div>
-<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160;    {</div>
-<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;        <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;            <a class="code" href="class_token_1_1_token_line.html#a678d5af7925f367ef1c2cb6020844b8a">TokenLine</a>();</div>
-<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160; </div>
-<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#a25c184d4ec147a12d286c1271cf169f1">checkValidity</a>();</div>
-<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160; </div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;            <a class="code" href="struct_token_1_1_instruction.html">Token::Instruction</a> <a class="code" href="class_token_1_1_token_line.html#a0203e2f1683293dce3cae3c615219d30">getInstruction</a>();</div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160; </div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;            <a class="code" href="namespace_token.html#a42872decadf1527b9c55976ced3b4d4b">Token::DataType</a> <a class="code" href="class_token_1_1_token_line.html#a0371c2ee785d23b9767ea415a24b1122">getDataType</a>();</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160; </div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#af2b7f629620e42cb7dfdca61906ecad2">isInstruction</a>();</div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160; </div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#a78bd44a8861f2949e8bc991f0f3bdb74">isData</a>();</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160; </div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#ad3005ab2319a6f722b151e1e4b685c98">isLabel</a>();</div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160; </div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;            std::vector&lt;TokenItem&gt; m_tokens;</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;            QString m_originFilePath;</div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_originLineNb;</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;            std::string m_originStr;</div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;            <a class="code" href="struct_token_1_1_instruction.html">Token::Instruction</a> m_instr;</div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;            <a class="code" href="namespace_token.html#a42872decadf1527b9c55976ced3b4d4b">Token::DataType</a> m_dataType;</div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160; </div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> m_err;</div>
-<div class="line"><a name="l00270"></a><span class="lineno"><a class="line" href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">  270</a></span>&#160;            std::string <a class="code" href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">m_additionalInfo</a>; </div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;    };</div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160; </div>
-<div class="line"><a name="l00277"></a><span class="lineno"><a class="line" href="struct_token_1_1_token_file.html">  277</a></span>&#160;    <span class="keyword">struct </span><a class="code" href="struct_token_1_1_token_file.html">TokenFile</a></div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;    {</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        std::vector&lt;TokenLine&gt; m_lines;</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160; </div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        QString m_fileName;</div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;        QString m_filePath;</div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;    };</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;}</div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// TOKEN_H</span></div>
-<div class="ttc" id="aclass_token_1_1_token_item_html"><div class="ttname"><a href="class_token_1_1_token_item.html">Token::TokenItem</a></div><div class="ttdoc">Represents a token description.</div><div class="ttdef"><b>Definition:</b> token.h:101</div></div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;                                   <span class="stringliteral">&quot;Unknown variable&quot;</span>, <span class="stringliteral">&quot;Unable to write the binary file (&quot;</span>,</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;                                   <span class="stringliteral">&quot;Program size too large for the RAM, try targeting the EEPROM or unplugging it (&quot;</span>,</div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;                                   <span class="stringliteral">&quot;Using variables with undefined addresses is prohibited with EEPROM&quot;</span> }; </div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160; </div>
+<div class="line"><a name="l00102"></a><span class="lineno"><a class="line" href="class_token_1_1_token_item.html">  102</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_token_1_1_token_item.html">TokenItem</a></div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;    {</div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;        <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;            <a class="code" href="class_token_1_1_token_item.html#a082cfd848b2207819875930d7f66bbac">TokenItem</a>(std::string str);</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160; </div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_token_1_1_token_item.html#aab8e99513d793327f220ad40edbd30f1">setStr</a>(std::string str);</div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160; </div>
+<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;            <span class="keywordtype">void</span> <a class="code" href="class_token_1_1_token_item.html#af395833f219f54b5b061952aa685fee4">setAsAddress</a>(uint16_t address);</div>
+<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160; </div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;            <a class="code" href="namespace_token.html#ad80928a0dff686ec8d11da0b5d6944a2">Token::TokenType</a> <a class="code" href="class_token_1_1_token_item.html#ae674e62ac243a6755c1cc2fd625be062">getType</a>();</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160; </div>
+<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;            Cpu::InstructionOpcode <a class="code" href="class_token_1_1_token_item.html#a6bbf52461cb98dd3f1191154471fb5e4">getInstructionOpcode</a>();</div>
+<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160; </div>
+<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;            <a class="code" href="namespace_cpu.html#a264af03ad1c047d2400ab45d080778ec">Cpu::Register</a> <a class="code" href="class_token_1_1_token_item.html#aa7721e9844a2784981a22a6213001dfc">getRegister</a>();</div>
+<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160; </div>
+<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;            <a class="code" href="struct_token_1_1_concat_reg.html">Token::ConcatReg</a> <a class="code" href="class_token_1_1_token_item.html#a1ff726f58fb18a5745f3bfb98f2d8b46">getConcatRegs</a>();</div>
+<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160; </div>
+<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;            uint8_t <a class="code" href="class_token_1_1_token_item.html#afa8abdcca4173e19de41cc666d12d7cf">getValue</a>();</div>
+<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160; </div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;            uint16_t <a class="code" href="class_token_1_1_token_item.html#a71e584a32eb65ab60a513d4607e5a76c">getAddress</a>();</div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160; </div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a47fa0ffdb3602aa1fc2261d8341e225e">getLabelName</a>();</div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160; </div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a628ee6d350882789fd0b70d218e1133f">getVariableName</a>();</div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160; </div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#aec136224d025dbf581d867e90274b233">getStr</a>();</div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160; </div>
+<div class="line"><a name="l00176"></a><span class="lineno">  176</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> <a class="code" href="class_token_1_1_token_item.html#a36da8b4d5e164f24534d44e1523e0d80">getErr</a>();</div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160; </div>
+<div class="line"><a name="l00181"></a><span class="lineno">  181</span>&#160;            std::string <a class="code" href="class_token_1_1_token_item.html#a915a93cae7b2bd72b8b843979fb95398">print</a>();</div>
+<div class="line"><a name="l00182"></a><span class="lineno">  182</span>&#160; </div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;        <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;            <span class="comment">// Methods</span></div>
+<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160;            <span class="keywordtype">void</span> determineType();</div>
+<div class="line"><a name="l00186"></a><span class="lineno">  186</span>&#160;            <span class="keywordtype">bool</span> identifyInstruction();</div>
+<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;            <span class="keywordtype">void</span> analyseArgument();</div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160; </div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;            <span class="keywordtype">bool</span> is_digits(<span class="keyword">const</span> std::string&amp; str);</div>
+<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160;            <span class="keywordtype">bool</span> is_hexDigits(<span class="keyword">const</span> std::string&amp; str);</div>
+<div class="line"><a name="l00191"></a><span class="lineno">  191</span>&#160;            <span class="keywordtype">bool</span> is_address(<span class="keyword">const</span> std::string&amp; str);</div>
+<div class="line"><a name="l00192"></a><span class="lineno">  192</span>&#160;            <span class="keywordtype">bool</span> is_register(<span class="keyword">const</span> std::string&amp; str);</div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;            <span class="keywordtype">bool</span> is_validToken(<span class="keyword">const</span> std::string&amp; str);</div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160; </div>
+<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160;            <span class="comment">// Attributes</span></div>
+<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160;            <a class="code" href="namespace_token.html#ad80928a0dff686ec8d11da0b5d6944a2">Token::TokenType</a> m_type;</div>
+<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160; </div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;            Cpu::InstructionOpcode m_instructionOpcode = Cpu::InstructionOpcode::NOP;</div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160;            <a class="code" href="namespace_cpu.html#a264af03ad1c047d2400ab45d080778ec">Cpu::Register</a> m_reg = Cpu::Register::A;</div>
+<div class="line"><a name="l00200"></a><span class="lineno">  200</span>&#160;            <a class="code" href="struct_token_1_1_concat_reg.html">Token::ConcatReg</a> m_concatReg;</div>
+<div class="line"><a name="l00201"></a><span class="lineno">  201</span>&#160;            uint8_t m_value = 0x00;</div>
+<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;            uint16_t m_address = 0x0000;</div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;            std::string m_labelName = <span class="stringliteral">&quot;&quot;</span>;</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160; </div>
+<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160;            std::string m_str;</div>
+<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> m_err;</div>
+<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;    };</div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160; </div>
+<div class="line"><a name="l00215"></a><span class="lineno"><a class="line" href="class_token_1_1_token_line.html">  215</a></span>&#160;    <span class="keyword">class </span><a class="code" href="class_token_1_1_token_line.html">TokenLine</a></div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;    {</div>
+<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160;        <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;            <a class="code" href="class_token_1_1_token_line.html#a678d5af7925f367ef1c2cb6020844b8a">TokenLine</a>();</div>
+<div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160; </div>
+<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#a25c184d4ec147a12d286c1271cf169f1">checkValidity</a>();</div>
+<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160; </div>
+<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;            <a class="code" href="struct_token_1_1_instruction.html">Token::Instruction</a> <a class="code" href="class_token_1_1_token_line.html#a0203e2f1683293dce3cae3c615219d30">getInstruction</a>();</div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160; </div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;            <a class="code" href="namespace_token.html#a42872decadf1527b9c55976ced3b4d4b">Token::DataType</a> <a class="code" href="class_token_1_1_token_line.html#a0371c2ee785d23b9767ea415a24b1122">getDataType</a>();</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160; </div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#af2b7f629620e42cb7dfdca61906ecad2">isInstruction</a>();</div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160; </div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#a78bd44a8861f2949e8bc991f0f3bdb74">isData</a>();</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160; </div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;            <span class="keywordtype">bool</span> <a class="code" href="class_token_1_1_token_line.html#ad3005ab2319a6f722b151e1e4b685c98">isLabel</a>();</div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160; </div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;            std::vector&lt;TokenItem&gt; m_tokens;</div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;            QString m_originFilePath;</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_originLineNb;</div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;            std::string m_originStr;</div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160; </div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;            <a class="code" href="struct_token_1_1_instruction.html">Token::Instruction</a> m_instr;</div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;            <a class="code" href="namespace_token.html#a42872decadf1527b9c55976ced3b4d4b">Token::DataType</a> m_dataType;</div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160; </div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;            <a class="code" href="namespace_token.html#a013c1f38309e65a52d23fd70b844085d">Token::ErrorType</a> m_err;</div>
+<div class="line"><a name="l00272"></a><span class="lineno"><a class="line" href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">  272</a></span>&#160;            std::string <a class="code" href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">m_additionalInfo</a>; </div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;    };</div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160; </div>
+<div class="line"><a name="l00279"></a><span class="lineno"><a class="line" href="struct_token_1_1_token_file.html">  279</a></span>&#160;    <span class="keyword">struct </span><a class="code" href="struct_token_1_1_token_file.html">TokenFile</a></div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;    {</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        std::vector&lt;TokenLine&gt; m_lines;</div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160; </div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;        QString m_fileName;</div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        QString m_filePath;</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;    };</div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;}</div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160; </div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// TOKEN_H</span></div>
+<div class="ttc" id="aclass_token_1_1_token_item_html"><div class="ttname"><a href="class_token_1_1_token_item.html">Token::TokenItem</a></div><div class="ttdoc">Represents a token description.</div><div class="ttdef"><b>Definition:</b> token.h:103</div></div>
 <div class="ttc" id="aclass_token_1_1_token_item_html_a082cfd848b2207819875930d7f66bbac"><div class="ttname"><a href="class_token_1_1_token_item.html#a082cfd848b2207819875930d7f66bbac">Token::TokenItem::TokenItem</a></div><div class="ttdeci">TokenItem(std::string str)</div><div class="ttdef"><b>Definition:</b> token.cpp:6</div></div>
 <div class="ttc" id="aclass_token_1_1_token_item_html_a1ff726f58fb18a5745f3bfb98f2d8b46"><div class="ttname"><a href="class_token_1_1_token_item.html#a1ff726f58fb18a5745f3bfb98f2d8b46">Token::TokenItem::getConcatRegs</a></div><div class="ttdeci">Token::ConcatReg getConcatRegs()</div><div class="ttdoc">Returns the concatenated register associated with the token ([AA] if none).</div><div class="ttdef"><b>Definition:</b> token.cpp:49</div></div>
 <div class="ttc" id="aclass_token_1_1_token_item_html_a36da8b4d5e164f24534d44e1523e0d80"><div class="ttname"><a href="class_token_1_1_token_item.html#a36da8b4d5e164f24534d44e1523e0d80">Token::TokenItem::getErr</a></div><div class="ttdeci">Token::ErrorType getErr()</div><div class="ttdoc">Returns the error type stored in the token.</div><div class="ttdef"><b>Definition:</b> token.cpp:79</div></div>
@@ -245,11 +247,11 @@ $(function() {
 <div class="ttc" id="aclass_token_1_1_token_item_html_aec136224d025dbf581d867e90274b233"><div class="ttname"><a href="class_token_1_1_token_item.html#aec136224d025dbf581d867e90274b233">Token::TokenItem::getStr</a></div><div class="ttdeci">std::string getStr()</div><div class="ttdoc">Returns the string represented by the token.</div><div class="ttdef"><b>Definition:</b> token.cpp:74</div></div>
 <div class="ttc" id="aclass_token_1_1_token_item_html_af395833f219f54b5b061952aa685fee4"><div class="ttname"><a href="class_token_1_1_token_item.html#af395833f219f54b5b061952aa685fee4">Token::TokenItem::setAsAddress</a></div><div class="ttdeci">void setAsAddress(uint16_t address)</div><div class="ttdoc">Sets the address associated with the token (if it represents a label or a variable name).</div><div class="ttdef"><b>Definition:</b> token.cpp:24</div></div>
 <div class="ttc" id="aclass_token_1_1_token_item_html_afa8abdcca4173e19de41cc666d12d7cf"><div class="ttname"><a href="class_token_1_1_token_item.html#afa8abdcca4173e19de41cc666d12d7cf">Token::TokenItem::getValue</a></div><div class="ttdeci">uint8_t getValue()</div><div class="ttdoc">Returns the value associated with the token (0x00 if none).</div><div class="ttdef"><b>Definition:</b> token.cpp:54</div></div>
-<div class="ttc" id="aclass_token_1_1_token_line_html"><div class="ttname"><a href="class_token_1_1_token_line.html">Token::TokenLine</a></div><div class="ttdoc">Represents the tokens in a given line.</div><div class="ttdef"><b>Definition:</b> token.h:214</div></div>
+<div class="ttc" id="aclass_token_1_1_token_line_html"><div class="ttname"><a href="class_token_1_1_token_line.html">Token::TokenLine</a></div><div class="ttdoc">Represents the tokens in a given line.</div><div class="ttdef"><b>Definition:</b> token.h:216</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_a0203e2f1683293dce3cae3c615219d30"><div class="ttname"><a href="class_token_1_1_token_line.html#a0203e2f1683293dce3cae3c615219d30">Token::TokenLine::getInstruction</a></div><div class="ttdeci">Token::Instruction getInstruction()</div><div class="ttdoc">Returns the complete instruction struct (if any)</div><div class="ttdef"><b>Definition:</b> token.cpp:1380</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_a0371c2ee785d23b9767ea415a24b1122"><div class="ttname"><a href="class_token_1_1_token_line.html#a0371c2ee785d23b9767ea415a24b1122">Token::TokenLine::getDataType</a></div><div class="ttdeci">Token::DataType getDataType()</div><div class="ttdoc">Returns the data type (if any)</div><div class="ttdef"><b>Definition:</b> token.cpp:1385</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_a25c184d4ec147a12d286c1271cf169f1"><div class="ttname"><a href="class_token_1_1_token_line.html#a25c184d4ec147a12d286c1271cf169f1">Token::TokenLine::checkValidity</a></div><div class="ttdeci">bool checkValidity()</div><div class="ttdoc">Returns true if the line is valid (validity of arguments by keyword).</div><div class="ttdef"><b>Definition:</b> token.cpp:455</div></div>
-<div class="ttc" id="aclass_token_1_1_token_line_html_a375a2dc9d4303075bb4adeb4f940cb17"><div class="ttname"><a href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">Token::TokenLine::m_additionalInfo</a></div><div class="ttdeci">std::string m_additionalInfo</div><div class="ttdoc">Used to display more information after an error in the console output.</div><div class="ttdef"><b>Definition:</b> token.h:270</div></div>
+<div class="ttc" id="aclass_token_1_1_token_line_html_a375a2dc9d4303075bb4adeb4f940cb17"><div class="ttname"><a href="class_token_1_1_token_line.html#a375a2dc9d4303075bb4adeb4f940cb17">Token::TokenLine::m_additionalInfo</a></div><div class="ttdeci">std::string m_additionalInfo</div><div class="ttdoc">Used to display more information after an error in the console output.</div><div class="ttdef"><b>Definition:</b> token.h:272</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_a678d5af7925f367ef1c2cb6020844b8a"><div class="ttname"><a href="class_token_1_1_token_line.html#a678d5af7925f367ef1c2cb6020844b8a">Token::TokenLine::TokenLine</a></div><div class="ttdeci">TokenLine()</div><div class="ttdef"><b>Definition:</b> token.cpp:449</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_a78bd44a8861f2949e8bc991f0f3bdb74"><div class="ttname"><a href="class_token_1_1_token_line.html#a78bd44a8861f2949e8bc991f0f3bdb74">Token::TokenLine::isData</a></div><div class="ttdeci">bool isData()</div><div class="ttdoc">Returns true if the token line represents a data definition.</div><div class="ttdef"><b>Definition:</b> token.cpp:1395</div></div>
 <div class="ttc" id="aclass_token_1_1_token_line_html_ad3005ab2319a6f722b151e1e4b685c98"><div class="ttname"><a href="class_token_1_1_token_line.html#ad3005ab2319a6f722b151e1e4b685c98">Token::TokenLine::isLabel</a></div><div class="ttdeci">bool isLabel()</div><div class="ttdoc">Returns true if the token line represents an label definition.</div><div class="ttdef"><b>Definition:</b> token.cpp:1400</div></div>
@@ -267,7 +269,7 @@ $(function() {
 <div class="ttc" id="astruct_token_1_1_instruction_html"><div class="ttname"><a href="struct_token_1_1_instruction.html">Token::Instruction</a></div><div class="ttdoc">Opcode and addressing mode.</div><div class="ttdef"><b>Definition:</b> token.h:38</div></div>
 <div class="ttc" id="astruct_token_1_1_instruction_html_a78d85c2b33d2fc81c0bf84b6945f750d"><div class="ttname"><a href="struct_token_1_1_instruction.html#a78d85c2b33d2fc81c0bf84b6945f750d">Token::Instruction::m_opcode</a></div><div class="ttdeci">Cpu::InstructionOpcode m_opcode</div><div class="ttdoc">More info in the CPU documentation.</div><div class="ttdef"><b>Definition:</b> token.h:39</div></div>
 <div class="ttc" id="astruct_token_1_1_instruction_html_abe2ef31392d9512bc88f7a49c270250c"><div class="ttname"><a href="struct_token_1_1_instruction.html#abe2ef31392d9512bc88f7a49c270250c">Token::Instruction::m_addrMode</a></div><div class="ttdeci">Cpu::AddressingMode m_addrMode</div><div class="ttdoc">More info in the CPU documentation.</div><div class="ttdef"><b>Definition:</b> token.h:40</div></div>
-<div class="ttc" id="astruct_token_1_1_token_file_html"><div class="ttname"><a href="struct_token_1_1_token_file.html">Token::TokenFile</a></div><div class="ttdoc">Token representation of a code file (*.has)</div><div class="ttdef"><b>Definition:</b> token.h:278</div></div>
+<div class="ttc" id="astruct_token_1_1_token_file_html"><div class="ttname"><a href="struct_token_1_1_token_file.html">Token::TokenFile</a></div><div class="ttdoc">Token representation of a code file (*.has)</div><div class="ttdef"><b>Definition:</b> token.h:280</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

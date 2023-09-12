@@ -1,0 +1,5 @@
+When a key is pressed, the keyboard sends an interrupt on its first port.
+The data bus holds the scan code.
+
+When a key is released, the same thing happens but on the second port.
+See the map.

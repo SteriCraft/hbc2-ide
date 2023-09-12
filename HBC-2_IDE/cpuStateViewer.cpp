@@ -25,56 +25,118 @@ void CpuStateViewer::update(CpuStatus status)
     }
 }
 
-QString CpuStateViewer::byte2QString(Byte value)
+QString CpuStateViewer::byte2QString(Byte value, Base base, unsigned int significantDigits)
 {
-    QString result("0x");
+    QString result("");
 
-    if (value < 0x10)
-        result += "0";
+    switch (base)
+    {
+        case Base::BINARY:
+            for (unsigned int i(0x80); i > 0x01; i /= 2)
+            {
+                if (value < i)
+                    result += "0";
+            }
 
-    result += QString::number(value, 16).toUpper();
+            result += QString::number(value, 2);
+            break;
 
-    return result;
+        case Base::DECIMAL:
+            result = QString::number(value, 10);
+            break;
+
+        case Base::HEXADECIMAL:
+            if (value < 0x10)
+                result += "0";
+
+            result += QString::number(value, 16).toUpper();
+            break;
+    }
+
+    if (significantDigits > 0)
+    {
+        result = result.right(significantDigits);
+    }
+
+    return ((base == Base::HEXADECIMAL) ? "0x" : "") + result;
 }
 
-QString CpuStateViewer::word2QString(Word value)
+QString CpuStateViewer::word2QString(Word value, Base base, unsigned int significantDigits)
 {
-    QString result("0x");
+    QString result("");
 
-    if (value < 0x1000)
-        result += "0";
-    if (value < 0x100)
-        result += "0";
-    if (value < 0x10)
-        result += "0";
+    switch (base)
+    {
+        case Base::BINARY:
+            for (unsigned int i(0x8000); i > 0x01; i /= 2)
+            {
+                if (value < i)
+                    result += "0";
+            }
 
-    result += QString::number(value, 16).toUpper();
+            result += QString::number(value, 2);
+            break;
 
-    return result;
+        case Base::DECIMAL:
+            result = QString::number(value, 10);
+            break;
+
+        case Base::HEXADECIMAL:
+            for (unsigned int i(0x1000); i > 0x1; i /= 16)
+            {
+                if (value < i)
+                    result += "0";
+            }
+
+            result += QString::number(value, 16).toUpper();
+            break;
+    }
+
+    if (significantDigits > 0)
+    {
+        result = result.right(significantDigits);
+    }
+
+    return ((base == Base::HEXADECIMAL) ? "0x" : "") + result;
 }
 
-QString CpuStateViewer::dWord2QString(Dword value)
+QString CpuStateViewer::dWord2QString(Dword value, Base base, unsigned int significantDigits)
 {
-    QString result("0x");
+    QString result("");
 
-    if (value < 0x10000000)
-        result += "0";
-    if (value < 0x1000000)
-        result += "0";
-    if (value < 0x100000)
-        result += "0";
-    if (value < 0x10000)
-        result += "0";
-    if (value < 0x1000)
-        result += "0";
-    if (value < 0x100)
-        result += "0";
-    if (value < 0x10)
-        result += "0";
+    switch (base)
+    {
+        case Base::BINARY:
+            for (unsigned int i(0x80000000); i > 0x01; i /= 2)
+            {
+                if (value < i)
+                    result += "0";
+            }
 
-    result += QString::number(value, 16).toUpper();
+            result += QString::number(value, 2);
+            break;
 
-    return result;
+        case Base::DECIMAL:
+            result = QString::number(value, 10);
+            break;
+
+        case Base::HEXADECIMAL:
+            for (unsigned int i(0x10000000); i > 0x1; i /= 16)
+            {
+                if (value < i)
+                    result += "0";
+            }
+
+            result += QString::number(value, 16).toUpper();
+            break;
+    }
+
+    if (significantDigits > 0)
+    {
+        result = result.right(significantDigits);
+    }
+
+    return ((base == Base::HEXADECIMAL) ? "0x" : "") + result;
 }
 
 void CpuStateViewer::close()
@@ -87,6 +149,26 @@ void CpuStateViewer::close()
     }
 }
 
+// PRIVATE SLOTS
+void CpuStateViewer::switchToBinaryBase()
+{
+    m_base = Base::BINARY;
+    changeValueBase();
+}
+
+void CpuStateViewer::switchToDecimalBase()
+{
+    m_base = Base::DECIMAL;
+    changeValueBase();
+}
+
+void CpuStateViewer::switchToHexadecimalBase()
+{
+    m_base = Base::HEXADECIMAL;
+    changeValueBase();
+}
+
+
 // PRIVATE
 CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
 {
@@ -96,6 +178,9 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     setFixedWidth(CPU_STATE_VIEWER_WIDTH);
+
+    m_base = Base::HEXADECIMAL;
+
 
     // ==== STATE GROUP BOX (VLayout) ====
     QGroupBox *stateGroupBox = new QGroupBox(tr("Status"), this);
@@ -142,7 +227,7 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     adressingModeLayout->addWidget(adressingModeLabel);
     adressingModeLayout->addWidget(m_addressingModeLineEdit);
 
-    QTableWidget *m_decodedInstructionTable = new QTableWidget(1, 8, this);
+    m_decodedInstructionTable = new QTableWidget(1, 8, this);
     header << "Opcode" << "AddrMode" << "R1" << "R2" << "R3" << "V1" << "V2" << "Vx";
     m_decodedInstructionTable->setHorizontalHeaderLabels(header);
     m_decodedInstructionTable->setEditTriggers(QAbstractItemView::NoEditTriggers);
@@ -165,27 +250,27 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     m_r1TableItem = new QTableWidgetItem("0x0");
     m_r1TableItem->setTextAlignment(Qt::AlignCenter);
     m_decodedInstructionTable->setItem(0, 2, m_r1TableItem);
-    m_decodedInstructionTable->setColumnWidth(2, BYTE_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(2, REG_ITEM_WIDTH);
 
     m_r2TableItem = new QTableWidgetItem("0x0");
     m_r2TableItem->setTextAlignment(Qt::AlignCenter);
     m_decodedInstructionTable->setItem(0, 3, m_r2TableItem);
-    m_decodedInstructionTable->setColumnWidth(3, BYTE_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(3, REG_ITEM_WIDTH);
 
     m_r3TableItem = new QTableWidgetItem("0x0");
     m_r3TableItem->setTextAlignment(Qt::AlignCenter);
     m_decodedInstructionTable->setItem(0, 4, m_r3TableItem);
-    m_decodedInstructionTable->setColumnWidth(4, BYTE_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(4, REG_ITEM_WIDTH);
 
     m_v1TableItem = new QTableWidgetItem("0x00");
     m_v1TableItem->setTextAlignment(Qt::AlignCenter);
     m_decodedInstructionTable->setItem(0, 5, m_v1TableItem);
-    m_decodedInstructionTable->setColumnWidth(5, BYTE_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(5, REG_ITEM_WIDTH);
 
     m_v2TableItem = new QTableWidgetItem("0x00");
     m_v2TableItem->setTextAlignment(Qt::AlignCenter);
     m_decodedInstructionTable->setItem(0, 6, m_v2TableItem);
-    m_decodedInstructionTable->setColumnWidth(6, BYTE_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(6, REG_ITEM_WIDTH);
 
     m_vXTableItem = new QTableWidgetItem("0x0000");
     m_vXTableItem->setTextAlignment(Qt::AlignCenter);
@@ -389,6 +474,17 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     // =============================
 
 
+    // ==== NUMBER BASE BUTTONS ====
+    m_binaryBaseButton = new QPushButton(tr("Binary"), this);
+    m_decimalBaseButton = new QPushButton(tr("Decimal"), this);
+    m_hexadecimalBaseButton = new QPushButton(tr("Hexadecimal"), this);
+    QHBoxLayout *baseButtonsLayout = new QHBoxLayout;
+    baseButtonsLayout->addWidget(m_binaryBaseButton);
+    baseButtonsLayout->addWidget(m_decimalBaseButton);
+    baseButtonsLayout->addWidget(m_hexadecimalBaseButton);
+    // =============================
+
+
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
 
@@ -397,10 +493,14 @@ CpuStateViewer::CpuStateViewer(QWidget *parent) : QDialog(parent)
     mainLayout->addWidget(registersGroupBox);
     mainLayout->addWidget(stackGroupBox);
     mainLayout->addWidget(busesGroupBox);
+    mainLayout->addLayout(baseButtonsLayout);
     mainLayout->addWidget(closeButton);
 
     setLayout(mainLayout);
 
+    connect(m_binaryBaseButton, SIGNAL(clicked()), this, SLOT(switchToBinaryBase()));
+    connect(m_decimalBaseButton, SIGNAL(clicked()), this, SLOT(switchToDecimalBase()));
+    connect(m_hexadecimalBaseButton, SIGNAL(clicked()), this, SLOT(switchToHexadecimalBase()));
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 
     updateStatus();
@@ -452,9 +552,6 @@ void CpuStateViewer::updateStatus()
         m_interruptReadyLineEdit->setStyleSheet("color: red;");
     }
 
-    m_programCounterLineEdit->setText(word2QString(m_savedState.programCounter));
-    m_instructionRegisterLineEdit->setText(dWord2QString(m_savedState.instructionRegister));
-
     switch (m_savedState.addrMode)
     {
         case Cpu::AddressingMode::NONE:
@@ -493,27 +590,44 @@ void CpuStateViewer::updateStatus()
             m_addressingModeLineEdit->setText("INVALID");
     }
 
-    m_opcodeTableItem->setText(byte2QString((Byte)m_savedState.opcode));
-    m_addrModeTableItem->setText(byte2QString((Byte)m_savedState.addrMode));
-    m_r1TableItem->setText(byte2QString((Byte)m_savedState.r1));
-    m_r2TableItem->setText(byte2QString((Byte)m_savedState.r2));
-    m_r3TableItem->setText(byte2QString((Byte)m_savedState.r3));
-    m_v1TableItem->setText(byte2QString(m_savedState.v1));
-    m_v2TableItem->setText(byte2QString(m_savedState.v2));
-    m_vXTableItem->setText(word2QString(m_savedState.vX));
-
     for (unsigned int i(0); i < Cpu::FLAGS_NB; i++)
     {
         m_flagsTableItem[i]->setText((m_savedState.flags[i]) ? "1" : "0");
     }
 
+    changeValueBase();
+}
+
+void CpuStateViewer::changeValueBase()
+{
+    setFixedWidth((m_base == Base::BINARY) ? CPU_STATE_VIEWER_WIDTH_BINARY : CPU_STATE_VIEWER_WIDTH);
+
+    // Widget width
+    m_decodedInstructionTable->setFixedSize((m_base == Base::BINARY) ? DECODED_INSTRUCTION_TABLE_WIDTH_BINARY : DECODED_INSTRUCTION_TABLE_WIDTH, TABLE_HEIGHT);
+    m_decodedInstructionTable->setColumnWidth(5, (m_base == Base::BINARY) ? BYTE_ITEM_WIDTH : REG_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(6, (m_base == Base::BINARY) ? BYTE_ITEM_WIDTH : REG_ITEM_WIDTH);
+    m_decodedInstructionTable->setColumnWidth(7, (m_base == Base::BINARY) ? WORD_ITEM_WIDTH_BINARY : WORD_ITEM_WIDTH);
+
+    // Values
+    m_programCounterLineEdit->setText(word2QString(m_savedState.programCounter, m_base));
+    m_instructionRegisterLineEdit->setText(dWord2QString(m_savedState.instructionRegister, m_base));
+
+    m_opcodeTableItem->setText(byte2QString((Byte)m_savedState.opcode, m_base, (m_base == Base::BINARY ? 6 : 0)));
+    m_addrModeTableItem->setText(byte2QString((Byte)m_savedState.addrMode, m_base, (m_base == Base::BINARY ? 4 : 0)));
+    m_r1TableItem->setText(byte2QString((Byte)m_savedState.r1, m_base, (m_base == Base::BINARY ? 3 : 0)));
+    m_r2TableItem->setText(byte2QString((Byte)m_savedState.r2, m_base, (m_base == Base::BINARY ? 3 : 0)));
+    m_r3TableItem->setText(byte2QString((Byte)m_savedState.r3, m_base, (m_base == Base::BINARY ? 3 : 0)));
+    m_v1TableItem->setText(byte2QString(m_savedState.v1, m_base));
+    m_v2TableItem->setText(byte2QString(m_savedState.v2, m_base));
+    m_vXTableItem->setText(word2QString(m_savedState.vX, m_base));
+
     for (unsigned int i(0); i < Cpu::REGISTERS_NB; i++)
     {
-        m_registersLineEdits[i]->setText(byte2QString(m_savedState.registers[i]));
+        m_registersLineEdits[i]->setText(byte2QString(m_savedState.registers[i], m_base));
     }
 
-    m_stackPointerLineEdit->setText(byte2QString(m_savedState.stackPointer));
+    m_stackPointerLineEdit->setText(byte2QString(m_savedState.stackPointer, m_base));
 
-    m_addressBusLineEdit->setText(word2QString(m_savedState.addressBus));
-    m_dataBusLineEdit->setText(byte2QString(m_savedState.dataBus));
+    m_addressBusLineEdit->setText(word2QString(m_savedState.addressBus, m_base));
+    m_dataBusLineEdit->setText(byte2QString(m_savedState.dataBus, m_base));
 }

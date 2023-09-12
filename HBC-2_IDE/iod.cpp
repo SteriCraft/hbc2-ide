@@ -21,11 +21,6 @@ void Iod::tick(HbcIod &iod)
     if (!iod.m_motherboard->m_inr)
     {
         iod.m_motherboard->m_int = iod.m_interruptsQueue.size() > 0;
-
-        /*if (iod.m_motherboard->m_int)
-        {
-            qDebug() << "[IOD]: " << iod.m_interruptsQueue.size() << " interrupt(s) pending";
-        }*/
     }
     else
     {
@@ -64,7 +59,7 @@ void Iod::triggerInterrupt(HbcIod &iod, Byte peripheralFirstPortID)
     }
 }
 
-std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, Byte peripheralId, unsigned int nbPortsRequested)
+std::vector<Iod::PortSocket> Iod::requestPortsConnexions(HbcIod &iod, Byte peripheralId, Byte nbPortsRequested)
 {
     std::vector<PortSocket> sockets;
 

@@ -1,7 +1,6 @@
 var searchData=
 [
-  ['v1_5fmask_686',['V1_MASK',['../namespace_cpu.html#a17d4d59c148e39a8318e7f826610b3b4',1,'Cpu']]],
-  ['v2_5fmask_687',['V2_MASK',['../namespace_cpu.html#ab1e4a0b3c47a6ac20a4a0ae2fd7b7c9b',1,'Cpu']]],
-  ['values_688',['values',['../struct_assembly_1_1_variable.html#a277c0411e39cf4216f7049c5ad7a441d',1,'Assembly::Variable']]],
-  ['vx_5fmask_689',['VX_MASK',['../namespace_cpu.html#a4ea699c1f85e0f979f3367107a44e91d',1,'Cpu']]]
+  ['usekeyboard_743',['useKeyboard',['../struct_emulator_1_1_status.html#a6ed265a6c144748d0409a011f123987a',1,'Emulator::Status']]],
+  ['usemonitor_744',['useMonitor',['../struct_emulator_1_1_status.html#a66a14d5f17f212d17af08818ff5f8977',1,'Emulator::Status']]],
+  ['usertc_745',['useRTC',['../struct_emulator_1_1_status.html#ad3b2b2dda731e40fec15dfee05130c38',1,'Emulator::Status']]]
 ];

@@ -62,7 +62,7 @@ namespace Token
                            INSTR_ARG_INVAL, INSTR_ARG_NB, MEM_SIZE, MEM_USE, INSTR_ALONE, LABEL_ALREADY_USED,
                            START_ROUTINE_MISSING, LABEL_START_REDEFINED, DATA_OVERWRITES_INSTR, MEM_USE_DEF_ROUTINES,
                            DATA_MEM_USE, SPLIT_MEM, LABEL_MEM_USE, DATA_OVERLAP, ROUTINE_OVERLAP, UNKNOWN_VARIABLE,
-                           BIN_FILE_OPEN };
+                           BIN_FILE_OPEN, MEM_SIZE_RAM, UNDEFINED_ADDRESS_EEPROM };
 
     const std::string errStr[] = { "No error", "Circular dependency on file ", "Invalid expression or string",
                                    "Missing '\"' termination character", "Expected expression",
@@ -82,14 +82,16 @@ namespace Token
                                    "Too few arguments in data definition", "Variable name missing in data definition",
                                    "Invalid values in data definition (single string, single value and list of values only)",
                                    "Invalid argument(s) for that instruction", "Too few or too many arguments for that instruction",
-                                   "Program size too large (", "Exceeding memory size for instructions, try automatic address definition for variables",
+                                   "Program size too large for the EEPROM (", "Exceeding memory size for instructions, try automatic address definition for variables",
                                    "Instructions must be part of routine block (defined after a label)", "This label name is already used",
                                    "\"_start\" routine is missing", "_start label cannot be redefined (address 0x300 by default)",
                                    "Data definition overlaps routine \"",
                                    "Defined routines exceed memory size", "Data definition exceeds memory size",
                                    "Error on free memory space split while analyzing defined data",
                                    "Routine exceeds memory size", "Data definition overlaps \"", "Routine overlaps \"",
-                                   "Unknown variable", "Unable to write the binary file (" }; //!< More info in the assembly language documentation
+                                   "Unknown variable", "Unable to write the binary file (",
+                                   "Program size too large for the RAM, try targeting the EEPROM or unplugging it (",
+                                   "Using variables with undefined addresses is prohibited with EEPROM" }; //!< More info in the assembly language documentation
 
     /*!
      * \class TokenItem

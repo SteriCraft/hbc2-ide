@@ -73,9 +73,9 @@ $(function() {
 <table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
 Functions</h2></td></tr>
-<tr class="memitem:a76ddfc56af3a25883a39263ba99f84aa"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_motherboard.html#a76ddfc56af3a25883a39263ba99f84aa">init</a> (<a class="el" href="struct_hbc_motherboard.html">HbcMotherboard</a> &amp;motherboard, QByteArray data)</td></tr>
-<tr class="memdesc:a76ddfc56af3a25883a39263ba99f84aa"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the motherboard.  <a href="namespace_motherboard.html#a76ddfc56af3a25883a39263ba99f84aa">More...</a><br /></td></tr>
-<tr class="separator:a76ddfc56af3a25883a39263ba99f84aa"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:ac6acaeec34dd5493207522f7e3d1a45f"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_motherboard.html#ac6acaeec34dd5493207522f7e3d1a45f">init</a> (<a class="el" href="struct_hbc_motherboard.html">HbcMotherboard</a> &amp;motherboard, QByteArray ramData)</td></tr>
+<tr class="memdesc:ac6acaeec34dd5493207522f7e3d1a45f"><td class="mdescLeft">&#160;</td><td class="mdescRight">Initializes the motherboard.  <a href="namespace_motherboard.html#ac6acaeec34dd5493207522f7e3d1a45f">More...</a><br /></td></tr>
+<tr class="separator:ac6acaeec34dd5493207522f7e3d1a45f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a8c4632788e1a9f4989955b0965c3ad39"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="namespace_motherboard.html#a8c4632788e1a9f4989955b0965c3ad39">tick</a> (<a class="el" href="struct_hbc_motherboard.html">HbcMotherboard</a> &amp;motherboard)</td></tr>
 <tr class="memdesc:a8c4632788e1a9f4989955b0965c3ad39"><td class="mdescLeft">&#160;</td><td class="mdescRight">Executes one clock cycle through the motherboard.  <a href="namespace_motherboard.html#a8c4632788e1a9f4989955b0965c3ad39">More...</a><br /></td></tr>
 <tr class="separator:a8c4632788e1a9f4989955b0965c3ad39"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -90,8 +90,8 @@ Functions</h2></td></tr>
 <div class="textblock"><p><a class="el" href="namespace_motherboard.html">Motherboard</a> specifications.<br  />
  Find more info in the CPU documentation. </p>
 </div><h2 class="groupheader">Function Documentation</h2>
-<a id="a76ddfc56af3a25883a39263ba99f84aa"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a76ddfc56af3a25883a39263ba99f84aa">&#9670;&nbsp;</a></span>init()</h2>
+<a id="ac6acaeec34dd5493207522f7e3d1a45f"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#ac6acaeec34dd5493207522f7e3d1a45f">&#9670;&nbsp;</a></span>init()</h2>
 
 <div class="memitem">
 <div class="memproto">
@@ -106,7 +106,7 @@ Functions</h2></td></tr>
           <td class="paramkey"></td>
           <td></td>
           <td class="paramtype">QByteArray&#160;</td>
-          <td class="paramname"><em>data</em>&#160;</td>
+          <td class="paramname"><em>ramData</em>&#160;</td>
         </tr>
         <tr>
           <td></td>
@@ -119,7 +119,7 @@ Functions</h2></td></tr>
 <p>Initializes the motherboard. </p>
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
-    <tr><td class="paramname">data</td><td>65,536 bytes of binary data </td></tr>
+    <tr><td class="paramname">data</td><td>65,536 bytes of binary data for the RAM <b>(if its size is 0, RAM will be filled with 0x00)</b> </td></tr>
   </table>
   </dd>
 </dl>

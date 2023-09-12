@@ -146,8 +146,8 @@ namespace Iod
      */
     struct PortSocket
     {
-        unsigned int portId; //!< Specified by HbcIod when ports are requested by peripherals
-        uint8_t *portDataPointer; //!< Leads to Port.data
+        Byte portId; //!< Specified by HbcIod when ports are requested by peripherals
+        Byte *portDataPointer; //!< Leads to Port.data
     };
 
     /*!
@@ -156,7 +156,7 @@ namespace Iod
      */
     struct Port
     {
-        unsigned int peripheralId; //!< HbcIod stores informations about connected peripherals <i>(#0 = no peripheral connected)</i>
+        Byte peripheralId; //!< HbcIod stores informations about connected peripherals <i>(#0 = no peripheral connected)</i>
         Byte data; //!< Where PortSocket.portDataPointer leads to
     };
 }

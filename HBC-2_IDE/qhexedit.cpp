@@ -512,6 +512,12 @@ void QHexEdit::selectData(qint64 address, qint64 nbOfBytes)
     _bSelectionEnd = address + nbOfBytes;
 }
 
+void QHexEdit::gotoAddress(qint64 address)
+{
+    setCursorPosition(address * 2);
+    ensureVisible();
+}
+
 void QHexEdit::undo()
 {
     _undoStack->undo();

@@ -72,7 +72,7 @@ namespace Iod
      * \param nbPortsRequested Number of ports requested
      * \return a vector of the sockets created <b>(empty if there is not enough available ports)</b>
      */
-    std::vector<PortSocket> requestPortsConnexions(HbcIod &iod, Byte peripheralId, unsigned int nbPortsRequested);
+    std::vector<PortSocket> requestPortsConnexions(HbcIod &iod, Byte peripheralId, Byte nbPortsRequested);
 }
 
 #endif // IOD_H

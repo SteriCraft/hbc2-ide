@@ -9,10 +9,95 @@
  * \date 29/08/2023
  */
 #include <QDialog>
-#include <QVBoxLayout>
-#include <QDialogButtonBox>
+#include <QRadioButton>
+#include <QSpinBox>
+
 #include "qhexedit.h"
-#include "computerDetails.h"
+#include "eeprom.h"
+
+/*!
+ * \brief A hexadecimal spin box capable of doing 20 or 16 bits long values
+ */
+class HexSpinBox : public QSpinBox
+{
+    public:
+        HexSpinBox(bool allow20Bits, QWidget *parent = nullptr) : QSpinBox(parent), m_allow20Bits(allow20Bits)
+        {
+            setPrefix("0x");
+            setDisplayIntegerBase(16);
+            setValue(0);
+
+            if (allow20Bits)
+                setRange(0, 0xFFFFF);
+            else
+                setRange(0, 0xFFFF);
+        }
+
+        unsigned int hexValue() const
+        {
+            return u(value());
+        }
+
+        void setHexValue(unsigned int value)
+        {
+            setValue(i(value));
+        }
+
+        void allow20Bits(bool allow)
+        {
+            m_allow20Bits = allow;
+            setMaximum(allow ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE);
+            setValue(0);
+        }
+
+    protected:
+        QString textFromValue(int value) const
+        {
+            return QString::number(u(value), 16).toUpper();
+        }
+
+        int valueFromText(const QString &text) const
+        {
+            return i(text.toUInt(0, 16));
+        }
+
+        QValidator::State validate(QString &input, int &pos) const
+        {
+            QString copy(input);
+
+            if (copy.startsWith("0x"))
+                copy.remove(0, 2);
+
+            pos -= copy.size() - copy.trimmed().size();
+            copy = copy.trimmed();
+
+            if (copy.isEmpty())
+                return QValidator::Intermediate;
+
+            input = QString("0x") + copy.toUpper();
+
+            bool okay;
+            unsigned int val = copy.toUInt(&okay, 16);
+
+            if (!okay || (m_allow20Bits && val > 0xFFFFF) || (!m_allow20Bits && val > 0xFFFF))
+                return QValidator::Invalid;
+
+            return QValidator::Acceptable;
+        }
+
+    private:
+        bool m_allow20Bits;
+
+        inline unsigned int u(int i) const
+        {
+            return *reinterpret_cast<unsigned int *>(&i);
+        }
+
+        inline int i(unsigned int u) const
+        {
+            return *reinterpret_cast<int *>(&u);
+        }
+};
 
 /*!
  * \class BinaryViewer
@@ -37,10 +122,17 @@ class BinaryViewer : public QDialog // SINGLETON
         static BinaryViewer* getInstance(QWidget *parent = nullptr);
 
         /*!
-         * \brief Updates displayed content
-         * \param data New binary data
+         * \brief Set RAM as the only displayable content and updates displayed content
+         * \param ramData New RAM binary data
          */
-        static void update(const QByteArray data);
+        static void update(const QByteArray ramData);
+
+        /*!
+         * \brief Updates contents and resets the hex viewer depending on what memory is selected to be displayed
+         * \param ramData New RAM binary data
+         * \param eepromData New EEPROM binary data
+         */
+        static void update(const QByteArray ramData, const QByteArray eepromData);
 
         /*!
          * \brief Highlights the 4 bytes of the instruction at the address passed
@@ -48,14 +140,43 @@ class BinaryViewer : public QDialog // SINGLETON
          */
         static void highlightInstruction(Word programCounter);
 
+        /*!
+         * \brief Selects the RAM content as the one to be displayed
+         */
+        static void showRam();
+
+        /*!
+         * \brief Selects the EEPROM content as the one to be displayed
+         */
+        static void showEeprom();
+
+        /*!
+         * \brief Sets the EEPROM select button checkable
+         */
+        static void enableEepromSelect(bool enable);
+
         static void close();
         ~BinaryViewer();
+
+    private slots:
+        void showRamContent();
+        void showEepromContent(bool toggled);
+        void gotoAddress();
 
     private:
         static constexpr int BINARY_DIALOG_WIDTH = 610;
         static constexpr int BINARY_DIALOG_HEIGHT = 600;
 
         BinaryViewer(QWidget *parent = nullptr);
+
+        bool m_showRam;
+        QByteArray m_ramData;
+        QByteArray m_eepromData;
+
+        QRadioButton *m_selectRamButton;
+        QRadioButton *m_selectEepromButton;
+
+        HexSpinBox *m_addressSpinBox;
 
         QHexEdit *m_hexEditor;
 };

@@ -1,0 +1,6 @@
+<map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/keyboard.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/keyboard.h">
+<area shape="rect" id="node1" title="Keyboard device derived from HbcPeripheral." alt="" coords="17,5,189,61"/>
+<area shape="rect" id="node2" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="17,109,189,165"/>
+<area shape="rect" id="node3" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,213,189,269"/>
+<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,317,200,373"/>
+</map>

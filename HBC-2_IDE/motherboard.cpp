@@ -1,25 +1,29 @@
 #include "motherboard.h"
 
-bool Motherboard::init(HbcMotherboard &motherboard, QByteArray data)
+bool Motherboard::init(HbcMotherboard &motherboard, QByteArray ramData)
 {
-    bool success(false);
-
     motherboard.m_addressBus = 0;
     motherboard.m_dataBus = 0;
 
     motherboard.m_int = false;
     motherboard.m_inr = false;
 
-    if (data.size() == Ram::MEMORY_SIZE)
+    if (ramData.size() == Ram::MEMORY_SIZE) // RAM initial binary data provided
     {
-        Ram::setContent(motherboard.m_ram, data);
+        Ram::setContent(motherboard.m_ram, ramData);
         Cpu::init(motherboard.m_cpu, &motherboard);
         Iod::init(motherboard.m_iod, &motherboard);
-
-        success = true;
     }
+    else if (ramData.size() == 0) // RAM initial binary data not provided, using the EEPROM
+    {
+        Ram::fillNull(motherboard.m_ram);
+        Cpu::init(motherboard.m_cpu, &motherboard);
+        Iod::init(motherboard.m_iod, &motherboard);
+    }
+    else
+        return false;
 
-    return success;
+    return true;
 }
 
 void Motherboard::tick(HbcMotherboard &motherboard)

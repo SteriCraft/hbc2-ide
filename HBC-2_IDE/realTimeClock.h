@@ -34,6 +34,8 @@ namespace RealTimeClock
      * The <b>Real Time Clock</b> (or RTC) is a self-powered device that stores and keeps track of date and time.
      * See <a href="https://doc.qt.io/qt-6/qdate.html">QDate</a> and <a href="https://doc.qt.io/qt-6/qtime.htmll">QTime</a> for more information about date and time storage.
      *
+     * <b>Device ID:</b> 0x95
+     *
      * <table>
      *  <caption>List of available ports</caption>
      *  <tr>

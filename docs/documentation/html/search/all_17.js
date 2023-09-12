@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['_7ehbcperipheral_350',['~HbcPeripheral',['../class_hbc_peripheral.html#ab821ed1f1f8bf5adb070b1d1c3bd1b5d',1,'HbcPeripheral']]]
+  ['year_5f0_380',['YEAR_0',['../namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745',1,'RealTimeClock']]]
 ];

@@ -41,6 +41,8 @@ add_executable(HBC-2_IDE
   customizedEditor.h
   emulator.cpp
   emulator.h
+  eeprom.cpp
+  eeprom.h
   fileManager.cpp
   fileManager.h
   keyboard.cpp

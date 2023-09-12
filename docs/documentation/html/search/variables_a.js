@@ -1,9 +1,7 @@
 var searchData=
 [
-  ['peripheralid_669',['peripheralId',['../struct_iod_1_1_port.html#a0832796f003513553ea68b134de9aba1',1,'Iod::Port']]],
-  ['peripherals_670',['peripherals',['../struct_emulator_1_1_computer.html#a92faf6ba9fd04a3b342d8fa0338692cf',1,'Emulator::Computer']]],
-  ['pixel_5fmode_5fbuffer_5fsize_671',['PIXEL_MODE_BUFFER_SIZE',['../namespace_monitor.html#a00bf33e995ba375e817a394bf5d4aafb',1,'Monitor']]],
-  ['portdatapointer_672',['portDataPointer',['../struct_iod_1_1_port_socket.html#a7377b4a05ceb6696a43ffbeafd8b6b65',1,'Iod::PortSocket']]],
-  ['portid_673',['portId',['../struct_iod_1_1_port_socket.html#addf216db30862b02a769f08c33a6ae2c',1,'Iod::PortSocket']]],
-  ['program_5fstart_5faddress_674',['PROGRAM_START_ADDRESS',['../namespace_cpu.html#ab8947635226f34dc183efa19a21b5d61',1,'Cpu']]]
+  ['opcode_5fmask_723',['OPCODE_MASK',['../namespace_cpu.html#a091d26481151e5c65cf3bbb072eb1673',1,'Cpu']]],
+  ['openbinaryvieweronassembly_724',['openBinaryViewerOnAssembly',['../struct_configuration_settings.html#ac6dca7a91936921159d95922337c417d',1,'ConfigurationSettings']]],
+  ['openbinaryvieweronemulatorpaused_725',['openBinaryViewerOnEmulatorPaused',['../struct_configuration_settings.html#ace82651848c99820e453646ec6cd374e',1,'ConfigurationSettings']]],
+  ['openbinaryvieweronemulatorstopped_726',['openBinaryViewerOnEmulatorStopped',['../struct_configuration_settings.html#a8ab05300f1fec6a095ac7b128a5d8d92',1,'ConfigurationSettings']]]
 ];
