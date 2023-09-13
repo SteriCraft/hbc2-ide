@@ -2074,6 +2074,8 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
     setWindowTitle(tr("About"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
+
+    // Widgets
     QLabel *ideIcon = new QLabel(this);
     ideIcon->setPixmap(QIcon(":/icons/res/logo.png").pixmap(QSize(128,128)));
 
@@ -2100,22 +2102,33 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
     githubUrl->setOpenExternalLinks(true);
     githubUrl->setText("<a href=\"https://github.com/SteriCraft/hbc2-ide\">" + tr("Github repository") + "</a>");
 
+    QLabel *websiteUrl = new QLabel(this);
+    websiteUrl->setTextFormat(Qt::RichText);
+    websiteUrl->setTextInteractionFlags(Qt::TextBrowserInteraction);
+    websiteUrl->setOpenExternalLinks(true);
+    websiteUrl->setText("<a href=\"https://hbc2fr.wordpress.com/\">" + tr("Project website") + "</a>");
+
     QLabel *author = new QLabel(this);
     author->setText(tr("Created by ") + "Gianni Leclercq");
 
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
 
+    // Layout
     QVBoxLayout *textLayout = new QVBoxLayout;
     textLayout->addWidget(aboutText1);
     textLayout->addWidget(aboutText2);
     textLayout->addWidget(version);
     textLayout->addWidget(licence);
+    textLayout->addSpacing(20);
     textLayout->addWidget(githubUrl);
+    textLayout->addWidget(websiteUrl);
+    textLayout->addSpacing(20);
     textLayout->addWidget(author);
 
     QHBoxLayout *widgetLayout = new QHBoxLayout;
     widgetLayout->addWidget(ideIcon);
+    widgetLayout->addSpacing(40);
     widgetLayout->addLayout(textLayout);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -2124,5 +2137,7 @@ AboutDialog::AboutDialog(QWidget *parent) : QDialog(parent)
 
     setLayout(mainLayout);
 
+
+    // Connections
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
 }
