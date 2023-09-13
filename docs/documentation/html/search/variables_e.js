@@ -1,6 +1,4 @@
 var searchData=
 [
-  ['usekeyboard_768',['useKeyboard',['../struct_emulator_1_1_status.html#a6ed265a6c144748d0409a011f123987a',1,'Emulator::Status']]],
-  ['usemonitor_769',['useMonitor',['../struct_emulator_1_1_status.html#a66a14d5f17f212d17af08818ff5f8977',1,'Emulator::Status']]],
-  ['usertc_770',['useRTC',['../struct_emulator_1_1_status.html#ad3b2b2dda731e40fec15dfee05130c38',1,'Emulator::Status']]]
+  ['tabsize_772',['tabSize',['../struct_configuration_settings.html#a21c208b0ef890b931482df25546d6a7f',1,'ConfigurationSettings']]]
 ];

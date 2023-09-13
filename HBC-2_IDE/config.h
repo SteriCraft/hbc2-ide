@@ -29,10 +29,22 @@
 struct ConfigurationSettings
 {
     // Editor settings
-    unsigned int tabSize = 4; // Number of spaces representing a tab
+    unsigned int tabSize = 4; //!< Number of spaces representing a tab
+    QString defaultProjectsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/hbc2_projects"; //!< Stores the default path for new projects
+
+    QList<QString> recentProjects;
 
     // Assembler settings
     bool ramAsDefaultMemoryTarget = true; //<! Sets if the code will be assembled in the RAM by default
+
+    // Emulator settings
+    bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
+    bool monitorPlugged = true; //!< Sets if the emulator starts with the HbcMonitor plugged in
+    bool rtcPlugged = true; //!< Sets if the emulator starts with the HbcRealTimeClock plugged in
+    bool keyboardPlugged = true; //!< Sets if the emulator starts with the HbcKeyboard plugged in
+    bool eepromPlugged = false; //!< Sets if the emulator starts with the HbcEeprom plugged in
+    bool dismissReassemblyWarnings = false; //!< Sets if warnings are thrown when trying to run a project which was modified or not yet assembled
+    unsigned int pixelScale = 4; //!< Sets the size of a pixel in the HbcMonitor
 
     // CPU state viewer settings
     bool openCpuStateViewerOnEmulatorPaused = true;
@@ -42,20 +54,6 @@ struct ConfigurationSettings
     bool openBinaryViewerOnAssembly = true; //!< Sets if the viewer is automatically opened after assembling a project
     bool openBinaryViewerOnEmulatorPaused = true; //!< Sets if the viewer is automatically opened after the emulator was paused
     bool openBinaryViewerOnEmulatorStopped = true; //!< Sets if the viewer is automatically opened after the emulator was stopped
-
-    // Emulator settings
-    bool startEmulatorPaused = true; //!< Sets if the emulator starts paused
-    bool monitorPlugged = true; //!< Sets if the emulator starts with the HbcMonitor plugged in
-    bool rtcPlugged = true; //!< Sets if the emulator starts with the HbcRealTimeClock plugged in
-    bool keyboardPlugged = true; //!< Sets if the emulator starts with the HbcKeyboard plugged in
-    bool eepromPlugged = false; //!< Sets if the emulator starts with the HbcEeprom plugged in
-    bool dismissReassemblyWarnings = false; //!< Sets if warnings are thrown when trying to run a project which was modified or not yet assembled
-
-    // IDE settings
-    QString defaultProjectsPath = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + "/hbc2_projects"; //!< Stores the default path for new projects
-
-    // Recent projects
-    QList<QString> recentProjects;
 };
 
 /*!
@@ -100,38 +98,16 @@ class ConfigManager
          */
         void setTabSize(unsigned int nbOfSpaces);
 
+        /*!
+         * \param defaultPath Desired new default path for new projects
+         */
+        bool setDefaultProjectsPath(QString defaultPath);
+
         // Assembler settings
         /*!
          * \brief Sets if the code will be assembled in the RAM
          */
         void setRamAsDefaultMemoryTarget(bool ramAsDefault);
-
-        // CPU state viewer settings
-        /*!
-         * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
-         */
-        void setOpenCpuStateViewerOnEmulatorPaused(bool enable);
-
-        /*!
-         * \param enable Desired behaviour for the CpuStateViewer when the emulator is stopped
-         */
-        void setOpenCpuStateViewerOnEmulatorStopped(bool enable);
-
-        // Binary viewer settings
-        /*!
-         * \param enable Desired behaviour for the BinaryViewer on project assembly
-         */
-        void setOpenBinaryViewerOnAssembly(bool enable);
-
-        /*!
-         * \param enable Desired behaviour for the BinaryViewer when the emulator is paused
-         */
-        void setOpenBinaryViewerOnEmulatorPaused(bool enable);
-
-        /*!
-         * \param enable Desired behaviour for the BinaryViewer when the emulator is stopped
-         */
-        void setOpenBinaryViewerOnEmulatorStopped(bool enable);
 
         // Emulator settings
         /*!
@@ -164,11 +140,37 @@ class ConfigManager
          */
         void setDismissReassemblyWarnings(bool dismiss);
 
-        // IDE settings
         /*!
-         * \param defaultPath Desired new default path for new projects
+         * \brief Sets the scale of a pixel in HbcMonitor
          */
-        bool setDefaultProjectsPath(QString defaultPath);
+        void setPixelScale(unsigned int scale);
+
+        // CPU state viewer settings
+        /*!
+         * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
+         */
+        void setOpenCpuStateViewerOnEmulatorPaused(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the CpuStateViewer when the emulator is stopped
+         */
+        void setOpenCpuStateViewerOnEmulatorStopped(bool enable);
+
+        // Binary viewer settings
+        /*!
+         * \param enable Desired behaviour for the BinaryViewer on project assembly
+         */
+        void setOpenBinaryViewerOnAssembly(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the BinaryViewer when the emulator is paused
+         */
+        void setOpenBinaryViewerOnEmulatorPaused(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the BinaryViewer when the emulator is stopped
+         */
+        void setOpenBinaryViewerOnEmulatorStopped(bool enable);
 
 
         // ==== GETTERS ====
@@ -178,38 +180,13 @@ class ConfigManager
          */
         unsigned int getTabSize();
 
+        QString getDefaultProjectsPath();
+
         // Assembler settings
         /*!
          * \return <b>true</b> if the code must be assembled in the RAM by default
          */
         bool getRamAsDefaultMemoryTarget();
-
-        // Cpu state viewer settings
-        /*!
-         * \return <b>true</b> if the CpuStateViewer opens when the emulator is paused
-         */
-        bool getOpenCpuStateViewerOnEmulatorPaused();
-
-        /*!
-         * \return <b>true</b> if the CpuStateViewer opens when the emulator is stopped
-         */
-        bool getOpenCpuStateViewerOnEmulatorStopped();
-
-        // Binary viewer settings
-        /*!
-         * \return <b>true</b> if the BinaryViewer opens on project assembly
-         */
-        bool getOpenBinaryViewerOnAssembly();
-
-        /*!
-         * \return <b>true</b> if the BinaryViewer opens when the emulator is paused
-         */
-        bool getOpenBinaryViewerOnEmulatorPaused();
-
-        /*!
-         * \return <b>true</b> if the BinaryViewer opens when the emulator is stopped
-         */
-        bool getOpenBinaryViewerOnEmulatorStopped();
 
         // Emulator settings
         /*!
@@ -242,11 +219,37 @@ class ConfigManager
          */
         bool getDismissReassemblyWarnings();
 
-        // IDE settings
         /*!
-         * \return default path for new projects
+         * \return the scale of a pixel in HbcMonitor
          */
-        QString getDefaultProjectsPath();
+        unsigned int getPixelScale();
+
+        // Cpu state viewer settings
+        /*!
+         * \return <b>true</b> if the CpuStateViewer opens when the emulator is paused
+         */
+        bool getOpenCpuStateViewerOnEmulatorPaused();
+
+        /*!
+         * \return <b>true</b> if the CpuStateViewer opens when the emulator is stopped
+         */
+        bool getOpenCpuStateViewerOnEmulatorStopped();
+
+        // Binary viewer settings
+        /*!
+         * \return <b>true</b> if the BinaryViewer opens on project assembly
+         */
+        bool getOpenBinaryViewerOnAssembly();
+
+        /*!
+         * \return <b>true</b> if the BinaryViewer opens when the emulator is paused
+         */
+        bool getOpenBinaryViewerOnEmulatorPaused();
+
+        /*!
+         * \return <b>true</b> if the BinaryViewer opens when the emulator is stopped
+         */
+        bool getOpenBinaryViewerOnEmulatorStopped();
 
     private:
         ConfigManager();
@@ -291,6 +294,7 @@ class SettingsDialog : public QDialog
         void plugKeyboardChanged();
         void plugEepromChanged();
         void dismissReassemblyWarningsChanged();
+        void pixelScaleChanged(int scale);
 
         // CpuStateViewer
         void openCpuStateViewerOnEmulatorPausedChanged();
@@ -352,6 +356,7 @@ class SettingsDialog : public QDialog
         QWidget *m_emulatorSettingsGeneralTabWidget;
         // Monitor tab
         QCheckBox *m_plugMonitorCheckBox;
+        QSpinBox *m_pixelScaleSpinBox;
         QVBoxLayout *m_emulatorSettingsMonitorTabLayout;
         QWidget *m_emulatorSettingsMonitorTabWidget;
         // RTC tab

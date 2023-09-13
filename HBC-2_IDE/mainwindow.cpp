@@ -1317,7 +1317,7 @@ void MainWindow::runEmulatorAction()
         {
             if (m_monitorToggle->isChecked())
             {
-                MonitorDialog *monitorDialog = MonitorDialog::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
+                MonitorDialog *monitorDialog = MonitorDialog::getInstance(m_projectManager->getCurrentProject()->getName(), m_configManager->getPixelScale(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
                 monitorDialog->show();
 
                 connect(monitorDialog, SIGNAL(closed()), this, SLOT(onMonitorClosed()));

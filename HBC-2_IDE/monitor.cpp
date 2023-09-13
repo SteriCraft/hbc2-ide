@@ -463,10 +463,10 @@ int MonitorThread::getFPS()
 MonitorDialog* MonitorDialog::m_singleton = nullptr;
 
 // PUBLIC
-MonitorDialog* MonitorDialog::getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
+MonitorDialog* MonitorDialog::getInstance(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
 {
     if (m_singleton == nullptr)
-        m_singleton = new MonitorDialog(projectName, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
+        m_singleton = new MonitorDialog(projectName, pixelScale, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
 
     return m_singleton;
 }
@@ -560,11 +560,11 @@ void MonitorDialog::closeEvent(QCloseEvent *event)
 
 
 // PRIVATE
-MonitorDialog::MonitorDialog(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QDialog(qobject_cast<QWidget*>(mainWin))
+MonitorDialog::MonitorDialog(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QDialog(qobject_cast<QWidget*>(mainWin))
 {
     m_monitor = new MonitorWidget(hbcMonitor, consoleOutput);
 
-    resize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    resize(WIDTH * pixelScale + WINDOW_MARGIN, HEIGHT * pixelScale + WINDOW_MARGIN);
     setPosition();
     setWindowTitle(projectName + " - HBC-2 Monitor");
     setWindowIcon(QIcon(":/icons/res/logo.png"));

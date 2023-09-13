@@ -25,10 +25,8 @@ namespace Monitor
 
     constexpr int WIDTH = 256;
     constexpr int HEIGHT = 192;
-    constexpr int PIXEL_SCALE = 4;
 
-    constexpr int WINDOW_WIDTH = (WIDTH * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
-    constexpr int WINDOW_HEIGHT = (HEIGHT * PIXEL_SCALE + 22); //!< A 22px margin is added for a good looking window
+    constexpr int WINDOW_MARGIN = 22; //!< A 22px margin is added for a good looking window
 
     constexpr int CHARACTER_WIDTH = 6;
     constexpr int CHARACTER_HEIGHT = 8;
@@ -291,7 +289,7 @@ class MonitorDialog : public QDialog
         /*!
          * \brief Creates the monitor dialog and runs the HbcMonitor thread
          */
-        static MonitorDialog* getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        static MonitorDialog* getInstance(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
 
         /*!
          * \return <b>true</b> if the monitor dialog is opened
@@ -322,7 +320,7 @@ class MonitorDialog : public QDialog
         void closeEvent(QCloseEvent *event) override; //!< Called on dialog close button click
 
     private:
-        MonitorDialog(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        MonitorDialog(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
         void setPosition();
 
         Keyboard::HbcKeyboard *m_hbcKeyboard;

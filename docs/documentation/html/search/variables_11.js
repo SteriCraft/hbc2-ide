@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['year_5f0_777',['YEAR_0',['../namespace_real_time_clock.html#aa0262913d5a564f861676e852078a745',1,'RealTimeClock']]]
+  ['window_5fmargin_780',['WINDOW_MARGIN',['../namespace_monitor.html#a39d7955d3857caf1e5f3cad03aab8fee',1,'Monitor']]]
 ];

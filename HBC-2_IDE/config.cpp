@@ -52,36 +52,21 @@ void ConfigManager::setTabSize(unsigned int nbOfSpaces)
     m_settings.tabSize = nbOfSpaces;
 }
 
+bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
+{
+    if (defaultPath.isEmpty())
+        return false;
+
+    m_settings.defaultProjectsPath = defaultPath;
+    saveConfigFile();
+
+    return true;
+}
+
 // Assembler settings
 void ConfigManager::setRamAsDefaultMemoryTarget(bool ramAsDefault)
 {
     m_settings.ramAsDefaultMemoryTarget = ramAsDefault;
-}
-
-// Cpu state viewer settings
-void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
-{
-    m_settings.openCpuStateViewerOnEmulatorPaused = enable;
-}
-
-void ConfigManager::setOpenCpuStateViewerOnEmulatorStopped(bool enable)
-{
-    m_settings.openCpuStateViewerOnEmulatorStopped = enable;
-}
-
-// Binary viewer settings
-void ConfigManager::setOpenBinaryViewerOnAssembly(bool enable)
-{
-    m_settings.openBinaryViewerOnAssembly = enable;
-}
-
-void ConfigManager::setOpenBinaryViewerOnEmulatorPaused(bool enable)
-{
-    m_settings.openBinaryViewerOnEmulatorPaused = enable;
-}
-void ConfigManager::setOpenBinaryViewerOnEmulatorStopped(bool enable)
-{
-    m_settings.openBinaryViewerOnEmulatorStopped = enable;
 }
 
 // Emulator settings
@@ -121,16 +106,36 @@ void ConfigManager::setDismissReassemblyWarnings(bool dismiss)
     saveConfigFile();
 }
 
-// IDE settings
-bool ConfigManager::setDefaultProjectsPath(QString defaultPath)
+void ConfigManager::setPixelScale(unsigned int scale)
 {
-    if (defaultPath.isEmpty())
-        return false;
+    m_settings.pixelScale = scale;
+}
 
-    m_settings.defaultProjectsPath = defaultPath;
-    saveConfigFile();
+// Cpu state viewer settings
+void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
+{
+    m_settings.openCpuStateViewerOnEmulatorPaused = enable;
+}
 
-    return true;
+void ConfigManager::setOpenCpuStateViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openCpuStateViewerOnEmulatorStopped = enable;
+}
+
+// Binary viewer settings
+void ConfigManager::setOpenBinaryViewerOnAssembly(bool enable)
+{
+    m_settings.openBinaryViewerOnAssembly = enable;
+}
+
+void ConfigManager::setOpenBinaryViewerOnEmulatorPaused(bool enable)
+{
+    m_settings.openBinaryViewerOnEmulatorPaused = enable;
+}
+
+void ConfigManager::setOpenBinaryViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openBinaryViewerOnEmulatorStopped = enable;
 }
 
 // GETTERS
@@ -140,37 +145,15 @@ unsigned int ConfigManager::getTabSize()
     return m_settings.tabSize;
 }
 
+QString ConfigManager::getDefaultProjectsPath()
+{
+    return m_settings.defaultProjectsPath;
+}
+
 // Assembler settings
 bool ConfigManager::getRamAsDefaultMemoryTarget()
 {
     return m_settings.ramAsDefaultMemoryTarget;
-}
-
-// Cpu state viewer settings
-bool ConfigManager::getOpenCpuStateViewerOnEmulatorPaused()
-{
-    return m_settings.openCpuStateViewerOnEmulatorPaused;
-}
-
-bool ConfigManager::getOpenCpuStateViewerOnEmulatorStopped()
-{
-    return m_settings.openCpuStateViewerOnEmulatorStopped;
-}
-
-// Binary viewer settings
-bool ConfigManager::getOpenBinaryViewerOnAssembly()
-{
-    return m_settings.openBinaryViewerOnAssembly;
-}
-
-bool ConfigManager::getOpenBinaryViewerOnEmulatorPaused()
-{
-    return m_settings.openBinaryViewerOnEmulatorPaused;
-}
-
-bool ConfigManager::getOpenBinaryViewerOnEmulatorStopped()
-{
-    return m_settings.openBinaryViewerOnEmulatorStopped;
 }
 
 // Emulator settings
@@ -204,10 +187,36 @@ bool ConfigManager::getDismissReassemblyWarnings()
     return m_settings.dismissReassemblyWarnings;
 }
 
-// IDE settings
-QString ConfigManager::getDefaultProjectsPath()
+unsigned int ConfigManager::getPixelScale()
 {
-    return m_settings.defaultProjectsPath;
+    return m_settings.pixelScale;
+}
+
+// Cpu state viewer settings
+bool ConfigManager::getOpenCpuStateViewerOnEmulatorPaused()
+{
+    return m_settings.openCpuStateViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenCpuStateViewerOnEmulatorStopped()
+{
+    return m_settings.openCpuStateViewerOnEmulatorStopped;
+}
+
+// Binary viewer settings
+bool ConfigManager::getOpenBinaryViewerOnAssembly()
+{
+    return m_settings.openBinaryViewerOnAssembly;
+}
+
+bool ConfigManager::getOpenBinaryViewerOnEmulatorPaused()
+{
+    return m_settings.openBinaryViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenBinaryViewerOnEmulatorStopped()
+{
+    return m_settings.openBinaryViewerOnEmulatorStopped;
 }
 
 // PRIVATE
@@ -243,29 +252,30 @@ ConfigManager::ConfigManager()
                         if (ok)
                             m_settings.tabSize = tabSize;
                     }
+                    else if (key == "PIXEL_SCALE")
+                    {
+                        bool ok;
+                        unsigned int scale(value.toUInt(&ok));
+
+                        if (ok)
+                            m_settings.pixelScale = scale;
+                    }
                     else if (key == "RAM_AS_DEFAULT_MEMORY_TARGET")
                     {
                         m_settings.ramAsDefaultMemoryTarget = (value == "TRUE");
                     }
-                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
+                    else if (key == "DEFAULT_PROJECT_PATH")
                     {
-                        m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
-                    }
-                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED")
-                    {
-                        m_settings.openCpuStateViewerOnEmulatorStopped = (value == "TRUE");
-                    }
-                    else if (key == "OPEN_BIN_VIEWER_ASSEMBLY")
-                    {
-                        m_settings.openBinaryViewerOnAssembly = (value == "TRUE");
-                    }
-                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_PAUSED")
-                    {
-                        m_settings.openBinaryViewerOnEmulatorPaused = (value == "TRUE");
-                    }
-                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_STOPPPED")
-                    {
-                        m_settings.openBinaryViewerOnEmulatorStopped = (value == "TRUE");
+                        if (!value.isEmpty())
+                            m_settings.defaultProjectsPath = value;
+
+                        QString defaultProjectsDirPath(m_settings.defaultProjectsPath);
+                        QDir defaultProjectsDir(defaultProjectsDirPath);
+
+                        if (!defaultProjectsDir.exists())
+                        {
+                            defaultProjectsDir.mkpath(defaultProjectsDirPath);
+                        }
                     }
                     else if (key == "START_EMULATOR_PAUSED")
                     {
@@ -291,18 +301,25 @@ ConfigManager::ConfigManager()
                     {
                         m_settings.dismissReassemblyWarnings = (value == "TRUE");
                     }
-                    else if (key == "DEFAULT_PROJECT_PATH")
+                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
                     {
-                        if (!value.isEmpty())
-                            m_settings.defaultProjectsPath = value;
-
-                        QString defaultProjectsDirPath(m_settings.defaultProjectsPath);
-                        QDir defaultProjectsDir(defaultProjectsDirPath);
-
-                        if (!defaultProjectsDir.exists())
-                        {
-                            defaultProjectsDir.mkpath(defaultProjectsDirPath);
-                        }
+                        m_settings.openCpuStateViewerOnEmulatorPaused = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED")
+                    {
+                        m_settings.openCpuStateViewerOnEmulatorStopped = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_ASSEMBLY")
+                    {
+                        m_settings.openBinaryViewerOnAssembly = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_PAUSED")
+                    {
+                        m_settings.openBinaryViewerOnEmulatorPaused = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_BIN_VIEWER_EMULATOR_STOPPPED")
+                    {
+                        m_settings.openBinaryViewerOnEmulatorStopped = (value == "TRUE");
                     }
                 }
             }
@@ -355,19 +372,20 @@ bool ConfigManager::saveConfigFile()
         QTextStream out(&configFile);
 
         out << "TAB_SIZE=" << QString::number(m_settings.tabSize) << "\n";
+        out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
         out << "RAM_AS_DEFAULT_MEMORY_TARGET=" << (m_settings.ramAsDefaultMemoryTarget ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings.openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED=" << (m_settings.openCpuStateViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openBinaryViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
-        out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openBinaryViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
         out << "START_EMULATOR_PAUSED=" << (m_settings.startEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "MONITOR_PLUGGED=" << (m_settings.monitorPlugged ? "TRUE" : "FALSE") << "\n";
         out << "RTC_PLUGGED=" << (m_settings.rtcPlugged ? "TRUE" : "FALSE") << "\n";
         out << "KEYBOARD_PLUGGED=" << (m_settings.keyboardPlugged ? "TRUE" : "FALSE") << "\n";
         out << "EEPROM_PLUGGED=" << (m_settings.eepromPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings.dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
-        out << "DEFAULT_PROJECT_PATH=" << m_settings.defaultProjectsPath << "\n";
+        out << "PIXEL_SCALE=" << QString::number(m_settings.pixelScale) << "\n";
+        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings.openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_CPU_STATE_VIEWER_EMULATOR_STOPPED=" << (m_settings.openCpuStateViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openBinaryViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openBinaryViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
 
         configFile.close();
         return true;
@@ -462,34 +480,28 @@ void SettingsDialog::tabSizeChanged(int nbOfSpaces)
     m_configManager->setTabSize(nbOfSpaces);
 }
 
+void SettingsDialog::defaultProjectsPathChanged(QString newPath)
+{
+    if (newPath.isEmpty())
+    {
+        QMessageBox::warning(this, tr("Invalid projects directory"), tr("The projects directory cannot be empty"));
+    }
+    else
+    {
+        m_configManager->setDefaultProjectsPath(newPath);
+    }
+}
+
+void SettingsDialog::browseProjectsPathClicked()
+{
+    QString newDefaultProjectsPath = QFileDialog::getExistingDirectory(this, tr("Select new projects directory"), m_configManager->getDefaultProjectsPath(), QFileDialog::ShowDirsOnly);
+
+    m_defaultProjectsPathLineEdit->setText(newDefaultProjectsPath);
+}
+
 void SettingsDialog::ramAsDefaultMemoryTargetChanged()
 {
     m_configManager->setRamAsDefaultMemoryTarget(m_ramAsDefaultMemoryTargetCheckBox->isChecked());
-}
-
-void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
-{
-    m_configManager->setOpenCpuStateViewerOnEmulatorPaused(m_openCpuStateViewerOnEmulatorPausedCheckBox->isChecked());
-}
-
-void SettingsDialog::openCpuStateViewerOnEmulatorStoppedChanged()
-{
-    m_configManager->setOpenCpuStateViewerOnEmulatorStopped(m_openCpuStateViewerOnEmulatorStoppedCheckBox->isChecked());
-}
-
-void SettingsDialog::openBinaryViewerOnAssemblyChanged()
-{
-    m_configManager->setOpenBinaryViewerOnAssembly(m_openBinaryViewerOnAssemblyCheckBox->isChecked());
-}
-
-void SettingsDialog::openBinaryViewerOnEmulatorPausedChanged()
-{
-    m_configManager->setOpenBinaryViewerOnEmulatorPaused(m_openBinaryViewerOnEmulatorPausedCheckBox->isChecked());
-}
-
-void SettingsDialog::openBinaryViewerOnEmulatorStoppedChanged()
-{
-    m_configManager->setOpenBinaryViewerOnEmulatorStopped(m_openBinaryViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
 void SettingsDialog::startPausedChanged()
@@ -522,23 +534,34 @@ void SettingsDialog::dismissReassemblyWarningsChanged()
     m_configManager->setDismissReassemblyWarnings(m_dismissReassemblyWarningsCheckBox->isChecked());
 }
 
-void SettingsDialog::browseProjectsPathClicked()
+void SettingsDialog::pixelScaleChanged(int scale)
 {
-    QString newDefaultProjectsPath = QFileDialog::getExistingDirectory(this, tr("Select new projects directory"), m_configManager->getDefaultProjectsPath(), QFileDialog::ShowDirsOnly);
-
-    m_defaultProjectsPathLineEdit->setText(newDefaultProjectsPath);
+    m_configManager->setPixelScale(scale);
 }
 
-void SettingsDialog::defaultProjectsPathChanged(QString newPath)
+void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
 {
-    if (newPath.isEmpty())
-    {
-        QMessageBox::warning(this, tr("Invalid projects directory"), tr("The projects directory cannot be empty"));
-    }
-    else
-    {
-        m_configManager->setDefaultProjectsPath(newPath);
-    }
+    m_configManager->setOpenCpuStateViewerOnEmulatorPaused(m_openCpuStateViewerOnEmulatorPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::openCpuStateViewerOnEmulatorStoppedChanged()
+{
+    m_configManager->setOpenCpuStateViewerOnEmulatorStopped(m_openCpuStateViewerOnEmulatorStoppedCheckBox->isChecked());
+}
+
+void SettingsDialog::openBinaryViewerOnAssemblyChanged()
+{
+    m_configManager->setOpenBinaryViewerOnAssembly(m_openBinaryViewerOnAssemblyCheckBox->isChecked());
+}
+
+void SettingsDialog::openBinaryViewerOnEmulatorPausedChanged()
+{
+    m_configManager->setOpenBinaryViewerOnEmulatorPaused(m_openBinaryViewerOnEmulatorPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::openBinaryViewerOnEmulatorStoppedChanged()
+{
+    m_configManager->setOpenBinaryViewerOnEmulatorStopped(m_openBinaryViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
 // PRIVATE
@@ -712,6 +735,14 @@ void SettingsDialog::initEmulatorSettingsLayout()
     m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsMonitorTabLayout));
     m_plugMonitorCheckBox->setChecked(m_configManager->getMonitorPlugged());
 
+    QLabel *pixelScaleLabel = new QLabel(tr("Pixel scale"), qobject_cast<QWidget*>(m_emulatorSettingsMonitorTabLayout));
+    m_pixelScaleSpinBox = new QSpinBox(qobject_cast<QWidget*>(m_editorSettingsGeneralTabLayout));
+    m_pixelScaleSpinBox->setRange(1, 8);
+    m_pixelScaleSpinBox->setValue(m_configManager->getPixelScale());
+    QHBoxLayout *pixelScaleLayout = new QHBoxLayout;
+    pixelScaleLayout->addWidget(pixelScaleLabel);
+    pixelScaleLayout->addWidget(m_pixelScaleSpinBox);
+
     m_plugRTCCheckBox = new QCheckBox(tr("Real Time Clock plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsRtcTabLayout));
     m_plugRTCCheckBox->setChecked(m_configManager->getRTCPlugged());
 
@@ -730,6 +761,7 @@ void SettingsDialog::initEmulatorSettingsLayout()
     m_emulatorSettingsGeneralTabWidget->setLayout(m_emulatorSettingsGeneralTabLayout);
 
     m_emulatorSettingsMonitorTabLayout->addWidget(m_plugMonitorCheckBox);
+    m_emulatorSettingsMonitorTabLayout->addLayout(pixelScaleLayout);
     m_emulatorSettingsMonitorTabLayout->addStretch();
     m_emulatorSettingsMonitorTabWidget->setLayout(m_emulatorSettingsMonitorTabLayout);
 
@@ -759,6 +791,7 @@ void SettingsDialog::initEmulatorSettingsLayout()
     // Connections
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
+    connect(m_pixelScaleSpinBox, SIGNAL(valueChanged(int)), this, SLOT(pixelScaleChanged(int)));
     connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
     connect(m_plugKeyboardCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugKeyboardChanged()));
     connect(m_plugEepromCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugEepromChanged()));
