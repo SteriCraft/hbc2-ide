@@ -508,6 +508,7 @@ bool Assembler::convertToTokens(Token::TokenFile &f)
     Token::TokenItem newToken("");
     std::string line;
     std::string tokenStr;
+    bool firstLabelFound(false);
 
     size_t nextComma, nextSpace, nextQuote;
 
@@ -626,6 +627,22 @@ bool Assembler::convertToTokens(Token::TokenFile &f)
                 m_error.originFilePath = tLine->m_originFilePath;
                 m_error.originLineNb = tLine->m_originLineNb;
                 m_error.type = newToken.getErr();
+                m_error.additionalInfo = "";
+
+                logError();
+                return false;
+            }
+
+            // Checking if the first instruction of the token file isn't alone
+            if (newToken.getType() == Token::TokenType::LABEL)
+            {
+                firstLabelFound = true;
+            }
+            else if (newToken.getType() == Token::TokenType::INSTR && !firstLabelFound)
+            {
+                m_error.originFilePath = tLine->m_originFilePath;
+                m_error.originLineNb = tLine->m_originLineNb;
+                m_error.type = Token::ErrorType::INSTR_ALONE;
                 m_error.additionalInfo = "";
 
                 logError();
