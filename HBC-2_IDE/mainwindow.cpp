@@ -33,7 +33,6 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
 
     m_assembler = Assembly::Assembler::getInstance(m_consoleOutput);
     m_emulator = HbcEmulator::getInstance(this, m_consoleOutput);
-    m_monitor = nullptr;
 
     // Connections
     connect(m_assemblyEditor, SIGNAL(currentChanged(int)), this, SLOT(onTabSelect()));
@@ -47,7 +46,7 @@ MainWindow::MainWindow(QWidget *parent) : QMainWindow(parent) , ui(new Ui::MainW
 
 MainWindow::~MainWindow()
 {
-    MonitorWidget::close();
+    MonitorDialog::close();
     BinaryViewer::close();
     CpuStateViewer::close();
 
@@ -709,10 +708,10 @@ void MainWindow::onTickCountReceived(int countIn100Ms)
         statusBarStr += "Hz";
     }
 
-    if (m_monitor != nullptr)
+    if (MonitorDialog::opened())
     {
         statusBarStr += " | FPS: ";
-        statusBarStr += QString::number(m_monitor->getFPS());
+        statusBarStr += QString::number(MonitorDialog::getFPS());
     }
 
     setStatusBarRightMessage(statusBarStr);
@@ -1233,8 +1232,6 @@ void MainWindow::assembleAction()
             showBinaryAction();
         }
     }
-
-    m_consoleOutput->log("test");
 }
 
 void MainWindow::memoryTargetAction(bool ramToggle)
@@ -1320,10 +1317,10 @@ void MainWindow::runEmulatorAction()
         {
             if (m_monitorToggle->isChecked())
             {
-                m_monitor = MonitorWidget::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
-                m_monitor->show();
+                MonitorDialog *monitorDialog = MonitorDialog::getInstance(m_projectManager->getCurrentProject()->getName(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
+                monitorDialog->show();
 
-                connect(m_monitor, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+                connect(monitorDialog, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
             }
         }
 
@@ -1343,7 +1340,7 @@ void MainWindow::pauseEmulatorAction()
 
 void MainWindow::stopEmulatorAction()
 {
-    MonitorWidget::close();
+    MonitorDialog::close();
 
     m_emulator->stopCmd();
 

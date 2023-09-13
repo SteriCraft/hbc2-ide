@@ -131,7 +131,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 {
     m_showRam = true;
 
-    move(1, 1);
+    setPosition();
     setWindowTitle(tr("Binary viewer"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 

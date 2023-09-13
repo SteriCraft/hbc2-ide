@@ -170,83 +170,117 @@ $(function() {
 <div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;{</div>
 <div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;    Q_OBJECT</div>
 <div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160; </div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_singleton;</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160; </div>
-<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_monitor_widget.html">MonitorWidget</a>* getInstance(QString projectName, <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *hbcKeyboard, <a class="code" href="class_console.html">Console</a> *consoleOutput, <a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;        ~<a class="code" href="class_monitor_widget.html">MonitorWidget</a>();</div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160; </div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160; </div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        <span class="keywordtype">void</span> updateBuffer();</div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160; </div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;    signals:</div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;        <span class="keywordtype">void</span> runKeyPressed();</div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;        <span class="keywordtype">void</span> stepKeyPressed();</div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;        <span class="keywordtype">void</span> pauseKeyPressed();</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;        <span class="keywordtype">void</span> stopKeyPressed();</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        <span class="keywordtype">void</span> cpuStateViewerKeyPressed();</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;        <span class="keywordtype">void</span> binaryViewerKeyPressed();</div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;        <span class="keywordtype">void</span> closed();</div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160; </div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;    <span class="keyword">protected</span>:</div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        <span class="keywordtype">void</span> keyPressEvent(QKeyEvent *event) <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;        <span class="keywordtype">void</span> keyReleaseEvent(QKeyEvent *event) <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;        <span class="keywordtype">void</span> closeEvent(QCloseEvent *event) <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160; </div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        <span class="keyword">explicit</span> <a class="code" href="class_monitor_widget.html">MonitorWidget</a>(QString projectName, <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *hbcKeyboard, <a class="code" href="class_console.html">Console</a> *consoleOutput, <a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        <span class="keywordtype">void</span> setPosition(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        <span class="keywordtype">void</span> setSize(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> width, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> height);</div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        <span class="keywordtype">void</span> setBuffer(uint32_t *pixelBuffer);</div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;        <a class="code" href="class_monitor_widget.html#a5c68bc9472d51cdf2aa4ca6b7435da02">MonitorWidget</a>(<a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_console.html">Console</a> *consoleOutput); </div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;        ~<a class="code" href="class_monitor_widget.html">MonitorWidget</a>();</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160; </div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_widget.html#ae1140b8974bc341ad11a8ef6b4a6298e">updateBuffer</a>(); </div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
+<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160; </div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        <span class="keywordtype">void</span> setPosition(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        <span class="keywordtype">void</span> setSize(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> width, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> height);</div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        <span class="keywordtype">void</span> setBuffer(uint32_t *pixelBuffer);</div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160; </div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;        <span class="keywordtype">void</span> initializeGL() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;        <span class="keywordtype">void</span> resizeGL(<span class="keywordtype">int</span> w, <span class="keywordtype">int</span> h) <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;        <span class="keywordtype">void</span> paintGL() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160; </div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(<a class="code" href="struct_monitor_1_1_char_data.html">Monitor::CharData</a> *textBuffer);</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(Byte *pixelBuffer);</div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160; </div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *m_hbcMonitor;</div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;        QImage m_font;</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        std::vector&lt;bool*&gt; m_charMap;</div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a> *m_thread;</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160; </div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_width;</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_height;</div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160; </div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;        GLuint m_texture;</div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160; </div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        uint32_t *m_pixelBuffer;</div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;};</div>
 <div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160; </div>
-<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;        <span class="keywordtype">void</span> initializeGL() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;        <span class="keywordtype">void</span> resizeGL(<span class="keywordtype">int</span> w, <span class="keywordtype">int</span> h) <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;        <span class="keywordtype">void</span> paintGL() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160; </div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(<a class="code" href="struct_monitor_1_1_char_data.html">Monitor::CharData</a> *textBuffer);</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        <span class="keywordtype">void</span> convertToPixelBuffer(Byte *pixelBuffer);</div>
-<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160; </div>
-<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *m_hbcMonitor;</div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *m_hbcKeyboard;</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        QImage m_font;</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;        std::vector&lt;bool*&gt; m_charMap;</div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a> *m_thread;</div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160; </div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_width;</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_height;</div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
-<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;        GLuint m_texture;</div>
+<div class="line"><a name="l00270"></a><span class="lineno"><a class="line" href="class_monitor_thread.html">  270</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_monitor_thread.html">MonitorThread</a> : <span class="keyword">public</span> QThread</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;{</div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a>(<a class="code" href="class_monitor_widget.html">MonitorWidget</a> *monitor);</div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;        ~<a class="code" href="class_monitor_thread.html">MonitorThread</a>();</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160; </div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;        <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_monitor;</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;        <a class="code" href="struct_monitor_1_1_status.html">Monitor::Status</a> m_status;</div>
+<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160;};</div>
+<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160; </div>
+<div class="line"><a name="l00284"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html">  284</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_monitor_dialog.html">MonitorDialog</a> : <span class="keyword">public</span> QDialog</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;{</div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;    Q_OBJECT</div>
 <div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160; </div>
-<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;        uint32_t *m_pixelBuffer;</div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;};</div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160; </div>
-<div class="line"><a name="l00291"></a><span class="lineno"><a class="line" href="class_monitor_thread.html">  291</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_monitor_thread.html">MonitorThread</a> : <span class="keyword">public</span> QThread</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;{</div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        <a class="code" href="class_monitor_thread.html">MonitorThread</a>(<a class="code" href="class_monitor_widget.html">MonitorWidget</a> *monitor);</div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;        ~<a class="code" href="class_monitor_thread.html">MonitorThread</a>();</div>
-<div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160; </div>
-<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;        <span class="keywordtype">int</span> getFPS();</div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160; </div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;        <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_monitor;</div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160;        <a class="code" href="struct_monitor_1_1_status.html">Monitor::Status</a> m_status;</div>
-<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;};</div>
-<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160; </div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MONITOR_H</span></div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_monitor_dialog.html">MonitorDialog</a> *m_singleton;</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160; </div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_monitor_dialog.html">MonitorDialog</a>* <a class="code" href="class_monitor_dialog.html#a77f5b70229d8622379e328ca7d9203ff">getInstance</a>(QString projectName, <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *hbcKeyboard, <a class="code" href="class_console.html">Console</a> *consoleOutput, <a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160; </div>
+<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">bool</span> <a class="code" href="class_monitor_dialog.html#a990b8e231902461cc62520d09db1178e">opened</a>();</div>
+<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160; </div>
+<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">int</span> <a class="code" href="class_monitor_dialog.html#a06e32c54fa1a3ad3b6ddc3d6077fff4a">getFPS</a>();</div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160; </div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a2f65b03abf816d61cfcaf7cd3e74b613">close</a>(); </div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;        ~<a class="code" href="class_monitor_dialog.html">MonitorDialog</a>();</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160; </div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;    signals:</div>
+<div class="line"><a name="l00310"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#a5d660add22a675dbcf06addbe0ce5cbd">  310</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a5d660add22a675dbcf06addbe0ce5cbd">runKeyPressed</a>(); </div>
+<div class="line"><a name="l00311"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#aaade692ca478a5081ca39a102cd70a8a">  311</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#aaade692ca478a5081ca39a102cd70a8a">stepKeyPressed</a>(); </div>
+<div class="line"><a name="l00312"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#aac5348d01cdf8d39d9f0c5466ad57c9d">  312</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#aac5348d01cdf8d39d9f0c5466ad57c9d">pauseKeyPressed</a>(); </div>
+<div class="line"><a name="l00313"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#a46912fa630617fd2cc710588fdf2533a">  313</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a46912fa630617fd2cc710588fdf2533a">stopKeyPressed</a>(); </div>
+<div class="line"><a name="l00314"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#a3d5d71be349fdfd45b66ab2109f17a9d">  314</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a3d5d71be349fdfd45b66ab2109f17a9d">cpuStateViewerKeyPressed</a>(); </div>
+<div class="line"><a name="l00315"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#a1c0886e0661988e2174bffac246bb1da">  315</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a1c0886e0661988e2174bffac246bb1da">binaryViewerKeyPressed</a>(); </div>
+<div class="line"><a name="l00316"></a><span class="lineno"><a class="line" href="class_monitor_dialog.html#a14b0f224cc7d4cd54934f752b524a16d">  316</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a14b0f224cc7d4cd54934f752b524a16d">closed</a>(); </div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160; </div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160;    <span class="keyword">protected</span>:</div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        <span class="keywordtype">void</span> showEvent(QShowEvent* event) <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;        <span class="keywordtype">void</span> keyPressEvent(QKeyEvent *event) <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;        <span class="keywordtype">void</span> keyReleaseEvent(QKeyEvent *event) <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_monitor_dialog.html#a14e671a768bf098ca99d1a63faeedb4e">closeEvent</a>(QCloseEvent *event) <span class="keyword">override</span>; </div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160; </div>
+<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;        <a class="code" href="class_monitor_dialog.html">MonitorDialog</a>(QString projectName, <a class="code" href="class_hbc_monitor.html">HbcMonitor</a> *hbcMonitor, <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *hbcKeyboard, <a class="code" href="class_console.html">Console</a> *consoleOutput, <a class="code" href="class_main_window.html">MainWindow</a> *mainWin);</div>
+<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160;        <span class="keywordtype">void</span> setPosition();</div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160; </div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a> *m_hbcKeyboard;</div>
+<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160; </div>
+<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;        <a class="code" href="class_monitor_widget.html">MonitorWidget</a> *m_monitor;</div>
+<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;};</div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160; </div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MONITOR_H</span></div>
 <div class="ttc" id="aclass_console_html"><div class="ttname"><a href="class_console.html">Console</a></div><div class="ttdoc">A console widget to show events and provide information to the user.</div><div class="ttdef"><b>Definition:</b> console.h:23</div></div>
 <div class="ttc" id="aclass_hbc_monitor_html"><div class="ttname"><a href="class_hbc_monitor.html">HbcMonitor</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the Monitor device.</div><div class="ttdef"><b>Definition:</b> monitor.h:213</div></div>
-<div class="ttc" id="aclass_hbc_monitor_html_a4213c05aa328f2a55f271080cfcc956a"><div class="ttname"><a href="class_hbc_monitor.html#a4213c05aa328f2a55f271080cfcc956a">HbcMonitor::tick</a></div><div class="ttdeci">void tick(bool step) override</div><div class="ttdoc">Must be overriden to tick the derived peripheral.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:50</div></div>
-<div class="ttc" id="aclass_hbc_monitor_html_a9244cf50b8126a53c0aa427c9c8bd8ba"><div class="ttname"><a href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor::init</a></div><div class="ttdeci">void init() override</div><div class="ttdoc">See HbcPeripheral for the overriden method.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:21</div></div>
+<div class="ttc" id="aclass_hbc_monitor_html_a4213c05aa328f2a55f271080cfcc956a"><div class="ttname"><a href="class_hbc_monitor.html#a4213c05aa328f2a55f271080cfcc956a">HbcMonitor::tick</a></div><div class="ttdeci">void tick(bool step) override</div><div class="ttdoc">Must be overriden to tick the derived peripheral.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:51</div></div>
+<div class="ttc" id="aclass_hbc_monitor_html_a9244cf50b8126a53c0aa427c9c8bd8ba"><div class="ttname"><a href="class_hbc_monitor.html#a9244cf50b8126a53c0aa427c9c8bd8ba">HbcMonitor::init</a></div><div class="ttdeci">void init() override</div><div class="ttdoc">See HbcPeripheral for the overriden method.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:22</div></div>
 <div class="ttc" id="aclass_hbc_peripheral_html"><div class="ttname"><a href="class_hbc_peripheral.html">HbcPeripheral</a></div><div class="ttdoc">Virtual class used to derive new peripherals.</div><div class="ttdef"><b>Definition:</b> peripheral.h:24</div></div>
 <div class="ttc" id="aclass_keyboard_1_1_hbc_keyboard_html"><div class="ttname"><a href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the Keyboard device.</div><div class="ttdef"><b>Definition:</b> keyboard.h:146</div></div>
 <div class="ttc" id="aclass_main_window_html"><div class="ttname"><a href="class_main_window.html">MainWindow</a></div><div class="ttdoc">Creates and manages the IDE main window.</div><div class="ttdef"><b>Definition:</b> mainwindow.h:55</div></div>
-<div class="ttc" id="aclass_monitor_thread_html"><div class="ttname"><a href="class_monitor_thread.html">MonitorThread</a></div><div class="ttdef"><b>Definition:</b> monitor.h:292</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html"><div class="ttname"><a href="class_monitor_dialog.html">MonitorDialog</a></div><div class="ttdef"><b>Definition:</b> monitor.h:285</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a06e32c54fa1a3ad3b6ddc3d6077fff4a"><div class="ttname"><a href="class_monitor_dialog.html#a06e32c54fa1a3ad3b6ddc3d6077fff4a">MonitorDialog::getFPS</a></div><div class="ttdeci">static int getFPS()</div><div class="ttdef"><b>Definition:</b> monitor.cpp:479</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a14b0f224cc7d4cd54934f752b524a16d"><div class="ttname"><a href="class_monitor_dialog.html#a14b0f224cc7d4cd54934f752b524a16d">MonitorDialog::closed</a></div><div class="ttdeci">void closed()</div><div class="ttdoc">Emitted on dialog closing.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a14e671a768bf098ca99d1a63faeedb4e"><div class="ttname"><a href="class_monitor_dialog.html#a14e671a768bf098ca99d1a63faeedb4e">MonitorDialog::closeEvent</a></div><div class="ttdeci">void closeEvent(QCloseEvent *event) override</div><div class="ttdoc">Called on dialog close button click.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:548</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a1c0886e0661988e2174bffac246bb1da"><div class="ttname"><a href="class_monitor_dialog.html#a1c0886e0661988e2174bffac246bb1da">MonitorDialog::binaryViewerKeyPressed</a></div><div class="ttdeci">void binaryViewerKeyPressed()</div><div class="ttdoc">Emitted on F6 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a2f65b03abf816d61cfcaf7cd3e74b613"><div class="ttname"><a href="class_monitor_dialog.html#a2f65b03abf816d61cfcaf7cd3e74b613">MonitorDialog::close</a></div><div class="ttdeci">static void close()</div><div class="ttdoc">Closes and deletes the monitor dialog.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:489</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a3d5d71be349fdfd45b66ab2109f17a9d"><div class="ttname"><a href="class_monitor_dialog.html#a3d5d71be349fdfd45b66ab2109f17a9d">MonitorDialog::cpuStateViewerKeyPressed</a></div><div class="ttdeci">void cpuStateViewerKeyPressed()</div><div class="ttdoc">Emitted on F7 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a46912fa630617fd2cc710588fdf2533a"><div class="ttname"><a href="class_monitor_dialog.html#a46912fa630617fd2cc710588fdf2533a">MonitorDialog::stopKeyPressed</a></div><div class="ttdeci">void stopKeyPressed()</div><div class="ttdoc">Emitted on F12 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a5d660add22a675dbcf06addbe0ce5cbd"><div class="ttname"><a href="class_monitor_dialog.html#a5d660add22a675dbcf06addbe0ce5cbd">MonitorDialog::runKeyPressed</a></div><div class="ttdeci">void runKeyPressed()</div><div class="ttdoc">Emitted on F9 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a77f5b70229d8622379e328ca7d9203ff"><div class="ttname"><a href="class_monitor_dialog.html#a77f5b70229d8622379e328ca7d9203ff">MonitorDialog::getInstance</a></div><div class="ttdeci">static MonitorDialog * getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)</div><div class="ttdoc">Creates the monitor dialog and runs the HbcMonitor thread.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:466</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_a990b8e231902461cc62520d09db1178e"><div class="ttname"><a href="class_monitor_dialog.html#a990b8e231902461cc62520d09db1178e">MonitorDialog::opened</a></div><div class="ttdeci">static bool opened()</div><div class="ttdef"><b>Definition:</b> monitor.cpp:474</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_aaade692ca478a5081ca39a102cd70a8a"><div class="ttname"><a href="class_monitor_dialog.html#aaade692ca478a5081ca39a102cd70a8a">MonitorDialog::stepKeyPressed</a></div><div class="ttdeci">void stepKeyPressed()</div><div class="ttdoc">Emitted on F10 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_dialog_html_aac5348d01cdf8d39d9f0c5466ad57c9d"><div class="ttname"><a href="class_monitor_dialog.html#aac5348d01cdf8d39d9f0c5466ad57c9d">MonitorDialog::pauseKeyPressed</a></div><div class="ttdeci">void pauseKeyPressed()</div><div class="ttdoc">Emitted on F11 key stroke.</div></div>
+<div class="ttc" id="aclass_monitor_thread_html"><div class="ttname"><a href="class_monitor_thread.html">MonitorThread</a></div><div class="ttdef"><b>Definition:</b> monitor.h:271</div></div>
 <div class="ttc" id="aclass_monitor_widget_html"><div class="ttname"><a href="class_monitor_widget.html">MonitorWidget</a></div><div class="ttdef"><b>Definition:</b> monitor.h:235</div></div>
+<div class="ttc" id="aclass_monitor_widget_html_a5c68bc9472d51cdf2aa4ca6b7435da02"><div class="ttname"><a href="class_monitor_widget.html#a5c68bc9472d51cdf2aa4ca6b7435da02">MonitorWidget::MonitorWidget</a></div><div class="ttdeci">MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput)</div><div class="ttdoc">Creates the monitor widget and runs the HbcMonitor thread.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:168</div></div>
+<div class="ttc" id="aclass_monitor_widget_html_ae1140b8974bc341ad11a8ef6b4a6298e"><div class="ttname"><a href="class_monitor_widget.html#ae1140b8974bc341ad11a8ef6b4a6298e">MonitorWidget::updateBuffer</a></div><div class="ttdeci">void updateBuffer()</div><div class="ttdoc">Updates the pixel buffer.</div><div class="ttdef"><b>Definition:</b> monitor.cpp:225</div></div>
 <div class="ttc" id="akeyboard_8h_html"><div class="ttname"><a href="keyboard_8h.html">keyboard.h</a></div><div class="ttdoc">Keyboard device derived from HbcPeripheral.</div></div>
 <div class="ttc" id="anamespace_monitor_html"><div class="ttname"><a href="namespace_monitor.html">Monitor</a></div><div class="ttdoc">See HbcMonitor for detailed specifications.</div></div>
 <div class="ttc" id="anamespace_monitor_html_a00bf33e995ba375e817a394bf5d4aafb"><div class="ttname"><a href="namespace_monitor.html#a00bf33e995ba375e817a394bf5d4aafb">Monitor::PIXEL_MODE_BUFFER_SIZE</a></div><div class="ttdeci">constexpr int PIXEL_MODE_BUFFER_SIZE</div><div class="ttdoc">The HBC-2 documentation specifies 2 pixels per byte (4-bit colors), dropped here</div><div class="ttdef"><b>Definition:</b> monitor.h:39</div></div>

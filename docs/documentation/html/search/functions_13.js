@@ -1,6 +1,6 @@
 var searchData=
 [
-  ['word2qstring_653',['word2QString',['../class_cpu_state_viewer.html#afbc4c7e5ae6a15911edf0d243a8a506d',1,'CpuStateViewer']]],
-  ['write_654',['write',['../class_q_hex_edit.html#acc71d91a132a7cf6504d3f20de0ef4ce',1,'QHexEdit::write()'],['../namespace_ram.html#a486110e15c5949ccfb26e43a2e3761ad',1,'Ram::write()']]],
-  ['writeram_655',['writeRam',['../namespace_motherboard.html#a0500c95795205f3e110acdef30fe44c5',1,'Motherboard']]]
+  ['undo_675',['undo',['../class_q_hex_edit.html#a57a6f775cd612f901567cc005988c6de',1,'QHexEdit']]],
+  ['update_676',['update',['../class_binary_viewer.html#aae49663e6ace46795a1ee555341f76e4',1,'BinaryViewer::update(const QByteArray ramData)'],['../class_binary_viewer.html#a17a1ca09dbab465c4371817101b371b8',1,'BinaryViewer::update(const QByteArray ramData, const QByteArray eepromData)'],['../class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4',1,'CpuStateViewer::update()']]],
+  ['updatebuffer_677',['updateBuffer',['../class_monitor_widget.html#ae1140b8974bc341ad11a8ef6b4a6298e',1,'MonitorWidget']]]
 ];

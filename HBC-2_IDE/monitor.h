@@ -235,34 +235,14 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
 {
     Q_OBJECT
 
-    static MonitorWidget *m_singleton;
-
     public:
-        static MonitorWidget* getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput); //!< Creates the monitor widget and runs the HbcMonitor thread
         ~MonitorWidget();
 
-        static void close();
-
-        void updateBuffer();
+        void updateBuffer(); //!< Updates the pixel buffer
         int getFPS();
 
-    signals:
-        void runKeyPressed();
-        void stepKeyPressed();
-        void pauseKeyPressed();
-        void stopKeyPressed();
-        void cpuStateViewerKeyPressed();
-        void binaryViewerKeyPressed();
-        void closed();
-
-    protected:
-        void keyPressEvent(QKeyEvent *event) override;
-        void keyReleaseEvent(QKeyEvent *event) override;
-        void closeEvent(QCloseEvent *event) override;
-
     private:
-        explicit MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
-
         void setPosition(MainWindow *mainWin);
         void setSize(unsigned int width, unsigned int height);
         void setBuffer(uint32_t *pixelBuffer);
@@ -275,7 +255,6 @@ class MonitorWidget : public QOpenGLWidget, protected QOpenGLFunctions
         void convertToPixelBuffer(Byte *pixelBuffer);
 
         HbcMonitor *m_hbcMonitor;
-        Keyboard::HbcKeyboard *m_hbcKeyboard;
         QImage m_font;
         std::vector<bool*> m_charMap;
         MonitorThread *m_thread;
@@ -300,6 +279,55 @@ class MonitorThread : public QThread
     private:
         MonitorWidget *m_monitor;
         Monitor::Status m_status;
+};
+
+class MonitorDialog : public QDialog
+{
+    Q_OBJECT
+
+    static MonitorDialog *m_singleton;
+
+    public:
+        /*!
+         * \brief Creates the monitor dialog and runs the HbcMonitor thread
+         */
+        static MonitorDialog* getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+
+        /*!
+         * \return <b>true</b> if the monitor dialog is opened
+         */
+        static bool opened();
+
+        /*!
+         * \return <b>-1</b> if the monitor dialog is not opened
+         */
+        static int getFPS();
+
+        static void close(); //!< Closes and deletes the monitor dialog
+        ~MonitorDialog();
+
+    signals:
+        void runKeyPressed(); //!< Emitted on F9 key stroke
+        void stepKeyPressed(); //!< Emitted on F10 key stroke
+        void pauseKeyPressed(); //!< Emitted on F11 key stroke
+        void stopKeyPressed(); //!< Emitted on F12 key stroke
+        void cpuStateViewerKeyPressed(); //!< Emitted on F7 key stroke
+        void binaryViewerKeyPressed(); //!< Emitted on F6 key stroke
+        void closed(); //!< Emitted on dialog closing
+
+    protected:
+        void showEvent(QShowEvent* event) override;
+        void keyPressEvent(QKeyEvent *event) override;
+        void keyReleaseEvent(QKeyEvent *event) override;
+        void closeEvent(QCloseEvent *event) override; //!< Called on dialog close button click
+
+    private:
+        MonitorDialog(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        void setPosition();
+
+        Keyboard::HbcKeyboard *m_hbcKeyboard;
+
+        MonitorWidget *m_monitor;
 };
 
 #endif // MONITOR_H

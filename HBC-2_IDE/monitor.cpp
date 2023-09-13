@@ -11,7 +11,8 @@
 
 using namespace Monitor;
 
-// HbcMonitor class
+
+// ===== HbcMonitor class =====
 HbcMonitor::HbcMonitor(HbcIod *iod, Console *consoleOutput) : HbcPeripheral(iod, consoleOutput)
 { }
 
@@ -162,115 +163,14 @@ Monitor::Mode HbcMonitor::getMode()
 }
 
 
-// MonitorWidget class
-MonitorWidget* MonitorWidget::m_singleton = nullptr;
-
+// ===== MonitorWidget class =====
 // PUBLIC
-MonitorWidget* MonitorWidget::getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
-{
-    if (m_singleton == nullptr)
-        m_singleton = new MonitorWidget(projectName, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
-
-    return m_singleton;
-}
-
-MonitorWidget::~MonitorWidget()
-{
-    delete m_thread;
-
-    m_singleton = nullptr;
-}
-
-void MonitorWidget::close()
-{
-    if (m_singleton != nullptr)
-    {
-        delete m_singleton;
-        m_singleton = nullptr;
-    }
-}
-
-void MonitorWidget::updateBuffer()
-{
-    if (m_hbcMonitor->getMode() == Monitor::Mode::TEXT)
-    {
-        convertToPixelBuffer(m_hbcMonitor->getTextBuffer());
-    }
-    else // PIXELS
-    {
-        convertToPixelBuffer(m_hbcMonitor->getPixelBuffer());
-    }
-
-    setBuffer(m_pixelBuffer);
-    update();
-}
-
-int MonitorWidget::getFPS()
-{
-    return m_thread->getFPS();
-}
-
-// PROTECTED
-void MonitorWidget::keyPressEvent(QKeyEvent *event)
-{
-    if (event->key() == Qt::Key_F9)
-    {
-        emit runKeyPressed();
-    }
-    else if (event->key() == Qt::Key_F10)
-    {
-        emit stepKeyPressed();
-    }
-    else if (event->key() == Qt::Key_F11)
-    {
-        emit pauseKeyPressed();
-    }
-    else if (event->key() == Qt::Key_F12 || event->matches(QKeySequence::Quit))
-    {
-        emit stopKeyPressed();
-    }
-    else if (event->key() == Qt::Key_F6)
-    {
-        emit binaryViewerKeyPressed();
-    }
-    else if (event->key() == Qt::Key_F7)
-    {
-        emit cpuStateViewerKeyPressed();
-    }
-    else
-    {
-        m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), false);
-    }
-}
-
-void MonitorWidget::keyReleaseEvent(QKeyEvent *event)
-{
-    m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), true);
-}
-
-void MonitorWidget::closeEvent(QCloseEvent *event)
-{
-    if (event->spontaneous())
-    {
-        emit closed();
-        QWidget::closeEvent(event);
-    }
-    else
-    {
-        QWidget::closeEvent(event);
-    }
-}
-
-// PRIVATE
-MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QOpenGLWidget(nullptr)
+MonitorWidget::MonitorWidget(HbcMonitor *hbcMonitor, Console *consoleOutput) : QOpenGLWidget(nullptr)
 {
     m_width = 0;
     m_height = 0;
-
     m_texture = 0;
-
-    setSize(WIDTH, HEIGHT);
-    setPosition(mainWin);
+    m_hbcMonitor = hbcMonitor;
 
     m_pixelBuffer = new uint32_t[PIXEL_MODE_BUFFER_SIZE];
     for (unsigned int x(0); x < WIDTH; x++)
@@ -280,9 +180,6 @@ MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboa
             m_pixelBuffer[x + y * WIDTH] = Monitor::colorArray[(int)Monitor::Color::BLACK];
         }
     }
-
-    m_hbcMonitor = hbcMonitor;
-    m_hbcKeyboard = hbcKeyboard;
 
     m_font.load(":/font/res/charMap.png");
 
@@ -313,22 +210,39 @@ MonitorWidget::MonitorWidget(QString projectName, HbcMonitor *hbcMonitor, Keyboa
         }
     }
 
-    setWindowTitle(projectName + " - HBC-2 Monitor");
-    setWindowIcon(QIcon(":/icons/res/logo.png"));
-
-    connect(this, SIGNAL(runKeyPressed()), mainWin, SLOT(onRunKeyPressed()));
-    connect(this, SIGNAL(stepKeyPressed()), mainWin, SLOT(onStepKeyPressed()));
-    connect(this, SIGNAL(pauseKeyPressed()), mainWin, SLOT(onPauseKeyPressed()));
-    connect(this, SIGNAL(stopKeyPressed()), mainWin, SLOT(onStopKeyPressed()));
-    connect(this, SIGNAL(cpuStateViewerKeyPressed()), mainWin, SLOT(onCpuStateViewerKeyPressed()));
-    connect(this, SIGNAL(binaryViewerKeyPressed()), mainWin, SLOT(onBinaryViewerKeyPressed()));
-
+    setSize(WIDTH, HEIGHT);
     update();
 
     m_thread = new MonitorThread(this);
     m_thread->start();
 }
 
+MonitorWidget::~MonitorWidget()
+{
+    delete m_thread;
+}
+
+void MonitorWidget::updateBuffer()
+{
+    if (m_hbcMonitor->getMode() == Monitor::Mode::TEXT)
+    {
+        convertToPixelBuffer(m_hbcMonitor->getTextBuffer());
+    }
+    else // PIXELS
+    {
+        convertToPixelBuffer(m_hbcMonitor->getPixelBuffer());
+    }
+
+    setBuffer(m_pixelBuffer);
+    update();
+}
+
+int MonitorWidget::getFPS()
+{
+    return m_thread->getFPS();
+}
+
+// PRIVATE
 void MonitorWidget::setPosition(MainWindow *mainWin)
 {
     QSize screenSize;
@@ -485,7 +399,8 @@ void MonitorWidget::convertToPixelBuffer(Byte *pixelBuffer)
     }
 }
 
-// MonitorThread class
+
+// ===== MonitorThread class =====
 MonitorThread::MonitorThread(MonitorWidget *monitor)
 {
     m_monitor = monitor;
@@ -534,11 +449,167 @@ int MonitorThread::getFPS()
     m_status.mutex.lock();
 
     fpsCount = m_status.fpsCount / (1000.f / m_status.fpsCountTimer.elapsed());
-    m_status.fpsCount = 0;
 
+    m_status.fpsCount = 0;
     m_status.fpsCountTimer.restart();
 
     m_status.mutex.unlock();
 
     return fpsCount;
+}
+
+
+// ===== MonitorDialog class =====
+MonitorDialog* MonitorDialog::m_singleton = nullptr;
+
+// PUBLIC
+MonitorDialog* MonitorDialog::getInstance(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
+{
+    if (m_singleton == nullptr)
+        m_singleton = new MonitorDialog(projectName, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
+
+    return m_singleton;
+}
+
+bool MonitorDialog::opened()
+{
+    return m_singleton != nullptr;
+}
+
+int MonitorDialog::getFPS()
+{
+    if (m_singleton != nullptr)
+    {
+        return m_singleton->m_monitor->getFPS();
+    }
+
+    return -1;
+}
+
+void MonitorDialog::close()
+{
+    if (m_singleton != nullptr)
+    {
+        m_singleton->hide();
+        delete m_singleton;
+        m_singleton = nullptr;
+    }
+}
+
+MonitorDialog::~MonitorDialog()
+{
+    delete m_monitor;
+}
+
+// PROTECTED
+void MonitorDialog::showEvent(QShowEvent* event)
+{
+    QWidget::showEvent(event);
+    setPosition();
+}
+
+void MonitorDialog::keyPressEvent(QKeyEvent *event)
+{
+    if (event->key() == Qt::Key_F9)
+    {
+        emit runKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F10)
+    {
+        emit stepKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F11)
+    {
+        emit pauseKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F12 || event->matches(QKeySequence::Quit))
+    {
+        emit stopKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F6)
+    {
+        emit binaryViewerKeyPressed();
+    }
+    else if (event->key() == Qt::Key_F7)
+    {
+        emit cpuStateViewerKeyPressed();
+    }
+    else
+    {
+        m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), false);
+    }
+}
+
+void MonitorDialog::keyReleaseEvent(QKeyEvent *event)
+{
+    m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), true);
+}
+
+void MonitorDialog::closeEvent(QCloseEvent *event)
+{
+    if (event->spontaneous())
+    {
+        emit closed();
+        QWidget::closeEvent(event);
+    }
+    else
+    {
+        QWidget::closeEvent(event);
+    }
+}
+
+
+// PRIVATE
+MonitorDialog::MonitorDialog(QString projectName, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QDialog(qobject_cast<QWidget*>(mainWin))
+{
+    m_monitor = new MonitorWidget(hbcMonitor, consoleOutput);
+
+    resize(WINDOW_WIDTH, WINDOW_HEIGHT);
+    setPosition();
+    setWindowTitle(projectName + " - HBC-2 Monitor");
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    m_hbcKeyboard = hbcKeyboard;
+
+    // Layout
+    QHBoxLayout *mainLayout = new QHBoxLayout;
+    mainLayout->addWidget(m_monitor);
+
+    setLayout(mainLayout);
+
+    // Connections
+    connect(this, SIGNAL(runKeyPressed()), mainWin, SLOT(onRunKeyPressed()));
+    connect(this, SIGNAL(stepKeyPressed()), mainWin, SLOT(onStepKeyPressed()));
+    connect(this, SIGNAL(pauseKeyPressed()), mainWin, SLOT(onPauseKeyPressed()));
+    connect(this, SIGNAL(stopKeyPressed()), mainWin, SLOT(onStopKeyPressed()));
+    connect(this, SIGNAL(cpuStateViewerKeyPressed()), mainWin, SLOT(onCpuStateViewerKeyPressed()));
+    connect(this, SIGNAL(binaryViewerKeyPressed()), mainWin, SLOT(onBinaryViewerKeyPressed()));
+}
+
+void MonitorDialog::setPosition()
+{
+    QSize screenSize;
+    screenSize = QGuiApplication::primaryScreen()->geometry().size();
+
+    QPoint middleBottomMainWinPos;
+    middleBottomMainWinPos.setX(parentWidget()->geometry().left() + parentWidget()->geometry().width() / 2);
+    middleBottomMainWinPos.setY(parentWidget()->geometry().bottom());
+
+    QPoint monitorWidgetPos;
+
+    if (middleBottomMainWinPos.x() < 1)
+        monitorWidgetPos.setX(1);
+    else if (middleBottomMainWinPos.x() > screenSize.width())
+        monitorWidgetPos.setX(screenSize.width());
+    else
+        monitorWidgetPos.setX(middleBottomMainWinPos.x() - (size().width() / 2));
+
+    if (middleBottomMainWinPos.y() < 1)
+        monitorWidgetPos.setY(1);
+    else if (middleBottomMainWinPos.y() > screenSize.height())
+        monitorWidgetPos.setY(screenSize.height());
+    else
+        monitorWidgetPos.setY(middleBottomMainWinPos.y());
+
+    move(monitorWidgetPos);
 }

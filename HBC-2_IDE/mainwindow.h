@@ -256,7 +256,6 @@ class MainWindow : public QMainWindow
         // Others
         Assembly::Assembler *m_assembler;
         HbcEmulator *m_emulator;
-        MonitorWidget *m_monitor;
         ConfigManager *m_configManager;
 
         // Dialogs

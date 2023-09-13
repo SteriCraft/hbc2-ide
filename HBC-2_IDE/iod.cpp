@@ -13,7 +13,7 @@ void Iod::init(HbcIod &iod, HbcMotherboard *mb)
     while (iod.m_interruptsQueue.size() > 0)
         iod.m_interruptsQueue.pop();
 
-    qDebug() << "[IOD]: Init"; // TODO: Bug, sometimes no interrupt is thrown on init when relaunching the emulator
+    qDebug() << "[IOD]: Init";
 }
 
 void Iod::tick(HbcIod &iod)
