@@ -1344,6 +1344,8 @@ void MainWindow::stopEmulatorAction()
 
     m_emulator->stopCmd();
 
+    removeHighlightings();
+
     setStatusBarRightMessage("");
 }
 
@@ -2007,13 +2009,11 @@ void MainWindow::clearRecentProjectsMenu()
 
 void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter)
 {
-    CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
-
     if (!symbol.filePath.isEmpty())
     {
         bool found(false);
 
-        m_assemblyEditor->blockSignals(true); // Because the emulator locks its mutex and "getState" gets called on tab change
+        removeHighlightings();
         for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
         {
             CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
@@ -2038,6 +2038,7 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
         }
         m_assemblyEditor->blockSignals(false);
 
+        CustomizedCodeEditor *currentEditor(getCCE(m_assemblyEditor->currentWidget()));
         if (currentEditor != nullptr)
         {
             currentEditor->highlightLine(symbol.lineNb - 1);
@@ -2045,16 +2046,25 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
     }
     else if (!m_eepromToggle->isChecked())
     {
-        if (currentEditor != nullptr)
-        {
-            currentEditor->highlightLine(-1);
-        }
+        removeHighlightings();
 
         QMessageBox::warning(this, tr("Undefined instruction"), "The CPU has jumped to an address that does not correspond to any instruction.\n\nProgram Counter: " + CpuStateViewer::word2QString(programCounter));
     }
     else
     {
+        removeHighlightings();
+
         // TODO: Open the disassembler
+    }
+}
+
+void MainWindow::removeHighlightings()
+{
+    for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
+    {
+        CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
+
+        editor->highlightLine(-1);
     }
 }
 

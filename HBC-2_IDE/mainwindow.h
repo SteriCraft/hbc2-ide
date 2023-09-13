@@ -116,6 +116,7 @@ class MainWindow : public QMainWindow
         void updateRecentProjectsMenu();
         void clearRecentProjectsMenu();
         void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter);
+        void removeHighlightings();
 
         // Editors management actions
         void newProjectAction();
