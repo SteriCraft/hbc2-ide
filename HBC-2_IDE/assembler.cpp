@@ -1485,6 +1485,90 @@ bool Assembler::replaceVariablesByAddresses()
                         return false;
                     }
                 }
+                else if (line->m_tokens[t].getType() == Token::TokenType::ADDR_MSB)
+                {
+                    // Search for equivalent variable
+                    found = false;
+                    for (unsigned int x(0); x < m_definedVars.size(); x++)
+                    {
+                        if (m_definedVars[x].name == line->m_tokens[t].getLabelName())
+                        {
+                            line->m_tokens[t].setAsValue((uint8_t)(m_definedVars[x].range.begin >> 8));
+
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    // Search for equivalent routine block
+                    if (!found)
+                    {
+                        for (unsigned int x(0); x < m_routineBlocks.size(); x++)
+                        {
+                            if (m_routineBlocks[x].labelName == line->m_tokens[t].getLabelName())
+                            {
+                                line->m_tokens[t].setAsValue((uint8_t)(m_routineBlocks[x].range.begin >> 8));
+
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        m_error.originFilePath = line->m_originFilePath;
+                        m_error.originLineNb = line->m_originLineNb;
+                        m_error.type = Token::ErrorType::UNKNOWN_VARIABLE;
+                        m_error.additionalInfo = "";
+
+                        logError();
+                        return false;
+                    }
+                }
+                else if (line->m_tokens[t].getType() == Token::TokenType::ADDR_LSB)
+                {
+                    std::string variableName(line->m_tokens[t].getStr().substr(0, line->m_tokens[t].getStr().size() - 4));
+
+                    // Search for equivalent variable
+                    found = false;
+                    for (unsigned int x(0); x < m_definedVars.size(); x++)
+                    {
+                        if (m_definedVars[x].name == line->m_tokens[t].getLabelName())
+                        {
+                            line->m_tokens[t].setAsValue((uint8_t)m_definedVars[x].range.begin);
+
+                            found = true;
+                            break;
+                        }
+                    }
+
+                    // Search for equivalent routine block
+                    if (!found)
+                    {
+                        for (unsigned int x(0); x < m_routineBlocks.size(); x++)
+                        {
+                            if (m_routineBlocks[x].labelName == line->m_tokens[t].getLabelName())
+                            {
+                                line->m_tokens[t].setAsValue((uint8_t)m_routineBlocks[x].range.begin);
+
+                                found = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (!found)
+                    {
+                        m_error.originFilePath = line->m_originFilePath;
+                        m_error.originLineNb = line->m_originLineNb;
+                        m_error.type = Token::ErrorType::UNKNOWN_VARIABLE;
+                        m_error.additionalInfo = "";
+
+                        logError();
+                        return false;
+                    }
+                }
             }
         }
     }

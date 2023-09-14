@@ -22,7 +22,7 @@ namespace Token
      * \enum TokenType
      * \brief Lists token types
      */
-    enum class TokenType { INSTR, DEFINE, INCLUDE, DATA, LABEL, VAR, DECVAL, HEXVAL, ADDRESS, EEPROM_ADDRESS, REG, CONCATREG, STRING, INVALID };
+    enum class TokenType { INSTR, DEFINE, INCLUDE, DATA, LABEL, VAR, DECVAL, HEXVAL, ADDRESS, ADDR_MSB, ADDR_LSB, EEPROM_ADDRESS, REG, CONCATREG, STRING, INVALID };
 
     /*!
      * \enum DataType
@@ -124,6 +124,13 @@ namespace Token
              * \param address 32-bit value (because it can be an EEPROM 20-bit address)
              */
             void setAsAddress(uint32_t address);
+
+            /*!
+             * \brief Sets the value associated with the token.
+             *
+             * \param 8-bit value
+             */
+            void setAsValue(uint8_t value);
 
             /*!
              * \brief Returns the token type.

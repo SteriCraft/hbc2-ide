@@ -31,6 +31,16 @@ void TokenItem::setAsAddress(uint32_t address)
     m_str = "";
 }
 
+void TokenItem::setAsValue(uint8_t value)
+{
+    m_type = Token::TokenType::HEXVAL;
+    m_value = value;
+
+    m_address = 0;
+    m_labelName = "";
+    m_str = "";
+}
+
 Token::TokenType TokenItem::getType()
 {
     return m_type;
@@ -408,7 +418,27 @@ void TokenItem::analyseArgument()
         }
         else
         {
-            m_type = Token::TokenType::VAR;
+            if (m_str.size() > 4)
+            {
+                if (m_str.substr(m_str.size() - 4) == ".msb")
+                {
+                    m_type = Token::TokenType::ADDR_MSB;
+                    m_labelName = m_str.substr(0, m_str.size() - 4);
+                }
+                else if (m_str.substr(m_str.size() - 4) == ".lsb")
+                {
+                    m_type = Token::TokenType::ADDR_LSB;
+                    m_labelName = m_str.substr(0, m_str.size() - 4);
+                }
+                else
+                {
+                    m_type = Token::TokenType::VAR;
+                }
+            }
+            else
+            {
+                m_type = Token::TokenType::VAR;
+            }
         }
     }
     else
@@ -504,7 +534,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -538,7 +568,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -572,7 +602,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -695,7 +725,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1087,7 +1117,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1136,7 +1166,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1317,7 +1347,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1351,7 +1381,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1385,7 +1415,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG;
             }
-            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL)
+            else if (arg2 == Token::TokenType::HEXVAL || arg2 == Token::TokenType::DECVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
             {
                 m_instr.m_addrMode = Cpu::AddressingMode::REG_IMM8;
             }
@@ -1424,7 +1454,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
         }
         else if (argsNb == 2) // [VAR] [STRING | HEX | DEC]
         {
-            if (m_tokens[2].getType() != Token::TokenType::DECVAL && m_tokens[2].getType() != Token::TokenType::HEXVAL
+            if (m_tokens[2].getType() != Token::TokenType::DECVAL && m_tokens[2].getType() != Token::TokenType::HEXVAL && arg2 != Token::TokenType::ADDR_MSB && arg2 != Token::TokenType::ADDR_LSB
              && m_tokens[2].getType() != Token::TokenType::STRING)
             {
                 m_err = Token::ErrorType::DATA_INVAL;
@@ -1448,7 +1478,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
                     {
                         m_dataType = Token::DataType::STRING_DEFINED;
                     }
-                    else if (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL) // [VAR] [ADDR | EEPROM_ADDR] [DEC | HEX]
+                    else if (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB) // [VAR] [ADDR | EEPROM_ADDR] [DEC | HEX]
                     {
                         m_dataType = Token::DataType::SINGLE_VALUE_DEFINED;
                     }
@@ -1457,8 +1487,8 @@ bool TokenLine::checkValidity(bool targetEeprom)
                         m_err = Token::ErrorType::DATA_INVAL;
                     }
                 }
-                else if ((m_tokens[2].getType() == Token::TokenType::DECVAL || m_tokens[2].getType() == Token::TokenType::HEXVAL)
-                      && (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL))
+                else if ((m_tokens[2].getType() == Token::TokenType::DECVAL || m_tokens[2].getType() == Token::TokenType::HEXVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
+                      && (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB))
                 {
                     m_dataType = Token::DataType::MULTIPLE_VALUES_UNDEFINED;
                 }
@@ -1477,7 +1507,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
                 {
                     for (unsigned int i(3); i < m_tokens.size(); i++)
                     {
-                        if (m_tokens[i].getType() != Token::TokenType::DECVAL && m_tokens[i].getType() != Token::TokenType::HEXVAL)
+                        if (m_tokens[i].getType() != Token::TokenType::DECVAL && m_tokens[i].getType() != Token::TokenType::HEXVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
                         {
                             m_err = Token::ErrorType::DATA_INVAL;
                         }
@@ -1489,7 +1519,7 @@ bool TokenLine::checkValidity(bool targetEeprom)
                 {
                     for (unsigned int i(2); i < m_tokens.size(); i++)
                     {
-                        if (m_tokens[i].getType() != Token::TokenType::DECVAL && m_tokens[i].getType() != Token::TokenType::HEXVAL)
+                        if (m_tokens[i].getType() != Token::TokenType::DECVAL && m_tokens[i].getType() != Token::TokenType::HEXVAL || arg2 == Token::TokenType::ADDR_MSB || arg2 == Token::TokenType::ADDR_LSB)
                         {
                             m_err = Token::ErrorType::DATA_INVAL;
                         }

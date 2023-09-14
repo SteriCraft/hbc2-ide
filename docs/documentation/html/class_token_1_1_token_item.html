@@ -91,6 +91,9 @@ Public Member Functions</h2></td></tr>
 <tr class="memitem:ab5993fed04851e888ded91f61900d83c"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_token_1_1_token_item.html#ab5993fed04851e888ded91f61900d83c">setAsAddress</a> (uint32_t address)</td></tr>
 <tr class="memdesc:ab5993fed04851e888ded91f61900d83c"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the address associated with the token <em>(if it represents a label or a variable name)</em>.  <a href="class_token_1_1_token_item.html#ab5993fed04851e888ded91f61900d83c">More...</a><br /></td></tr>
 <tr class="separator:ab5993fed04851e888ded91f61900d83c"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a62cb3bc2ce2fcbb44c9b5792db5db1eb"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_token_1_1_token_item.html#a62cb3bc2ce2fcbb44c9b5792db5db1eb">setAsValue</a> (uint8_t value)</td></tr>
+<tr class="memdesc:a62cb3bc2ce2fcbb44c9b5792db5db1eb"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the value associated with the token.  <a href="class_token_1_1_token_item.html#a62cb3bc2ce2fcbb44c9b5792db5db1eb">More...</a><br /></td></tr>
+<tr class="separator:a62cb3bc2ce2fcbb44c9b5792db5db1eb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ae674e62ac243a6755c1cc2fd625be062"><td class="memItemLeft" align="right" valign="top"><a id="ae674e62ac243a6755c1cc2fd625be062"></a>
 <a class="el" href="namespace_token.html#ad80928a0dff686ec8d11da0b5d6944a2">Token::TokenType</a>&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_token_1_1_token_item.html#ae674e62ac243a6755c1cc2fd625be062">getType</a> ()</td></tr>
 <tr class="memdesc:ae674e62ac243a6755c1cc2fd625be062"><td class="mdescLeft">&#160;</td><td class="mdescRight">Returns the token type. <br /></td></tr>
@@ -187,6 +190,32 @@ std::string&#160;</td><td class="memItemRight" valign="bottom"><a class="el" hre
 <dl class="params"><dt>Parameters</dt><dd>
   <table class="params">
     <tr><td class="paramname">address</td><td>32-bit value (because it can be an EEPROM 20-bit address) </td></tr>
+  </table>
+  </dd>
+</dl>
+
+</div>
+</div>
+<a id="a62cb3bc2ce2fcbb44c9b5792db5db1eb"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a62cb3bc2ce2fcbb44c9b5792db5db1eb">&#9670;&nbsp;</a></span>setAsValue()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">void TokenItem::setAsValue </td>
+          <td>(</td>
+          <td class="paramtype">uint8_t&#160;</td>
+          <td class="paramname"><em>value</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Sets the value associated with the token. </p>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">8-bit</td><td>value </td></tr>
   </table>
   </dd>
 </dl>
