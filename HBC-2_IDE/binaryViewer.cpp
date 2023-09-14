@@ -26,7 +26,9 @@ void BinaryViewer::update(const QByteArray ramData)
     if (m_singleton != nullptr)
     {
         m_singleton->m_ramData = ramData;
+        m_singleton->m_eepromData = QByteArray();
         m_singleton->m_selectEepromButton->setChecked(false);
+        m_singleton->m_selectEepromButton->setCheckable(false);
         m_singleton->m_selectRamButton->setChecked(true);
 
         m_singleton->showRamContent();
@@ -39,6 +41,12 @@ void BinaryViewer::update(const QByteArray ramData, const QByteArray eepromData)
     {
         m_singleton->m_ramData = ramData;
         m_singleton->m_eepromData = eepromData;
+        m_singleton->m_selectEepromButton->setCheckable(true);
+
+        if (m_singleton->m_ramCurrentlyDisplayed)
+            m_singleton->showRamContent();
+        else
+            m_singleton->showEepromContent(true);
     }
 }
 
@@ -64,18 +72,13 @@ void BinaryViewer::showEeprom()
 {
     if (m_singleton != nullptr)
     {
-        m_singleton->m_selectEepromButton->setCheckable(true);
-        m_singleton->m_selectEepromButton->setChecked(true);
-        m_singleton->m_selectRamButton->setChecked(false);
-        m_singleton->showEepromContent(true);
-    }
-}
-
-void BinaryViewer::enableEepromSelect(bool enable)
-{
-    if (m_singleton != nullptr)
-    {
-        m_singleton->m_selectEepromButton->setCheckable(enable);
+        if (m_singleton->m_eepromData.size() > 0)
+        {
+            m_singleton->m_selectEepromButton->setCheckable(true);
+            m_singleton->m_selectEepromButton->setChecked(true);
+            m_singleton->m_selectRamButton->setChecked(false);
+            m_singleton->showEepromContent(true);
+        }
     }
 }
 
@@ -104,16 +107,16 @@ void BinaryViewer::showEvent(QShowEvent* event)
 // PRIVATE SLOTS
 void BinaryViewer::showRamContent()
 {
-    m_showRam = true;
+    m_ramCurrentlyDisplayed = true;
     m_hexEditor->setData(m_ramData);
     m_addressSpinBox->allow20Bits(false);
 }
 
 void BinaryViewer::showEepromContent(bool toggled)
 {
-    if (toggled)
+    if (toggled && m_eepromData.size() > 0)
     {
-        m_showRam = false;
+        m_ramCurrentlyDisplayed = false;
         m_hexEditor->setData(m_eepromData);
         m_addressSpinBox->allow20Bits(true);
     }
@@ -129,7 +132,7 @@ void BinaryViewer::gotoAddress()
 // PRIVATE
 BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 {
-    m_showRam = true;
+    m_ramCurrentlyDisplayed = true;
 
     setPosition();
     setWindowTitle(tr("Binary viewer"));

@@ -1,5 +1,5 @@
 var searchData=
 [
-  ['newfile_258',['newFile',['../class_file_manager.html#a1ba2de2f6407235b476185a69ac2cd98',1,'FileManager']]],
-  ['newproject_259',['newProject',['../class_project_manager.html#ac7032a4c84353d40b4c23043ed309dda',1,'ProjectManager']]]
+  ['newfile_257',['newFile',['../class_file_manager.html#a1ba2de2f6407235b476185a69ac2cd98',1,'FileManager']]],
+  ['newproject_258',['newProject',['../class_project_manager.html#ac7032a4c84353d40b4c23043ed309dda',1,'ProjectManager']]]
 ];

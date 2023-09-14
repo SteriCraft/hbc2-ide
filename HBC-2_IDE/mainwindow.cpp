@@ -1192,7 +1192,6 @@ void MainWindow::assembleAction()
     // Assemble the project
     QList<QString> impactedFilesNames = m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList();
     CustomFile *impactedFile;
-    bool assemblySucceeded;
 
     for (int i(0); i < impactedFilesNames.count(); i++)
     {
@@ -1205,10 +1204,8 @@ void MainWindow::assembleAction()
         }
     }
 
-    assemblySucceeded = m_assembler->assembleProject(m_projectManager->getCurrentProject(), m_eepromTargetToggle->isChecked());
-
     // Init emulator
-    if (assemblySucceeded)
+    if (m_assembler->assembleProject(m_projectManager->getCurrentProject(), m_eepromTargetToggle->isChecked()))
     {
         plugMonitorPeripheralAction();
         plugRTCPeripheralAction();
@@ -1218,11 +1215,15 @@ void MainWindow::assembleAction()
         if (m_eepromTargetToggle->isChecked())
         {
             m_emulator->loadProject(m_assembler->getBinaryFilePath(), m_projectManager->getCurrentProject()->getName());
+
+            BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
         }
         else
         {
             const QByteArray &data = m_assembler->getBinaryData();
             m_emulator->loadProject(data, m_projectManager->getCurrentProject()->getName());
+
+            BinaryViewer::update(m_emulator->getCurrentRamBinaryData());
         }
 
         updateWinTabMenu();
@@ -1259,32 +1260,12 @@ void MainWindow::showBinaryAction()
         else
         {
             viewer->update(ramData);
-            viewer->enableEepromSelect(false);
         }
-    }
-    else
-    {
-        if (m_eepromToggle->isChecked())
-        {
-            for (unsigned int i(0); i < Ram::MEMORY_SIZE; i++)
-            {
-                quint8 nullChar(0x00);
-                ramData.push_back(nullChar);
-            }
 
-            eepromData = m_assembler->getBinaryData();
-            viewer->update(ramData, eepromData);
-            viewer->enableEepromSelect(true);
-        }
-        else
-        {
-            ramData = m_assembler->getBinaryData();
-            viewer->update(ramData);
-            viewer->enableEepromSelect(false);
-        }
+        viewer->show();
     }
 
-    viewer->show();
+    // Needless to show the binary data if the emulator is not initialized
 }
 
 void MainWindow::runEmulatorAction()

@@ -212,10 +212,10 @@ namespace Assembly
 
             // Major pass 5 = LABEL ANALYSIS
             bool constructRoutineBlocks(bool targetEeprom);
-            bool findFreeMemorySpaces(bool targetEeprom);
             bool calculateRoutineBlocksAddresses();
 
             // Major pass 6 = DATA PROCESS
+            bool findFreeMemorySpaces(bool targetEeprom);
             bool calculateVariablesAddresses();
             bool replaceVariablesByAddresses();
 
@@ -227,7 +227,6 @@ namespace Assembly
             // Utils
             Token::TokenFile* findTokenFile(QString fileName);
             static bool variableAddressInferiorComparator(Variable a, Variable b);
-            static bool routineBlockAddressInferiorComparator(RoutineBlock a, RoutineBlock b);
             static bool freeMemSpaceAddressInferiorComparator(MemorySpace a, MemorySpace b);
             bool splitFreeMemorySpace(unsigned int freeMemorySpaceIndex, unsigned int definedVariableIndex);
             bool doRangeOverlap(MemoryRange a, MemoryRange b);
@@ -243,8 +242,7 @@ namespace Assembly
             std::vector<Variable> m_undefinedVars;
             std::vector<Variable> m_definedVars;
             std::vector<MemorySpace> m_freeMemorySpaces;
-            std::vector<RoutineBlock> m_undefinedRoutineBlocks;
-            std::vector<RoutineBlock> m_definedRoutineBlocks;
+            std::vector<RoutineBlock> m_routineBlocks;
 
             BinaryWithSymbols m_finalBinary;
             bool m_binaryReady;

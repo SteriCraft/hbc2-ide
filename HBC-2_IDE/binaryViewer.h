@@ -150,11 +150,6 @@ class BinaryViewer : public QDialog // SINGLETON
          */
         static void showEeprom();
 
-        /*!
-         * \brief Sets the EEPROM select button checkable
-         */
-        static void enableEepromSelect(bool enable);
-
         static void close();
         ~BinaryViewer();
 
@@ -173,7 +168,7 @@ class BinaryViewer : public QDialog // SINGLETON
         BinaryViewer(QWidget *parent = nullptr);
         void setPosition();
 
-        bool m_showRam;
+        bool m_ramCurrentlyDisplayed;
         QByteArray m_ramData;
         QByteArray m_eepromData;
 

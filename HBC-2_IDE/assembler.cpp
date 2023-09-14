@@ -69,8 +69,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
     m_definedVars.clear();
     m_undefinedVars.clear();
     m_freeMemorySpaces.clear();
-    m_definedRoutineBlocks.clear();
-    m_undefinedRoutineBlocks.clear();
+    m_routineBlocks.clear();
 
     m_error.originFilePath = "";
     m_error.originLineNb = 0;
@@ -228,15 +227,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
         return false;
     }
 
-// -> Minor pass 2: List free memory spaces between defined .data
-    if (!findFreeMemorySpaces(targetEeprom))
-    {
-        m_consoleOutput->log("Assembly failed");
-        m_consoleOutput->returnLine();
-        return false;
-    }
-
-// -> Minor pass 3: Calculate label addresses (find first big enough free memory space for each)
+// -> Minor pass 2: Calculate routines addresses (in a row)
     if (!calculateRoutineBlocksAddresses())
     {
         m_consoleOutput->log("Assembly failed");
@@ -251,7 +242,15 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
 // === MAJOR PASS 6: Data process ===
     m_consoleOutput->log("Check variable name uses validity...");
 
-// -> Minor pass 1: Calculate undefined data addresses (find first big enough free memory space)
+// -> Minor pass 1: List free memory spaces between routines and defined .data
+    if (!findFreeMemorySpaces(targetEeprom))
+    {
+        m_consoleOutput->log("Assembly failed");
+        m_consoleOutput->returnLine();
+        return false;
+    }
+
+// -> Minor pass 2: Calculate undefined data addresses (find first big enough free memory space)
     if (!calculateVariablesAddresses())
     {
         m_consoleOutput->log("Assembly failed");
@@ -1112,8 +1111,6 @@ bool Assembler::calculateMemoryUsage(bool targetEeprom)
 // -- Major pass 5 --
 bool Assembler::constructRoutineBlocks(bool targetEeprom)
 {
-    // Separated defined and undefined routine blocks for later update and free memory spaces calculations
-
     RoutineBlock block;
     Token::TokenLine *line(nullptr);
     std::string newLabel("");
@@ -1137,14 +1134,14 @@ bool Assembler::constructRoutineBlocks(bool targetEeprom)
             }
             else
             {
-                block.instructionLines.push_back(*line);
+                block.instructionLines.push_back(*line); // Where instructions are actually added to the routine block
             }
         }
         else if (line->isLabel())
         {
-            if (!firstRun)
+            if (!firstRun) // Second or more routine in the file
             {
-                if (block.range.begin != ADDRESS_NOT_SET)
+                if (block.range.begin != ADDRESS_NOT_SET) // Defined address for the routine block
                 {
                     if (((unsigned int)block.range.begin + block.size()) >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
                     {
@@ -1158,38 +1155,19 @@ bool Assembler::constructRoutineBlocks(bool targetEeprom)
                     }
 
                     block.range.end = block.range.begin + block.size() - 1;
+                }
 
-                    m_definedRoutineBlocks.push_back(block);
-                }
-                else
-                {
-                    m_undefinedRoutineBlocks.push_back(block);
-                }
+                m_routineBlocks.push_back(block);
             }
-            else
+            else // First routine block in the file
                 firstRun = false;
 
             newLabel = line->m_tokens[0].getLabelName();
 
             // Check for same name in defined routine blocks
-            for (unsigned int j(0); j < m_definedRoutineBlocks.size(); j++)
+            for (unsigned int j(0); j < m_routineBlocks.size(); j++)
             {
-                if (m_definedRoutineBlocks[j].labelName == newLabel)
-                {
-                    m_error.originFilePath = line->m_originFilePath;
-                    m_error.originLineNb = line->m_originLineNb;
-                    m_error.type = Token::ErrorType::LABEL_ALREADY_USED;
-                    m_error.additionalInfo = "";
-
-                    logError();
-                    return false;
-                }
-            }
-
-            // Check for same name in undefined routine blocks
-            for (unsigned int j(0); j < m_undefinedRoutineBlocks.size(); j++)
-            {
-                if (m_undefinedRoutineBlocks[j].labelName == newLabel)
+                if (m_routineBlocks[j].labelName == newLabel)
                 {
                     m_error.originFilePath = line->m_originFilePath;
                     m_error.originLineNb = line->m_originLineNb;
@@ -1212,17 +1190,10 @@ bool Assembler::constructRoutineBlocks(bool targetEeprom)
             {
                 block.range.begin = Cpu::PROGRAM_START_ADDRESS;
             }
-            else if (line->m_tokens.size() == 2)
-            {
-                block.range.begin = line->m_tokens[1].getAddress();
-            }
-            else
-            {
-                block.range.begin = ADDRESS_NOT_SET;
-            }
         }
     }
 
+    // Last routine storage
     if (block.size() > 0)
     {
         if (block.range.begin != ADDRESS_NOT_SET)
@@ -1239,61 +1210,18 @@ bool Assembler::constructRoutineBlocks(bool targetEeprom)
             }
 
             block.range.end = block.range.begin + block.size() - 1;
+        }
 
-            m_definedRoutineBlocks.push_back(block);
-        }
-        else
-        {
-            m_undefinedRoutineBlocks.push_back(block);
-        }
+        m_routineBlocks.push_back(block);
     }
 
-    m_routineBlocksCount = (unsigned int)m_definedRoutineBlocks.size() + (unsigned int)m_undefinedRoutineBlocks.size();
-
-    // Check if any routine block overlaps another one
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
-    {
-        for (unsigned int j(0); j < m_definedRoutineBlocks.size(); j++)
-        {
-            if (i != j)
-            {
-                if (doRangeOverlap(m_definedRoutineBlocks[i].range, m_definedRoutineBlocks[j].range))
-                {
-                    m_error.originFilePath = m_definedRoutineBlocks[i].originFile;
-                    m_error.originLineNb = m_definedRoutineBlocks[i].originLineNb;
-                    m_error.type = Token::ErrorType::ROUTINE_OVERLAP;
-                    m_error.additionalInfo = m_definedRoutineBlocks[j].labelName + "\"";
-
-                    logError();
-                    return false;
-                }
-            }
-        }
-    }
-
-    // Check if any data definition overlaps a routine
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
-    {
-        for (unsigned int j(0); j < m_definedVars.size(); j++)
-        {
-            if (doRangeOverlap(m_definedRoutineBlocks[i].range, m_definedVars[j].range))
-            {
-                m_error.originFilePath = m_definedVars[j].originFile;
-                m_error.originLineNb = m_definedVars[j].originLineNb;
-                m_error.type = Token::ErrorType::DATA_OVERWRITES_INSTR;
-                m_error.additionalInfo = m_definedRoutineBlocks[i].labelName + "\", try automatic data address calculation";
-
-                logError();
-                return false;
-            }
-        }
-    }
+    m_routineBlocksCount = (unsigned int)m_routineBlocks.size();
 
     // Find "_start" label
     bool startRoutineFound(false);
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
     {
-        if (m_definedRoutineBlocks[i].labelName == "_start")
+        if (m_routineBlocks[i].labelName == "_start")
         {
             startRoutineFound = true;
             break;
@@ -1314,36 +1242,103 @@ bool Assembler::constructRoutineBlocks(bool targetEeprom)
     return true;
 }
 
+bool Assembler::calculateRoutineBlocksAddresses()
+{
+    uint32_t nextAvailableAddress(ADDRESS_NOT_SET);
+
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
+    {
+        if (m_routineBlocks[i].range.begin == ADDRESS_NOT_SET) // Undefined routine
+        {
+            m_routineBlocks[i].range.begin = nextAvailableAddress;
+            m_routineBlocks[i].range.end = nextAvailableAddress + m_routineBlocks[i].size() - 1;
+
+            if (m_routineBlocks[i].range.end >= Eeprom::MEMORY_SIZE)
+            {
+                m_error.originFilePath = "";
+                m_error.originLineNb = 0;
+                m_error.type = Token::ErrorType::MEM_USE;
+                m_error.additionalInfo = "";
+
+                logError();
+                return false;
+            }
+        }
+
+        nextAvailableAddress = m_routineBlocks[i].range.begin + m_routineBlocks[i].size();
+    }
+
+    // Check if any routine block overlaps another one
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
+    {
+        for (unsigned int j(0); j < m_routineBlocks.size(); j++)
+        {
+            if (i != j)
+            {
+                if (doRangeOverlap(m_routineBlocks[i].range, m_routineBlocks[j].range))
+                {
+                    m_error.originFilePath = m_routineBlocks[i].originFile;
+                    m_error.originLineNb = m_routineBlocks[i].originLineNb;
+                    m_error.type = Token::ErrorType::ROUTINE_OVERLAP;
+                    m_error.additionalInfo = m_routineBlocks[j].labelName + "\"";
+
+                    logError();
+                    return false;
+                }
+            }
+        }
+    }
+
+    // Check if any data definition overlaps a routine
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
+    {
+        for (unsigned int j(0); j < m_definedVars.size(); j++)
+        {
+            if (doRangeOverlap(m_routineBlocks[i].range, m_definedVars[j].range))
+            {
+                m_error.originFilePath = m_definedVars[j].originFile;
+                m_error.originLineNb = m_definedVars[j].originLineNb;
+                m_error.type = Token::ErrorType::DATA_OVERWRITES_INSTR;
+                m_error.additionalInfo = m_routineBlocks[i].labelName + "\", try automatic data address calculation";
+
+                logError();
+                return false;
+            }
+        }
+    }
+
+    return true;
+}
+
+// -- Major pass 6 --
 bool Assembler::findFreeMemorySpaces(bool targetEeprom)
 {
     std::sort(m_definedVars.begin(), m_definedVars.end(), variableAddressInferiorComparator);
-    std::sort(m_definedRoutineBlocks.begin(), m_definedRoutineBlocks.end(), routineBlockAddressInferiorComparator);
-
 
     // Determine free memory spaces between routine blocks
     bool endReached(false);
     MemorySpace newSpace;
     newSpace.range.begin = Cpu::PROGRAM_START_ADDRESS;
 
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
     {
-        if (m_definedRoutineBlocks[i].range.begin == newSpace.range.begin) // Next routine block starts immediately
+        if (m_routineBlocks[i].range.begin == newSpace.range.begin) // Next routine block starts immediately
         {
-            newSpace.range.begin += m_definedRoutineBlocks[i].size();
+            newSpace.range.begin += m_routineBlocks[i].size();
 
-            if ((unsigned int)newSpace.range.begin + m_definedRoutineBlocks[i].size() >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
+            if ((unsigned int)newSpace.range.begin + m_routineBlocks[i].size() >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
                 endReached = true;
         }
         else // Free space found
         {
-            newSpace.range.end = m_definedRoutineBlocks[i].range.begin - 1;
+            newSpace.range.end = m_routineBlocks[i].range.begin - 1;
             m_freeMemorySpaces.push_back(newSpace);
 
-            if ((unsigned int)m_definedRoutineBlocks[i].range.end + 1 < (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
+            if ((unsigned int)m_routineBlocks[i].range.end + 1 < (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
             {
-                newSpace.range.begin = m_definedRoutineBlocks[i].range.end + 1; // First address after currently studied routine block
+                newSpace.range.begin = m_routineBlocks[i].range.end + 1; // First address after currently studied routine block
 
-                if (i + 1 == m_definedRoutineBlocks.size()) // No routine blocks following
+                if (i + 1 == m_routineBlocks.size()) // No routine blocks following
                 {
                     newSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
                     m_freeMemorySpaces.push_back(newSpace);
@@ -1389,54 +1384,6 @@ bool Assembler::findFreeMemorySpaces(bool targetEeprom)
     return true;
 }
 
-bool Assembler::calculateRoutineBlocksAddresses()
-{
-    while (m_undefinedRoutineBlocks.size() > 0)
-    {
-        bool spaceFound(false);
-
-        for (unsigned int j(0); j < m_freeMemorySpaces.size(); j++)
-        {
-            if (m_freeMemorySpaces[j].size() >= m_undefinedRoutineBlocks[0].size()) // Large enough free memory space found
-            {
-                spaceFound = true;
-                m_undefinedRoutineBlocks[0].range.begin = m_freeMemorySpaces[j].range.begin;
-
-                // Update free memory spaces
-                if (m_undefinedRoutineBlocks[0].size() == m_freeMemorySpaces[j].size())
-                {
-                    m_freeMemorySpaces.erase(m_freeMemorySpaces.begin() + j);
-                }
-                else
-                {
-                    m_freeMemorySpaces[j].range.begin += m_undefinedRoutineBlocks[0].size();
-                }
-
-                break;
-            }
-        }
-
-        if (!spaceFound)
-        {
-            m_error.originFilePath = "";
-            m_error.originLineNb = 0;
-            m_error.type = Token::ErrorType::MEM_USE;
-            m_error.additionalInfo = "";
-
-            logError();
-            return false;
-        }
-
-        m_definedRoutineBlocks.push_back(m_undefinedRoutineBlocks[0]);
-        m_undefinedRoutineBlocks.erase(m_undefinedRoutineBlocks.begin());
-    }
-
-    std::sort(m_definedRoutineBlocks.begin(), m_definedRoutineBlocks.end(), routineBlockAddressInferiorComparator);
-
-    return true;
-}
-
-// -- Major pass 6 --
 bool Assembler::calculateVariablesAddresses()
 {
     while (m_undefinedVars.size() > 0)
@@ -1489,11 +1436,11 @@ bool Assembler::replaceVariablesByAddresses()
 {
     bool found(false);
 
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
     {
-        for (unsigned int j(0); j < m_definedRoutineBlocks[i].instructionLines.size(); j++)
+        for (unsigned int j(0); j < m_routineBlocks[i].instructionLines.size(); j++)
         {
-            Token::TokenLine *line = &(m_definedRoutineBlocks[i].instructionLines[j]);
+            Token::TokenLine *line = &(m_routineBlocks[i].instructionLines[j]);
 
             for (unsigned int t(0); t < line->m_tokens.size(); t++)
             {
@@ -1515,11 +1462,11 @@ bool Assembler::replaceVariablesByAddresses()
                     // Search for equivalent routine block
                     if (!found)
                     {
-                        for (unsigned int x(0); x < m_definedRoutineBlocks.size(); x++)
+                        for (unsigned int x(0); x < m_routineBlocks.size(); x++)
                         {
-                            if (m_definedRoutineBlocks[x].labelName == line->m_tokens[t].getVariableName())
+                            if (m_routineBlocks[x].labelName == line->m_tokens[t].getVariableName())
                             {
-                                line->m_tokens[t].setAsAddress(m_definedRoutineBlocks[x].range.begin);
+                                line->m_tokens[t].setAsAddress(m_routineBlocks[x].range.begin);
 
                                 found = true;
                                 break;
@@ -1551,13 +1498,13 @@ bool Assembler::convertTokensToBinary()
     Token::TokenLine *line(nullptr);
     uint32_t instructionAddress; // 32-bit because it could hold an EEPROM 20-bit address
     uint32_t instructionBinary;
-    for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
+    for (unsigned int i(0); i < m_routineBlocks.size(); i++)
     {
-        instructionAddress = m_definedRoutineBlocks[i].range.begin;
+        instructionAddress = m_routineBlocks[i].range.begin;
 
-        for (unsigned int j(0); j < m_definedRoutineBlocks[i].instructionLines.size(); j++)
+        for (unsigned int j(0); j < m_routineBlocks[i].instructionLines.size(); j++)
         {
-            line = &(m_definedRoutineBlocks[i].instructionLines[j]);
+            line = &(m_routineBlocks[i].instructionLines[j]);
 
             instructionBinary = getBinaryFromTokenLine(line);
 
@@ -1566,8 +1513,8 @@ bool Assembler::convertTokensToBinary()
             m_finalBinary.binaryData[instructionAddress + 2] = ((instructionBinary & 0x0000FF00) >> 8);
             m_finalBinary.binaryData[instructionAddress + 3] = ((instructionBinary & 0x000000FF));
 
-            m_finalBinary.origin[instructionAddress].filePath = m_definedRoutineBlocks[i].instructionLines[j].m_originFilePath;
-            m_finalBinary.origin[instructionAddress].lineNb = m_definedRoutineBlocks[i].instructionLines[j].m_originLineNb;
+            m_finalBinary.origin[instructionAddress].filePath = m_routineBlocks[i].instructionLines[j].m_originFilePath;
+            m_finalBinary.origin[instructionAddress].lineNb = m_routineBlocks[i].instructionLines[j].m_originLineNb;
 
             instructionAddress += Cpu::INSTRUCTION_SIZE;
         }
@@ -1663,11 +1610,6 @@ bool Assembler::variableAddressInferiorComparator(Variable a, Variable b)
     return a.range.begin < b.range.begin;
 }
 
-bool Assembler::routineBlockAddressInferiorComparator(RoutineBlock a, RoutineBlock b)
-{
-    return a.range.begin < b.range.begin;
-}
-
 bool Assembler::freeMemSpaceAddressInferiorComparator(MemorySpace a, MemorySpace b)
 {
     return a.range.begin < b.range.begin;
@@ -1720,7 +1662,7 @@ bool Assembler::splitFreeMemorySpace(unsigned int freeMemorySpaceIndex, unsigned
 }
 
 bool Assembler::doRangeOverlap(MemoryRange a, MemoryRange b)
-{   
+{
     if ((a.begin >= b.begin && a.begin <= b.end)
      || (a.end   >= b.begin && a.end   <= b.end))
     {
