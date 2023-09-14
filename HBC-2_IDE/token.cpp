@@ -21,7 +21,7 @@ void TokenItem::setStr(std::string str)
     }
 }
 
-void TokenItem::setAsAddress(uint16_t address)
+void TokenItem::setAsAddress(uint32_t address)
 {
     m_type = Token::TokenType::ADDRESS;
     m_address = address;
@@ -56,7 +56,7 @@ uint8_t TokenItem::getValue()
     return m_value;
 }
 
-uint16_t TokenItem::getAddress()
+uint32_t TokenItem::getAddress()
 {
     return m_address;
 }
@@ -316,10 +316,15 @@ void TokenItem::analyseArgument()
                         m_address = value;
                         m_type = Token::TokenType::ADDRESS;
                     }
+                    else if (value < 1048576)
+                    {
+                        m_address = value;
+                        m_type = Token::TokenType::EEPROM_ADDRESS;
+                    }
                     else
                     {
                         m_type = Token::TokenType::INVALID;
-                        m_err = Token::ErrorType::INVAL_ADDR_TOO_HIGH;
+                        m_err = Token::ErrorType::INVAL_EEPROM_ADDR_TOO_HIGH;
                     }
                 }
                 else
@@ -445,14 +450,14 @@ bool TokenItem::is_validToken(const std::string& str)
 }
 
 
-// === TokenItem LINE CLASS ===
+// === TokenLine class ===
 TokenLine::TokenLine()
 {
     m_err = Token::ErrorType::NONE;
     m_additionalInfo = "";
 }
 
-bool TokenLine::checkValidity()
+bool TokenLine::checkValidity(bool targetEeprom)
 {
     // "define" and "include" macros are not checked because they are checked previously in assembler
 
@@ -509,7 +514,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -536,7 +548,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -563,7 +582,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -582,7 +608,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -695,7 +728,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -757,7 +797,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -800,7 +847,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -819,7 +873,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -838,7 +899,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -857,7 +925,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -876,7 +951,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -895,7 +977,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -914,7 +1003,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -937,7 +1033,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -960,7 +1063,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -1002,7 +1112,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg1 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -1029,7 +1146,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -1203,7 +1327,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -1230,7 +1361,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
 
@@ -1257,7 +1395,14 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                if (arg2 == Token::TokenType::EEPROM_ADDRESS)
+                {
+                    m_err = Token::ErrorType::INVAL_RAM_ADDR_TOO_HIGH;
+                }
+                else
+                {
+                    m_err = Token::ErrorType::INSTR_ARG_INVAL;
+                }
             }
             break;
         }
@@ -1266,8 +1411,8 @@ bool TokenLine::checkValidity()
     {
         // [VAR] [HEX | DEC]+
         // [VAR] [STRING]
-        // [VAR] [ADDR] [HEX | DEC]+
-        // [VAR] [ADDR] [STRING]
+        // [VAR] [ADDR | EEPROM_ADDR] [HEX | DEC]+
+        // [VAR] [ADDR | EEPROM_ADDR] [STRING]
 
         if (argsNb < 2)
         {
@@ -1297,13 +1442,13 @@ bool TokenLine::checkValidity()
         {
             if (argsNb == 3)
             {
-                if (m_tokens[2].getType() == Token::TokenType::ADDRESS)
+                if (m_tokens[2].getType() == Token::TokenType::ADDRESS || (m_tokens[2].getType() == Token::TokenType::EEPROM_ADDRESS && targetEeprom))
                 {
-                    if (m_tokens[3].getType() == Token::TokenType::STRING) // [VAR] [ADDR] [STRING]
+                    if (m_tokens[3].getType() == Token::TokenType::STRING) // [VAR] [ADDR | EEPROM_ADDR] [STRING]
                     {
                         m_dataType = Token::DataType::STRING_DEFINED;
                     }
-                    else if (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL) // [VAR] [ADDR] [DEC | HEX]
+                    else if (m_tokens[3].getType() == Token::TokenType::DECVAL || m_tokens[3].getType() == Token::TokenType::HEXVAL) // [VAR] [ADDR | EEPROM_ADDR] [DEC | HEX]
                     {
                         m_dataType = Token::DataType::SINGLE_VALUE_DEFINED;
                     }
@@ -1317,6 +1462,10 @@ bool TokenLine::checkValidity()
                 {
                     m_dataType = Token::DataType::MULTIPLE_VALUES_UNDEFINED;
                 }
+                else if (m_tokens[2].getType() == Token::TokenType::EEPROM_ADDRESS && !targetEeprom)
+                {
+                    m_err = Token::ErrorType::INVAL_EEPROM_ADDR_TOO_HIGH;
+                }
                 else
                 {
                     m_err = Token::ErrorType::DATA_INVAL;
@@ -1324,7 +1473,7 @@ bool TokenLine::checkValidity()
             }
             else
             {
-                if (m_tokens[2].getType() == Token::TokenType::ADDRESS) // [VAR] [ADDR] [DEC | HEX]+
+                if (m_tokens[2].getType() == Token::TokenType::ADDRESS || (m_tokens[2].getType() == Token::TokenType::EEPROM_ADDRESS && targetEeprom)) // [VAR] [ADDR | EEPROM_ADDR] [DEC | HEX]+
                 {
                     for (unsigned int i(3); i < m_tokens.size(); i++)
                     {
@@ -1357,9 +1506,13 @@ bool TokenLine::checkValidity()
         {
             m_err = Token::ErrorType::LABEL_ARG_NB;
         }
-        else if (argsNb == 1) // [ADDRESS]
+        else if (argsNb == 1) // [ADDR | EEPROM_ADDR]
         {
-            if (m_tokens[1].getType() != Token::TokenType::ADDRESS)
+            if (m_tokens[1].getType() == Token::TokenType::EEPROM_ADDRESS && !targetEeprom)
+            {
+                m_err = Token::ErrorType::INVAL_EEPROM_ADDR_TOO_HIGH;
+            }
+            else if (m_tokens[1].getType() != Token::TokenType::ADDRESS)
             {
                 m_err = Token::ErrorType::LABEL_INVAL_ARG;
             }

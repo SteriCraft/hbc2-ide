@@ -22,7 +22,7 @@ namespace Token
      * \enum TokenType
      * \brief Lists token types
      */
-    enum class TokenType { INSTR, DEFINE, INCLUDE, DATA, LABEL, VAR, DECVAL, HEXVAL, ADDRESS, REG, CONCATREG, STRING, INVALID };
+    enum class TokenType { INSTR, DEFINE, INCLUDE, DATA, LABEL, VAR, DECVAL, HEXVAL, ADDRESS, EEPROM_ADDRESS, REG, CONCATREG, STRING, INVALID };
 
     /*!
      * \enum DataType
@@ -56,10 +56,10 @@ namespace Token
     enum class ErrorType { NONE, CIRC_DEPENDENCY, INVAL_EXPR, MISSING_TERM_CHAR, EXPECT_EXPR, INVAL_LABEL,
                            INVAL_CONCATREG_REG, INVAL_CONCATREG_SIZE, INVAL_DECVAL, INVAL_DECVAL_TOO_HIGH,
                            INVAL_HEXVAL, INVAL_HEXVAL_TOO_HIGH, UNAUTHOR_CHAR, EMPTY_STRING, INVAL_ADDR,
-                           INVAL_ADDR_TOO_HIGH, INVAL_DEF, DEF_ARG_NB, DEF_VAR_MISS, DEF_ALREADY_EXIST,
-                           DEF_REPLAC_ERR, FILE_NOT_FOUND, NO_MAIN_FILE, INVAL_INC, INC_ARG_NB, INC_FILE_NAME_MISS,
-                           FILE_NOT_READ, LABEL_ARG_NB, LABEL_INVAL_ARG, DATA_ARG_NB, DATA_VAR_MISS, DATA_INVAL,
-                           INSTR_ARG_INVAL, INSTR_ARG_NB, MEM_SIZE, MEM_USE, INSTR_ALONE, LABEL_ALREADY_USED,
+                           INVAL_EEPROM_ADDR_TOO_HIGH, INVAL_RAM_ADDR_TOO_HIGH, INVAL_DEF, DEF_ARG_NB, DEF_VAR_MISS,
+                           DEF_ALREADY_EXIST, DEF_REPLAC_ERR, FILE_NOT_FOUND, NO_MAIN_FILE, INVAL_INC, INC_ARG_NB,
+                           INC_FILE_NAME_MISS, FILE_NOT_READ, LABEL_ARG_NB, LABEL_INVAL_ARG, DATA_ARG_NB, DATA_VAR_MISS,
+                           DATA_INVAL, INSTR_ARG_INVAL, INSTR_ARG_NB, MEM_SIZE, MEM_USE, INSTR_ALONE, LABEL_ALREADY_USED,
                            START_ROUTINE_MISSING, LABEL_START_REDEFINED, DATA_OVERWRITES_INSTR, MEM_USE_DEF_ROUTINES,
                            DATA_MEM_USE, SPLIT_MEM, LABEL_MEM_USE, DATA_OVERLAP, ROUTINE_OVERLAP, UNKNOWN_VARIABLE,
                            BIN_FILE_OPEN, MEM_SIZE_RAM, UNDEFINED_ADDRESS_EEPROM };
@@ -68,10 +68,10 @@ namespace Token
                                    "Missing '\"' termination character", "Expected expression",
                                    "Unexpected ':' character in label definition", "Invalid concatenated register expression",
                                    "Too many or too few registers concatenated", "Invalid decimal integer",
-                                   "Decimal value > 255", "Invalid hexadecimal integer", "Hexadecimal value > 255",
+                                   "Decimal value > 255", "Invalid hexadecimal integer", "Hexadecimal value > 0xFF",
                                    "Use of unauthorized character ( ?,;:/!§*µù%^¨¤£&é~\"#'{(-|è`\\ç)=+} )",
-                                   "Empty string", "Invalid hexadecimal address", "Hexadecimal address > 65535",
-                                   "Invalid define macro", "Too many or too few arguments for define macro",
+                                   "Empty string", "Invalid hexadecimal address", "Hexadecimal address > 0xFFFFF",
+                                   "Hexadecimal address > 0xFFFF", "Invalid define macro", "Too many or too few arguments for define macro",
                                    "Variable to replace missing in define macro", "Macro already defined in file ",
                                    "Invalid token in define macro in file ", "",
                                    "\"main.has\" file missing, unable to assemble the code",
@@ -121,9 +121,9 @@ namespace Token
             /*!
              * \brief Sets the address associated with the token <i>(if it represents a label or a variable name)</i>.
              *
-             * \param address 16-bit value
+             * \param address 32-bit value (because it can be an EEPROM 20-bit address)
              */
-            void setAsAddress(uint16_t address);
+            void setAsAddress(uint32_t address);
 
             /*!
              * \brief Returns the token type.
@@ -151,9 +151,9 @@ namespace Token
             uint8_t getValue();
 
             /*!
-             * \brief Returns the address associated with the token <i>(0x0000 if none)</i>.
+             * \brief Returns the address associated with the token <i>(0x00000000 if none)</i>.
              */
-            uint16_t getAddress();
+            uint32_t getAddress();
 
             /*!
              * \brief Returns the label name associated with the token <i>("" if none)</i>.
@@ -199,7 +199,7 @@ namespace Token
             Cpu::Register m_reg = Cpu::Register::A;
             Token::ConcatReg m_concatReg;
             uint8_t m_value = 0x00;
-            uint16_t m_address = 0x0000;
+            uint32_t m_address = 0x0000;
             std::string m_labelName = "";
 
             std::string m_str;
@@ -223,7 +223,7 @@ namespace Token
             /*!
              * \brief Returns true if the line is valid (validity of arguments by keyword).
              */
-            bool checkValidity();
+            bool checkValidity(bool targetEeprom);
 
             /*!
              * \brief Returns the complete instruction struct (if any)

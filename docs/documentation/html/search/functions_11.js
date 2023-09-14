@@ -7,7 +7,7 @@ var searchData=
   ['selectiontoreadablestring_633',['selectionToReadableString',['../class_q_hex_edit.html#a2ada1230ace92da4e1f006b88ab3b503',1,'QHexEdit']]],
   ['selectproject_634',['selectProject',['../class_project_manager.html#a91261b70e475cb352dd11d2a87504154',1,'ProjectManager']]],
   ['senddata_635',['sendData',['../class_hbc_peripheral.html#a797c10499fa1dc15611ed257a06f3405',1,'HbcPeripheral']]],
-  ['setasaddress_636',['setAsAddress',['../class_token_1_1_token_item.html#af395833f219f54b5b061952aa685fee4',1,'Token::TokenItem']]],
+  ['setasaddress_636',['setAsAddress',['../class_token_1_1_token_item.html#ab5993fed04851e888ded91f61900d83c',1,'Token::TokenItem']]],
   ['setcontent_637',['setContent',['../namespace_ram.html#a62ced2cac0acd600e3cddcb4972df085',1,'Ram']]],
   ['setdata_638',['setData',['../class_q_hex_edit.html#ab5221718179da17cbcd9db3bf6574df7',1,'QHexEdit']]],
   ['setdefaultprojectspath_639',['setDefaultProjectsPath',['../class_config_manager.html#a9ff4905deca73370138c408401393f74',1,'ConfigManager']]],

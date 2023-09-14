@@ -108,11 +108,12 @@ Enumerations</h2></td></tr>
 , <b>HEXVAL</b>
 , <br />
 &#160;&#160;<b>ADDRESS</b>
+, <b>EEPROM_ADDRESS</b>
 , <b>REG</b>
 , <b>CONCATREG</b>
-, <b>STRING</b>
 , <br />
-&#160;&#160;<b>INVALID</b>
+&#160;&#160;<b>STRING</b>
+, <b>INVALID</b>
 <br />
  }</td></tr>
 <tr class="memdesc:ad80928a0dff686ec8d11da0b5d6944a2"><td class="mdescLeft">&#160;</td><td class="mdescRight">Lists token types. <br /></td></tr>
@@ -148,49 +149,50 @@ Enumerations</h2></td></tr>
 &#160;&#160;<b>UNAUTHOR_CHAR</b>
 , <b>EMPTY_STRING</b>
 , <b>INVAL_ADDR</b>
-, <b>INVAL_ADDR_TOO_HIGH</b>
+, <b>INVAL_EEPROM_ADDR_TOO_HIGH</b>
 , <br />
-&#160;&#160;<b>INVAL_DEF</b>
+&#160;&#160;<b>INVAL_RAM_ADDR_TOO_HIGH</b>
+, <b>INVAL_DEF</b>
 , <b>DEF_ARG_NB</b>
 , <b>DEF_VAR_MISS</b>
-, <b>DEF_ALREADY_EXIST</b>
 , <br />
-&#160;&#160;<b>DEF_REPLAC_ERR</b>
+&#160;&#160;<b>DEF_ALREADY_EXIST</b>
+, <b>DEF_REPLAC_ERR</b>
 , <b>FILE_NOT_FOUND</b>
 , <b>NO_MAIN_FILE</b>
-, <b>INVAL_INC</b>
 , <br />
-&#160;&#160;<b>INC_ARG_NB</b>
+&#160;&#160;<b>INVAL_INC</b>
+, <b>INC_ARG_NB</b>
 , <b>INC_FILE_NAME_MISS</b>
 , <b>FILE_NOT_READ</b>
-, <b>LABEL_ARG_NB</b>
 , <br />
-&#160;&#160;<b>LABEL_INVAL_ARG</b>
+&#160;&#160;<b>LABEL_ARG_NB</b>
+, <b>LABEL_INVAL_ARG</b>
 , <b>DATA_ARG_NB</b>
 , <b>DATA_VAR_MISS</b>
-, <b>DATA_INVAL</b>
 , <br />
-&#160;&#160;<b>INSTR_ARG_INVAL</b>
+&#160;&#160;<b>DATA_INVAL</b>
+, <b>INSTR_ARG_INVAL</b>
 , <b>INSTR_ARG_NB</b>
 , <b>MEM_SIZE</b>
-, <b>MEM_USE</b>
 , <br />
-&#160;&#160;<b>INSTR_ALONE</b>
+&#160;&#160;<b>MEM_USE</b>
+, <b>INSTR_ALONE</b>
 , <b>LABEL_ALREADY_USED</b>
 , <b>START_ROUTINE_MISSING</b>
-, <b>LABEL_START_REDEFINED</b>
 , <br />
-&#160;&#160;<b>DATA_OVERWRITES_INSTR</b>
+&#160;&#160;<b>LABEL_START_REDEFINED</b>
+, <b>DATA_OVERWRITES_INSTR</b>
 , <b>MEM_USE_DEF_ROUTINES</b>
 , <b>DATA_MEM_USE</b>
-, <b>SPLIT_MEM</b>
 , <br />
-&#160;&#160;<b>LABEL_MEM_USE</b>
+&#160;&#160;<b>SPLIT_MEM</b>
+, <b>LABEL_MEM_USE</b>
 , <b>DATA_OVERLAP</b>
 , <b>ROUTINE_OVERLAP</b>
-, <b>UNKNOWN_VARIABLE</b>
 , <br />
-&#160;&#160;<b>BIN_FILE_OPEN</b>
+&#160;&#160;<b>UNKNOWN_VARIABLE</b>
+, <b>BIN_FILE_OPEN</b>
 , <b>MEM_SIZE_RAM</b>
 , <b>UNDEFINED_ADDRESS_EEPROM</b>
 <br />
@@ -222,10 +224,10 @@ Variables</h2></td></tr>
 <div class="line">                                   <span class="stringliteral">&quot;Missing &#39;\&quot;&#39; termination character&quot;</span>, <span class="stringliteral">&quot;Expected expression&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Unexpected &#39;:&#39; character in label definition&quot;</span>, <span class="stringliteral">&quot;Invalid concatenated register expression&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Too many or too few registers concatenated&quot;</span>, <span class="stringliteral">&quot;Invalid decimal integer&quot;</span>,</div>
-<div class="line">                                   <span class="stringliteral">&quot;Decimal value &gt; 255&quot;</span>, <span class="stringliteral">&quot;Invalid hexadecimal integer&quot;</span>, <span class="stringliteral">&quot;Hexadecimal value &gt; 255&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Decimal value &gt; 255&quot;</span>, <span class="stringliteral">&quot;Invalid hexadecimal integer&quot;</span>, <span class="stringliteral">&quot;Hexadecimal value &gt; 0xFF&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Use of unauthorized character ( ?,;:/!§*µù%^¨¤£&amp;é~\&quot;#&#39;{(-|è`\\ç)=+} )&quot;</span>,</div>
-<div class="line">                                   <span class="stringliteral">&quot;Empty string&quot;</span>, <span class="stringliteral">&quot;Invalid hexadecimal address&quot;</span>, <span class="stringliteral">&quot;Hexadecimal address &gt; 65535&quot;</span>,</div>
-<div class="line">                                   <span class="stringliteral">&quot;Invalid define macro&quot;</span>, <span class="stringliteral">&quot;Too many or too few arguments for define macro&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Empty string&quot;</span>, <span class="stringliteral">&quot;Invalid hexadecimal address&quot;</span>, <span class="stringliteral">&quot;Hexadecimal address &gt; 0xFFFFF&quot;</span>,</div>
+<div class="line">                                   <span class="stringliteral">&quot;Hexadecimal address &gt; 0xFFFF&quot;</span>, <span class="stringliteral">&quot;Invalid define macro&quot;</span>, <span class="stringliteral">&quot;Too many or too few arguments for define macro&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Variable to replace missing in define macro&quot;</span>, <span class="stringliteral">&quot;Macro already defined in file &quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;Invalid token in define macro in file &quot;</span>, <span class="stringliteral">&quot;&quot;</span>,</div>
 <div class="line">                                   <span class="stringliteral">&quot;\&quot;main.has\&quot; file missing, unable to assemble the code&quot;</span>,</div>

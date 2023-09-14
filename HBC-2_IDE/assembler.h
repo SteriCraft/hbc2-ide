@@ -51,8 +51,8 @@ namespace Assembly
      */
     struct MemoryRange
     {
-        uint16_t begin; //!< Inclusive
-        uint16_t end; //!< Inclusive
+        uint32_t begin; //!< Inclusive
+        uint32_t end; //!< Inclusive
     };
 
     /*!
@@ -64,7 +64,7 @@ namespace Assembly
         std::string name;
         MemoryRange range;
         std::vector<Token::TokenItem> values; //!< Determined and checked before creation of the variable
-        uint16_t size; //!< Unlike MemorySpace and others, size may be undefined (for automatic address calculation), so it's not a function
+        uint32_t size; //!< Unlike MemorySpace and others, size may be undefined (for automatic address calculation), so it's not a function
         Token::DataType type;
 
         QString originFile;
@@ -78,7 +78,7 @@ namespace Assembly
     struct MemorySpace
     {
         MemoryRange range;
-        uint16_t size() { return range.end - range.begin + 1; }
+        uint32_t size() { return range.end - range.begin + 1; } // 32-bit because it could hold an EEPROM 20-bit address
     };
 
     /*!
@@ -90,7 +90,7 @@ namespace Assembly
         std::string labelName;
         std::vector<Token::TokenLine> instructionLines;
 
-        uint16_t size() { return (uint16_t)instructionLines.size() * Cpu::INSTRUCTION_SIZE; }
+        uint32_t size() { return (uint32_t)instructionLines.size() * Cpu::INSTRUCTION_SIZE; } // 32-bit because it could hold an EEPROM 20-bit address
         MemoryRange range;
 
         QString originFile;
@@ -204,7 +204,7 @@ namespace Assembly
             bool processIncludesInFile(Token::TokenFile &f);
 
             // Major pass 3 = ARGUMENT VALIDITY
-            bool checkArgumentsValidity();
+            bool checkArgumentsValidity(bool targetEeprom);
 
             // Major pass 4 = DATA ANALYSIS
             bool listVariables(bool targetEeprom);

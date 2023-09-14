@@ -182,7 +182,7 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
 // === MAJOR PASS 3: Argument validity ===
     m_consoleOutput->log("Checking tokens validity...");
 
-    if (!checkArgumentsValidity())
+    if (!checkArgumentsValidity(targetEeprom))
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
@@ -906,11 +906,11 @@ bool Assembler::processIncludesInFile(Token::TokenFile &f)
 }
 
 // -- Major pass 3 --
-bool Assembler::checkArgumentsValidity()
+bool Assembler::checkArgumentsValidity(bool targetEeprom)
 {
     for (unsigned int i(0); i < m_finalFile.m_lines.size(); i++)
     {
-        if (!m_finalFile.m_lines[i].checkValidity())
+        if (!m_finalFile.m_lines[i].checkValidity(targetEeprom))
         {
             m_error.originFilePath = m_finalFile.m_lines[i].m_originFilePath;
             m_error.originLineNb = m_finalFile.m_lines[i].m_originLineNb;
@@ -961,7 +961,7 @@ bool Assembler::listVariables(bool targetEeprom)
                     var.values.push_back(line->m_tokens[j]);
                 }
 
-                var.size = (uint16_t)line->m_tokens.size() - 3;
+                var.size = (uint32_t)line->m_tokens.size() - 3;
             }
             else if (line->getDataType() == Token::DataType::MULTIPLE_VALUES_UNDEFINED)
             {
@@ -970,7 +970,7 @@ bool Assembler::listVariables(bool targetEeprom)
                     var.values.push_back(line->m_tokens[j]);
                 }
 
-                var.size = (uint16_t)line->m_tokens.size() - 2;
+                var.size = (uint32_t)line->m_tokens.size() - 2;
             }
             else if (line->getDataType() == Token::DataType::STRING_DEFINED)
             {
@@ -979,7 +979,7 @@ bool Assembler::listVariables(bool targetEeprom)
                     var.values.push_back(line->m_tokens[j]);
                 }
 
-                var.size = (uint16_t)var.values[0].getStr().size();
+                var.size = (uint32_t)var.values[0].getStr().size();
             }
             else // STRING_UNDEFINED
             {
@@ -988,7 +988,7 @@ bool Assembler::listVariables(bool targetEeprom)
                     var.values.push_back(line->m_tokens[j]);
                 }
 
-                var.size = (uint16_t)var.values[0].getStr().size();
+                var.size = (uint32_t)var.values[0].getStr().size();
             }
 
             m_dataMemoryUse += var.size;
@@ -1549,7 +1549,7 @@ bool Assembler::replaceVariablesByAddresses()
 bool Assembler::convertTokensToBinary()
 {
     Token::TokenLine *line(nullptr);
-    uint16_t instructionAddress;
+    uint32_t instructionAddress; // 32-bit because it could hold an EEPROM 20-bit address
     uint32_t instructionBinary;
     for (unsigned int i(0); i < m_definedRoutineBlocks.size(); i++)
     {
