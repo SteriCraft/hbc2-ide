@@ -859,13 +859,15 @@ void MainWindow::closeEvent(QCloseEvent *event)
 // === EDITOR MANAGEMENT ACTIONS ===
 void MainWindow::newProjectAction()
 {
-    QString newProjectPath = QFileDialog::getSaveFileName(this, tr("New project"), m_configManager->getDefaultProjectsPath(), "HBC-2 Project file (*.hcp)");
+    bool ok;
+    QString newProjectPath;
+    bool includeInterruptHandler, includeMathLibrary;
 
-    if (!newProjectPath.isEmpty())
+    NewProjectDialog *dialog = new NewProjectDialog(ok, newProjectPath, includeInterruptHandler, includeMathLibrary, m_configManager, this);
+    dialog->exec();
+
+    if (ok)
     {
-        if (!newProjectPath.contains(".hcp"))
-            newProjectPath += ".hcp";
-
         if (!m_projectManager->newProject(newProjectPath))
         {
             QMessageBox::warning(this, tr("Unable to create project"), tr("Error during creation of the project."));

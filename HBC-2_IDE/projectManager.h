@@ -19,6 +19,49 @@
 #include <QDir>
 #include <QMessageBox>
 
+#include "config.h"
+
+/*!
+ * \brief Custom dialog to create a new project
+ *
+ * Allows to specify multiple settings for the new project (included libraries, interrupt handler, etc.)
+ */
+class NewProjectDialog : public QDialog
+{
+    Q_OBJECT
+
+    public:
+        /*!
+         * \brief Create a custom new project dialog
+         */
+        NewProjectDialog(bool &ok, QString &projectPath,
+                         bool &includeInterruptHandler, bool &includeMathLibrary,
+                         ConfigManager *configManager, QWidget *parent = nullptr);
+
+    protected slots:
+        void browse(); //!< Allows to browse for a directory for the new project
+        void checkNameAndDirectoryValidity(); //!< Checks if either the project name or directory is empty
+        void accept(); //!< Overriden slot from QDialog
+        void reject(); //!< Overriden slot from QDialog
+
+    private:
+        bool &m_ok;
+        QString &m_projectPath;
+        bool &m_includeInterruptHandler;
+        bool &m_includeMathLibrary;
+
+        QLineEdit *m_projectNameLineEdit;
+        QLineEdit *m_projectDirectoryLineEdit;
+
+        QCheckBox *m_createSubdirectoryCheckBox;
+
+        QCheckBox *m_includeInterruptHandlerCheckBox;
+        QCheckBox *m_includeMathLibraryCheckBox;
+
+        QPushButton *m_createButton;
+        QPushButton *m_cancelButton;
+};
+
 /*!
  * \brief Describes a custom project item in the project tree
  *

@@ -1,7 +1,7 @@
 var searchData=
 [
-  ['flags_5fnb_704',['FLAGS_NB',['../namespace_cpu.html#aa331d449e53b101469184edf57621f60',1,'Cpu']]],
-  ['fpscount_705',['fpsCount',['../struct_monitor_1_1_status.html#a1ab8254d6fb2ec7e712ff27ad52fe42d',1,'Monitor::Status']]],
-  ['fpscounttimer_706',['fpsCountTimer',['../struct_monitor_1_1_status.html#a9b27ba943787001d339402dc9809d5b4',1,'Monitor::Status']]],
-  ['frequencytarget_707',['frequencyTarget',['../struct_emulator_1_1_status.html#aacd6b3da47da3ca31359d6a17b6905ea',1,'Emulator::Status']]]
+  ['flags_5fnb_715',['FLAGS_NB',['../namespace_cpu.html#aa331d449e53b101469184edf57621f60',1,'Cpu']]],
+  ['fpscount_716',['fpsCount',['../struct_monitor_1_1_status.html#a1ab8254d6fb2ec7e712ff27ad52fe42d',1,'Monitor::Status']]],
+  ['fpscounttimer_717',['fpsCountTimer',['../struct_monitor_1_1_status.html#a9b27ba943787001d339402dc9809d5b4',1,'Monitor::Status']]],
+  ['frequencytarget_718',['frequencyTarget',['../struct_emulator_1_1_status.html#aacd6b3da47da3ca31359d6a17b6905ea',1,'Emulator::Status']]]
 ];

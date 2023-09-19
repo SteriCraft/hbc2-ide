@@ -426,6 +426,7 @@ void HbcEmulator::run()
             }
             else if (m_status.command == Emulator::Command::STOP)
             {
+                qDebug() << "EMULATOR STOP COMMAND EXECUTED";
                 m_status.state = Emulator::State::READY;
                 m_status.command = Emulator::Command::NONE;
 
@@ -437,6 +438,7 @@ void HbcEmulator::run()
             }
             else if (m_status.command == Emulator::Command::CLOSE)
             {
+                qDebug() << "EMULATOR CLOSE COMMAND EXECUTED";
                 m_status.state = Emulator::State::NOT_INITIALIZED;
                 m_status.command = Emulator::Command::NONE;
 

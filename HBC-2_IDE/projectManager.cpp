@@ -1,5 +1,142 @@
 ﻿#include "projectManager.h"
 
+#include <QVBoxLayout>
+#include <QLabel>
+#include <QLineEdit>
+#include <QPushButton>
+#include <QCheckBox>
+
+// === NEW PROJECT DIALOG CLASS ===
+NewProjectDialog::NewProjectDialog(bool &ok, QString &projectPath,
+                                   bool &includeInterruptHandler, bool &includeMathLibrary,
+                                   ConfigManager *configManager, QWidget *parent)
+    : QDialog(parent), m_ok(ok), m_projectPath(projectPath), m_includeInterruptHandler(includeInterruptHandler), m_includeMathLibrary(includeMathLibrary)
+{
+    setWindowTitle(tr("Create a new project"));
+    setWindowIcon(QIcon(":/icons/res/logo.png"));
+
+    // Widgets
+    QLabel *projectNameLabel = new QLabel(tr("Project name"), this);
+    m_projectNameLineEdit = new QLineEdit(this);
+    m_projectNameLineEdit->setText(tr("newProject"));
+    QHBoxLayout *projectNameLayout = new QHBoxLayout;
+    projectNameLayout->addWidget(projectNameLabel);
+    projectNameLayout->addWidget(m_projectNameLineEdit);
+
+    QLabel *projectDirectoryLabel = new QLabel(tr("Project directory"), this);
+    m_projectDirectoryLineEdit = new QLineEdit(this);
+    m_projectDirectoryLineEdit->setText(configManager->getDefaultProjectsPath());
+    QPushButton *projectDirectoryBrowseButton = new QPushButton(tr("Browse"), this);
+    QHBoxLayout *projectDirectoryLayout = new QHBoxLayout;
+    projectDirectoryLayout->addWidget(projectDirectoryLabel);
+    projectDirectoryLayout->addWidget(m_projectDirectoryLineEdit);
+    projectDirectoryLayout->addWidget(projectDirectoryBrowseButton);
+
+    m_createSubdirectoryCheckBox = new QCheckBox(tr("Create a subdirectory for the project"), this);
+    m_createSubdirectoryCheckBox->setChecked(true);
+
+    QFrame *separator = new QFrame(this);
+    separator->setFrameShape(QFrame::HLine);
+    separator->setFrameShadow(QFrame::Sunken);
+
+    m_includeInterruptHandlerCheckBox = new QCheckBox(tr("Include a default interrupt handler for plugged devices"), this);
+    m_includeInterruptHandlerCheckBox->setChecked(true);
+
+    m_includeMathLibraryCheckBox = new QCheckBox(tr("Include the default math library"), this);
+    m_includeMathLibraryCheckBox->setChecked(/*true*/false); // TODO: set enabled by default when the library is finished
+    m_includeMathLibraryCheckBox->setCheckable(false); // TODO: remove when adding this library is possible
+
+    m_createButton = new QPushButton(tr("Create"), this);
+    m_cancelButton = new QPushButton(tr("Cancel"), this);
+    QHBoxLayout *buttonsLayout = new QHBoxLayout;
+    buttonsLayout->addWidget(m_createButton);
+    buttonsLayout->addWidget(m_cancelButton);
+
+    // Layout
+    QVBoxLayout *mainLayout = new QVBoxLayout;
+    mainLayout->addLayout(projectNameLayout);
+    mainLayout->addLayout(projectDirectoryLayout);
+    mainLayout->addWidget(m_createSubdirectoryCheckBox);
+    mainLayout->addWidget(separator);
+    mainLayout->addWidget(m_includeInterruptHandlerCheckBox);
+    mainLayout->addWidget(m_includeMathLibraryCheckBox);
+    mainLayout->addLayout(buttonsLayout);
+
+    setLayout(mainLayout);
+
+    // Connections
+    connect(projectDirectoryBrowseButton, SIGNAL(clicked()), this, SLOT(browse()));
+    connect(m_projectNameLineEdit, SIGNAL(textChanged(QString)), this, SLOT(checkNameAndDirectoryValidity()));
+    connect(m_projectDirectoryLineEdit, SIGNAL(textChanged(QString)), this, SLOT(checkNameAndDirectoryValidity()));
+    connect(m_createButton, SIGNAL(clicked()), this, SLOT(accept()));
+    connect(m_cancelButton, SIGNAL(clicked()), this, SLOT(reject()));
+}
+
+void NewProjectDialog::browse()
+{
+    QString newProjectDirectory = QFileDialog::getExistingDirectory(this, tr("Select new project directory"), m_projectDirectoryLineEdit->text());
+
+    if (!newProjectDirectory.isEmpty())
+    {
+        m_projectDirectoryLineEdit->setText(newProjectDirectory);
+        checkNameAndDirectoryValidity();
+    }
+}
+
+void NewProjectDialog::checkNameAndDirectoryValidity()
+{
+    if (m_projectNameLineEdit->text().isEmpty() || m_projectDirectoryLineEdit->text().isEmpty())
+    {
+        m_createButton->setEnabled(false);
+    }
+    else
+    {
+        m_createButton->setEnabled(true);
+    }
+}
+
+void NewProjectDialog::accept()
+{
+    m_ok = true;
+
+    m_projectPath = m_projectDirectoryLineEdit->text() + "/";
+
+    if (m_createSubdirectoryCheckBox->isChecked())
+    {
+        if (QDir(m_projectDirectoryLineEdit->text() + "/" + m_projectNameLineEdit->text()).exists())
+        {
+            QMessageBox::warning(this, tr("Project already exists"), tr("A directory with the same name already exists"));
+            reject();
+        }
+
+        QDir directory;
+        directory.mkdir(m_projectDirectoryLineEdit->text() + "/" + m_projectNameLineEdit->text());
+
+        m_projectPath += m_projectNameLineEdit->text() + "/";
+    }
+    else
+    {
+        if (QFile(m_projectDirectoryLineEdit->text() + "/" + m_projectNameLineEdit->text() + ((m_projectNameLineEdit->text().indexOf("*.hcp") == -1) ? ".hcp" : "")).exists())
+        {
+            QMessageBox::warning(this, tr("Project already exists"), tr("A project file with the same name already exists"));
+            reject();
+        }
+    }
+
+    m_projectPath += m_projectNameLineEdit->text() + ((m_projectNameLineEdit->text().indexOf("*.hcp") == -1) ? ".hcp" : "");
+
+    m_includeInterruptHandler = m_includeInterruptHandlerCheckBox->isChecked();
+    m_includeMathLibrary = m_includeMathLibraryCheckBox->isChecked();
+
+    QDialog::accept();
+}
+
+void NewProjectDialog::reject()
+{
+    m_ok = false;
+    QDialog::reject();
+}
+
 // === PROJECT NODE CLASS ===
 ProjectItem::ProjectItem(QString path, QString associatedProjectName, ProjectItem *parent, bool isFolder) : QTreeWidgetItem(parent)
 {
