@@ -1314,47 +1314,28 @@ bool Assembler::calculateRoutineBlocksAddresses()
 bool Assembler::findFreeMemorySpaces(bool targetEeprom)
 {
     std::sort(m_definedVars.begin(), m_definedVars.end(), variableAddressInferiorComparator);
+    std::sort(m_routineBlocks.begin(), m_routineBlocks.end(), routineAddressInferiorComparator);
 
-    // Determine free memory spaces between routine blocks
-    bool endReached(false);
-    MemorySpace newSpace;
-    newSpace.range.begin = Cpu::PROGRAM_START_ADDRESS;
+    MemorySpace newFreeSpace;
+    newFreeSpace.range.begin = Cpu::PROGRAM_START_ADDRESS;
+
+    m_freeMemorySpaces.clear();
 
     for (unsigned int i(0); i < m_routineBlocks.size(); i++)
     {
-        if (m_routineBlocks[i].range.begin == newSpace.range.begin) // Next routine block starts immediately
+        if (m_routineBlocks[i].range.begin > newFreeSpace.range.begin)
         {
-            newSpace.range.begin += m_routineBlocks[i].size();
-
-            if ((unsigned int)newSpace.range.begin + m_routineBlocks[i].size() >= (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
-                endReached = true;
+            newFreeSpace.range.end = m_routineBlocks[i].range.begin - 1;
+            m_freeMemorySpaces.push_back(newFreeSpace);
         }
-        else // Free space found
-        {
-            newSpace.range.end = m_routineBlocks[i].range.begin - 1;
-            m_freeMemorySpaces.push_back(newSpace);
 
-            if ((unsigned int)m_routineBlocks[i].range.end + 1 < (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
-            {
-                newSpace.range.begin = m_routineBlocks[i].range.end + 1; // First address after currently studied routine block
-
-                if (i + 1 == m_routineBlocks.size()) // No routine blocks following
-                {
-                    newSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
-                    m_freeMemorySpaces.push_back(newSpace);
-                }
-            }
-            else
-            {
-                break;
-            }
-        }
+        newFreeSpace.range.begin = m_routineBlocks[i].range.end + 1;
     }
 
-    if (!endReached)
+    if (m_routineBlocks.back().range.end < (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE))
     {
-        newSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
-        m_freeMemorySpaces.push_back(newSpace);
+        newFreeSpace.range.end = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE) - 1;
+        m_freeMemorySpaces.push_back(newFreeSpace);
     }
 
     // Update free memory spaces with defined data
@@ -1690,6 +1671,11 @@ Token::TokenFile* Assembler::findTokenFile(QString fileName)
 }
 
 bool Assembler::variableAddressInferiorComparator(Variable a, Variable b)
+{
+    return a.range.begin < b.range.begin;
+}
+
+bool Assembler::routineAddressInferiorComparator(RoutineBlock a, RoutineBlock b)
 {
     return a.range.begin < b.range.begin;
 }

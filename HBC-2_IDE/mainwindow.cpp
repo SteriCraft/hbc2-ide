@@ -304,6 +304,7 @@ void MainWindow::setupLayout()
 void MainWindow::onTabSelect()
 {
     updateWinTabMenu();
+    updateStatusBar();
 }
 
 void MainWindow::onFileChanged(QString filePath)

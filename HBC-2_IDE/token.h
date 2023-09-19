@@ -89,7 +89,7 @@ namespace Token
                                    "Defined routines exceed memory size", "Data definition exceeds memory size",
                                    "Error on free memory space split while analyzing defined data",
                                    "Routine exceeds memory size", "Data definition overlaps \"", "Routine overlaps \"",
-                                   "Unknown variable", "Unable to write the binary file (",
+                                   "Unknown variable or label", "Unable to write the binary file (",
                                    "Program size too large for the RAM, try targeting the EEPROM or unplugging it (",
                                    "Using variables with undefined addresses is prohibited with EEPROM" }; //!< More info in the assembly language documentation
 

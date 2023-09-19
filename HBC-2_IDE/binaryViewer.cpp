@@ -129,6 +129,21 @@ void BinaryViewer::gotoAddress()
     m_hexEditor->gotoAddress(address);
 }
 
+void BinaryViewer::updateCursorAddress(qint64 address)
+{
+    qint64 selectionBegin(m_hexEditor->getSelectionBegin());
+    qint64 selectionEnd(m_hexEditor->getSelectionEnd());
+
+    if (selectionEnd > selectionBegin)
+    {
+        m_statusBar->showMessage(tr("Selection: 0x") + QString::number(selectionBegin, 16).toUpper() + " - 0x" + QString::number(selectionEnd - 1, 16).toUpper());
+    }
+    else
+    {
+        m_statusBar->showMessage(tr("Address: 0x") + QString::number(address, 16).toUpper());
+    }
+}
+
 // PRIVATE
 BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 {
@@ -170,6 +185,10 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     gotoAddressLayout->addWidget(gotoAddressButton);
     gotoAddressLayout->addWidget(m_addressSpinBox);
 
+    m_statusBar = new QStatusBar(this);
+    QHBoxLayout *statusBarLayout = new QHBoxLayout;
+    statusBarLayout->addWidget(m_statusBar);
+
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
     QVBoxLayout *mainLayout = new QVBoxLayout;
@@ -177,12 +196,14 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     mainLayout->addWidget(m_hexEditor);
     mainLayout->addLayout(gotoAddressLayout);
     mainLayout->addWidget(closeButton);
+    mainLayout->addLayout(statusBarLayout);
     setLayout(mainLayout);
 
     connect(m_selectRamButton, SIGNAL(toggled(bool)), this, SLOT(showRamContent()));
     connect(m_selectEepromButton, SIGNAL(toggled(bool)), this, SLOT(showEepromContent(bool)));
     connect(gotoAddressButton, SIGNAL(clicked()), this, SLOT(gotoAddress()));
     connect(closeButton, SIGNAL(clicked()), this, SLOT(accept()));
+    connect(m_hexEditor, SIGNAL(currentAddressChanged(qint64)), this, SLOT(updateCursorAddress(qint64)));
 }
 
 void BinaryViewer::setPosition()

@@ -227,6 +227,7 @@ namespace Assembly
             // Utils
             Token::TokenFile* findTokenFile(QString fileName);
             static bool variableAddressInferiorComparator(Variable a, Variable b);
+            static bool routineAddressInferiorComparator(RoutineBlock a, RoutineBlock b);
             static bool freeMemSpaceAddressInferiorComparator(MemorySpace a, MemorySpace b);
             bool splitFreeMemorySpace(unsigned int freeMemorySpaceIndex, unsigned int definedVariableIndex);
             bool doRangeOverlap(MemoryRange a, MemoryRange b);

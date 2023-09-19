@@ -215,40 +215,41 @@ $(function() {
 <div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160;            <span class="comment">// Utils</span></div>
 <div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;            <a class="code" href="struct_token_1_1_token_file.html">Token::TokenFile</a>* findTokenFile(QString fileName);</div>
 <div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;            <span class="keyword">static</span> <span class="keywordtype">bool</span> variableAddressInferiorComparator(<a class="code" href="struct_assembly_1_1_variable.html">Variable</a> a, <a class="code" href="struct_assembly_1_1_variable.html">Variable</a> b);</div>
-<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;            <span class="keyword">static</span> <span class="keywordtype">bool</span> freeMemSpaceAddressInferiorComparator(<a class="code" href="struct_assembly_1_1_memory_space.html">MemorySpace</a> a, <a class="code" href="struct_assembly_1_1_memory_space.html">MemorySpace</a> b);</div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;            <span class="keywordtype">bool</span> splitFreeMemorySpace(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> freeMemorySpaceIndex, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> definedVariableIndex);</div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;            <span class="keywordtype">bool</span> doRangeOverlap(<a class="code" href="struct_assembly_1_1_memory_range.html">MemoryRange</a> a, <a class="code" href="struct_assembly_1_1_memory_range.html">MemoryRange</a> b);</div>
-<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;            uint32_t getBinaryFromTokenLine(<a class="code" href="class_token_1_1_token_line.html">Token::TokenLine</a>* line);</div>
-<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160; </div>
-<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;            <span class="comment">// Attributes</span></div>
-<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;            QList&lt;QString&gt; m_filesPaths;</div>
-<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;            std::vector&lt;Token::TokenFile&gt; m_tokenFiles;</div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;            <a class="code" href="struct_token_1_1_token_file.html">Token::TokenFile</a> m_finalFile;</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160; </div>
-<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;            std::vector&lt;QString&gt; m_includedFiles;</div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;            std::vector&lt;Define&gt; m_defToProcess;</div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;            std::vector&lt;Variable&gt; m_undefinedVars;</div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;            std::vector&lt;Variable&gt; m_definedVars;</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;            std::vector&lt;MemorySpace&gt; m_freeMemorySpaces;</div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;            std::vector&lt;RoutineBlock&gt; m_routineBlocks;</div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160; </div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;            <a class="code" href="struct_assembly_1_1_binary_with_symbols.html">BinaryWithSymbols</a> m_finalBinary;</div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;            <span class="keywordtype">bool</span> m_binaryReady;</div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160; </div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_definesCount;</div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_totalTokenCount;</div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_variablesCount;</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_dataMemoryUse;</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_totalMemoryUse;</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_routineBlocksCount;</div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160; </div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;            <a class="code" href="struct_assembly_1_1_error.html">Error</a> m_error;</div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160; </div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;            <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;    };</div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;}</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160; </div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// ASSEMBLER_H</span></div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;            <span class="keyword">static</span> <span class="keywordtype">bool</span> routineAddressInferiorComparator(<a class="code" href="struct_assembly_1_1_routine_block.html">RoutineBlock</a> a, <a class="code" href="struct_assembly_1_1_routine_block.html">RoutineBlock</a> b);</div>
+<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;            <span class="keyword">static</span> <span class="keywordtype">bool</span> freeMemSpaceAddressInferiorComparator(<a class="code" href="struct_assembly_1_1_memory_space.html">MemorySpace</a> a, <a class="code" href="struct_assembly_1_1_memory_space.html">MemorySpace</a> b);</div>
+<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160;            <span class="keywordtype">bool</span> splitFreeMemorySpace(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> freeMemorySpaceIndex, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> definedVariableIndex);</div>
+<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;            <span class="keywordtype">bool</span> doRangeOverlap(<a class="code" href="struct_assembly_1_1_memory_range.html">MemoryRange</a> a, <a class="code" href="struct_assembly_1_1_memory_range.html">MemoryRange</a> b);</div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;            uint32_t getBinaryFromTokenLine(<a class="code" href="class_token_1_1_token_line.html">Token::TokenLine</a>* line);</div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160; </div>
+<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;            <span class="comment">// Attributes</span></div>
+<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160;            QList&lt;QString&gt; m_filesPaths;</div>
+<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;            std::vector&lt;Token::TokenFile&gt; m_tokenFiles;</div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;            <a class="code" href="struct_token_1_1_token_file.html">Token::TokenFile</a> m_finalFile;</div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160; </div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;            std::vector&lt;QString&gt; m_includedFiles;</div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;            std::vector&lt;Define&gt; m_defToProcess;</div>
+<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;            std::vector&lt;Variable&gt; m_undefinedVars;</div>
+<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;            std::vector&lt;Variable&gt; m_definedVars;</div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;            std::vector&lt;MemorySpace&gt; m_freeMemorySpaces;</div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;            std::vector&lt;RoutineBlock&gt; m_routineBlocks;</div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160; </div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;            <a class="code" href="struct_assembly_1_1_binary_with_symbols.html">BinaryWithSymbols</a> m_finalBinary;</div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;            <span class="keywordtype">bool</span> m_binaryReady;</div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160; </div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_definesCount;</div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_totalTokenCount;</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_variablesCount;</div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_dataMemoryUse;</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_totalMemoryUse;</div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;            <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> m_routineBlocksCount;</div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160; </div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;            <a class="code" href="struct_assembly_1_1_error.html">Error</a> m_error;</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160; </div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;            <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;    };</div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;}</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160; </div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// ASSEMBLER_H</span></div>
 <div class="ttc" id="aclass_assembly_1_1_assembler_html"><div class="ttname"><a href="class_assembly_1_1_assembler.html">Assembly::Assembler</a></div><div class="ttdoc">Singleton of the assembler.</div><div class="ttdef"><b>Definition:</b> assembler.h:130</div></div>
 <div class="ttc" id="aclass_assembly_1_1_assembler_html_a28aa51f1ceaacb713222ad797c72d07a"><div class="ttname"><a href="class_assembly_1_1_assembler.html#a28aa51f1ceaacb713222ad797c72d07a">Assembly::Assembler::assembleProject</a></div><div class="ttdeci">bool assembleProject(std::shared_ptr&lt; Project &gt; p, bool targetEeprom)</div><div class="ttdoc">Assembles the project and returns true it succeeded.</div><div class="ttdef"><b>Definition:</b> assembler.cpp:52</div></div>
 <div class="ttc" id="aclass_assembly_1_1_assembler_html_a5a33795e5b1f8754ddf8f7b7ddba1b1b"><div class="ttname"><a href="class_assembly_1_1_assembler.html#a5a33795e5b1f8754ddf8f7b7ddba1b1b">Assembly::Assembler::getSymbolFromAddress</a></div><div class="ttdeci">ByteDebugSymbol getSymbolFromAddress(Word address)</div><div class="ttdoc">Get a debug symbol from a memory address.</div><div class="ttdef"><b>Definition:</b> assembler.cpp:37</div></div>

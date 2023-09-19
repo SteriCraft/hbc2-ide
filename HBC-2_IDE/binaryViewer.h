@@ -11,7 +11,9 @@
 #include <QDialog>
 #include <QRadioButton>
 #include <QSpinBox>
+#include <QStatusBar>
 
+#include "qevent.h"
 #include "qhexedit.h"
 #include "eeprom.h"
 
@@ -160,6 +162,7 @@ class BinaryViewer : public QDialog // SINGLETON
         void showRamContent();
         void showEepromContent(bool toggled);
         void gotoAddress();
+        void updateCursorAddress(qint64 cursorAddress);
 
     private:
         static constexpr int BINARY_DIALOG_WIDTH = 610;
@@ -176,6 +179,7 @@ class BinaryViewer : public QDialog // SINGLETON
         QRadioButton *m_selectEepromButton;
 
         HexSpinBox *m_addressSpinBox;
+        QStatusBar *m_statusBar;
 
         QHexEdit *m_hexEditor;
 };
