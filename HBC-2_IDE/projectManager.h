@@ -212,6 +212,7 @@ class Project
         QString getPath();
         bool getAssembled(); //!< Returns if the project is currently assembled in binary
         ProjectItem* getTopItem(); //!< Returns the tree's main node
+        ProjectItem* getSourceFilesItem(); //!< Returns "Source files" folder item
         bool isPartOf(ProjectItem* item); //!< Returns <b>true</b> if the passed item is a child of this project <b>(recursive)</b>
         QList<QString> getFilesPaths(); //!< Returns a list of the files complete paths
         QList<QString> getFilesNames(); //!< Returns a list of the files names
@@ -256,7 +257,7 @@ class ProjectManager : public QTreeWidget // SINGLETON
          * \return <b>false</b> if the project's files are invalid
          * \return <b>false</b> if the new project could not be created
          */
-        bool newProject(QString path, bool toLoad = false);
+        bool newProject(QString path, bool toLoad);
 
         /*!
          * \return <b>true</b> if the project is already opened

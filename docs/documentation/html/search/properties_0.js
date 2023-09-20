@@ -1,11 +1,11 @@
 var searchData=
 [
-  ['addressarea_797',['addressArea',['../class_q_hex_edit.html#aeaa9f3751f53b91df51cfd2863bf48ee',1,'QHexEdit']]],
-  ['addressareacolor_798',['addressAreaColor',['../class_q_hex_edit.html#a6e27b73514e243c0b8b2a3efafbb5e32',1,'QHexEdit']]],
-  ['addressfontcolor_799',['addressFontColor',['../class_q_hex_edit.html#ae2aeb2644e14ebfe63f1cb50484238e6',1,'QHexEdit']]],
-  ['addressoffset_800',['addressOffset',['../class_q_hex_edit.html#afe1e80827cacce84505f8b0ef6421a0a',1,'QHexEdit']]],
-  ['addresswidth_801',['addressWidth',['../class_q_hex_edit.html#a11b672fd38a7c48949ccce3228474b2f',1,'QHexEdit']]],
-  ['asciiarea_802',['asciiArea',['../class_q_hex_edit.html#a0e297a4a212a9d7addbbf82472e1acb2',1,'QHexEdit']]],
-  ['asciiareacolor_803',['asciiAreaColor',['../class_q_hex_edit.html#af9a5439eb9d7081207f960c878ee0ad7',1,'QHexEdit']]],
-  ['asciifontcolor_804',['asciiFontColor',['../class_q_hex_edit.html#a763f0ddfe7c8246fb8d623d8dbb3306a',1,'QHexEdit']]]
+  ['addressarea_799',['addressArea',['../class_q_hex_edit.html#aeaa9f3751f53b91df51cfd2863bf48ee',1,'QHexEdit']]],
+  ['addressareacolor_800',['addressAreaColor',['../class_q_hex_edit.html#a6e27b73514e243c0b8b2a3efafbb5e32',1,'QHexEdit']]],
+  ['addressfontcolor_801',['addressFontColor',['../class_q_hex_edit.html#ae2aeb2644e14ebfe63f1cb50484238e6',1,'QHexEdit']]],
+  ['addressoffset_802',['addressOffset',['../class_q_hex_edit.html#afe1e80827cacce84505f8b0ef6421a0a',1,'QHexEdit']]],
+  ['addresswidth_803',['addressWidth',['../class_q_hex_edit.html#a11b672fd38a7c48949ccce3228474b2f',1,'QHexEdit']]],
+  ['asciiarea_804',['asciiArea',['../class_q_hex_edit.html#a0e297a4a212a9d7addbbf82472e1acb2',1,'QHexEdit']]],
+  ['asciiareacolor_805',['asciiAreaColor',['../class_q_hex_edit.html#af9a5439eb9d7081207f960c878ee0ad7',1,'QHexEdit']]],
+  ['asciifontcolor_806',['asciiFontColor',['../class_q_hex_edit.html#a763f0ddfe7c8246fb8d623d8dbb3306a',1,'QHexEdit']]]
 ];

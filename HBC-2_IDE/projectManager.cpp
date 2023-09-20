@@ -590,6 +590,19 @@ ProjectItem* Project::getTopItem()
     return m_topItem;
 }
 
+ProjectItem* Project::getSourceFilesItem()
+{
+    for (unsigned int i(0); i < m_topItem->childCount(); i++)
+    {
+        ProjectItem *c(dynamic_cast<ProjectItem*>(m_topItem->child(i)));
+
+        if (c->getName() == "Source files")
+            return c;
+    }
+
+    return nullptr;
+}
+
 bool Project::isPartOf(ProjectItem* item)
 {
     if (m_topItem == item)

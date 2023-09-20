@@ -868,10 +868,50 @@ void MainWindow::newProjectAction()
 
     if (ok)
     {
-        if (!m_projectManager->newProject(newProjectPath))
+        if (!m_projectManager->newProject(newProjectPath, false))
         {
             QMessageBox::warning(this, tr("Unable to create project"), tr("Error during creation of the project."));
             return;
+        }
+
+        if (includeInterruptHandler)
+        {
+            QFile interruptHandlerFile(QStandardPaths::writableLocation(QStandardPaths::AppConfigLocation) + "/defaultLibraries/interrupts.has");
+            QString content;
+
+            if (!interruptHandlerFile.open(QIODevice::ReadOnly))
+            {
+                QMessageBox::warning(this, tr("Loading error"), tr("The default interrupt handler file could not be loaded."));
+            }
+            else
+            {
+                QTextStream in(&interruptHandlerFile);
+                content = in.readAll();
+                interruptHandlerFile.close();
+
+                QFile copiedFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/interrupts.has");
+
+                if (!copiedFile.open(QIODevice::WriteOnly))
+                {
+                    QMessageBox::critical(this, tr("Writing error"), tr("The default interrupt handler file could not be written in the project"));
+                    return;
+                }
+
+                QTextStream out(&copiedFile);
+                out << content;
+                copiedFile.close();
+
+                ProjectItem *sourceFilesItem(m_projectManager->getCurrentProject()->getSourceFilesItem());
+
+                if (sourceFilesItem != nullptr)
+                {
+                    sourceFilesItem->addFile(QFileInfo(interruptHandlerFile).fileName());
+                }
+                else
+                {
+                    QMessageBox::critical(this, tr("Adding item error"), tr("\"interrupt.has\" item could not be added to the project tree."));
+                }
+            }
         }
 
         openFile(m_projectManager->getCurrentProject()->getDirPath() + "/Source files/main.has");
@@ -1431,7 +1471,7 @@ void MainWindow::addNewFileActionRC()
 
             if (!newFile.open(QIODevice::WriteOnly))
             {
-                QMessageBox::critical(this, tr("File creation error"), tr("The new file couldn't be created."));
+                QMessageBox::critical(this, tr("File creation error"), tr("The new file could not be created."));
                 return;
             }
 
@@ -1501,19 +1541,20 @@ void MainWindow::addExistingFileActionRC()
 
             if (!originalFile.open(QIODevice::ReadOnly))
             {
-                QMessageBox::critical(this, tr("File opening error"), tr("The file couldn't be opened."));
+                QMessageBox::critical(this, tr("File opening error"), tr("The file could not be opened."));
                 return;
             }
 
             QTextStream in(&originalFile);
             content = in.readAll();
+            originalFile.close();
 
             // Creates the copied file in the right directory
             QFile copiedFile(itemFolderPath + "/" + QFileInfo(filePath).fileName());
 
             if (!copiedFile.open(QIODevice::WriteOnly))
             {
-                QMessageBox::critical(this, tr("File opening error"), tr("The file couldn't be opened."));
+                QMessageBox::critical(this, tr("File opening error"), tr("The file could not be opened."));
                 return;
             }
 
