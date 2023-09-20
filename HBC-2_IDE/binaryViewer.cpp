@@ -95,6 +95,7 @@ void BinaryViewer::close()
 BinaryViewer::~BinaryViewer()
 {
     delete m_hexEditor;
+    m_singleton = nullptr;
 }
 
 // PROTECTED
@@ -153,6 +154,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     setWindowTitle(tr("Binary viewer"));
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
+    // Widgets
     QButtonGroup *memorySelectionGroup = new QButtonGroup(this);
     m_selectRamButton = new QRadioButton(tr("RAM"), this);
     m_selectEepromButton = new QRadioButton(tr("EEPROM"), this);
@@ -191,6 +193,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
 
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
+    // Layout
     QVBoxLayout *mainLayout = new QVBoxLayout;
     mainLayout->addLayout(selectButtonsLayout);
     mainLayout->addWidget(m_hexEditor);
@@ -199,6 +202,7 @@ BinaryViewer::BinaryViewer(QWidget *parent) : QDialog(parent)
     mainLayout->addLayout(statusBarLayout);
     setLayout(mainLayout);
 
+    // Connections
     connect(m_selectRamButton, SIGNAL(toggled(bool)), this, SLOT(showRamContent()));
     connect(m_selectEepromButton, SIGNAL(toggled(bool)), this, SLOT(showEepromContent(bool)));
     connect(gotoAddressButton, SIGNAL(clicked()), this, SLOT(gotoAddress()));

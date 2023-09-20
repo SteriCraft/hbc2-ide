@@ -24,6 +24,7 @@ using Dword = uint32_t;
 namespace Cpu
 {
     constexpr int IVT_START_ADDRESS = 0x0100; //!< IVT: Interrupt Vector Table
+    constexpr int IVT_SIZE = 0x200; //!< 512 bytes
 
     constexpr int PROGRAM_START_ADDRESS = 0x0300; //!< More info in the CPU documentation
 
@@ -60,11 +61,11 @@ namespace Cpu
                                    ASR = 36, SHR = 37, STC = 38, STE = 39, STI = 40, STN = 41, STS = 42, STZ = 43, STF = 44,
                                    SUB = 45, SBB = 46, XOR = 47 };
     const std::string instrStrArr[] = { "nop", "adc", "add", "and", "cal", "clc", "cle", "cli", "cln",
-                                       "cls", "clz", "clf", "cmp", "dec", "hlt", "in",  "out", "inc",
-                                       "int", "irt", "jmc", "jme", "jmn", "jmp", "jms", "jmz", "jmf",
-                                       "str", "lod", "mov", "not", "or",  "pop", "psh", "ret", "shl",
-                                       "asr", "shr", "stc", "ste", "sti", "stn", "sts", "stz", "stf",
-                                       "sub", "sbb", "xor" };
+                                        "cls", "clz", "clf", "cmp", "dec", "hlt", "in",  "out", "inc",
+                                        "int", "irt", "jmc", "jme", "jmn", "jmp", "jms", "jmz", "jmf",
+                                        "str", "lod", "mov", "not", "or",  "pop", "psh", "ret", "shl",
+                                        "asr", "shr", "stc", "ste", "sti", "stn", "sts", "stz", "stf",
+                                        "sub", "sbb", "xor" };
 
     enum class AddressingMode { NONE = 0, REG = 1, REG_IMM8 = 2, REG_RAM = 3,
                                 RAMREG_IMMREG = 4, REG16 = 5, IMM16 = 6, IMM8 = 7 };

@@ -344,16 +344,25 @@ void Cpu::execute(HbcCpu &cpu)
             break;
 
         case Cpu::InstructionOpcode::HLT:
-            cpu.m_flags[(int)Cpu::Flags::HALT] = true;
-            cpu.m_flags[(int)Cpu::Flags::INTERRUPT] = true;
+            if (cpu.m_addressingMode == Cpu::AddressingMode::NONE)
+            {
+                cpu.m_flags[(int)Cpu::Flags::HALT] = true;
+                cpu.m_flags[(int)Cpu::Flags::INTERRUPT] = true;
+            }
             break;
 
         case Cpu::InstructionOpcode::IN:
-            cpu.m_registers[(int)cpu.m_register1Index] = Iod::getPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register2Index]);
+            if (cpu.m_addressingMode == Cpu::AddressingMode::REG)
+            {
+                cpu.m_registers[(int)cpu.m_register1Index] = Iod::getPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register2Index]);
+            }
             break;
 
         case Cpu::InstructionOpcode::OUT:
-            Iod::setPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register1Index], cpu.m_registers[(int)cpu.m_register2Index]);
+            if (cpu.m_addressingMode == Cpu::AddressingMode::REG)
+            {
+                Iod::setPortData(cpu.m_motherboard->m_iod, cpu.m_registers[(int)cpu.m_register1Index], cpu.m_registers[(int)cpu.m_register2Index]);
+            }
             break;
 
         case Cpu::InstructionOpcode::INC:
@@ -393,10 +402,13 @@ void Cpu::execute(HbcCpu &cpu)
             break;
 
         case Cpu::InstructionOpcode::INT:
-            cpu.m_motherboard->m_addressBus = cpu.m_v1;
-            cpu.m_motherboard->m_dataBus = cpu.m_registers[(int)Cpu::Register::I];
+            if (cpu.m_addressingMode == Cpu::AddressingMode::IMM8)
+            {
+                cpu.m_motherboard->m_addressBus = cpu.m_v1;
+                cpu.m_motherboard->m_dataBus = cpu.m_registers[(int)Cpu::Register::I];
 
-            cpu.m_softwareInterrupt = true;
+                cpu.m_softwareInterrupt = true;
+            }
             break;
 
         case Cpu::InstructionOpcode::IRT:

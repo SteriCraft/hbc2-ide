@@ -39,6 +39,8 @@ add_executable(HBC-2_IDE
   cpuStateViewer.h
   customizedEditor.cpp
   customizedEditor.h
+  diassembler.cpp
+  disassembler.h
   emulator.cpp
   emulator.h
   eeprom.cpp

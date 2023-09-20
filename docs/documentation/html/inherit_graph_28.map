@@ -1,3 +1,7 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$struct_iod_1_1_interrupt.html" title="Stores informations describing an interrupt (a software interrupt results in data = 0x00)." alt="" coords="5,5,112,32"/>
+<area shape="rect" id="node1" href="$class_hbc_peripheral.html" title="Virtual class used to derive new peripherals." alt="" coords="5,81,119,108"/>
+<area shape="rect" id="node2" href="$class_eeprom_1_1_hbc_eeprom.html" title="Derived from HbcPeripheral, represents the EEPROM device." alt="" coords="197,5,351,32"/>
+<area shape="rect" id="node3" href="$class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device." alt="" coords="225,56,323,83"/>
+<area shape="rect" id="node4" href="$class_keyboard_1_1_hbc_keyboard.html" title="Derived from HbcPeripheral, represents the Keyboard device." alt="" coords="185,107,363,133"/>
+<area shape="rect" id="node5" href="$class_real_time_clock_1_1_hbc_real_time_clock.html" title="Derived from HbcPeripheral, represents the RTC device." alt="" coords="167,158,381,199"/>
 </map>

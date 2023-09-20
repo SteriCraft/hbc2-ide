@@ -305,12 +305,13 @@ class MonitorDialog : public QDialog
         ~MonitorDialog();
 
     signals:
-        void runKeyPressed(); //!< Emitted on F9 key stroke
-        void stepKeyPressed(); //!< Emitted on F10 key stroke
-        void pauseKeyPressed(); //!< Emitted on F11 key stroke
-        void stopKeyPressed(); //!< Emitted on F12 key stroke
-        void cpuStateViewerKeyPressed(); //!< Emitted on F7 key stroke
-        void binaryViewerKeyPressed(); //!< Emitted on F6 key stroke
+        void runKeyPressed(); //!< Emitted on F9 key stroke (by default)
+        void stepKeyPressed(); //!< Emitted on F10 key stroke (by default)
+        void pauseKeyPressed(); //!< Emitted on F11 key stroke (by default)
+        void stopKeyPressed(); //!< Emitted on F12 key stroke (by default)
+        void disassemblyViewerKeyPressed(); //!< Emitted on F8 key stroke (by default)
+        void cpuStateViewerKeyPressed(); //!< Emitted on F7 key stroke (by default)
+        void binaryViewerKeyPressed(); //!< Emitted on F6 key stroke (by default)
         void closed(); //!< Emitted on dialog closing
 
     protected:

@@ -84,6 +84,7 @@ class MainWindow : public QMainWindow
         void onStepKeyPressed();
         void onPauseKeyPressed();
         void onStopKeyPressed();
+        void onDisassemblyViewerKeyPressed();
         void onCpuStateViewerKeyPressed();
         void onBinaryViewerKeyPressed();
 
@@ -116,7 +117,7 @@ class MainWindow : public QMainWindow
         void updateRecentProjectsMenu();
         void clearRecentProjectsMenu();
         void highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter);
-        void removeHighlightings();
+        void removeCodeHighlightings();
 
         // Editors management actions
         void newProjectAction();
@@ -137,6 +138,7 @@ class MainWindow : public QMainWindow
         void assembleAction();
         void memoryTargetAction(bool ramToggle);
         void showBinaryAction();
+        void showDisassemblyAction();
         // Emulator actions
         void runEmulatorAction();
         void stepEmulatorAction();
@@ -198,6 +200,7 @@ class MainWindow : public QMainWindow
         QAction *m_ramTargetToggle;
         QAction *m_eepromTargetToggle;
         QAction *m_showBinOutputAction;
+        QAction *m_showDisassemblyAction;
         QMenu *m_emulatorMenu;
         QAction *m_runEmulatorAction;
         QAction *m_stepEmulatorAction;

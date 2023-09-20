@@ -138,6 +138,22 @@ void ConfigManager::setOpenBinaryViewerOnEmulatorStopped(bool enable)
     m_settings.openBinaryViewerOnEmulatorStopped = enable;
 }
 
+// Disassembly viewer settings
+void ConfigManager::setOpenDisassemblyViewerOnAssembly(bool enable)
+{
+    m_settings.openDisassemblyViewerOnAssembly = enable;
+}
+
+void ConfigManager::setOpenDisassemblyViewerOnEmulatorPaused(bool enable)
+{
+    m_settings.openDisassemblyViewerOnEmulatorPaused = enable;
+}
+
+void ConfigManager::setOpenDisassemblyViewerOnEmulatorStopped(bool enable)
+{
+    m_settings.openDisassemblyViewerOnEmulatorStopped = enable;
+}
+
 // GETTERS
 // Editor settings
 unsigned int ConfigManager::getTabSize()
@@ -217,6 +233,22 @@ bool ConfigManager::getOpenBinaryViewerOnEmulatorPaused()
 bool ConfigManager::getOpenBinaryViewerOnEmulatorStopped()
 {
     return m_settings.openBinaryViewerOnEmulatorStopped;
+}
+
+// Disassembly viewer settings
+bool ConfigManager::getOpenDisassemblyViewerOnAssembly()
+{
+    return m_settings.openDisassemblyViewerOnAssembly;
+}
+
+bool ConfigManager::getOpenDisassemblyViewerOnEmulatorPaused()
+{
+    return m_settings.openDisassemblyViewerOnEmulatorPaused;
+}
+
+bool ConfigManager::getOpenDisassemblyViewerOnEmulatorStopped()
+{
+    return m_settings.openDisassemblyViewerOnEmulatorStopped;
 }
 
 // PRIVATE
@@ -321,6 +353,18 @@ ConfigManager::ConfigManager()
                     {
                         m_settings.openBinaryViewerOnEmulatorStopped = (value == "TRUE");
                     }
+                    else if (key == "OPEN_DIS_VIEWER_ASSEMBLY")
+                    {
+                        m_settings.openDisassemblyViewerOnAssembly = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_DIS_VIEWER_EMULATOR_PAUSED")
+                    {
+                        m_settings.openDisassemblyViewerOnEmulatorPaused = (value == "TRUE");
+                    }
+                    else if (key == "OPEN_DIS_VIEWER_EMULATOR_STOPPPED")
+                    {
+                        m_settings.openDisassemblyViewerOnEmulatorStopped = (value == "TRUE");
+                    }
                 }
             }
         }
@@ -386,6 +430,9 @@ bool ConfigManager::saveConfigFile()
         out << "OPEN_BIN_VIEWER_ASSEMBLY=" << (m_settings.openBinaryViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_BIN_VIEWER_EMULATOR_PAUSED=" << (m_settings.openBinaryViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
         out << "OPEN_BIN_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openBinaryViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_DIS_VIEWER_ASSEMBLY=" << (m_settings.openDisassemblyViewerOnAssembly ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_DIS_VIEWER_EMULATOR_PAUSED=" << (m_settings.openDisassemblyViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
+        out << "OPEN_DIS_VIEWER_EMULATOR_STOPPPED=" << (m_settings.openDisassemblyViewerOnEmulatorStopped ? "TRUE" : "FALSE") << "\n";
 
         configFile.close();
         return true;
@@ -564,6 +611,21 @@ void SettingsDialog::openBinaryViewerOnEmulatorStoppedChanged()
     m_configManager->setOpenBinaryViewerOnEmulatorStopped(m_openBinaryViewerOnEmulatorStoppedCheckBox->isChecked());
 }
 
+void SettingsDialog::openDisassemblyViewerOnAssemblyChanged()
+{
+    m_configManager->setOpenDisassemblyViewerOnAssembly(m_openDisassemblyViewerOnAssemblyCheckBox->isChecked());
+}
+
+void SettingsDialog::openDisassemblyViewerOnEmulatorPausedChanged()
+{
+    m_configManager->setOpenDisassemblyViewerOnEmulatorPaused(m_openDisassemblyViewerOnEmulatorPausedCheckBox->isChecked());
+}
+
+void SettingsDialog::openDisassemblyViewerOnEmulatorStoppedChanged()
+{
+    m_configManager->setOpenDisassemblyViewerOnEmulatorStopped(m_openDisassemblyViewerOnEmulatorStoppedCheckBox->isChecked());
+}
+
 // PRIVATE
 void SettingsDialog::initMenu()
 {
@@ -573,6 +635,7 @@ void SettingsDialog::initMenu()
     initEmulatorSettingsLayout();
     initCpuStateViewerSettingsLayout();
     initBinaryViewerSettingsLayout();
+    initDisassemblyViewerSettingsLayout();
 
     // Set the window main layout
     m_menuWidgets = new QStackedWidget(this);
@@ -584,6 +647,7 @@ void SettingsDialog::initMenu()
     addMenu(m_emulatorSettingsItem, m_emulatorSettingsPageWidget);
     addMenu(m_cpuStateViewerSettingsItem, m_cpuStateViewerSettingsPageWidget);
     addMenu(m_binaryViewerSettingsItem, m_binaryViewerSettingsPageWidget);
+    addMenu(m_disassemblyViewerSettingsItem, m_disassemblyViewerSettingsPageWidget);
 
     m_menuList->setCurrentRow(0);
     m_menuWidgets->setCurrentIndex(0);
@@ -889,6 +953,55 @@ void SettingsDialog::initBinaryViewerSettingsLayout()
     connect(m_openBinaryViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnAssemblyChanged()));
     connect(m_openBinaryViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorPausedChanged()));
     connect(m_openBinaryViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openBinaryViewerOnEmulatorStoppedChanged()));
+}
+
+void SettingsDialog::initDisassemblyViewerSettingsLayout()
+{
+    // Layout init
+    m_disassemblyViewerSettingsPageWidget = new QWidget(this);
+    m_disassemblyViewerSettingsPageLayout = new QVBoxLayout;
+
+    m_disassemblyViewerSettingsItem = new QListWidgetItem(tr("Disassembly Viewer"));
+    m_disassemblyViewerSettingsItem->setSizeHint(QSize(0, ITEM_HEIGHT));
+
+    // Tabs
+    m_disassemblyViewerSettingsTabWidget = new QTabWidget(this);
+    m_disassemblyViewerSettingsGeneralTabLayout = new QVBoxLayout;
+    m_disassemblyViewerSettingsGeneralTabWidget = new QWidget(qobject_cast<QWidget*>(m_disassemblyViewerSettingsGeneralTabLayout));
+
+
+    // ----  Widgets ----
+    QLabel *mainLabel = new QLabel(tr("Disassembly Viewer"), qobject_cast<QWidget*>(m_disassemblyViewerSettingsPageLayout));
+    mainLabel->setStyleSheet("font-weight: bold;");
+
+    m_openDisassemblyViewerOnAssemblyCheckBox = new QCheckBox(tr("Open viewer after each assembly"), qobject_cast<QWidget*>(m_disassemblyViewerSettingsGeneralTabLayout));
+    m_openDisassemblyViewerOnAssemblyCheckBox->setChecked(m_configManager->getOpenDisassemblyViewerOnAssembly());
+
+    m_openDisassemblyViewerOnEmulatorPausedCheckBox = new QCheckBox(tr("Open viewer when the emulator is paused"), qobject_cast<QWidget*>(m_disassemblyViewerSettingsGeneralTabLayout));
+    m_openDisassemblyViewerOnEmulatorPausedCheckBox->setChecked(m_configManager->getOpenDisassemblyViewerOnEmulatorPaused());
+
+    m_openDisassemblyViewerOnEmulatorStoppedCheckBox = new QCheckBox(tr("Open viewer when the emulator is stopped"), qobject_cast<QWidget*>(m_disassemblyViewerSettingsGeneralTabLayout));
+    m_openDisassemblyViewerOnEmulatorStoppedCheckBox->setChecked(m_configManager->getOpenDisassemblyViewerOnEmulatorStopped());
+    // ------------------
+
+
+    // Final layout configuration
+    m_disassemblyViewerSettingsGeneralTabLayout->addWidget(m_openDisassemblyViewerOnAssemblyCheckBox);
+    m_disassemblyViewerSettingsGeneralTabLayout->addWidget(m_openDisassemblyViewerOnEmulatorPausedCheckBox);
+    m_disassemblyViewerSettingsGeneralTabLayout->addWidget(m_openDisassemblyViewerOnEmulatorStoppedCheckBox);
+    m_disassemblyViewerSettingsGeneralTabLayout->addStretch();
+    m_disassemblyViewerSettingsGeneralTabWidget->setLayout(m_disassemblyViewerSettingsGeneralTabLayout);
+    m_disassemblyViewerSettingsTabWidget->addTab(m_disassemblyViewerSettingsGeneralTabWidget, tr("General"));
+
+    m_disassemblyViewerSettingsPageLayout->addWidget(mainLabel);
+    m_disassemblyViewerSettingsPageLayout->addWidget(m_disassemblyViewerSettingsTabWidget);
+    m_disassemblyViewerSettingsPageWidget->setLayout(m_disassemblyViewerSettingsPageLayout);
+
+
+    // Connections
+    connect(m_openDisassemblyViewerOnAssemblyCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openDisassemblyViewerOnAssemblyChanged()));
+    connect(m_openDisassemblyViewerOnEmulatorPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openDisassemblyViewerOnEmulatorPausedChanged()));
+    connect(m_openDisassemblyViewerOnEmulatorStoppedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(openDisassemblyViewerOnEmulatorStoppedChanged()));
 }
 
 void SettingsDialog::addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget)

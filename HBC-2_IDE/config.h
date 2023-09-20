@@ -51,9 +51,14 @@ struct ConfigurationSettings
     bool openCpuStateViewerOnEmulatorStopped = true;
 
     // Binary viewer settings
-    bool openBinaryViewerOnAssembly = true; //!< Sets if the viewer is automatically opened after assembling a project
-    bool openBinaryViewerOnEmulatorPaused = true; //!< Sets if the viewer is automatically opened after the emulator was paused
-    bool openBinaryViewerOnEmulatorStopped = true; //!< Sets if the viewer is automatically opened after the emulator was stopped
+    bool openBinaryViewerOnAssembly = true; //!< Sets if the binary viewer is automatically opened after assembling a project
+    bool openBinaryViewerOnEmulatorPaused = true; //!< Sets if the binary viewer is automatically opened after the emulator was paused
+    bool openBinaryViewerOnEmulatorStopped = true; //!< Sets if the binary viewer is automatically opened after the emulator was stopped
+
+    // Disassembly viewer settings
+    bool openDisassemblyViewerOnAssembly = false; //!< Sets if the disassembly viewer is automatically opened after assembling a project
+    bool openDisassemblyViewerOnEmulatorPaused = false; //!< Sets if the disassemblyviewer is automatically opened after the emulator was paused
+    bool openDisassemblyViewerOnEmulatorStopped = false; //!< Sets if the disassemblyviewer is automatically opened after the emulator was stopped
 };
 
 /*!
@@ -172,6 +177,22 @@ class ConfigManager
          */
         void setOpenBinaryViewerOnEmulatorStopped(bool enable);
 
+        // Disassembly viewer settings
+        /*!
+         * \param enable Desired behaviour for the DisassemblyViewer on project assembly
+         */
+        void setOpenDisassemblyViewerOnAssembly(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the DisassemblyViewer when the emulator is paused
+         */
+        void setOpenDisassemblyViewerOnEmulatorPaused(bool enable);
+
+        /*!
+         * \param enable Desired behaviour for the DisassemblyViewer when the emulator is stopped
+         */
+        void setOpenDisassemblyViewerOnEmulatorStopped(bool enable);
+
 
         // ==== GETTERS ====
         // Editor settings
@@ -251,6 +272,22 @@ class ConfigManager
          */
         bool getOpenBinaryViewerOnEmulatorStopped();
 
+        // Disassembly viewer settings
+        /*!
+         * \return <b>true</b> if the DisassemblyViewer opens on project assembly
+         */
+        bool getOpenDisassemblyViewerOnAssembly();
+
+        /*!
+         * \return <b>true</b> if the DisassemblyViewer opens when the emulator is paused
+         */
+        bool getOpenDisassemblyViewerOnEmulatorPaused();
+
+        /*!
+         * \return <b>true</b> if the DisassemblyViewer opens when the emulator is stopped
+         */
+        bool getOpenDisassemblyViewerOnEmulatorStopped();
+
     private:
         ConfigManager();
         bool saveRecentProjects();
@@ -305,6 +342,11 @@ class SettingsDialog : public QDialog
         void openBinaryViewerOnEmulatorPausedChanged();
         void openBinaryViewerOnEmulatorStoppedChanged();
 
+        // DisassemblyViewer
+        void openDisassemblyViewerOnAssemblyChanged();
+        void openDisassemblyViewerOnEmulatorPausedChanged();
+        void openDisassemblyViewerOnEmulatorStoppedChanged();
+
     private:
         static constexpr int DIALOG_WIDTH = 800;
         static constexpr int DIALOG_HEIGHT = 400;
@@ -319,6 +361,7 @@ class SettingsDialog : public QDialog
         void initEmulatorSettingsLayout();
         void initCpuStateViewerSettingsLayout();
         void initBinaryViewerSettingsLayout();
+        void initDisassemblyViewerSettingsLayout();
 
         void addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);
 
@@ -399,6 +442,18 @@ class SettingsDialog : public QDialog
         QVBoxLayout *m_binaryViewerSettingsPageLayout;
         QWidget *m_binaryViewerSettingsPageWidget;
         QListWidgetItem *m_binaryViewerSettingsItem;
+
+        // Disassembly viewer tab widgets
+        QCheckBox *m_openDisassemblyViewerOnAssemblyCheckBox;
+        QCheckBox *m_openDisassemblyViewerOnEmulatorPausedCheckBox;
+        QCheckBox *m_openDisassemblyViewerOnEmulatorStoppedCheckBox;
+        QVBoxLayout *m_disassemblyViewerSettingsGeneralTabLayout;
+        QWidget *m_disassemblyViewerSettingsGeneralTabWidget;
+
+        QTabWidget *m_disassemblyViewerSettingsTabWidget;
+        QVBoxLayout *m_disassemblyViewerSettingsPageLayout;
+        QWidget *m_disassemblyViewerSettingsPageWidget;
+        QListWidgetItem *m_disassemblyViewerSettingsItem;
 
         QPushButton *m_closeButton;
 

@@ -253,6 +253,24 @@ void SyntaxHighlighter::highlightBlock(const QString &text)
 }
 
 // CUSTOMIZED EDITOR WIDGET CLASS
+CustomizedCodeEditor::CustomizedCodeEditor(QFont font, ConfigManager *configManager, QWidget *parent) : QPlainTextEdit(parent)
+{
+    lineNumberArea = new LineNumberArea(this);
+
+    connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(updateLineNumberAreaWidth(int)));
+    connect(this, SIGNAL(updateRequest(QRect,int)), this, SLOT(updateLineNumberArea(QRect,int)));
+
+    setStyleSheet("QPlainTextEdit {background-color: rgb(14, 14, 14); color:white; }");
+
+    updateLineNumberAreaWidth(0);
+
+    setFont(font);
+
+    m_highlighter = new SyntaxHighlighter(document());
+
+    m_configManager = configManager;
+}
+
 CustomizedCodeEditor::CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, ConfigManager *configManager, QWidget *parent) : QPlainTextEdit(parent)
 {
     lineNumberArea = new LineNumberArea(this);
@@ -383,15 +401,17 @@ void CustomizedCodeEditor::lineNumberAreaPaintEvent(QPaintEvent *event)
     QPainter painter(lineNumberArea);
     painter.fillRect(event->rect(), QColor(64, 66, 68));
 
-
     QTextBlock block = firstVisibleBlock();
     int blockNumber = block.blockNumber();
     int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top();
     int bottom = top + (int) blockBoundingRect(block).height();
 
-    while (block.isValid() && top <= event->rect().bottom()) {
-        if (block.isVisible() && bottom >= event->rect().top()) {
-            QString number = QString::number(blockNumber + 1);
+    while (block.isValid() && top <= event->rect().bottom())
+    {
+        if (block.isVisible() && bottom >= event->rect().top())
+        {
+            QString number(QString::number(blockNumber + 1));
+
             painter.setPen(QColor(190, 192, 194));
             painter.drawText(0, top, lineNumberArea->width(), fontMetrics().height(),
                              Qt::AlignRight, number);

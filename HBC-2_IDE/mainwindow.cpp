@@ -2,6 +2,7 @@
 #include "./ui_mainwindow.h"
 #include "binaryViewer.h"
 #include "cpuStateViewer.h"
+#include "disassembler.h"
 
 #include <QDesktopServices>
 
@@ -140,6 +141,9 @@ void MainWindow::setupMenuBar()
 
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
     m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F6));
+
+    m_showDisassemblyAction = m_assemblerMenu->addAction(tr("Show disassembly"), this, &MainWindow::showDisassemblyAction);
+    m_showDisassemblyAction->setShortcut(QKeySequence(Qt::Key_F8));
 
     // - Emulator menu -
     m_emulatorMenu = menuBar()->addMenu(tr("Emulator"));
@@ -628,6 +632,14 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
             updateBinaryViewer();
         }
 
+        if (m_configManager->getOpenDisassemblyViewerOnEmulatorStopped())
+        {
+            if (!DisassemblyViewer::isOpen())
+            {
+                showDisassemblyAction();
+            }
+        }
+
         updateCpuStateViewer();
         if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
         {
@@ -645,6 +657,14 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
             updateBinaryViewer(programCounter);
         }
 
+        if (m_configManager->getOpenDisassemblyViewerOnEmulatorPaused())
+        {
+            if (!DisassemblyViewer::isOpen())
+            {
+                showDisassemblyAction();
+            }
+        }
+
         updateCpuStateViewer();
         if (m_configManager->getOpenCpuStateViewerOnEmulatorPaused())
         {
@@ -659,10 +679,16 @@ void MainWindow::onEmulatorStepped()
 {
     Word programCounter(m_emulator->getCurrentProgramCounter());
 
+    // Binary viewer
     if (m_eepromToggle->isChecked())
     {
         BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
         BinaryViewer::showRam();
+
+        if (!DisassemblyViewer::isOpen())
+        {
+            showDisassemblyAction();
+        }
     }
     else
     {
@@ -671,9 +697,14 @@ void MainWindow::onEmulatorStepped()
 
     BinaryViewer::highlightInstruction(programCounter);
 
+    // Disassembly viewer
+    DisassemblyViewer::highlightInstruction(programCounter);
+
+    // Cpu state viewer
     updateCpuStateViewer();
     openCpuStateViewer();
 
+    // Highlighting code
     highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
 
     setStatusBarRightMessage("");
@@ -766,6 +797,16 @@ void MainWindow::onStopKeyPressed()
     if (state == Emulator::State::RUNNING || state == Emulator::State::PAUSED)
     {
         stopEmulatorAction();
+    }
+}
+
+void MainWindow::onDisassemblyViewerKeyPressed()
+{
+    Emulator::State state(m_emulator->getState());
+
+    if (state != Emulator::State::NOT_INITIALIZED)
+    {
+        showDisassemblyAction();
     }
 }
 
@@ -1247,9 +1288,9 @@ void MainWindow::assembleAction()
         }
     }
 
-    // Init emulator
     if (m_assembler->assembleProject(m_projectManager->getCurrentProject(), m_eepromTargetToggle->isChecked()))
     {
+        // Emulator
         plugMonitorPeripheralAction();
         plugRTCPeripheralAction();
         plugKeyboardPeripheralAction();
@@ -1273,7 +1314,13 @@ void MainWindow::assembleAction()
 
         if (m_configManager->getOpenBinaryViewerOnAssembly())
         {
+            qDebug() << "NOT NORMAL";
             showBinaryAction();
+        }
+
+        if (m_configManager->getOpenDisassemblyViewerOnAssembly())
+        {
+            showDisassemblyAction();
         }
     }
 }
@@ -1309,6 +1356,20 @@ void MainWindow::showBinaryAction()
     }
 
     // Needless to show the binary data if the emulator is not initialized
+}
+
+void MainWindow::showDisassemblyAction()
+{
+    QByteArray ramData;
+    DisassemblyViewer *viewer = DisassemblyViewer::getInstance(defaultEditorFont, m_configManager, this);
+
+    if (m_emulator != nullptr)
+    {
+        ramData = m_emulator->getCurrentRamBinaryData();
+
+        viewer->update(ramData, m_consoleOutput);
+        viewer->show();
+    }
 }
 
 void MainWindow::runEmulatorAction()
@@ -1368,7 +1429,7 @@ void MainWindow::stopEmulatorAction()
 
     m_emulator->stopCmd();
 
-    removeHighlightings();
+    removeCodeHighlightings();
 
     setStatusBarRightMessage("");
 }
@@ -1877,9 +1938,15 @@ void MainWindow::updateWinTabMenu()
     }
 
     if (m_assembler == nullptr)
+    {
         m_showBinOutputAction->setEnabled(false);
+        m_showDisassemblyAction->setEnabled(false);
+    }
     else
+    {
         m_showBinOutputAction->setEnabled(m_assembler->isBinaryReady());
+        m_showDisassemblyAction->setEnabled(m_assembler->isBinaryReady());
+    }
 
     updateTabs();
 }
@@ -1920,6 +1987,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
     }
     else
     {
+        m_assembleAction->setEnabled(false);
         m_assembleAction->setEnabled(false);
         m_memoryTargetMenu->setEnabled(false);
 
@@ -2034,11 +2102,12 @@ void MainWindow::clearRecentProjectsMenu()
 
 void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word programCounter)
 {
+    removeCodeHighlightings();
+
     if (!symbol.filePath.isEmpty())
     {
         bool found(false);
 
-        removeHighlightings();
         for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
         {
             CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
@@ -2071,19 +2140,16 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
     }
     else if (!m_eepromToggle->isChecked())
     {
-        removeHighlightings();
+        if (!DisassemblyViewer::isOpen())
+        {
+            showDisassemblyAction();
+        }
 
-        QMessageBox::warning(this, tr("Undefined instruction"), "The CPU has jumped to an address that does not correspond to any instruction.\n\nProgram Counter: " + CpuStateViewer::word2QString(programCounter));
-    }
-    else
-    {
-        removeHighlightings();
-
-        // TODO: Open the disassembler
+        DisassemblyViewer::highlightInstruction(programCounter);
     }
 }
 
-void MainWindow::removeHighlightings()
+void MainWindow::removeCodeHighlightings()
 {
     for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
     {

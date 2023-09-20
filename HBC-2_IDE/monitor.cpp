@@ -534,6 +534,10 @@ void MonitorDialog::keyPressEvent(QKeyEvent *event)
     {
         emit cpuStateViewerKeyPressed();
     }
+    else if (event->key() == Qt::Key_F8)
+    {
+        emit disassemblyViewerKeyPressed();
+    }
     else
     {
         m_hbcKeyboard->sendKeyCode((Qt::Key)event->nativeScanCode(), false);
@@ -582,6 +586,7 @@ MonitorDialog::MonitorDialog(QString projectName, unsigned int pixelScale, HbcMo
     connect(this, SIGNAL(stepKeyPressed()), mainWin, SLOT(onStepKeyPressed()));
     connect(this, SIGNAL(pauseKeyPressed()), mainWin, SLOT(onPauseKeyPressed()));
     connect(this, SIGNAL(stopKeyPressed()), mainWin, SLOT(onStopKeyPressed()));
+    connect(this, SIGNAL(disassemblyViewerKeyPressed()), mainWin, SLOT(onDisassemblyViewerKeyPressed()));
     connect(this, SIGNAL(cpuStateViewerKeyPressed()), mainWin, SLOT(onCpuStateViewerKeyPressed()));
     connect(this, SIGNAL(binaryViewerKeyPressed()), mainWin, SLOT(onBinaryViewerKeyPressed()));
 }

@@ -64,7 +64,8 @@ class CustomizedCodeEditor : public QPlainTextEdit
     Q_OBJECT
 
     public:
-        CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, ConfigManager *configManager, QWidget *parent = 0);
+        CustomizedCodeEditor(QFont font, ConfigManager *configManager, QWidget *parent = nullptr);
+        CustomizedCodeEditor(CustomFile *file, QString fileName, QFont font, ConfigManager *configManager, QWidget *parent = nullptr);
         ~CustomizedCodeEditor();
 
         void lineNumberAreaPaintEvent(QPaintEvent *event);
