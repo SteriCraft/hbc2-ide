@@ -2,5 +2,5 @@
 <area shape="rect" id="node1" title="The class that stores and manages opened files." alt="" coords="121,5,309,61"/>
 <area shape="rect" id="node2" href="$customized_editor_8h.html" title="Specialized QPlainTextEdit for the HBC&#45;2 assembly language." alt="" coords="103,109,327,165"/>
 <area shape="rect" id="node3" href="$disassembler_8h.html" title="QDialog to display a dissambled view of current RAM content." alt="" coords="5,213,204,269"/>
-<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="229,213,423,269"/>
+<area shape="rect" id="node4" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="228,213,424,269"/>
 </map>

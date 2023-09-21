@@ -2,5 +2,5 @@
 <area shape="rect" id="node1" title="HBC&#45;2 Central Processing Unit implementation." alt="" coords="17,5,189,61"/>
 <area shape="rect" id="node2" href="$motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="5,109,201,165"/>
 <area shape="rect" id="node3" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,213,189,269"/>
-<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="6,317,201,373"/>
+<area shape="rect" id="node4" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,317,201,373"/>
 </map>

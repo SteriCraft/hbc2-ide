@@ -4,5 +4,5 @@
 <area shape="rect" id="node6" href="$motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="215,109,411,165"/>
 <area shape="rect" id="node3" href="$binary_viewer_8h.html" title="QDialog to display hexadecimal data." alt="" coords="5,213,203,269"/>
 <area shape="rect" id="node4" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="227,213,399,269"/>
-<area shape="rect" id="node5" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="216,317,411,373"/>
+<area shape="rect" id="node5" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="215,317,411,373"/>
 </map>

@@ -5,8 +5,8 @@
  * \file assembler.h
  * \brief The assembler that procudes binary for the HBC-2 based on its custom assembly language
  * \author Gianni Leclercq
- * \version 0.1
- * \date 27/08/2023
+ * \version 1.0
+ * \date 21/09/2023
  */
 #include <algorithm>
 #include "console.h"

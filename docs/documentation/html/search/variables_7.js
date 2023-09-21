@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['keyboardplugged_756',['keyboardPlugged',['../struct_configuration_settings.html#a68763e648b6b47c3541e1208ccb87f35',1,'ConfigurationSettings']]]
+  ['keyboardplugged_760',['keyboardPlugged',['../struct_configuration_1_1_settings.html#a4211e44de2578ab6287ff417508fb4d0',1,'Configuration::Settings']]]
 ];

@@ -64,6 +64,7 @@ class MainWindow : public QMainWindow
         void onFileChanged(QString filePath);
         void onTextChanged();
         void onTextCursorMoved();
+        void onSettingsChanged();
         // Tabs
         void onTabSelect();
         void onTabClose(int tabIndex);
@@ -206,6 +207,7 @@ class MainWindow : public QMainWindow
         QAction *m_stepEmulatorAction;
         QAction *m_pauseEmulatorAction;
         QAction *m_stopEmulatorAction;
+        QAction *m_openCpuStateViewerAction;
         QMenu *m_emulatorFrequencyMenu;
         QAction *m_100khzFrequencyToggle;
         QAction *m_1mhzFrequencyToggle;
@@ -220,8 +222,6 @@ class MainWindow : public QMainWindow
         QAction *m_keyboardToggle;
         QAction *m_eepromToggle;
         QAction *m_startPausedToggle;
-        QMenu *m_toolsMenu;
-        QAction *m_openCpuStateViewerAction;
         // Project Manager right-click menu
         QAction *m_setActiveProjectActionRC;
         QAction *m_addNewFileActionRC;

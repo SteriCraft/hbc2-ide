@@ -51,8 +51,8 @@ add_executable(HBC-2_IDE
   keyboard.h
   iod.cpp
   iod.h
-  mainwindow.cpp
-  mainwindow.h
+  mainWindow.cpp
+  mainWindow.h
   monitor.cpp
   monitor.h
   motherboard.cpp
@@ -69,7 +69,7 @@ add_executable(HBC-2_IDE
   realTimeClock.h
   token.cpp
   token.h
-  mainwindow.ui
+  mainWindow.ui
   res.qrc
 )
 

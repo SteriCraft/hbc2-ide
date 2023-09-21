@@ -1,4 +1,4 @@
 var searchData=
 [
-  ['tabsize_817',['tabSize',['../struct_configuration_settings.html#a21c208b0ef890b931482df25546d6a7f',1,'ConfigurationSettings']]]
+  ['tabsize_821',['tabSize',['../struct_configuration_1_1_settings.html#ab0a6cecf3951be5aad1dc4d404e5feb0',1,'Configuration::Settings']]]
 ];

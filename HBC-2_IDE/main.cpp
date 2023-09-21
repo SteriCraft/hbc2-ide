@@ -16,7 +16,7 @@
 #include <QTranslator>
 #include <QStyleFactory>
 
-#include "mainwindow.h"
+#include "mainWindow.h"
 
 int main(int argc, char *argv[])
 {

@@ -4,7 +4,7 @@
 <area shape="rect" id="node4" href="$disassembler_8h.html" title="QDialog to display a dissambled view of current RAM content." alt="" coords="70,109,269,165"/>
 <area shape="rect" id="node5" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="270,421,442,477"/>
 <area shape="rect" id="node6" href="$peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="504,109,683,165"/>
-<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="97,525,292,581"/>
+<area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="97,525,293,581"/>
 <area shape="rect" id="node7" href="$eeprom_8h_source.html" title=" " alt="" coords="406,213,578,269"/>
 <area shape="rect" id="node9" href="$keyboard_8h.html" title="Keyboard device derived from HbcPeripheral." alt="" coords="609,213,781,269"/>
 <area shape="rect" id="node11" href="$real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="811,317,1018,373"/>

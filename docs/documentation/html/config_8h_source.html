@@ -89,366 +89,447 @@ $(function() {
 <div class="line"><a name="l00022"></a><span class="lineno">   22</span>&#160;<span class="preprocessor">#include &lt;QListWidget&gt;</span></div>
 <div class="line"><a name="l00023"></a><span class="lineno">   23</span>&#160;<span class="preprocessor">#include &lt;QStackedWidget&gt;</span></div>
 <div class="line"><a name="l00024"></a><span class="lineno">   24</span>&#160;<span class="preprocessor">#include &lt;QMessageBox&gt;</span></div>
-<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160; </div>
-<div class="line"><a name="l00029"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html">   29</a></span>&#160;<span class="keyword">struct </span><a class="code" href="struct_configuration_settings.html">ConfigurationSettings</a></div>
-<div class="line"><a name="l00030"></a><span class="lineno">   30</span>&#160;{</div>
-<div class="line"><a name="l00031"></a><span class="lineno">   31</span>&#160;    <span class="comment">// Editor settings</span></div>
-<div class="line"><a name="l00032"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a21c208b0ef890b931482df25546d6a7f">   32</a></span>&#160;    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="struct_configuration_settings.html#a21c208b0ef890b931482df25546d6a7f">tabSize</a> = 4; </div>
-<div class="line"><a name="l00033"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a153018b24671c1c7a6da38dd42b1d2ce">   33</a></span>&#160;    QString <a class="code" href="struct_configuration_settings.html#a153018b24671c1c7a6da38dd42b1d2ce">defaultProjectsPath</a> = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + <span class="stringliteral">&quot;/hbc2_projects&quot;</span>; </div>
+<div class="line"><a name="l00025"></a><span class="lineno">   25</span>&#160;<span class="preprocessor">#include &lt;QTableWidget&gt;</span></div>
+<div class="line"><a name="l00026"></a><span class="lineno">   26</span>&#160;<span class="preprocessor">#include &lt;QKeySequenceEdit&gt;</span></div>
+<div class="line"><a name="l00027"></a><span class="lineno">   27</span>&#160; </div>
+<div class="line"><a name="l00031"></a><span class="lineno"><a class="line" href="class_custom_key_sequence_edit.html">   31</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_custom_key_sequence_edit.html">CustomKeySequenceEdit</a> : <span class="keyword">public</span> QKeySequenceEdit</div>
+<div class="line"><a name="l00032"></a><span class="lineno">   32</span>&#160;{</div>
+<div class="line"><a name="l00033"></a><span class="lineno">   33</span>&#160;    Q_OBJECT</div>
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160; </div>
-<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    QList&lt;QString&gt; recentProjects;</div>
-<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160; </div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;    <span class="comment">// Assembler settings</span></div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160;    <span class="keywordtype">bool</span> ramAsDefaultMemoryTarget = <span class="keyword">true</span>; <span class="comment">//&lt;! Sets if the code will be assembled in the RAM by default</span></div>
-<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160; </div>
-<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;    <span class="comment">// Emulator settings</span></div>
-<div class="line"><a name="l00041"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#aec641fcb5b4a436417f29b7830d1ba0f">   41</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#aec641fcb5b4a436417f29b7830d1ba0f">startEmulatorPaused</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00042"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a6796a1a7f4d80516110ccd7a5ce4c320">   42</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a6796a1a7f4d80516110ccd7a5ce4c320">monitorPlugged</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00043"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#aa36c3f20452048fe073ca9d0af2cf256">   43</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#aa36c3f20452048fe073ca9d0af2cf256">rtcPlugged</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00044"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a68763e648b6b47c3541e1208ccb87f35">   44</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a68763e648b6b47c3541e1208ccb87f35">keyboardPlugged</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00045"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#aa8a00637e787f256147cda852ab15383">   45</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#aa8a00637e787f256147cda852ab15383">eepromPlugged</a> = <span class="keyword">false</span>; </div>
-<div class="line"><a name="l00046"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a9e8f815a658407e33b4462c66ca36852">   46</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a9e8f815a658407e33b4462c66ca36852">dismissReassemblyWarnings</a> = <span class="keyword">false</span>; </div>
-<div class="line"><a name="l00047"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#ac50215eac2037017fa7b5054c2633d20">   47</a></span>&#160;    <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="struct_configuration_settings.html#ac50215eac2037017fa7b5054c2633d20">pixelScale</a> = 4; </div>
-<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160; </div>
-<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160;    <span class="comment">// CPU state viewer settings</span></div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    <span class="keywordtype">bool</span> openCpuStateViewerOnEmulatorPaused = <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;    <span class="keywordtype">bool</span> openCpuStateViewerOnEmulatorStopped = <span class="keyword">true</span>;</div>
-<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160; </div>
-<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;    <span class="comment">// Binary viewer settings</span></div>
-<div class="line"><a name="l00054"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#ac6dca7a91936921159d95922337c417d">   54</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#ac6dca7a91936921159d95922337c417d">openBinaryViewerOnAssembly</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00055"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#ace82651848c99820e453646ec6cd374e">   55</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#ace82651848c99820e453646ec6cd374e">openBinaryViewerOnEmulatorPaused</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00056"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a8ab05300f1fec6a095ac7b128a5d8d92">   56</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a8ab05300f1fec6a095ac7b128a5d8d92">openBinaryViewerOnEmulatorStopped</a> = <span class="keyword">true</span>; </div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160; </div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;    <span class="comment">// Disassembly viewer settings</span></div>
-<div class="line"><a name="l00059"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a4855e3ec73a8828a477ce8c1776a0e92">   59</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a4855e3ec73a8828a477ce8c1776a0e92">openDisassemblyViewerOnAssembly</a> = <span class="keyword">false</span>; </div>
-<div class="line"><a name="l00060"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a3da63909ce7a9c3a4c52c819621674f4">   60</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a3da63909ce7a9c3a4c52c819621674f4">openDisassemblyViewerOnEmulatorPaused</a> = <span class="keyword">false</span>; </div>
-<div class="line"><a name="l00061"></a><span class="lineno"><a class="line" href="struct_configuration_settings.html#a694983dbada98d6b24029e28df3ff92f">   61</a></span>&#160;    <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_settings.html#a694983dbada98d6b24029e28df3ff92f">openDisassemblyViewerOnEmulatorStopped</a> = <span class="keyword">false</span>; </div>
-<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;};</div>
+<div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;        <span class="keyword">explicit</span> <a class="code" href="class_custom_key_sequence_edit.html">CustomKeySequenceEdit</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        ~<a class="code" href="class_custom_key_sequence_edit.html">CustomKeySequenceEdit</a>();</div>
+<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160; </div>
+<div class="line"><a name="l00039"></a><span class="lineno">   39</span>&#160;    <span class="keyword">protected</span>:</div>
+<div class="line"><a name="l00040"></a><span class="lineno">   40</span>&#160;        <span class="keywordtype">void</span> keyPressEvent(QKeyEvent *pEvent);</div>
+<div class="line"><a name="l00041"></a><span class="lineno">   41</span>&#160;};</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160; </div>
+<div class="line"><a name="l00046"></a><span class="lineno"><a class="line" href="namespace_configuration.html">   46</a></span>&#160;<span class="keyword">namespace </span><a class="code" href="namespace_configuration.html">Configuration</a></div>
+<div class="line"><a name="l00047"></a><span class="lineno">   47</span>&#160;{</div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;    <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> SHORTCUTS_COUNT = 18;</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160; </div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;    <span class="keyword">enum class</span> Command { NEW_PROJECT = 0, NEW_FILE, OPEN_PROJECT, OPEN_FILE, SAVE_CURRENT_FILE, SAVE_ALL, CLOSE_CURRENT_PROJECT,</div>
+<div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160;                         CLOSE_CURRENT_FILE, CLOSE_ALL_FILES, QUIT, ASSEMBLE, SHOW_BIN_OUTPUT, SHOW_DISASSEMBLY, SHOW_CPU_STATE,</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;                         RUN_EMULATOR, STEP_EMULATOR, PAUSE_EMULATOR, STOP_EMULATOR };</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160; </div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160;    <span class="keyword">const</span> QString commandStrArr[] = { <span class="stringliteral">&quot;Create a new project&quot;</span>, <span class="stringliteral">&quot;Create a new file&quot;</span>,</div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;                                      <span class="stringliteral">&quot;Open a project&quot;</span>, <span class="stringliteral">&quot;Open a file&quot;</span>,</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;                                      <span class="stringliteral">&quot;Save the current file&quot;</span>, <span class="stringliteral">&quot;Save all files&quot;</span>,</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;                                      <span class="stringliteral">&quot;Close the current project&quot;</span>, <span class="stringliteral">&quot;Close the current file&quot;</span>,</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;                                      <span class="stringliteral">&quot;Close all files&quot;</span>, <span class="stringliteral">&quot;Quit&quot;</span>,</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160;                                      <span class="stringliteral">&quot;Assemble the current project&quot;</span>, <span class="stringliteral">&quot;Show the binary output (RAM / EEPROM)&quot;</span>,</div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;                                      <span class="stringliteral">&quot;Show the disassembly viewer&quot;</span>, <span class="stringliteral">&quot;Show the CPU State Viewer&quot;</span>,</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;                                      <span class="stringliteral">&quot;Run the emulator&quot;</span>, <span class="stringliteral">&quot;Step the emulator&quot;</span>,</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;                                      <span class="stringliteral">&quot;Pause the emulator&quot;</span>, <span class="stringliteral">&quot;Stop the emulator&quot;</span> };</div>
 <div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160; </div>
-<div class="line"><a name="l00072"></a><span class="lineno"><a class="line" href="class_config_manager.html">   72</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_config_manager.html">ConfigManager</a></div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;{</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_config_manager.html">ConfigManager</a> *m_singleton;</div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160; </div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_config_manager.html">ConfigManager</a>* <a class="code" href="class_config_manager.html#a245145c059a352e37d9be761ac593599">getInstance</a>();</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        ~<a class="code" href="class_config_manager.html">ConfigManager</a>();</div>
-<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160; </div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;        QList&lt;QString&gt; <a class="code" href="class_config_manager.html#acf581be6a718ed9bc92a529712bf940a">getRecentProjects</a>();</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160; </div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6">addRecentProject</a>(QString path);</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160; </div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad58e8addf58dfd4ea4d2a93034a8c72e">clearRecentProjects</a>();</div>
-<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160; </div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160; </div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;        <span class="comment">// ==== SETTERS ====</span></div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;        <span class="comment">// Editor settings</span></div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a6e4263e94a935a6773028796ba571d71">setTabSize</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> nbOfSpaces);</div>
+<div class="line"><a name="l00067"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html">   67</a></span>&#160;    <span class="keyword">struct </span><a class="code" href="struct_configuration_1_1_settings.html">Settings</a></div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;    {</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;        <span class="comment">// Editor settings</span></div>
+<div class="line"><a name="l00070"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#ab0a6cecf3951be5aad1dc4d404e5feb0">   70</a></span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="struct_configuration_1_1_settings.html#ab0a6cecf3951be5aad1dc4d404e5feb0">tabSize</a> = 4; </div>
+<div class="line"><a name="l00071"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a44bdbab95e911d94e3a2b179ce1e9be7">   71</a></span>&#160;        QString <a class="code" href="struct_configuration_1_1_settings.html#a44bdbab95e911d94e3a2b179ce1e9be7">defaultProjectsPath</a> = QStandardPaths::writableLocation(QStandardPaths::DocumentsLocation) + <span class="stringliteral">&quot;/hbc2_projects&quot;</span>; </div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160; </div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        std::map&lt;Configuration::Command, QKeySequence&gt; shortcutsMap = {</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;            {Configuration::Command::NEW_PROJECT,           QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N)},</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;            {Configuration::Command::NEW_FILE,              QKeySequence(Qt::CTRL | Qt::Key_N)},</div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;            {Configuration::Command::OPEN_PROJECT,          QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O)},</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;            {Configuration::Command::OPEN_FILE,             QKeySequence(Qt::CTRL | Qt::Key_O)},</div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;            {Configuration::Command::SAVE_CURRENT_FILE,     QKeySequence(Qt::CTRL | Qt::Key_S)},</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;            {Configuration::Command::SAVE_ALL,              QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S)},</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;            {Configuration::Command::CLOSE_CURRENT_PROJECT, QKeySequence()},</div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;            {Configuration::Command::CLOSE_CURRENT_FILE,    QKeySequence(Qt::CTRL | Qt::Key_W)},</div>
+<div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160;            {Configuration::Command::CLOSE_ALL_FILES,       QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W)},</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;            {Configuration::Command::QUIT,                  QKeySequence(Qt::CTRL | Qt::Key_Q)},</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;            {Configuration::Command::ASSEMBLE,              QKeySequence(Qt::Key_F5)},</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;            {Configuration::Command::SHOW_BIN_OUTPUT,       QKeySequence(Qt::Key_F6)},</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;            {Configuration::Command::SHOW_DISASSEMBLY,      QKeySequence(Qt::Key_F7)},</div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;            {Configuration::Command::SHOW_CPU_STATE,        QKeySequence(Qt::Key_F8)},</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;            {Configuration::Command::RUN_EMULATOR,          QKeySequence(Qt::Key_F9)},</div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;            {Configuration::Command::STEP_EMULATOR,         QKeySequence(Qt::Key_F10)},</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;            {Configuration::Command::PAUSE_EMULATOR,        QKeySequence(Qt::Key_F11)},</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;            {Configuration::Command::STOP_EMULATOR,         QKeySequence(Qt::Key_F12)}</div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;        };</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160; </div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;        <span class="comment">// Assembler settings</span></div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        <span class="keywordtype">bool</span> ramAsDefaultMemoryTarget = <span class="keyword">true</span>; <span class="comment">//&lt;! Sets if the code will be assembled in the RAM by default</span></div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160; </div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        <span class="comment">// Emulator settings</span></div>
+<div class="line"><a name="l00098"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a84424669d619f3b29990fcdfe2a16848">   98</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a84424669d619f3b29990fcdfe2a16848">startEmulatorPaused</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00099"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a444b2bb316fb776c00af07be87820243">   99</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a444b2bb316fb776c00af07be87820243">monitorPlugged</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00100"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a2a8ff20c6a941a56c58f09c0875f431d">  100</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a2a8ff20c6a941a56c58f09c0875f431d">rtcPlugged</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00101"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a4211e44de2578ab6287ff417508fb4d0">  101</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a4211e44de2578ab6287ff417508fb4d0">keyboardPlugged</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00102"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a397de445b2b23ff7a8d991dd1741b923">  102</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a397de445b2b23ff7a8d991dd1741b923">eepromPlugged</a> = <span class="keyword">false</span>; </div>
+<div class="line"><a name="l00103"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a1d426dbe46c53d4eab09718a25291eca">  103</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a1d426dbe46c53d4eab09718a25291eca">dismissReassemblyWarnings</a> = <span class="keyword">false</span>; </div>
+<div class="line"><a name="l00104"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#add5eda371bc39109323cb0890af7564e">  104</a></span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="struct_configuration_1_1_settings.html#add5eda371bc39109323cb0890af7564e">pixelScale</a> = 4; </div>
 <div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160; </div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a9ff4905deca73370138c408401393f74">setDefaultProjectsPath</a>(QString defaultPath);</div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160; </div>
-<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;        <span class="comment">// Assembler settings</span></div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a6e800a270273dc2853b117dd413aca8d">setRamAsDefaultMemoryTarget</a>(<span class="keywordtype">bool</span> ramAsDefault);</div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160; </div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;        <span class="comment">// Emulator settings</span></div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a43e3b36d177a04bd6993c0c5e3f1e9b4">setStartEmulatorPaused</a>(<span class="keywordtype">bool</span> paused);</div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160; </div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">setMonitorPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160; </div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#af73e188d2f15cfd808d10b47b7cb4640">setRTCPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160; </div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad94e829745c46994456b69284dd77f68">setKeyboardPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160; </div>
-<div class="line"><a name="l00141"></a><span class="lineno">  141</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad7eaf4446ebced0017f9cfc8dcd0de10">setEepromPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
-<div class="line"><a name="l00142"></a><span class="lineno">  142</span>&#160; </div>
-<div class="line"><a name="l00146"></a><span class="lineno">  146</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a60d279556aa21c485de2b3d997dbe8c4">setDismissReassemblyWarnings</a>(<span class="keywordtype">bool</span> dismiss);</div>
-<div class="line"><a name="l00147"></a><span class="lineno">  147</span>&#160; </div>
-<div class="line"><a name="l00151"></a><span class="lineno">  151</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a85159a542df9aec416d211a29c294ee6">setPixelScale</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> scale);</div>
-<div class="line"><a name="l00152"></a><span class="lineno">  152</span>&#160; </div>
-<div class="line"><a name="l00153"></a><span class="lineno">  153</span>&#160;        <span class="comment">// CPU state viewer settings</span></div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7164ebbaeddbf69b321529382b7e46f2">setOpenCpuStateViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160; </div>
-<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#aa2ebea530cf3b6f4f984b08d25c4dc82">setOpenCpuStateViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00163"></a><span class="lineno">  163</span>&#160; </div>
-<div class="line"><a name="l00164"></a><span class="lineno">  164</span>&#160;        <span class="comment">// Binary viewer settings</span></div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#af2dec72afac3cbb9e42a04fa2b79257d">setOpenBinaryViewerOnAssembly</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160; </div>
-<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7816f057a4d3ac179ab79e96b6b71d0c">setOpenBinaryViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00174"></a><span class="lineno">  174</span>&#160; </div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7a125b8c7e399ac37167d58cea1aa603">setOpenBinaryViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160; </div>
-<div class="line"><a name="l00180"></a><span class="lineno">  180</span>&#160;        <span class="comment">// Disassembly viewer settings</span></div>
-<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a8b10668f05ace9e1a9d2c29680263f9e">setOpenDisassemblyViewerOnAssembly</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00185"></a><span class="lineno">  185</span>&#160; </div>
-<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ac52c3ec161c7fb9705e1372990163ae3">setOpenDisassemblyViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00190"></a><span class="lineno">  190</span>&#160; </div>
-<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a22e60a2bf97388180407f7159cb5089a">setOpenDisassemblyViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00195"></a><span class="lineno">  195</span>&#160; </div>
-<div class="line"><a name="l00196"></a><span class="lineno">  196</span>&#160; </div>
-<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;        <span class="comment">// ==== GETTERS ====</span></div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;        <span class="comment">// Editor settings</span></div>
-<div class="line"><a name="l00202"></a><span class="lineno">  202</span>&#160;<span class="comment"></span>        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="class_config_manager.html#afc836d0981172aca47a15cd64d31c461">getTabSize</a>();</div>
-<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160; </div>
-<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160;        QString getDefaultProjectsPath();</div>
-<div class="line"><a name="l00205"></a><span class="lineno">  205</span>&#160; </div>
-<div class="line"><a name="l00206"></a><span class="lineno">  206</span>&#160;        <span class="comment">// Assembler settings</span></div>
-<div class="line"><a name="l00210"></a><span class="lineno">  210</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a51a58f0239ddc7d3786dab4b3166a812">getRamAsDefaultMemoryTarget</a>();</div>
-<div class="line"><a name="l00211"></a><span class="lineno">  211</span>&#160; </div>
-<div class="line"><a name="l00212"></a><span class="lineno">  212</span>&#160;        <span class="comment">// Emulator settings</span></div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a7843baf6d0a90cbb56790f3f119d1ea9">getStartEmulatorPaused</a>();</div>
-<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160; </div>
-<div class="line"><a name="l00221"></a><span class="lineno">  221</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#ac6e1b9fb869cde824733bdec31cf8ab5">getMonitorPlugged</a>();</div>
-<div class="line"><a name="l00222"></a><span class="lineno">  222</span>&#160; </div>
-<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a48d156eb467c8131ef8233e425c95a74">getRTCPlugged</a>();</div>
-<div class="line"><a name="l00227"></a><span class="lineno">  227</span>&#160; </div>
-<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aaf6b6ba0b094be811c74fcc7d9d14746">getKeyboardPlugged</a>();</div>
-<div class="line"><a name="l00232"></a><span class="lineno">  232</span>&#160; </div>
-<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a5ee0e66074ffdd0611f43cc44eb38bc1">getEepromPlugged</a>();</div>
-<div class="line"><a name="l00237"></a><span class="lineno">  237</span>&#160; </div>
-<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa75c94feb82e7a580cd79dd527154cf1">getDismissReassemblyWarnings</a>();</div>
-<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160; </div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="class_config_manager.html#a6d12907065297d22ae3790d9b140f779">getPixelScale</a>();</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;        <span class="comment">// CPU state viewer settings</span></div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;        <span class="keywordtype">bool</span> openCpuStateViewerOnEmulatorPaused = <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;        <span class="keywordtype">bool</span> openCpuStateViewerOnEmulatorStopped = <span class="keyword">true</span>;</div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160; </div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;        <span class="comment">// Binary viewer settings</span></div>
+<div class="line"><a name="l00111"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a3955b8730f4632786733acf03d7443e8">  111</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a3955b8730f4632786733acf03d7443e8">openBinaryViewerOnAssembly</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00112"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a2c10ab79530e2bc1dc38469cfcdc6d8d">  112</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a2c10ab79530e2bc1dc38469cfcdc6d8d">openBinaryViewerOnEmulatorPaused</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00113"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a0fae81e7465842dca78bd6e7691f80c5">  113</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a0fae81e7465842dca78bd6e7691f80c5">openBinaryViewerOnEmulatorStopped</a> = <span class="keyword">true</span>; </div>
+<div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160; </div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        <span class="comment">// Disassembly viewer settings</span></div>
+<div class="line"><a name="l00116"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#ac0e911bb2ed70b69f571d6cce2125deb">  116</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#ac0e911bb2ed70b69f571d6cce2125deb">openDisassemblyViewerOnAssembly</a> = <span class="keyword">false</span>; </div>
+<div class="line"><a name="l00117"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a2b703b96b852b7eeae3551e6b0bba820">  117</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a2b703b96b852b7eeae3551e6b0bba820">openDisassemblyViewerOnEmulatorPaused</a> = <span class="keyword">false</span>; </div>
+<div class="line"><a name="l00118"></a><span class="lineno"><a class="line" href="struct_configuration_1_1_settings.html#a0d1fbdb4c8f453dd803b5f0c5908c661">  118</a></span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="struct_configuration_1_1_settings.html#a0d1fbdb4c8f453dd803b5f0c5908c661">openDisassemblyViewerOnEmulatorStopped</a> = <span class="keyword">false</span>; </div>
+<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160;    };</div>
+<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;}</div>
+<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160; </div>
+<div class="line"><a name="l00130"></a><span class="lineno"><a class="line" href="class_config_manager.html">  130</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_config_manager.html">ConfigManager</a></div>
+<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160;{</div>
+<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_config_manager.html">ConfigManager</a> *m_singleton;</div>
+<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160; </div>
+<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_config_manager.html">ConfigManager</a>* <a class="code" href="class_config_manager.html#a245145c059a352e37d9be761ac593599">getInstance</a>();</div>
+<div class="line"><a name="l00139"></a><span class="lineno">  139</span>&#160;        ~<a class="code" href="class_config_manager.html">ConfigManager</a>();</div>
+<div class="line"><a name="l00140"></a><span class="lineno">  140</span>&#160; </div>
+<div class="line"><a name="l00144"></a><span class="lineno">  144</span>&#160;        QList&lt;QString&gt; <a class="code" href="class_config_manager.html#acf581be6a718ed9bc92a529712bf940a">getRecentProjects</a>();</div>
+<div class="line"><a name="l00145"></a><span class="lineno">  145</span>&#160; </div>
+<div class="line"><a name="l00149"></a><span class="lineno">  149</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6">addRecentProject</a>(QString path);</div>
+<div class="line"><a name="l00150"></a><span class="lineno">  150</span>&#160; </div>
+<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad58e8addf58dfd4ea4d2a93034a8c72e">clearRecentProjects</a>();</div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160; </div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;        <span class="keywordtype">void</span> resetShortcut(Configuration::Command associatedCommand);</div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;        <span class="keywordtype">void</span> resetAllShortcuts();</div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;        <span class="keywordtype">void</span> resetSettings();</div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160; </div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160; </div>
+<div class="line"><a name="l00161"></a><span class="lineno">  161</span>&#160;        <span class="comment">// ==== SETTERS ====</span></div>
+<div class="line"><a name="l00162"></a><span class="lineno">  162</span>&#160;        <span class="comment">// Editor settings</span></div>
+<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a6e4263e94a935a6773028796ba571d71">setTabSize</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> nbOfSpaces);</div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160; </div>
+<div class="line"><a name="l00171"></a><span class="lineno">  171</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a9ff4905deca73370138c408401393f74">setDefaultProjectsPath</a>(QString defaultPath);</div>
+<div class="line"><a name="l00172"></a><span class="lineno">  172</span>&#160; </div>
+<div class="line"><a name="l00173"></a><span class="lineno">  173</span>&#160;        <span class="comment">// Assembler settings</span></div>
+<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a6e800a270273dc2853b117dd413aca8d">setRamAsDefaultMemoryTarget</a>(<span class="keywordtype">bool</span> ramAsDefault);</div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160; </div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160;        <span class="comment">// Emulator settings</span></div>
+<div class="line"><a name="l00183"></a><span class="lineno">  183</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a43e3b36d177a04bd6993c0c5e3f1e9b4">setStartEmulatorPaused</a>(<span class="keywordtype">bool</span> paused);</div>
+<div class="line"><a name="l00184"></a><span class="lineno">  184</span>&#160; </div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">setMonitorPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160; </div>
+<div class="line"><a name="l00193"></a><span class="lineno">  193</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#af73e188d2f15cfd808d10b47b7cb4640">setRTCPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
+<div class="line"><a name="l00194"></a><span class="lineno">  194</span>&#160; </div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad94e829745c46994456b69284dd77f68">setKeyboardPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160; </div>
+<div class="line"><a name="l00203"></a><span class="lineno">  203</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ad7eaf4446ebced0017f9cfc8dcd0de10">setEepromPlugged</a>(<span class="keywordtype">bool</span> plugged);</div>
+<div class="line"><a name="l00204"></a><span class="lineno">  204</span>&#160; </div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a60d279556aa21c485de2b3d997dbe8c4">setDismissReassemblyWarnings</a>(<span class="keywordtype">bool</span> dismiss);</div>
+<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160; </div>
+<div class="line"><a name="l00213"></a><span class="lineno">  213</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a85159a542df9aec416d211a29c294ee6">setPixelScale</a>(<span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> scale);</div>
+<div class="line"><a name="l00214"></a><span class="lineno">  214</span>&#160; </div>
+<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;        <span class="comment">// CPU state viewer settings</span></div>
+<div class="line"><a name="l00219"></a><span class="lineno">  219</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7164ebbaeddbf69b321529382b7e46f2">setOpenCpuStateViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00220"></a><span class="lineno">  220</span>&#160; </div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#aa2ebea530cf3b6f4f984b08d25c4dc82">setOpenCpuStateViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160; </div>
+<div class="line"><a name="l00226"></a><span class="lineno">  226</span>&#160;        <span class="comment">// Binary viewer settings</span></div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#af2dec72afac3cbb9e42a04fa2b79257d">setOpenBinaryViewerOnAssembly</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00231"></a><span class="lineno">  231</span>&#160; </div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7816f057a4d3ac179ab79e96b6b71d0c">setOpenBinaryViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00236"></a><span class="lineno">  236</span>&#160; </div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a7a125b8c7e399ac37167d58cea1aa603">setOpenBinaryViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00241"></a><span class="lineno">  241</span>&#160; </div>
+<div class="line"><a name="l00242"></a><span class="lineno">  242</span>&#160;        <span class="comment">// Disassembly viewer settings</span></div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;<span class="comment"></span>        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a8b10668f05ace9e1a9d2c29680263f9e">setOpenDisassemblyViewerOnAssembly</a>(<span class="keywordtype">bool</span> enable);</div>
 <div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160; </div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        <span class="comment">// Cpu state viewer settings</span></div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a3fd1a2c06e89f1f9fa624a77fc273ddb">getOpenCpuStateViewerOnEmulatorPaused</a>();</div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160; </div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a52c669010102c371919ed910621dd896">getOpenCpuStateViewerOnEmulatorStopped</a>();</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#ac52c3ec161c7fb9705e1372990163ae3">setOpenDisassemblyViewerOnEmulatorPaused</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160; </div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_config_manager.html#a22e60a2bf97388180407f7159cb5089a">setOpenDisassemblyViewerOnEmulatorStopped</a>(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160; </div>
 <div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160; </div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        <span class="comment">// Binary viewer settings</span></div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#acfac44e471da1502a527b52a80b00afa">getOpenBinaryViewerOnAssembly</a>();</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160; </div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a714058b114e0e5452e0f177ae125e59e">getOpenBinaryViewerOnEmulatorPaused</a>();</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        <span class="comment">// ==== GETTERS ====</span></div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;        <span class="comment">// Editor settings</span></div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;<span class="comment"></span>        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="class_config_manager.html#afc836d0981172aca47a15cd64d31c461">getTabSize</a>();</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        QString getDefaultProjectsPath();</div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160; </div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        std::map&lt;Configuration::Command, QKeySequence&gt;&amp; getShortcutsMap();</div>
 <div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160; </div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#ac427248f036f53580a7cb967a203131c">getOpenBinaryViewerOnEmulatorStopped</a>();</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160; </div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        <span class="comment">// Disassembly viewer settings</span></div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa37035b89e9f7f5ccc29bfd5372f901c">getOpenDisassemblyViewerOnAssembly</a>();</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160; </div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa27ca03b55614405a7aec8d44807027c">getOpenDisassemblyViewerOnEmulatorPaused</a>();</div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
-<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#af166aa29e525a553c60169659c7248b0">getOpenDisassemblyViewerOnEmulatorStopped</a>();</div>
-<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160; </div>
-<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a>();</div>
-<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160;        <span class="keywordtype">bool</span> saveRecentProjects();</div>
-<div class="line"><a name="l00294"></a><span class="lineno">  294</span>&#160;        <span class="keywordtype">bool</span> saveConfigFile();</div>
-<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;        <span class="keywordtype">void</span> flushRecentProjects();</div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;        <span class="comment">// Assembler settings</span></div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a51a58f0239ddc7d3786dab4b3166a812">getRamAsDefaultMemoryTarget</a>();</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;        <span class="comment">// Emulator settings</span></div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a7843baf6d0a90cbb56790f3f119d1ea9">getStartEmulatorPaused</a>();</div>
+<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160; </div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#ac6e1b9fb869cde824733bdec31cf8ab5">getMonitorPlugged</a>();</div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160; </div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a48d156eb467c8131ef8233e425c95a74">getRTCPlugged</a>();</div>
+<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160; </div>
+<div class="line"><a name="l00295"></a><span class="lineno">  295</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aaf6b6ba0b094be811c74fcc7d9d14746">getKeyboardPlugged</a>();</div>
 <div class="line"><a name="l00296"></a><span class="lineno">  296</span>&#160; </div>
-<div class="line"><a name="l00297"></a><span class="lineno">  297</span>&#160;        <a class="code" href="struct_configuration_settings.html">ConfigurationSettings</a> m_settings;</div>
-<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160;};</div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160; </div>
-<div class="line"><a name="l00305"></a><span class="lineno"><a class="line" href="class_settings_dialog.html">  305</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_settings_dialog.html">SettingsDialog</a> : <span class="keyword">public</span> QDialog</div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;{</div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;    Q_OBJECT</div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160; </div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;        <a class="code" href="class_settings_dialog.html#abca9abaa1ff3e409fac0d6ed0aa9a18b">SettingsDialog</a>(<a class="code" href="class_config_manager.html">ConfigManager</a> *configManager, QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160; </div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;    <span class="keyword">private</span> slots:</div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;        <span class="keywordtype">void</span> menuSelected(<span class="keywordtype">int</span> tabIndex);</div>
-<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160; </div>
-<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        <span class="comment">// Editor</span></div>
-<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;        <span class="keywordtype">void</span> tabSizeChanged(<span class="keywordtype">int</span> nbOfSpaces);</div>
-<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;        <span class="keywordtype">void</span> browseProjectsPathClicked();</div>
-<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160;        <span class="keywordtype">void</span> defaultProjectsPathChanged(QString newPath);</div>
-<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160; </div>
-<div class="line"><a name="l00324"></a><span class="lineno">  324</span>&#160;        <span class="comment">// Assembler</span></div>
-<div class="line"><a name="l00325"></a><span class="lineno">  325</span>&#160;        <span class="keywordtype">void</span> ramAsDefaultMemoryTargetChanged();</div>
-<div class="line"><a name="l00326"></a><span class="lineno">  326</span>&#160; </div>
-<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;        <span class="comment">// Emulator</span></div>
-<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160;        <span class="keywordtype">void</span> startPausedChanged();</div>
-<div class="line"><a name="l00329"></a><span class="lineno">  329</span>&#160;        <span class="keywordtype">void</span> plugMonitorChanged();</div>
-<div class="line"><a name="l00330"></a><span class="lineno">  330</span>&#160;        <span class="keywordtype">void</span> plugRTCChanged();</div>
-<div class="line"><a name="l00331"></a><span class="lineno">  331</span>&#160;        <span class="keywordtype">void</span> plugKeyboardChanged();</div>
-<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;        <span class="keywordtype">void</span> plugEepromChanged();</div>
-<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160;        <span class="keywordtype">void</span> dismissReassemblyWarningsChanged();</div>
-<div class="line"><a name="l00334"></a><span class="lineno">  334</span>&#160;        <span class="keywordtype">void</span> pixelScaleChanged(<span class="keywordtype">int</span> scale);</div>
-<div class="line"><a name="l00335"></a><span class="lineno">  335</span>&#160; </div>
-<div class="line"><a name="l00336"></a><span class="lineno">  336</span>&#160;        <span class="comment">// CpuStateViewer</span></div>
-<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;        <span class="keywordtype">void</span> openCpuStateViewerOnEmulatorPausedChanged();</div>
-<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160;        <span class="keywordtype">void</span> openCpuStateViewerOnEmulatorStoppedChanged();</div>
-<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160; </div>
-<div class="line"><a name="l00340"></a><span class="lineno">  340</span>&#160;        <span class="comment">// BinaryViewer</span></div>
-<div class="line"><a name="l00341"></a><span class="lineno">  341</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnAssemblyChanged();</div>
-<div class="line"><a name="l00342"></a><span class="lineno">  342</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnEmulatorPausedChanged();</div>
-<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnEmulatorStoppedChanged();</div>
+<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a5ee0e66074ffdd0611f43cc44eb38bc1">getEepromPlugged</a>();</div>
+<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160; </div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa75c94feb82e7a580cd79dd527154cf1">getDismissReassemblyWarnings</a>();</div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160; </div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;        <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> <a class="code" href="class_config_manager.html#a6d12907065297d22ae3790d9b140f779">getPixelScale</a>();</div>
+<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160; </div>
+<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;        <span class="comment">// Cpu state viewer settings</span></div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a3fd1a2c06e89f1f9fa624a77fc273ddb">getOpenCpuStateViewerOnEmulatorPaused</a>();</div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160; </div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a52c669010102c371919ed910621dd896">getOpenCpuStateViewerOnEmulatorStopped</a>();</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160; </div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;        <span class="comment">// Binary viewer settings</span></div>
+<div class="line"><a name="l00327"></a><span class="lineno">  327</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#acfac44e471da1502a527b52a80b00afa">getOpenBinaryViewerOnAssembly</a>();</div>
+<div class="line"><a name="l00328"></a><span class="lineno">  328</span>&#160; </div>
+<div class="line"><a name="l00332"></a><span class="lineno">  332</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#a714058b114e0e5452e0f177ae125e59e">getOpenBinaryViewerOnEmulatorPaused</a>();</div>
+<div class="line"><a name="l00333"></a><span class="lineno">  333</span>&#160; </div>
+<div class="line"><a name="l00337"></a><span class="lineno">  337</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#ac427248f036f53580a7cb967a203131c">getOpenBinaryViewerOnEmulatorStopped</a>();</div>
+<div class="line"><a name="l00338"></a><span class="lineno">  338</span>&#160; </div>
+<div class="line"><a name="l00339"></a><span class="lineno">  339</span>&#160;        <span class="comment">// Disassembly viewer settings</span></div>
+<div class="line"><a name="l00343"></a><span class="lineno">  343</span>&#160;<span class="comment"></span>        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa37035b89e9f7f5ccc29bfd5372f901c">getOpenDisassemblyViewerOnAssembly</a>();</div>
 <div class="line"><a name="l00344"></a><span class="lineno">  344</span>&#160; </div>
-<div class="line"><a name="l00345"></a><span class="lineno">  345</span>&#160;        <span class="comment">// DisassemblyViewer</span></div>
-<div class="line"><a name="l00346"></a><span class="lineno">  346</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnAssemblyChanged();</div>
-<div class="line"><a name="l00347"></a><span class="lineno">  347</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnEmulatorPausedChanged();</div>
-<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnEmulatorStoppedChanged();</div>
+<div class="line"><a name="l00348"></a><span class="lineno">  348</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#aa27ca03b55614405a7aec8d44807027c">getOpenDisassemblyViewerOnEmulatorPaused</a>();</div>
 <div class="line"><a name="l00349"></a><span class="lineno">  349</span>&#160; </div>
-<div class="line"><a name="l00350"></a><span class="lineno">  350</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00351"></a><span class="lineno">  351</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_WIDTH = 800;</div>
-<div class="line"><a name="l00352"></a><span class="lineno">  352</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_HEIGHT = 400;</div>
-<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> MENU_LIST_WIDTH = 160;</div>
-<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ITEM_HEIGHT = 50;</div>
-<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> SPACING = 20;</div>
-<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160; </div>
-<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;        <span class="keywordtype">void</span> initMenu();</div>
-<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;        <span class="keywordtype">void</span> setWindowSettings();</div>
-<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;        <span class="keywordtype">void</span> initEditorSettingsLayout();</div>
-<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160;        <span class="keywordtype">void</span> initAssemblerSettingsLayout();</div>
-<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;        <span class="keywordtype">void</span> initEmulatorSettingsLayout();</div>
-<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;        <span class="keywordtype">void</span> initCpuStateViewerSettingsLayout();</div>
-<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;        <span class="keywordtype">void</span> initBinaryViewerSettingsLayout();</div>
-<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160;        <span class="keywordtype">void</span> initDisassemblyViewerSettingsLayout();</div>
-<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160; </div>
-<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160;        <span class="keywordtype">void</span> addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);</div>
-<div class="line"><a name="l00367"></a><span class="lineno">  367</span>&#160; </div>
-<div class="line"><a name="l00368"></a><span class="lineno">  368</span>&#160;        QListWidget *m_menuList;</div>
-<div class="line"><a name="l00369"></a><span class="lineno">  369</span>&#160;        QStackedWidget *m_menuWidgets;</div>
-<div class="line"><a name="l00370"></a><span class="lineno">  370</span>&#160;        std::vector&lt;QWidget*&gt; m_menuWidgetsList;</div>
-<div class="line"><a name="l00371"></a><span class="lineno">  371</span>&#160; </div>
-<div class="line"><a name="l00372"></a><span class="lineno">  372</span>&#160;        <span class="comment">// Editor page widgets</span></div>
-<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;        QPushButton *m_browseProjectsPath;</div>
-<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;        QLineEdit *m_defaultProjectsPathLineEdit;</div>
-<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160;        QSpinBox *m_tabSizeSpinBox;</div>
-<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;        QVBoxLayout *m_editorSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00377"></a><span class="lineno">  377</span>&#160;        QWidget *m_editorSettingsGeneralTabWidget;</div>
-<div class="line"><a name="l00378"></a><span class="lineno">  378</span>&#160; </div>
-<div class="line"><a name="l00379"></a><span class="lineno">  379</span>&#160;        QTabWidget *m_editorSettingsTabWidget;</div>
-<div class="line"><a name="l00380"></a><span class="lineno">  380</span>&#160;        QVBoxLayout *m_editorSettingsPageLayout;</div>
-<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;        QWidget *m_editorSettingsPageWidget;</div>
-<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160;        QListWidgetItem *m_editorSettingsItem;</div>
-<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160; </div>
-<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;        <span class="comment">// Assembler page widgets</span></div>
-<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160;        QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;</div>
-<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;        QVBoxLayout *m_assemblerSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;        QWidget *m_assemblerSettingsGeneralTabWidget;</div>
-<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160; </div>
-<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;        QTabWidget *m_assemblerSettingsTabWidget;</div>
-<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;        QVBoxLayout *m_assemblerSettingsPageLayout;</div>
-<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;        QWidget *m_assemblerSettingsPageWidget;</div>
-<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;        QListWidgetItem *m_assemblerSettingsItem;</div>
-<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160; </div>
-<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160;        <span class="comment">// Emulator page widgets</span></div>
-<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;        <span class="comment">// General tab</span></div>
-<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;        QCheckBox *m_startPausedCheckBox;</div>
-<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160;        QCheckBox *m_dismissReassemblyWarningsCheckBox;</div>
-<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;        QVBoxLayout *m_emulatorSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;        QWidget *m_emulatorSettingsGeneralTabWidget;</div>
-<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;        <span class="comment">// Monitor tab</span></div>
-<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;        QCheckBox *m_plugMonitorCheckBox;</div>
-<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;        QSpinBox *m_pixelScaleSpinBox;</div>
-<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;        QVBoxLayout *m_emulatorSettingsMonitorTabLayout;</div>
-<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;        QWidget *m_emulatorSettingsMonitorTabWidget;</div>
-<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;        <span class="comment">// RTC tab</span></div>
-<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160;        QCheckBox *m_plugRTCCheckBox;</div>
-<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;        QVBoxLayout *m_emulatorSettingsRtcTabLayout;</div>
-<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;        QWidget *m_emulatorSettingsRtcTabWidget;</div>
-<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;        <span class="comment">// Keyboard tab</span></div>
-<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160;        QCheckBox *m_plugKeyboardCheckBox;</div>
-<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;        QVBoxLayout *m_emulatorSettingsKeyboardTabLayout;</div>
-<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;        QWidget *m_emulatorSettingsKeyboardTabWidget;</div>
-<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;        <span class="comment">// EEPROM tab</span></div>
-<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;        QCheckBox *m_plugEepromCheckBox;</div>
-<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160;        QVBoxLayout *m_emulatorSettingsEepromTabLayout;</div>
-<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;        QWidget *m_emulatorSettingsEepromTabWidget;</div>
-<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160; </div>
-<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;        QTabWidget *m_emulatorSettingsTabWidget;</div>
-<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;        QVBoxLayout *m_emulatorSettingsPageLayout;</div>
-<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160;        QWidget *m_emulatorSettingsPageWidget;</div>
-<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;        QListWidgetItem *m_emulatorSettingsItem;</div>
-<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160; </div>
-<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160;        <span class="comment">// Cpu state viewer page widgets</span></div>
-<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;</div>
-<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;</div>
-<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;        QWidget *m_cpuStateViewerSettingsGeneralTabWidget;</div>
-<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160; </div>
-<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;        QTabWidget *m_cpuStateViewerSettingsTabWidget;</div>
-<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsPageLayout;</div>
-<div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;        QWidget *m_cpuStateViewerSettingsPageWidget;</div>
-<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;        QListWidgetItem *m_cpuStateViewerSettingsItem;</div>
-<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160; </div>
-<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160;        <span class="comment">// Binary viewer tab widgets</span></div>
-<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;</div>
-<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;</div>
-<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;</div>
-<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;        QVBoxLayout *m_binaryViewerSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;        QWidget *m_binaryViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00353"></a><span class="lineno">  353</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_config_manager.html#af166aa29e525a553c60169659c7248b0">getOpenDisassemblyViewerOnEmulatorStopped</a>();</div>
+<div class="line"><a name="l00354"></a><span class="lineno">  354</span>&#160; </div>
+<div class="line"><a name="l00355"></a><span class="lineno">  355</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00356"></a><span class="lineno">  356</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a>();</div>
+<div class="line"><a name="l00357"></a><span class="lineno">  357</span>&#160;        <span class="keywordtype">bool</span> saveRecentProjects();</div>
+<div class="line"><a name="l00358"></a><span class="lineno">  358</span>&#160;        <span class="keywordtype">bool</span> saveConfigFile();</div>
+<div class="line"><a name="l00359"></a><span class="lineno">  359</span>&#160;        <span class="keywordtype">void</span> flushRecentProjects();</div>
+<div class="line"><a name="l00360"></a><span class="lineno">  360</span>&#160; </div>
+<div class="line"><a name="l00361"></a><span class="lineno">  361</span>&#160;        <a class="code" href="struct_configuration_1_1_settings.html">Configuration::Settings</a> *m_settings;</div>
+<div class="line"><a name="l00362"></a><span class="lineno">  362</span>&#160;        QList&lt;QString&gt; m_recentProjects;</div>
+<div class="line"><a name="l00363"></a><span class="lineno">  363</span>&#160;};</div>
+<div class="line"><a name="l00364"></a><span class="lineno">  364</span>&#160; </div>
+<div class="line"><a name="l00365"></a><span class="lineno">  365</span>&#160;<span class="keyword">class </span><a class="code" href="class_main_window.html">MainWindow</a>;</div>
+<div class="line"><a name="l00366"></a><span class="lineno">  366</span>&#160; </div>
+<div class="line"><a name="l00372"></a><span class="lineno"><a class="line" href="class_settings_dialog.html">  372</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_settings_dialog.html">SettingsDialog</a> : <span class="keyword">public</span> QDialog</div>
+<div class="line"><a name="l00373"></a><span class="lineno">  373</span>&#160;{</div>
+<div class="line"><a name="l00374"></a><span class="lineno">  374</span>&#160;    Q_OBJECT</div>
+<div class="line"><a name="l00375"></a><span class="lineno">  375</span>&#160; </div>
+<div class="line"><a name="l00376"></a><span class="lineno">  376</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00381"></a><span class="lineno">  381</span>&#160;        <a class="code" href="class_settings_dialog.html#a97de4d29a7234cfa94c5d128093ea043">SettingsDialog</a>(<a class="code" href="class_config_manager.html">ConfigManager</a> *configManager, <a class="code" href="class_main_window.html">MainWindow</a> *parent);</div>
+<div class="line"><a name="l00382"></a><span class="lineno">  382</span>&#160; </div>
+<div class="line"><a name="l00383"></a><span class="lineno">  383</span>&#160;    <span class="keyword">private</span> slots:</div>
+<div class="line"><a name="l00384"></a><span class="lineno">  384</span>&#160;        <span class="keywordtype">void</span> menuSelected(<span class="keywordtype">int</span> tabIndex);</div>
+<div class="line"><a name="l00385"></a><span class="lineno">  385</span>&#160; </div>
+<div class="line"><a name="l00386"></a><span class="lineno">  386</span>&#160;        <span class="comment">// Editor</span></div>
+<div class="line"><a name="l00387"></a><span class="lineno">  387</span>&#160;        <span class="keywordtype">void</span> tabSizeChanged(<span class="keywordtype">int</span> nbOfSpaces);</div>
+<div class="line"><a name="l00388"></a><span class="lineno">  388</span>&#160;        <span class="keywordtype">void</span> browseProjectsPathClicked();</div>
+<div class="line"><a name="l00389"></a><span class="lineno">  389</span>&#160;        <span class="keywordtype">void</span> defaultProjectsPathChanged(QString newPath);</div>
+<div class="line"><a name="l00390"></a><span class="lineno">  390</span>&#160;        <span class="keywordtype">void</span> shortcutSelected();</div>
+<div class="line"><a name="l00391"></a><span class="lineno">  391</span>&#160;        <span class="keywordtype">void</span> saveButtonClicked();</div>
+<div class="line"><a name="l00392"></a><span class="lineno">  392</span>&#160;        <span class="keywordtype">void</span> resetSelectedShortcut();</div>
+<div class="line"><a name="l00393"></a><span class="lineno">  393</span>&#160;        <span class="keywordtype">void</span> resetAllShortcuts();</div>
+<div class="line"><a name="l00394"></a><span class="lineno">  394</span>&#160; </div>
+<div class="line"><a name="l00395"></a><span class="lineno">  395</span>&#160;        <span class="comment">// Assembler</span></div>
+<div class="line"><a name="l00396"></a><span class="lineno">  396</span>&#160;        <span class="keywordtype">void</span> ramAsDefaultMemoryTargetChanged();</div>
+<div class="line"><a name="l00397"></a><span class="lineno">  397</span>&#160; </div>
+<div class="line"><a name="l00398"></a><span class="lineno">  398</span>&#160;        <span class="comment">// Emulator</span></div>
+<div class="line"><a name="l00399"></a><span class="lineno">  399</span>&#160;        <span class="keywordtype">void</span> startPausedChanged();</div>
+<div class="line"><a name="l00400"></a><span class="lineno">  400</span>&#160;        <span class="keywordtype">void</span> plugMonitorChanged();</div>
+<div class="line"><a name="l00401"></a><span class="lineno">  401</span>&#160;        <span class="keywordtype">void</span> plugRTCChanged();</div>
+<div class="line"><a name="l00402"></a><span class="lineno">  402</span>&#160;        <span class="keywordtype">void</span> plugKeyboardChanged();</div>
+<div class="line"><a name="l00403"></a><span class="lineno">  403</span>&#160;        <span class="keywordtype">void</span> plugEepromChanged();</div>
+<div class="line"><a name="l00404"></a><span class="lineno">  404</span>&#160;        <span class="keywordtype">void</span> dismissReassemblyWarningsChanged();</div>
+<div class="line"><a name="l00405"></a><span class="lineno">  405</span>&#160;        <span class="keywordtype">void</span> pixelScaleChanged(<span class="keywordtype">int</span> scale);</div>
+<div class="line"><a name="l00406"></a><span class="lineno">  406</span>&#160; </div>
+<div class="line"><a name="l00407"></a><span class="lineno">  407</span>&#160;        <span class="comment">// CpuStateViewer</span></div>
+<div class="line"><a name="l00408"></a><span class="lineno">  408</span>&#160;        <span class="keywordtype">void</span> openCpuStateViewerOnEmulatorPausedChanged();</div>
+<div class="line"><a name="l00409"></a><span class="lineno">  409</span>&#160;        <span class="keywordtype">void</span> openCpuStateViewerOnEmulatorStoppedChanged();</div>
+<div class="line"><a name="l00410"></a><span class="lineno">  410</span>&#160; </div>
+<div class="line"><a name="l00411"></a><span class="lineno">  411</span>&#160;        <span class="comment">// BinaryViewer</span></div>
+<div class="line"><a name="l00412"></a><span class="lineno">  412</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnAssemblyChanged();</div>
+<div class="line"><a name="l00413"></a><span class="lineno">  413</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnEmulatorPausedChanged();</div>
+<div class="line"><a name="l00414"></a><span class="lineno">  414</span>&#160;        <span class="keywordtype">void</span> openBinaryViewerOnEmulatorStoppedChanged();</div>
+<div class="line"><a name="l00415"></a><span class="lineno">  415</span>&#160; </div>
+<div class="line"><a name="l00416"></a><span class="lineno">  416</span>&#160;        <span class="comment">// DisassemblyViewer</span></div>
+<div class="line"><a name="l00417"></a><span class="lineno">  417</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnAssemblyChanged();</div>
+<div class="line"><a name="l00418"></a><span class="lineno">  418</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnEmulatorPausedChanged();</div>
+<div class="line"><a name="l00419"></a><span class="lineno">  419</span>&#160;        <span class="keywordtype">void</span> openDisassemblyViewerOnEmulatorStoppedChanged();</div>
+<div class="line"><a name="l00420"></a><span class="lineno">  420</span>&#160; </div>
+<div class="line"><a name="l00421"></a><span class="lineno">  421</span>&#160;        <span class="comment">// Others</span></div>
+<div class="line"><a name="l00422"></a><span class="lineno">  422</span>&#160;        <span class="keywordtype">void</span> resetAllAction();</div>
+<div class="line"><a name="l00423"></a><span class="lineno">  423</span>&#160; </div>
+<div class="line"><a name="l00424"></a><span class="lineno">  424</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00425"></a><span class="lineno">  425</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_WIDTH = 800;</div>
+<div class="line"><a name="l00426"></a><span class="lineno">  426</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DIALOG_HEIGHT = 400;</div>
+<div class="line"><a name="l00427"></a><span class="lineno">  427</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> MENU_LIST_WIDTH = 160;</div>
+<div class="line"><a name="l00428"></a><span class="lineno">  428</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ITEM_HEIGHT = 50;</div>
+<div class="line"><a name="l00429"></a><span class="lineno">  429</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> SPACING = 20;</div>
+<div class="line"><a name="l00430"></a><span class="lineno">  430</span>&#160; </div>
+<div class="line"><a name="l00431"></a><span class="lineno">  431</span>&#160;        <span class="keywordtype">void</span> initMenu();</div>
+<div class="line"><a name="l00432"></a><span class="lineno">  432</span>&#160;        <span class="keywordtype">void</span> setWindowSettings();</div>
+<div class="line"><a name="l00433"></a><span class="lineno">  433</span>&#160;        <span class="keywordtype">void</span> initEditorSettingsLayout();</div>
+<div class="line"><a name="l00434"></a><span class="lineno">  434</span>&#160;        <span class="keywordtype">void</span> initAssemblerSettingsLayout();</div>
+<div class="line"><a name="l00435"></a><span class="lineno">  435</span>&#160;        <span class="keywordtype">void</span> initEmulatorSettingsLayout();</div>
+<div class="line"><a name="l00436"></a><span class="lineno">  436</span>&#160;        <span class="keywordtype">void</span> initCpuStateViewerSettingsLayout();</div>
+<div class="line"><a name="l00437"></a><span class="lineno">  437</span>&#160;        <span class="keywordtype">void</span> initBinaryViewerSettingsLayout();</div>
+<div class="line"><a name="l00438"></a><span class="lineno">  438</span>&#160;        <span class="keywordtype">void</span> initDisassemblyViewerSettingsLayout();</div>
+<div class="line"><a name="l00439"></a><span class="lineno">  439</span>&#160;        <span class="keywordtype">void</span> addMenu(QListWidgetItem *newMenuItem, QWidget *newMenuWidget);</div>
 <div class="line"><a name="l00440"></a><span class="lineno">  440</span>&#160; </div>
-<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;        QTabWidget *m_binaryViewerSettingsTabWidget;</div>
-<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160;        QVBoxLayout *m_binaryViewerSettingsPageLayout;</div>
-<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;        QWidget *m_binaryViewerSettingsPageWidget;</div>
-<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;        QListWidgetItem *m_binaryViewerSettingsItem;</div>
-<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160; </div>
-<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160;        <span class="comment">// Disassembly viewer tab widgets</span></div>
-<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;        QCheckBox *m_openDisassemblyViewerOnAssemblyCheckBox;</div>
-<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;        QCheckBox *m_openDisassemblyViewerOnEmulatorPausedCheckBox;</div>
-<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;        QCheckBox *m_openDisassemblyViewerOnEmulatorStoppedCheckBox;</div>
-<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;        QVBoxLayout *m_disassemblyViewerSettingsGeneralTabLayout;</div>
-<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;        QWidget *m_disassemblyViewerSettingsGeneralTabWidget;</div>
-<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160; </div>
-<div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;        QTabWidget *m_disassemblyViewerSettingsTabWidget;</div>
-<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;        QVBoxLayout *m_disassemblyViewerSettingsPageLayout;</div>
-<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;        QWidget *m_disassemblyViewerSettingsPageWidget;</div>
-<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;        QListWidgetItem *m_disassemblyViewerSettingsItem;</div>
-<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160; </div>
-<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;        QPushButton *m_closeButton;</div>
-<div class="line"><a name="l00459"></a><span class="lineno">  459</span>&#160; </div>
-<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
-<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160;};</div>
-<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160; </div>
-<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CONFIG_H</span></div>
-<div class="ttc" id="aclass_config_manager_html"><div class="ttname"><a href="class_config_manager.html">ConfigManager</a></div><div class="ttdoc">Singleton of the configuration manager, that handles IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:73</div></div>
-<div class="ttc" id="aclass_config_manager_html_a02c5e604d03e24033ca248c9d46b1063"><div class="ttname"><a href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">ConfigManager::setMonitorPlugged</a></div><div class="ttdeci">void setMonitorPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:79</div></div>
-<div class="ttc" id="aclass_config_manager_html_a22e60a2bf97388180407f7159cb5089a"><div class="ttname"><a href="class_config_manager.html#a22e60a2bf97388180407f7159cb5089a">ConfigManager::setOpenDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:152</div></div>
-<div class="ttc" id="aclass_config_manager_html_a245145c059a352e37d9be761ac593599"><div class="ttname"><a href="class_config_manager.html#a245145c059a352e37d9be761ac593599">ConfigManager::getInstance</a></div><div class="ttdeci">static ConfigManager * getInstance()</div><div class="ttdef"><b>Definition:</b> config.cpp:13</div></div>
-<div class="ttc" id="aclass_config_manager_html_a3fd1a2c06e89f1f9fa624a77fc273ddb"><div class="ttname"><a href="class_config_manager.html#a3fd1a2c06e89f1f9fa624a77fc273ddb">ConfigManager::getOpenCpuStateViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenCpuStateViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:212</div></div>
-<div class="ttc" id="aclass_config_manager_html_a43e3b36d177a04bd6993c0c5e3f1e9b4"><div class="ttname"><a href="class_config_manager.html#a43e3b36d177a04bd6993c0c5e3f1e9b4">ConfigManager::setStartEmulatorPaused</a></div><div class="ttdeci">void setStartEmulatorPaused(bool paused)</div><div class="ttdef"><b>Definition:</b> config.cpp:73</div></div>
-<div class="ttc" id="aclass_config_manager_html_a48d156eb467c8131ef8233e425c95a74"><div class="ttname"><a href="class_config_manager.html#a48d156eb467c8131ef8233e425c95a74">ConfigManager::getRTCPlugged</a></div><div class="ttdeci">bool getRTCPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:186</div></div>
-<div class="ttc" id="aclass_config_manager_html_a51a58f0239ddc7d3786dab4b3166a812"><div class="ttname"><a href="class_config_manager.html#a51a58f0239ddc7d3786dab4b3166a812">ConfigManager::getRamAsDefaultMemoryTarget</a></div><div class="ttdeci">bool getRamAsDefaultMemoryTarget()</div><div class="ttdef"><b>Definition:</b> config.cpp:170</div></div>
-<div class="ttc" id="aclass_config_manager_html_a52c669010102c371919ed910621dd896"><div class="ttname"><a href="class_config_manager.html#a52c669010102c371919ed910621dd896">ConfigManager::getOpenCpuStateViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenCpuStateViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:217</div></div>
-<div class="ttc" id="aclass_config_manager_html_a5ee0e66074ffdd0611f43cc44eb38bc1"><div class="ttname"><a href="class_config_manager.html#a5ee0e66074ffdd0611f43cc44eb38bc1">ConfigManager::getEepromPlugged</a></div><div class="ttdeci">bool getEepromPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:196</div></div>
-<div class="ttc" id="aclass_config_manager_html_a60d279556aa21c485de2b3d997dbe8c4"><div class="ttname"><a href="class_config_manager.html#a60d279556aa21c485de2b3d997dbe8c4">ConfigManager::setDismissReassemblyWarnings</a></div><div class="ttdeci">void setDismissReassemblyWarnings(bool dismiss)</div><div class="ttdef"><b>Definition:</b> config.cpp:103</div></div>
-<div class="ttc" id="aclass_config_manager_html_a6d12907065297d22ae3790d9b140f779"><div class="ttname"><a href="class_config_manager.html#a6d12907065297d22ae3790d9b140f779">ConfigManager::getPixelScale</a></div><div class="ttdeci">unsigned int getPixelScale()</div><div class="ttdef"><b>Definition:</b> config.cpp:206</div></div>
-<div class="ttc" id="aclass_config_manager_html_a6e4263e94a935a6773028796ba571d71"><div class="ttname"><a href="class_config_manager.html#a6e4263e94a935a6773028796ba571d71">ConfigManager::setTabSize</a></div><div class="ttdeci">void setTabSize(unsigned int nbOfSpaces)</div><div class="ttdoc">Sets the number of spaces representing a tab.</div><div class="ttdef"><b>Definition:</b> config.cpp:50</div></div>
-<div class="ttc" id="aclass_config_manager_html_a6e800a270273dc2853b117dd413aca8d"><div class="ttname"><a href="class_config_manager.html#a6e800a270273dc2853b117dd413aca8d">ConfigManager::setRamAsDefaultMemoryTarget</a></div><div class="ttdeci">void setRamAsDefaultMemoryTarget(bool ramAsDefault)</div><div class="ttdoc">Sets if the code will be assembled in the RAM.</div><div class="ttdef"><b>Definition:</b> config.cpp:67</div></div>
-<div class="ttc" id="aclass_config_manager_html_a714058b114e0e5452e0f177ae125e59e"><div class="ttname"><a href="class_config_manager.html#a714058b114e0e5452e0f177ae125e59e">ConfigManager::getOpenBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenBinaryViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:228</div></div>
-<div class="ttc" id="aclass_config_manager_html_a7164ebbaeddbf69b321529382b7e46f2"><div class="ttname"><a href="class_config_manager.html#a7164ebbaeddbf69b321529382b7e46f2">ConfigManager::setOpenCpuStateViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenCpuStateViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:115</div></div>
-<div class="ttc" id="aclass_config_manager_html_a7816f057a4d3ac179ab79e96b6b71d0c"><div class="ttname"><a href="class_config_manager.html#a7816f057a4d3ac179ab79e96b6b71d0c">ConfigManager::setOpenBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenBinaryViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:131</div></div>
-<div class="ttc" id="aclass_config_manager_html_a7843baf6d0a90cbb56790f3f119d1ea9"><div class="ttname"><a href="class_config_manager.html#a7843baf6d0a90cbb56790f3f119d1ea9">ConfigManager::getStartEmulatorPaused</a></div><div class="ttdeci">bool getStartEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:176</div></div>
-<div class="ttc" id="aclass_config_manager_html_a7a125b8c7e399ac37167d58cea1aa603"><div class="ttname"><a href="class_config_manager.html#a7a125b8c7e399ac37167d58cea1aa603">ConfigManager::setOpenBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenBinaryViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:136</div></div>
-<div class="ttc" id="aclass_config_manager_html_a85159a542df9aec416d211a29c294ee6"><div class="ttname"><a href="class_config_manager.html#a85159a542df9aec416d211a29c294ee6">ConfigManager::setPixelScale</a></div><div class="ttdeci">void setPixelScale(unsigned int scale)</div><div class="ttdoc">Sets the scale of a pixel in HbcMonitor.</div><div class="ttdef"><b>Definition:</b> config.cpp:109</div></div>
-<div class="ttc" id="aclass_config_manager_html_a8b10668f05ace9e1a9d2c29680263f9e"><div class="ttname"><a href="class_config_manager.html#a8b10668f05ace9e1a9d2c29680263f9e">ConfigManager::setOpenDisassemblyViewerOnAssembly</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnAssembly(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:142</div></div>
-<div class="ttc" id="aclass_config_manager_html_a9ff4905deca73370138c408401393f74"><div class="ttname"><a href="class_config_manager.html#a9ff4905deca73370138c408401393f74">ConfigManager::setDefaultProjectsPath</a></div><div class="ttdeci">bool setDefaultProjectsPath(QString defaultPath)</div><div class="ttdef"><b>Definition:</b> config.cpp:55</div></div>
-<div class="ttc" id="aclass_config_manager_html_aa27ca03b55614405a7aec8d44807027c"><div class="ttname"><a href="class_config_manager.html#aa27ca03b55614405a7aec8d44807027c">ConfigManager::getOpenDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:244</div></div>
-<div class="ttc" id="aclass_config_manager_html_aa2ebea530cf3b6f4f984b08d25c4dc82"><div class="ttname"><a href="class_config_manager.html#aa2ebea530cf3b6f4f984b08d25c4dc82">ConfigManager::setOpenCpuStateViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenCpuStateViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:120</div></div>
-<div class="ttc" id="aclass_config_manager_html_aa37035b89e9f7f5ccc29bfd5372f901c"><div class="ttname"><a href="class_config_manager.html#aa37035b89e9f7f5ccc29bfd5372f901c">ConfigManager::getOpenDisassemblyViewerOnAssembly</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnAssembly()</div><div class="ttdef"><b>Definition:</b> config.cpp:239</div></div>
-<div class="ttc" id="aclass_config_manager_html_aa75c94feb82e7a580cd79dd527154cf1"><div class="ttname"><a href="class_config_manager.html#aa75c94feb82e7a580cd79dd527154cf1">ConfigManager::getDismissReassemblyWarnings</a></div><div class="ttdeci">bool getDismissReassemblyWarnings()</div><div class="ttdef"><b>Definition:</b> config.cpp:201</div></div>
-<div class="ttc" id="aclass_config_manager_html_aaf6b6ba0b094be811c74fcc7d9d14746"><div class="ttname"><a href="class_config_manager.html#aaf6b6ba0b094be811c74fcc7d9d14746">ConfigManager::getKeyboardPlugged</a></div><div class="ttdeci">bool getKeyboardPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:191</div></div>
-<div class="ttc" id="aclass_config_manager_html_ac427248f036f53580a7cb967a203131c"><div class="ttname"><a href="class_config_manager.html#ac427248f036f53580a7cb967a203131c">ConfigManager::getOpenBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenBinaryViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:233</div></div>
-<div class="ttc" id="aclass_config_manager_html_ac52c3ec161c7fb9705e1372990163ae3"><div class="ttname"><a href="class_config_manager.html#ac52c3ec161c7fb9705e1372990163ae3">ConfigManager::setOpenDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:147</div></div>
-<div class="ttc" id="aclass_config_manager_html_ac6e1b9fb869cde824733bdec31cf8ab5"><div class="ttname"><a href="class_config_manager.html#ac6e1b9fb869cde824733bdec31cf8ab5">ConfigManager::getMonitorPlugged</a></div><div class="ttdeci">bool getMonitorPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:181</div></div>
-<div class="ttc" id="aclass_config_manager_html_acf581be6a718ed9bc92a529712bf940a"><div class="ttname"><a href="class_config_manager.html#acf581be6a718ed9bc92a529712bf940a">ConfigManager::getRecentProjects</a></div><div class="ttdeci">QList&lt; QString &gt; getRecentProjects()</div><div class="ttdef"><b>Definition:</b> config.cpp:29</div></div>
-<div class="ttc" id="aclass_config_manager_html_acfac44e471da1502a527b52a80b00afa"><div class="ttname"><a href="class_config_manager.html#acfac44e471da1502a527b52a80b00afa">ConfigManager::getOpenBinaryViewerOnAssembly</a></div><div class="ttdeci">bool getOpenBinaryViewerOnAssembly()</div><div class="ttdef"><b>Definition:</b> config.cpp:223</div></div>
-<div class="ttc" id="aclass_config_manager_html_ad58e8addf58dfd4ea4d2a93034a8c72e"><div class="ttname"><a href="class_config_manager.html#ad58e8addf58dfd4ea4d2a93034a8c72e">ConfigManager::clearRecentProjects</a></div><div class="ttdeci">void clearRecentProjects()</div><div class="ttdoc">Clears the list of recent projects.</div><div class="ttdef"><b>Definition:</b> config.cpp:43</div></div>
-<div class="ttc" id="aclass_config_manager_html_ad7eaf4446ebced0017f9cfc8dcd0de10"><div class="ttname"><a href="class_config_manager.html#ad7eaf4446ebced0017f9cfc8dcd0de10">ConfigManager::setEepromPlugged</a></div><div class="ttdeci">void setEepromPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:97</div></div>
-<div class="ttc" id="aclass_config_manager_html_ad94e829745c46994456b69284dd77f68"><div class="ttname"><a href="class_config_manager.html#ad94e829745c46994456b69284dd77f68">ConfigManager::setKeyboardPlugged</a></div><div class="ttdeci">void setKeyboardPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:91</div></div>
-<div class="ttc" id="aclass_config_manager_html_aec67e26a24e350ba22d3fb4b9f9a08f6"><div class="ttname"><a href="class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6">ConfigManager::addRecentProject</a></div><div class="ttdeci">bool addRecentProject(QString path)</div><div class="ttdoc">Returns false if path is empty.</div><div class="ttdef"><b>Definition:</b> config.cpp:34</div></div>
-<div class="ttc" id="aclass_config_manager_html_af166aa29e525a553c60169659c7248b0"><div class="ttname"><a href="class_config_manager.html#af166aa29e525a553c60169659c7248b0">ConfigManager::getOpenDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:249</div></div>
-<div class="ttc" id="aclass_config_manager_html_af2dec72afac3cbb9e42a04fa2b79257d"><div class="ttname"><a href="class_config_manager.html#af2dec72afac3cbb9e42a04fa2b79257d">ConfigManager::setOpenBinaryViewerOnAssembly</a></div><div class="ttdeci">void setOpenBinaryViewerOnAssembly(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:126</div></div>
-<div class="ttc" id="aclass_config_manager_html_af73e188d2f15cfd808d10b47b7cb4640"><div class="ttname"><a href="class_config_manager.html#af73e188d2f15cfd808d10b47b7cb4640">ConfigManager::setRTCPlugged</a></div><div class="ttdeci">void setRTCPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:85</div></div>
-<div class="ttc" id="aclass_config_manager_html_afc836d0981172aca47a15cd64d31c461"><div class="ttname"><a href="class_config_manager.html#afc836d0981172aca47a15cd64d31c461">ConfigManager::getTabSize</a></div><div class="ttdeci">unsigned int getTabSize()</div><div class="ttdef"><b>Definition:</b> config.cpp:159</div></div>
-<div class="ttc" id="aclass_settings_dialog_html"><div class="ttname"><a href="class_settings_dialog.html">SettingsDialog</a></div><div class="ttdoc">QDialog to modify IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:306</div></div>
-<div class="ttc" id="aclass_settings_dialog_html_abca9abaa1ff3e409fac0d6ed0aa9a18b"><div class="ttname"><a href="class_settings_dialog.html#abca9abaa1ff3e409fac0d6ed0aa9a18b">SettingsDialog::SettingsDialog</a></div><div class="ttdeci">SettingsDialog(ConfigManager *configManager, QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> config.cpp:498</div></div>
-<div class="ttc" id="astruct_configuration_settings_html"><div class="ttname"><a href="struct_configuration_settings.html">ConfigurationSettings</a></div><div class="ttdoc">Stores the IDE settings on runtime.</div><div class="ttdef"><b>Definition:</b> config.h:30</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a153018b24671c1c7a6da38dd42b1d2ce"><div class="ttname"><a href="struct_configuration_settings.html#a153018b24671c1c7a6da38dd42b1d2ce">ConfigurationSettings::defaultProjectsPath</a></div><div class="ttdeci">QString defaultProjectsPath</div><div class="ttdoc">Stores the default path for new projects.</div><div class="ttdef"><b>Definition:</b> config.h:33</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a21c208b0ef890b931482df25546d6a7f"><div class="ttname"><a href="struct_configuration_settings.html#a21c208b0ef890b931482df25546d6a7f">ConfigurationSettings::tabSize</a></div><div class="ttdeci">unsigned int tabSize</div><div class="ttdoc">Number of spaces representing a tab.</div><div class="ttdef"><b>Definition:</b> config.h:32</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a3da63909ce7a9c3a4c52c819621674f4"><div class="ttname"><a href="struct_configuration_settings.html#a3da63909ce7a9c3a4c52c819621674f4">ConfigurationSettings::openDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">bool openDisassemblyViewerOnEmulatorPaused</div><div class="ttdoc">Sets if the disassemblyviewer is automatically opened after the emulator was paused.</div><div class="ttdef"><b>Definition:</b> config.h:60</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a4855e3ec73a8828a477ce8c1776a0e92"><div class="ttname"><a href="struct_configuration_settings.html#a4855e3ec73a8828a477ce8c1776a0e92">ConfigurationSettings::openDisassemblyViewerOnAssembly</a></div><div class="ttdeci">bool openDisassemblyViewerOnAssembly</div><div class="ttdoc">Sets if the disassembly viewer is automatically opened after assembling a project.</div><div class="ttdef"><b>Definition:</b> config.h:59</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a6796a1a7f4d80516110ccd7a5ce4c320"><div class="ttname"><a href="struct_configuration_settings.html#a6796a1a7f4d80516110ccd7a5ce4c320">ConfigurationSettings::monitorPlugged</a></div><div class="ttdeci">bool monitorPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcMonitor plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:42</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a68763e648b6b47c3541e1208ccb87f35"><div class="ttname"><a href="struct_configuration_settings.html#a68763e648b6b47c3541e1208ccb87f35">ConfigurationSettings::keyboardPlugged</a></div><div class="ttdeci">bool keyboardPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcKeyboard plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:44</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a694983dbada98d6b24029e28df3ff92f"><div class="ttname"><a href="struct_configuration_settings.html#a694983dbada98d6b24029e28df3ff92f">ConfigurationSettings::openDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">bool openDisassemblyViewerOnEmulatorStopped</div><div class="ttdoc">Sets if the disassemblyviewer is automatically opened after the emulator was stopped.</div><div class="ttdef"><b>Definition:</b> config.h:61</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a8ab05300f1fec6a095ac7b128a5d8d92"><div class="ttname"><a href="struct_configuration_settings.html#a8ab05300f1fec6a095ac7b128a5d8d92">ConfigurationSettings::openBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">bool openBinaryViewerOnEmulatorStopped</div><div class="ttdoc">Sets if the binary viewer is automatically opened after the emulator was stopped.</div><div class="ttdef"><b>Definition:</b> config.h:56</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_a9e8f815a658407e33b4462c66ca36852"><div class="ttname"><a href="struct_configuration_settings.html#a9e8f815a658407e33b4462c66ca36852">ConfigurationSettings::dismissReassemblyWarnings</a></div><div class="ttdeci">bool dismissReassemblyWarnings</div><div class="ttdoc">Sets if warnings are thrown when trying to run a project which was modified or not yet assembled.</div><div class="ttdef"><b>Definition:</b> config.h:46</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_aa36c3f20452048fe073ca9d0af2cf256"><div class="ttname"><a href="struct_configuration_settings.html#aa36c3f20452048fe073ca9d0af2cf256">ConfigurationSettings::rtcPlugged</a></div><div class="ttdeci">bool rtcPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcRealTimeClock plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:43</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_aa8a00637e787f256147cda852ab15383"><div class="ttname"><a href="struct_configuration_settings.html#aa8a00637e787f256147cda852ab15383">ConfigurationSettings::eepromPlugged</a></div><div class="ttdeci">bool eepromPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcEeprom plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:45</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_ac50215eac2037017fa7b5054c2633d20"><div class="ttname"><a href="struct_configuration_settings.html#ac50215eac2037017fa7b5054c2633d20">ConfigurationSettings::pixelScale</a></div><div class="ttdeci">unsigned int pixelScale</div><div class="ttdoc">Sets the size of a pixel in the HbcMonitor.</div><div class="ttdef"><b>Definition:</b> config.h:47</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_ac6dca7a91936921159d95922337c417d"><div class="ttname"><a href="struct_configuration_settings.html#ac6dca7a91936921159d95922337c417d">ConfigurationSettings::openBinaryViewerOnAssembly</a></div><div class="ttdeci">bool openBinaryViewerOnAssembly</div><div class="ttdoc">Sets if the binary viewer is automatically opened after assembling a project.</div><div class="ttdef"><b>Definition:</b> config.h:54</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_ace82651848c99820e453646ec6cd374e"><div class="ttname"><a href="struct_configuration_settings.html#ace82651848c99820e453646ec6cd374e">ConfigurationSettings::openBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">bool openBinaryViewerOnEmulatorPaused</div><div class="ttdoc">Sets if the binary viewer is automatically opened after the emulator was paused.</div><div class="ttdef"><b>Definition:</b> config.h:55</div></div>
-<div class="ttc" id="astruct_configuration_settings_html_aec641fcb5b4a436417f29b7830d1ba0f"><div class="ttname"><a href="struct_configuration_settings.html#aec641fcb5b4a436417f29b7830d1ba0f">ConfigurationSettings::startEmulatorPaused</a></div><div class="ttdeci">bool startEmulatorPaused</div><div class="ttdoc">Sets if the emulator starts paused.</div><div class="ttdef"><b>Definition:</b> config.h:41</div></div>
+<div class="line"><a name="l00441"></a><span class="lineno">  441</span>&#160;        <span class="keywordtype">void</span> updateWidgets();</div>
+<div class="line"><a name="l00442"></a><span class="lineno">  442</span>&#160; </div>
+<div class="line"><a name="l00443"></a><span class="lineno">  443</span>&#160;        QListWidget *m_menuList;</div>
+<div class="line"><a name="l00444"></a><span class="lineno">  444</span>&#160;        QStackedWidget *m_menuWidgets;</div>
+<div class="line"><a name="l00445"></a><span class="lineno">  445</span>&#160;        std::vector&lt;QWidget*&gt; m_menuWidgetsList;</div>
+<div class="line"><a name="l00446"></a><span class="lineno">  446</span>&#160; </div>
+<div class="line"><a name="l00447"></a><span class="lineno">  447</span>&#160;        <span class="comment">// Editor page widgets</span></div>
+<div class="line"><a name="l00448"></a><span class="lineno">  448</span>&#160;        <span class="comment">// General tab</span></div>
+<div class="line"><a name="l00449"></a><span class="lineno">  449</span>&#160;        QPushButton *m_browseProjectsPath;</div>
+<div class="line"><a name="l00450"></a><span class="lineno">  450</span>&#160;        QLineEdit *m_defaultProjectsPathLineEdit;</div>
+<div class="line"><a name="l00451"></a><span class="lineno">  451</span>&#160;        QSpinBox *m_tabSizeSpinBox;</div>
+<div class="line"><a name="l00452"></a><span class="lineno">  452</span>&#160;        QVBoxLayout *m_editorSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00453"></a><span class="lineno">  453</span>&#160;        QWidget *m_editorSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00454"></a><span class="lineno">  454</span>&#160;        <span class="comment">// Keyboard tab</span></div>
+<div class="line"><a name="l00455"></a><span class="lineno">  455</span>&#160;        QTableWidget *m_keyboardShortcutsTableWidget;</div>
+<div class="line"><a name="l00456"></a><span class="lineno">  456</span>&#160;        <a class="code" href="class_custom_key_sequence_edit.html">CustomKeySequenceEdit</a> *m_keySequenceEdit;</div>
+<div class="line"><a name="l00457"></a><span class="lineno">  457</span>&#160;        QPushButton *m_keyboardShortcutsSaveButton;</div>
+<div class="line"><a name="l00458"></a><span class="lineno">  458</span>&#160;        QPushButton *m_keyboardShortcutsResetButton;</div>
+<div class="line"><a name="l00459"></a><span class="lineno">  459</span>&#160;        QVBoxLayout *m_editorSettingsKeyboardTabLayout;</div>
+<div class="line"><a name="l00460"></a><span class="lineno">  460</span>&#160;        QWidget *m_editorSettingsKeyboardTabWidget;</div>
+<div class="line"><a name="l00461"></a><span class="lineno">  461</span>&#160; </div>
+<div class="line"><a name="l00462"></a><span class="lineno">  462</span>&#160;        QTabWidget *m_editorSettingsTabWidget;</div>
+<div class="line"><a name="l00463"></a><span class="lineno">  463</span>&#160;        QVBoxLayout *m_editorSettingsPageLayout;</div>
+<div class="line"><a name="l00464"></a><span class="lineno">  464</span>&#160;        QWidget *m_editorSettingsPageWidget;</div>
+<div class="line"><a name="l00465"></a><span class="lineno">  465</span>&#160;        QListWidgetItem *m_editorSettingsItem;</div>
+<div class="line"><a name="l00466"></a><span class="lineno">  466</span>&#160; </div>
+<div class="line"><a name="l00467"></a><span class="lineno">  467</span>&#160;        <span class="comment">// Assembler page widgets</span></div>
+<div class="line"><a name="l00468"></a><span class="lineno">  468</span>&#160;        QCheckBox *m_ramAsDefaultMemoryTargetCheckBox;</div>
+<div class="line"><a name="l00469"></a><span class="lineno">  469</span>&#160;        QVBoxLayout *m_assemblerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00470"></a><span class="lineno">  470</span>&#160;        QWidget *m_assemblerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00471"></a><span class="lineno">  471</span>&#160; </div>
+<div class="line"><a name="l00472"></a><span class="lineno">  472</span>&#160;        QTabWidget *m_assemblerSettingsTabWidget;</div>
+<div class="line"><a name="l00473"></a><span class="lineno">  473</span>&#160;        QVBoxLayout *m_assemblerSettingsPageLayout;</div>
+<div class="line"><a name="l00474"></a><span class="lineno">  474</span>&#160;        QWidget *m_assemblerSettingsPageWidget;</div>
+<div class="line"><a name="l00475"></a><span class="lineno">  475</span>&#160;        QListWidgetItem *m_assemblerSettingsItem;</div>
+<div class="line"><a name="l00476"></a><span class="lineno">  476</span>&#160; </div>
+<div class="line"><a name="l00477"></a><span class="lineno">  477</span>&#160;        <span class="comment">// Emulator page widgets</span></div>
+<div class="line"><a name="l00478"></a><span class="lineno">  478</span>&#160;        <span class="comment">// General tab</span></div>
+<div class="line"><a name="l00479"></a><span class="lineno">  479</span>&#160;        QCheckBox *m_startPausedCheckBox;</div>
+<div class="line"><a name="l00480"></a><span class="lineno">  480</span>&#160;        QCheckBox *m_dismissReassemblyWarningsCheckBox;</div>
+<div class="line"><a name="l00481"></a><span class="lineno">  481</span>&#160;        QVBoxLayout *m_emulatorSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00482"></a><span class="lineno">  482</span>&#160;        QWidget *m_emulatorSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00483"></a><span class="lineno">  483</span>&#160;        <span class="comment">// Monitor tab</span></div>
+<div class="line"><a name="l00484"></a><span class="lineno">  484</span>&#160;        QCheckBox *m_plugMonitorCheckBox;</div>
+<div class="line"><a name="l00485"></a><span class="lineno">  485</span>&#160;        QSpinBox *m_pixelScaleSpinBox;</div>
+<div class="line"><a name="l00486"></a><span class="lineno">  486</span>&#160;        QVBoxLayout *m_emulatorSettingsMonitorTabLayout;</div>
+<div class="line"><a name="l00487"></a><span class="lineno">  487</span>&#160;        QWidget *m_emulatorSettingsMonitorTabWidget;</div>
+<div class="line"><a name="l00488"></a><span class="lineno">  488</span>&#160;        <span class="comment">// RTC tab</span></div>
+<div class="line"><a name="l00489"></a><span class="lineno">  489</span>&#160;        QCheckBox *m_plugRTCCheckBox;</div>
+<div class="line"><a name="l00490"></a><span class="lineno">  490</span>&#160;        QVBoxLayout *m_emulatorSettingsRtcTabLayout;</div>
+<div class="line"><a name="l00491"></a><span class="lineno">  491</span>&#160;        QWidget *m_emulatorSettingsRtcTabWidget;</div>
+<div class="line"><a name="l00492"></a><span class="lineno">  492</span>&#160;        <span class="comment">// Keyboard tab</span></div>
+<div class="line"><a name="l00493"></a><span class="lineno">  493</span>&#160;        QCheckBox *m_plugKeyboardCheckBox;</div>
+<div class="line"><a name="l00494"></a><span class="lineno">  494</span>&#160;        QVBoxLayout *m_emulatorSettingsKeyboardTabLayout;</div>
+<div class="line"><a name="l00495"></a><span class="lineno">  495</span>&#160;        QWidget *m_emulatorSettingsKeyboardTabWidget;</div>
+<div class="line"><a name="l00496"></a><span class="lineno">  496</span>&#160;        <span class="comment">// EEPROM tab</span></div>
+<div class="line"><a name="l00497"></a><span class="lineno">  497</span>&#160;        QCheckBox *m_plugEepromCheckBox;</div>
+<div class="line"><a name="l00498"></a><span class="lineno">  498</span>&#160;        QVBoxLayout *m_emulatorSettingsEepromTabLayout;</div>
+<div class="line"><a name="l00499"></a><span class="lineno">  499</span>&#160;        QWidget *m_emulatorSettingsEepromTabWidget;</div>
+<div class="line"><a name="l00500"></a><span class="lineno">  500</span>&#160; </div>
+<div class="line"><a name="l00501"></a><span class="lineno">  501</span>&#160;        QTabWidget *m_emulatorSettingsTabWidget;</div>
+<div class="line"><a name="l00502"></a><span class="lineno">  502</span>&#160;        QVBoxLayout *m_emulatorSettingsPageLayout;</div>
+<div class="line"><a name="l00503"></a><span class="lineno">  503</span>&#160;        QWidget *m_emulatorSettingsPageWidget;</div>
+<div class="line"><a name="l00504"></a><span class="lineno">  504</span>&#160;        QListWidgetItem *m_emulatorSettingsItem;</div>
+<div class="line"><a name="l00505"></a><span class="lineno">  505</span>&#160; </div>
+<div class="line"><a name="l00506"></a><span class="lineno">  506</span>&#160;        <span class="comment">// Cpu state viewer page widgets</span></div>
+<div class="line"><a name="l00507"></a><span class="lineno">  507</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorPausedCheckBox;</div>
+<div class="line"><a name="l00508"></a><span class="lineno">  508</span>&#160;        QCheckBox *m_openCpuStateViewerOnEmulatorStoppedCheckBox;</div>
+<div class="line"><a name="l00509"></a><span class="lineno">  509</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00510"></a><span class="lineno">  510</span>&#160;        QWidget *m_cpuStateViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00511"></a><span class="lineno">  511</span>&#160; </div>
+<div class="line"><a name="l00512"></a><span class="lineno">  512</span>&#160;        QTabWidget *m_cpuStateViewerSettingsTabWidget;</div>
+<div class="line"><a name="l00513"></a><span class="lineno">  513</span>&#160;        QVBoxLayout *m_cpuStateViewerSettingsPageLayout;</div>
+<div class="line"><a name="l00514"></a><span class="lineno">  514</span>&#160;        QWidget *m_cpuStateViewerSettingsPageWidget;</div>
+<div class="line"><a name="l00515"></a><span class="lineno">  515</span>&#160;        QListWidgetItem *m_cpuStateViewerSettingsItem;</div>
+<div class="line"><a name="l00516"></a><span class="lineno">  516</span>&#160; </div>
+<div class="line"><a name="l00517"></a><span class="lineno">  517</span>&#160;        <span class="comment">// Binary viewer tab widgets</span></div>
+<div class="line"><a name="l00518"></a><span class="lineno">  518</span>&#160;        QCheckBox *m_openBinaryViewerOnAssemblyCheckBox;</div>
+<div class="line"><a name="l00519"></a><span class="lineno">  519</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorPausedCheckBox;</div>
+<div class="line"><a name="l00520"></a><span class="lineno">  520</span>&#160;        QCheckBox *m_openBinaryViewerOnEmulatorStoppedCheckBox;</div>
+<div class="line"><a name="l00521"></a><span class="lineno">  521</span>&#160;        QVBoxLayout *m_binaryViewerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00522"></a><span class="lineno">  522</span>&#160;        QWidget *m_binaryViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00523"></a><span class="lineno">  523</span>&#160; </div>
+<div class="line"><a name="l00524"></a><span class="lineno">  524</span>&#160;        QTabWidget *m_binaryViewerSettingsTabWidget;</div>
+<div class="line"><a name="l00525"></a><span class="lineno">  525</span>&#160;        QVBoxLayout *m_binaryViewerSettingsPageLayout;</div>
+<div class="line"><a name="l00526"></a><span class="lineno">  526</span>&#160;        QWidget *m_binaryViewerSettingsPageWidget;</div>
+<div class="line"><a name="l00527"></a><span class="lineno">  527</span>&#160;        QListWidgetItem *m_binaryViewerSettingsItem;</div>
+<div class="line"><a name="l00528"></a><span class="lineno">  528</span>&#160; </div>
+<div class="line"><a name="l00529"></a><span class="lineno">  529</span>&#160;        <span class="comment">// Disassembly viewer tab widgets</span></div>
+<div class="line"><a name="l00530"></a><span class="lineno">  530</span>&#160;        QCheckBox *m_openDisassemblyViewerOnAssemblyCheckBox;</div>
+<div class="line"><a name="l00531"></a><span class="lineno">  531</span>&#160;        QCheckBox *m_openDisassemblyViewerOnEmulatorPausedCheckBox;</div>
+<div class="line"><a name="l00532"></a><span class="lineno">  532</span>&#160;        QCheckBox *m_openDisassemblyViewerOnEmulatorStoppedCheckBox;</div>
+<div class="line"><a name="l00533"></a><span class="lineno">  533</span>&#160;        QVBoxLayout *m_disassemblyViewerSettingsGeneralTabLayout;</div>
+<div class="line"><a name="l00534"></a><span class="lineno">  534</span>&#160;        QWidget *m_disassemblyViewerSettingsGeneralTabWidget;</div>
+<div class="line"><a name="l00535"></a><span class="lineno">  535</span>&#160; </div>
+<div class="line"><a name="l00536"></a><span class="lineno">  536</span>&#160;        QTabWidget *m_disassemblyViewerSettingsTabWidget;</div>
+<div class="line"><a name="l00537"></a><span class="lineno">  537</span>&#160;        QVBoxLayout *m_disassemblyViewerSettingsPageLayout;</div>
+<div class="line"><a name="l00538"></a><span class="lineno">  538</span>&#160;        QWidget *m_disassemblyViewerSettingsPageWidget;</div>
+<div class="line"><a name="l00539"></a><span class="lineno">  539</span>&#160;        QListWidgetItem *m_disassemblyViewerSettingsItem;</div>
+<div class="line"><a name="l00540"></a><span class="lineno">  540</span>&#160; </div>
+<div class="line"><a name="l00541"></a><span class="lineno">  541</span>&#160;        QPushButton *m_resetAllButton;</div>
+<div class="line"><a name="l00542"></a><span class="lineno">  542</span>&#160;        QPushButton *m_closeButton;</div>
+<div class="line"><a name="l00543"></a><span class="lineno">  543</span>&#160; </div>
+<div class="line"><a name="l00544"></a><span class="lineno">  544</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
+<div class="line"><a name="l00545"></a><span class="lineno">  545</span>&#160;};</div>
+<div class="line"><a name="l00546"></a><span class="lineno">  546</span>&#160; </div>
+<div class="line"><a name="l00547"></a><span class="lineno">  547</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CONFIG_H</span></div>
+<div class="ttc" id="aclass_config_manager_html"><div class="ttname"><a href="class_config_manager.html">ConfigManager</a></div><div class="ttdoc">Singleton of the configuration manager, that handles IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:131</div></div>
+<div class="ttc" id="aclass_config_manager_html_a02c5e604d03e24033ca248c9d46b1063"><div class="ttname"><a href="class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063">ConfigManager::setMonitorPlugged</a></div><div class="ttdeci">void setMonitorPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:116</div></div>
+<div class="ttc" id="aclass_config_manager_html_a22e60a2bf97388180407f7159cb5089a"><div class="ttname"><a href="class_config_manager.html#a22e60a2bf97388180407f7159cb5089a">ConfigManager::setOpenDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:189</div></div>
+<div class="ttc" id="aclass_config_manager_html_a245145c059a352e37d9be761ac593599"><div class="ttname"><a href="class_config_manager.html#a245145c059a352e37d9be761ac593599">ConfigManager::getInstance</a></div><div class="ttdeci">static ConfigManager * getInstance()</div><div class="ttdef"><b>Definition:</b> config.cpp:30</div></div>
+<div class="ttc" id="aclass_config_manager_html_a3fd1a2c06e89f1f9fa624a77fc273ddb"><div class="ttname"><a href="class_config_manager.html#a3fd1a2c06e89f1f9fa624a77fc273ddb">ConfigManager::getOpenCpuStateViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenCpuStateViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:254</div></div>
+<div class="ttc" id="aclass_config_manager_html_a43e3b36d177a04bd6993c0c5e3f1e9b4"><div class="ttname"><a href="class_config_manager.html#a43e3b36d177a04bd6993c0c5e3f1e9b4">ConfigManager::setStartEmulatorPaused</a></div><div class="ttdeci">void setStartEmulatorPaused(bool paused)</div><div class="ttdef"><b>Definition:</b> config.cpp:110</div></div>
+<div class="ttc" id="aclass_config_manager_html_a48d156eb467c8131ef8233e425c95a74"><div class="ttname"><a href="class_config_manager.html#a48d156eb467c8131ef8233e425c95a74">ConfigManager::getRTCPlugged</a></div><div class="ttdeci">bool getRTCPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:228</div></div>
+<div class="ttc" id="aclass_config_manager_html_a51a58f0239ddc7d3786dab4b3166a812"><div class="ttname"><a href="class_config_manager.html#a51a58f0239ddc7d3786dab4b3166a812">ConfigManager::getRamAsDefaultMemoryTarget</a></div><div class="ttdeci">bool getRamAsDefaultMemoryTarget()</div><div class="ttdef"><b>Definition:</b> config.cpp:212</div></div>
+<div class="ttc" id="aclass_config_manager_html_a52c669010102c371919ed910621dd896"><div class="ttname"><a href="class_config_manager.html#a52c669010102c371919ed910621dd896">ConfigManager::getOpenCpuStateViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenCpuStateViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:259</div></div>
+<div class="ttc" id="aclass_config_manager_html_a5ee0e66074ffdd0611f43cc44eb38bc1"><div class="ttname"><a href="class_config_manager.html#a5ee0e66074ffdd0611f43cc44eb38bc1">ConfigManager::getEepromPlugged</a></div><div class="ttdeci">bool getEepromPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:238</div></div>
+<div class="ttc" id="aclass_config_manager_html_a60d279556aa21c485de2b3d997dbe8c4"><div class="ttname"><a href="class_config_manager.html#a60d279556aa21c485de2b3d997dbe8c4">ConfigManager::setDismissReassemblyWarnings</a></div><div class="ttdeci">void setDismissReassemblyWarnings(bool dismiss)</div><div class="ttdef"><b>Definition:</b> config.cpp:140</div></div>
+<div class="ttc" id="aclass_config_manager_html_a6d12907065297d22ae3790d9b140f779"><div class="ttname"><a href="class_config_manager.html#a6d12907065297d22ae3790d9b140f779">ConfigManager::getPixelScale</a></div><div class="ttdeci">unsigned int getPixelScale()</div><div class="ttdef"><b>Definition:</b> config.cpp:248</div></div>
+<div class="ttc" id="aclass_config_manager_html_a6e4263e94a935a6773028796ba571d71"><div class="ttname"><a href="class_config_manager.html#a6e4263e94a935a6773028796ba571d71">ConfigManager::setTabSize</a></div><div class="ttdeci">void setTabSize(unsigned int nbOfSpaces)</div><div class="ttdoc">Sets the number of spaces representing a tab.</div><div class="ttdef"><b>Definition:</b> config.cpp:87</div></div>
+<div class="ttc" id="aclass_config_manager_html_a6e800a270273dc2853b117dd413aca8d"><div class="ttname"><a href="class_config_manager.html#a6e800a270273dc2853b117dd413aca8d">ConfigManager::setRamAsDefaultMemoryTarget</a></div><div class="ttdeci">void setRamAsDefaultMemoryTarget(bool ramAsDefault)</div><div class="ttdoc">Sets if the code will be assembled in the RAM.</div><div class="ttdef"><b>Definition:</b> config.cpp:104</div></div>
+<div class="ttc" id="aclass_config_manager_html_a714058b114e0e5452e0f177ae125e59e"><div class="ttname"><a href="class_config_manager.html#a714058b114e0e5452e0f177ae125e59e">ConfigManager::getOpenBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenBinaryViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:270</div></div>
+<div class="ttc" id="aclass_config_manager_html_a7164ebbaeddbf69b321529382b7e46f2"><div class="ttname"><a href="class_config_manager.html#a7164ebbaeddbf69b321529382b7e46f2">ConfigManager::setOpenCpuStateViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenCpuStateViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:152</div></div>
+<div class="ttc" id="aclass_config_manager_html_a7816f057a4d3ac179ab79e96b6b71d0c"><div class="ttname"><a href="class_config_manager.html#a7816f057a4d3ac179ab79e96b6b71d0c">ConfigManager::setOpenBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenBinaryViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:168</div></div>
+<div class="ttc" id="aclass_config_manager_html_a7843baf6d0a90cbb56790f3f119d1ea9"><div class="ttname"><a href="class_config_manager.html#a7843baf6d0a90cbb56790f3f119d1ea9">ConfigManager::getStartEmulatorPaused</a></div><div class="ttdeci">bool getStartEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:218</div></div>
+<div class="ttc" id="aclass_config_manager_html_a7a125b8c7e399ac37167d58cea1aa603"><div class="ttname"><a href="class_config_manager.html#a7a125b8c7e399ac37167d58cea1aa603">ConfigManager::setOpenBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenBinaryViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:173</div></div>
+<div class="ttc" id="aclass_config_manager_html_a85159a542df9aec416d211a29c294ee6"><div class="ttname"><a href="class_config_manager.html#a85159a542df9aec416d211a29c294ee6">ConfigManager::setPixelScale</a></div><div class="ttdeci">void setPixelScale(unsigned int scale)</div><div class="ttdoc">Sets the scale of a pixel in HbcMonitor.</div><div class="ttdef"><b>Definition:</b> config.cpp:146</div></div>
+<div class="ttc" id="aclass_config_manager_html_a8b10668f05ace9e1a9d2c29680263f9e"><div class="ttname"><a href="class_config_manager.html#a8b10668f05ace9e1a9d2c29680263f9e">ConfigManager::setOpenDisassemblyViewerOnAssembly</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnAssembly(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:179</div></div>
+<div class="ttc" id="aclass_config_manager_html_a9ff4905deca73370138c408401393f74"><div class="ttname"><a href="class_config_manager.html#a9ff4905deca73370138c408401393f74">ConfigManager::setDefaultProjectsPath</a></div><div class="ttdeci">bool setDefaultProjectsPath(QString defaultPath)</div><div class="ttdef"><b>Definition:</b> config.cpp:92</div></div>
+<div class="ttc" id="aclass_config_manager_html_aa27ca03b55614405a7aec8d44807027c"><div class="ttname"><a href="class_config_manager.html#aa27ca03b55614405a7aec8d44807027c">ConfigManager::getOpenDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnEmulatorPaused()</div><div class="ttdef"><b>Definition:</b> config.cpp:286</div></div>
+<div class="ttc" id="aclass_config_manager_html_aa2ebea530cf3b6f4f984b08d25c4dc82"><div class="ttname"><a href="class_config_manager.html#aa2ebea530cf3b6f4f984b08d25c4dc82">ConfigManager::setOpenCpuStateViewerOnEmulatorStopped</a></div><div class="ttdeci">void setOpenCpuStateViewerOnEmulatorStopped(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:157</div></div>
+<div class="ttc" id="aclass_config_manager_html_aa37035b89e9f7f5ccc29bfd5372f901c"><div class="ttname"><a href="class_config_manager.html#aa37035b89e9f7f5ccc29bfd5372f901c">ConfigManager::getOpenDisassemblyViewerOnAssembly</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnAssembly()</div><div class="ttdef"><b>Definition:</b> config.cpp:281</div></div>
+<div class="ttc" id="aclass_config_manager_html_aa75c94feb82e7a580cd79dd527154cf1"><div class="ttname"><a href="class_config_manager.html#aa75c94feb82e7a580cd79dd527154cf1">ConfigManager::getDismissReassemblyWarnings</a></div><div class="ttdeci">bool getDismissReassemblyWarnings()</div><div class="ttdef"><b>Definition:</b> config.cpp:243</div></div>
+<div class="ttc" id="aclass_config_manager_html_aaf6b6ba0b094be811c74fcc7d9d14746"><div class="ttname"><a href="class_config_manager.html#aaf6b6ba0b094be811c74fcc7d9d14746">ConfigManager::getKeyboardPlugged</a></div><div class="ttdeci">bool getKeyboardPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:233</div></div>
+<div class="ttc" id="aclass_config_manager_html_ac427248f036f53580a7cb967a203131c"><div class="ttname"><a href="class_config_manager.html#ac427248f036f53580a7cb967a203131c">ConfigManager::getOpenBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenBinaryViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:275</div></div>
+<div class="ttc" id="aclass_config_manager_html_ac52c3ec161c7fb9705e1372990163ae3"><div class="ttname"><a href="class_config_manager.html#ac52c3ec161c7fb9705e1372990163ae3">ConfigManager::setOpenDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">void setOpenDisassemblyViewerOnEmulatorPaused(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:184</div></div>
+<div class="ttc" id="aclass_config_manager_html_ac6e1b9fb869cde824733bdec31cf8ab5"><div class="ttname"><a href="class_config_manager.html#ac6e1b9fb869cde824733bdec31cf8ab5">ConfigManager::getMonitorPlugged</a></div><div class="ttdeci">bool getMonitorPlugged()</div><div class="ttdef"><b>Definition:</b> config.cpp:223</div></div>
+<div class="ttc" id="aclass_config_manager_html_acf581be6a718ed9bc92a529712bf940a"><div class="ttname"><a href="class_config_manager.html#acf581be6a718ed9bc92a529712bf940a">ConfigManager::getRecentProjects</a></div><div class="ttdeci">QList&lt; QString &gt; getRecentProjects()</div><div class="ttdef"><b>Definition:</b> config.cpp:46</div></div>
+<div class="ttc" id="aclass_config_manager_html_acfac44e471da1502a527b52a80b00afa"><div class="ttname"><a href="class_config_manager.html#acfac44e471da1502a527b52a80b00afa">ConfigManager::getOpenBinaryViewerOnAssembly</a></div><div class="ttdeci">bool getOpenBinaryViewerOnAssembly()</div><div class="ttdef"><b>Definition:</b> config.cpp:265</div></div>
+<div class="ttc" id="aclass_config_manager_html_ad58e8addf58dfd4ea4d2a93034a8c72e"><div class="ttname"><a href="class_config_manager.html#ad58e8addf58dfd4ea4d2a93034a8c72e">ConfigManager::clearRecentProjects</a></div><div class="ttdeci">void clearRecentProjects()</div><div class="ttdoc">Clears the list of recent projects.</div><div class="ttdef"><b>Definition:</b> config.cpp:60</div></div>
+<div class="ttc" id="aclass_config_manager_html_ad7eaf4446ebced0017f9cfc8dcd0de10"><div class="ttname"><a href="class_config_manager.html#ad7eaf4446ebced0017f9cfc8dcd0de10">ConfigManager::setEepromPlugged</a></div><div class="ttdeci">void setEepromPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:134</div></div>
+<div class="ttc" id="aclass_config_manager_html_ad94e829745c46994456b69284dd77f68"><div class="ttname"><a href="class_config_manager.html#ad94e829745c46994456b69284dd77f68">ConfigManager::setKeyboardPlugged</a></div><div class="ttdeci">void setKeyboardPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:128</div></div>
+<div class="ttc" id="aclass_config_manager_html_aec67e26a24e350ba22d3fb4b9f9a08f6"><div class="ttname"><a href="class_config_manager.html#aec67e26a24e350ba22d3fb4b9f9a08f6">ConfigManager::addRecentProject</a></div><div class="ttdeci">bool addRecentProject(QString path)</div><div class="ttdoc">Returns false if path is empty.</div><div class="ttdef"><b>Definition:</b> config.cpp:51</div></div>
+<div class="ttc" id="aclass_config_manager_html_af166aa29e525a553c60169659c7248b0"><div class="ttname"><a href="class_config_manager.html#af166aa29e525a553c60169659c7248b0">ConfigManager::getOpenDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">bool getOpenDisassemblyViewerOnEmulatorStopped()</div><div class="ttdef"><b>Definition:</b> config.cpp:291</div></div>
+<div class="ttc" id="aclass_config_manager_html_af2dec72afac3cbb9e42a04fa2b79257d"><div class="ttname"><a href="class_config_manager.html#af2dec72afac3cbb9e42a04fa2b79257d">ConfigManager::setOpenBinaryViewerOnAssembly</a></div><div class="ttdeci">void setOpenBinaryViewerOnAssembly(bool enable)</div><div class="ttdef"><b>Definition:</b> config.cpp:163</div></div>
+<div class="ttc" id="aclass_config_manager_html_af73e188d2f15cfd808d10b47b7cb4640"><div class="ttname"><a href="class_config_manager.html#af73e188d2f15cfd808d10b47b7cb4640">ConfigManager::setRTCPlugged</a></div><div class="ttdeci">void setRTCPlugged(bool plugged)</div><div class="ttdef"><b>Definition:</b> config.cpp:122</div></div>
+<div class="ttc" id="aclass_config_manager_html_afc836d0981172aca47a15cd64d31c461"><div class="ttname"><a href="class_config_manager.html#afc836d0981172aca47a15cd64d31c461">ConfigManager::getTabSize</a></div><div class="ttdeci">unsigned int getTabSize()</div><div class="ttdef"><b>Definition:</b> config.cpp:196</div></div>
+<div class="ttc" id="aclass_custom_key_sequence_edit_html"><div class="ttname"><a href="class_custom_key_sequence_edit.html">CustomKeySequenceEdit</a></div><div class="ttdoc">A customized KeySequenceEdit widget that limits to one KeySequence only.</div><div class="ttdef"><b>Definition:</b> config.h:32</div></div>
+<div class="ttc" id="aclass_main_window_html"><div class="ttname"><a href="class_main_window.html">MainWindow</a></div><div class="ttdoc">Creates and manages the IDE main window.</div><div class="ttdef"><b>Definition:</b> mainWindow.h:55</div></div>
+<div class="ttc" id="aclass_settings_dialog_html"><div class="ttname"><a href="class_settings_dialog.html">SettingsDialog</a></div><div class="ttdoc">QDialog to modify IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:373</div></div>
+<div class="ttc" id="aclass_settings_dialog_html_a97de4d29a7234cfa94c5d128093ea043"><div class="ttname"><a href="class_settings_dialog.html#a97de4d29a7234cfa94c5d128093ea043">SettingsDialog::SettingsDialog</a></div><div class="ttdeci">SettingsDialog(ConfigManager *configManager, MainWindow *parent)</div><div class="ttdef"><b>Definition:</b> config.cpp:638</div></div>
+<div class="ttc" id="anamespace_configuration_html"><div class="ttname"><a href="namespace_configuration.html">Configuration</a></div><div class="ttdoc">Holds default configuration.</div><div class="ttdef"><b>Definition:</b> config.h:47</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html"><div class="ttname"><a href="struct_configuration_1_1_settings.html">Configuration::Settings</a></div><div class="ttdoc">Stores the IDE settings on runtime.</div><div class="ttdef"><b>Definition:</b> config.h:68</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a0d1fbdb4c8f453dd803b5f0c5908c661"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a0d1fbdb4c8f453dd803b5f0c5908c661">Configuration::Settings::openDisassemblyViewerOnEmulatorStopped</a></div><div class="ttdeci">bool openDisassemblyViewerOnEmulatorStopped</div><div class="ttdoc">Sets if the disassemblyviewer is automatically opened after the emulator was stopped.</div><div class="ttdef"><b>Definition:</b> config.h:118</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a0fae81e7465842dca78bd6e7691f80c5"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a0fae81e7465842dca78bd6e7691f80c5">Configuration::Settings::openBinaryViewerOnEmulatorStopped</a></div><div class="ttdeci">bool openBinaryViewerOnEmulatorStopped</div><div class="ttdoc">Sets if the binary viewer is automatically opened after the emulator was stopped.</div><div class="ttdef"><b>Definition:</b> config.h:113</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a1d426dbe46c53d4eab09718a25291eca"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a1d426dbe46c53d4eab09718a25291eca">Configuration::Settings::dismissReassemblyWarnings</a></div><div class="ttdeci">bool dismissReassemblyWarnings</div><div class="ttdoc">Sets if warnings are thrown when trying to run a project which was modified or not yet assembled.</div><div class="ttdef"><b>Definition:</b> config.h:103</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a2a8ff20c6a941a56c58f09c0875f431d"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a2a8ff20c6a941a56c58f09c0875f431d">Configuration::Settings::rtcPlugged</a></div><div class="ttdeci">bool rtcPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcRealTimeClock plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:100</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a2b703b96b852b7eeae3551e6b0bba820"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a2b703b96b852b7eeae3551e6b0bba820">Configuration::Settings::openDisassemblyViewerOnEmulatorPaused</a></div><div class="ttdeci">bool openDisassemblyViewerOnEmulatorPaused</div><div class="ttdoc">Sets if the disassemblyviewer is automatically opened after the emulator was paused.</div><div class="ttdef"><b>Definition:</b> config.h:117</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a2c10ab79530e2bc1dc38469cfcdc6d8d"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a2c10ab79530e2bc1dc38469cfcdc6d8d">Configuration::Settings::openBinaryViewerOnEmulatorPaused</a></div><div class="ttdeci">bool openBinaryViewerOnEmulatorPaused</div><div class="ttdoc">Sets if the binary viewer is automatically opened after the emulator was paused.</div><div class="ttdef"><b>Definition:</b> config.h:112</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a3955b8730f4632786733acf03d7443e8"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a3955b8730f4632786733acf03d7443e8">Configuration::Settings::openBinaryViewerOnAssembly</a></div><div class="ttdeci">bool openBinaryViewerOnAssembly</div><div class="ttdoc">Sets if the binary viewer is automatically opened after assembling a project.</div><div class="ttdef"><b>Definition:</b> config.h:111</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a397de445b2b23ff7a8d991dd1741b923"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a397de445b2b23ff7a8d991dd1741b923">Configuration::Settings::eepromPlugged</a></div><div class="ttdeci">bool eepromPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcEeprom plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:102</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a4211e44de2578ab6287ff417508fb4d0"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a4211e44de2578ab6287ff417508fb4d0">Configuration::Settings::keyboardPlugged</a></div><div class="ttdeci">bool keyboardPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcKeyboard plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:101</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a444b2bb316fb776c00af07be87820243"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a444b2bb316fb776c00af07be87820243">Configuration::Settings::monitorPlugged</a></div><div class="ttdeci">bool monitorPlugged</div><div class="ttdoc">Sets if the emulator starts with the HbcMonitor plugged in.</div><div class="ttdef"><b>Definition:</b> config.h:99</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a44bdbab95e911d94e3a2b179ce1e9be7"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a44bdbab95e911d94e3a2b179ce1e9be7">Configuration::Settings::defaultProjectsPath</a></div><div class="ttdeci">QString defaultProjectsPath</div><div class="ttdoc">Stores the default path for new projects.</div><div class="ttdef"><b>Definition:</b> config.h:71</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_a84424669d619f3b29990fcdfe2a16848"><div class="ttname"><a href="struct_configuration_1_1_settings.html#a84424669d619f3b29990fcdfe2a16848">Configuration::Settings::startEmulatorPaused</a></div><div class="ttdeci">bool startEmulatorPaused</div><div class="ttdoc">Sets if the emulator starts paused.</div><div class="ttdef"><b>Definition:</b> config.h:98</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_ab0a6cecf3951be5aad1dc4d404e5feb0"><div class="ttname"><a href="struct_configuration_1_1_settings.html#ab0a6cecf3951be5aad1dc4d404e5feb0">Configuration::Settings::tabSize</a></div><div class="ttdeci">unsigned int tabSize</div><div class="ttdoc">Number of spaces representing a tab.</div><div class="ttdef"><b>Definition:</b> config.h:70</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_ac0e911bb2ed70b69f571d6cce2125deb"><div class="ttname"><a href="struct_configuration_1_1_settings.html#ac0e911bb2ed70b69f571d6cce2125deb">Configuration::Settings::openDisassemblyViewerOnAssembly</a></div><div class="ttdeci">bool openDisassemblyViewerOnAssembly</div><div class="ttdoc">Sets if the disassembly viewer is automatically opened after assembling a project.</div><div class="ttdef"><b>Definition:</b> config.h:116</div></div>
+<div class="ttc" id="astruct_configuration_1_1_settings_html_add5eda371bc39109323cb0890af7564e"><div class="ttname"><a href="struct_configuration_1_1_settings.html#add5eda371bc39109323cb0890af7564e">Configuration::Settings::pixelScale</a></div><div class="ttdeci">unsigned int pixelScale</div><div class="ttdoc">Sets the size of a pixel in the HbcMonitor.</div><div class="ttdef"><b>Definition:</b> config.h:104</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

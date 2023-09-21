@@ -1,6 +1,6 @@
 #include "monitor.h"
 #include "iod.h"
-#include "mainwindow.h"
+#include "mainWindow.h"
 
 #include <QDebug>
 #include <QVBoxLayout>

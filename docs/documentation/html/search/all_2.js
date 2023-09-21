@@ -19,7 +19,7 @@ var searchData=
   ['concatreg_49',['ConcatReg',['../struct_token_1_1_concat_reg.html',1,'Token']]],
   ['config_2eh_50',['config.h',['../config_8h.html',1,'']]],
   ['configmanager_51',['ConfigManager',['../class_config_manager.html',1,'']]],
-  ['configurationsettings_52',['ConfigurationSettings',['../struct_configuration_settings.html',1,'']]],
+  ['configuration_52',['Configuration',['../namespace_configuration.html',1,'']]],
   ['console_53',['Console',['../class_console.html#a51a9f808630af055a1ae544cc0b71a79',1,'Console::Console()'],['../class_console.html',1,'Console']]],
   ['console_2eh_54',['console.h',['../console_8h.html',1,'']]],
   ['contains_55',['contains',['../class_project_item.html#a06cf671e7bb92b3fc47b7d2c84006f47',1,'ProjectItem::contains()'],['../class_project.html#a76b929b4430a4bd91342eb779e45d9f0',1,'Project::contains()']]],
@@ -34,7 +34,8 @@ var searchData=
   ['currentaddresschanged_64',['currentAddressChanged',['../class_q_hex_edit.html#a1cd8ece4fd9ea4aef38a9844184ae9bc',1,'QHexEdit']]],
   ['currentsizechanged_65',['currentSizeChanged',['../class_q_hex_edit.html#a4b3f87d1c50bc1570f191d93b7051359',1,'QHexEdit']]],
   ['cursorposition_66',['cursorPosition',['../class_q_hex_edit.html#aa50b3ebe0d22133891dce0c8237846c7',1,'QHexEdit::cursorPosition()'],['../class_q_hex_edit.html#a1d833c6a3957317f4daacc54e0c99919',1,'QHexEdit::cursorPosition(QPoint point)']]],
-  ['customfile_67',['CustomFile',['../class_custom_file.html',1,'CustomFile'],['../class_custom_file.html#ae88d33a44109a2cf40c1508d95f5990b',1,'CustomFile::CustomFile()'],['../class_custom_file.html#ad0e65cfa6f819e5cf28e3471b19c2f1a',1,'CustomFile::CustomFile(QString path, QString content)']]],
+  ['customfile_67',['CustomFile',['../class_custom_file.html#ae88d33a44109a2cf40c1508d95f5990b',1,'CustomFile::CustomFile()'],['../class_custom_file.html#ad0e65cfa6f819e5cf28e3471b19c2f1a',1,'CustomFile::CustomFile(QString path, QString content)'],['../class_custom_file.html',1,'CustomFile']]],
   ['customizedcodeeditor_68',['CustomizedCodeEditor',['../class_customized_code_editor.html',1,'']]],
-  ['customizededitor_2eh_69',['customizedEditor.h',['../customized_editor_8h.html',1,'']]]
+  ['customizededitor_2eh_69',['customizedEditor.h',['../customized_editor_8h.html',1,'']]],
+  ['customkeysequenceedit_70',['CustomKeySequenceEdit',['../class_custom_key_sequence_edit.html',1,'']]]
 ];

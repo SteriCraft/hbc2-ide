@@ -1,5 +1,5 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/monitor.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/monitor.h">
 <area shape="rect" id="node1" title="Monitor device derived from HbcPeripheral." alt="" coords="17,5,189,61"/>
 <area shape="rect" id="node2" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,109,189,165"/>
-<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,213,200,269"/>
+<area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,213,201,269"/>
 </map>

@@ -1,5 +1,5 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/motherboard.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/motherboard.h">
 <area shape="rect" id="node1" title="HBC&#45;2 Motherboard implementation." alt="" coords="5,5,201,61"/>
 <area shape="rect" id="node2" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="17,109,189,165"/>
-<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="6,213,201,269"/>
+<area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="5,213,201,269"/>
 </map>

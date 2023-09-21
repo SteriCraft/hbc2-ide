@@ -3,7 +3,7 @@
 <area shape="rect" id="node2" href="$motherboard_8h.html" title="HBC&#45;2 Motherboard implementation." alt="" coords="5,109,201,165"/>
 <area shape="rect" id="node5" href="$peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="269,109,447,165"/>
 <area shape="rect" id="node3" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="155,421,327,477"/>
-<area shape="rect" id="node4" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="143,525,338,581"/>
+<area shape="rect" id="node4" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="143,525,339,581"/>
 <area shape="rect" id="node6" href="$eeprom_8h_source.html" title=" " alt="" coords="119,213,291,269"/>
 <area shape="rect" id="node8" href="$keyboard_8h.html" title="Keyboard device derived from HbcPeripheral." alt="" coords="321,213,493,269"/>
 <area shape="rect" id="node10" href="$real_time_clock_8h.html" title="RTC device derived from HbcPeripheral." alt="" coords="524,317,731,373"/>

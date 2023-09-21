@@ -1,5 +1,5 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/projectManager.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/projectManager.h">
 <area shape="rect" id="node1" title="The class that stores and manages opened projects." alt="" coords="5,5,219,61"/>
 <area shape="rect" id="node2" href="$assembler_8h.html" title="The assembler that procudes binary for the HBC&#45;2 based on its custom assembly language." alt="" coords="23,109,201,165"/>
-<area shape="rect" id="node3" href="$mainwindow_8h.html" title="Creates and manages the IDE main window." alt="" coords="15,213,209,269"/>
+<area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="14,213,210,269"/>
 </map>

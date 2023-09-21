@@ -1,4 +1,4 @@
-#include "mainwindow.h"
+#include "mainWindow.h"
 
 HbcEmulator* HbcEmulator::m_singleton = nullptr;
 

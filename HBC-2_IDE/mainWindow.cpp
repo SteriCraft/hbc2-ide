@@ -1,5 +1,5 @@
-#include "mainwindow.h"
-#include "./ui_mainwindow.h"
+#include "mainWindow.h"
+#include "./ui_mainWindow.h"
 #include "binaryViewer.h"
 #include "cpuStateViewer.h"
 #include "disassembler.h"
@@ -78,18 +78,18 @@ void MainWindow::setupMenuBar()
     m_fileMenu = menuBar()->addMenu(tr("File"));
 
     m_newProjectAction = m_fileMenu->addAction(*m_newFileIcon, tr("New project"), this, &MainWindow::newProjectAction);
-    m_newProjectAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_N));
+    m_newProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_PROJECT]);
 
     m_newFileAction = m_fileMenu->addAction(*m_newFileIcon, tr("New file"), this, &MainWindow::newFileAction);
-    m_newFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_N));
+    m_newFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_FILE]);
 
     m_fileMenu->addSeparator();
 
     m_openProjectAction = m_fileMenu->addAction(*m_openFileIcon, tr("Open project"), this, &MainWindow::openProjectAction);
-    m_openProjectAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_O));
+    m_openProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_PROJECT]);
 
     m_openFileAction = m_fileMenu->addAction(*m_openFileIcon, tr("Open file"), this, &MainWindow::openFileAction);
-    m_openFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_O));
+    m_openFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_FILE]);
 
     m_recentProjectsMenu = m_fileMenu->addMenu(tr("Recent projects"));
     updateRecentProjectsMenu();
@@ -97,20 +97,21 @@ void MainWindow::setupMenuBar()
     m_fileMenu->addSeparator();
 
     m_saveFileAction = m_fileMenu->addAction(*m_saveFileIcon, tr("Save current file"), this, &MainWindow::saveCurrentFileAction);
-    m_saveFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_S));
+    m_saveFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_CURRENT_FILE]);
 
     m_saveAllAction = m_fileMenu->addAction(*m_saveAllFilesIcon, tr("Save all"), this, &MainWindow::saveAllAction);
-    m_saveAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_S));
+    m_saveAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_ALL]);
 
     m_fileMenu->addSeparator();
 
     m_closeProjectAction = m_fileMenu->addAction(tr("Close current project"), this, &MainWindow::closeCurrentProjectAction);
+    m_closeProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_PROJECT]);
 
     m_closeFileAction = m_fileMenu->addAction(tr("Close current file"), this, &MainWindow::closeCurrentFileAction);
-    m_closeFileAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_W));
+    m_closeFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_FILE]);
 
     m_closeAllAction = m_fileMenu->addAction(tr("Close all files"), this, &MainWindow::closeAllAction);
-    m_closeAllAction->setShortcut(QKeySequence(Qt::CTRL | Qt::SHIFT | Qt::Key_W));
+    m_closeAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_ALL_FILES]);
 
     m_fileMenu->addSeparator();
 
@@ -119,13 +120,13 @@ void MainWindow::setupMenuBar()
     m_fileMenu->addSeparator();
 
     m_quitAction = m_fileMenu->addAction(*m_quitIcon, tr("Quit"), this, &MainWindow::onClose);
-    m_quitAction->setShortcut(QKeySequence(Qt::CTRL | Qt::Key_Q));
+    m_quitAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::QUIT]);
 
     // - Assembler menu -
     m_assemblerMenu = menuBar()->addMenu(tr("Assembler"));
 
     m_assembleAction = m_assemblerMenu->addAction(*m_assembleIcon, tr("Assemble"), this, &MainWindow::assembleAction);
-    m_assembleAction->setShortcut(QKeySequence(Qt::Key_F5));
+    m_assembleAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::ASSEMBLE]);
 
     m_memoryTargetMenu = m_assemblerMenu->addMenu(tr("Memory target"));
 
@@ -140,27 +141,30 @@ void MainWindow::setupMenuBar()
     m_assemblerMenu->addSeparator();
 
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
-    m_showBinOutputAction->setShortcut(QKeySequence(Qt::Key_F6));
+    m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
 
     m_showDisassemblyAction = m_assemblerMenu->addAction(tr("Show disassembly"), this, &MainWindow::showDisassemblyAction);
-    m_showDisassemblyAction->setShortcut(QKeySequence(Qt::Key_F8));
+    m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
 
     // - Emulator menu -
     m_emulatorMenu = menuBar()->addMenu(tr("Emulator"));
 
     m_runEmulatorAction = m_emulatorMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
-    m_runEmulatorAction->setShortcut(QKeySequence(Qt::Key_F9));
+    m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
 
     m_stepEmulatorAction = m_emulatorMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
-    m_stepEmulatorAction->setShortcut(QKeySequence(Qt::Key_F10));
+    m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
 
     m_pauseEmulatorAction = m_emulatorMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
-    m_pauseEmulatorAction->setShortcut(QKeySequence(Qt::Key_F11));
+    m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
 
     m_stopEmulatorAction = m_emulatorMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
-    m_stopEmulatorAction->setShortcut(QKeySequence(Qt::Key_F12));
+    m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
 
     m_emulatorMenu->addSeparator();
+
+    m_openCpuStateViewerAction = m_emulatorMenu->addAction(tr("Show CPU state"), this, &MainWindow::openCpuStateViewer);
+    m_openCpuStateViewerAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE]);
 
     m_emulatorFrequencyMenu = m_emulatorMenu->addMenu(tr("CPU frequency"));
 
@@ -217,12 +221,6 @@ void MainWindow::setupMenuBar()
     m_startPausedToggle = m_emulatorMenu->addAction(tr("Start paused"), this, &MainWindow::startPausedAction);
     m_startPausedToggle->setCheckable(true);
     m_startPausedToggle->setChecked(m_configManager->getStartEmulatorPaused());
-
-    // - Tools menu -
-    m_toolsMenu = menuBar()->addMenu(tr("Tools"));
-
-    m_openCpuStateViewerAction = m_toolsMenu->addAction(tr("Show CPU state"), this, &MainWindow::openCpuStateViewer);
-    m_openCpuStateViewerAction->setShortcut(QKeySequence(Qt::Key_F7));
 
     menuBar()->addAction(tr("About"), this, &MainWindow::openAboutDialogAction);
 
@@ -404,6 +402,29 @@ void MainWindow::onTextChanged()
 void MainWindow::onTextCursorMoved()
 {
     updateStatusBar();
+}
+
+void MainWindow::onSettingsChanged()
+{
+    // Reload shortcuts
+    m_newProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_PROJECT]);
+    m_newFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_FILE]);
+    m_openProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_PROJECT]);
+    m_openFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_FILE]);
+    m_saveFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_CURRENT_FILE]);
+    m_saveAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_ALL]);
+    m_closeProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_PROJECT]);
+    m_closeFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_FILE]);
+    m_closeAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_ALL_FILES]);
+    m_quitAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::QUIT]);
+    m_assembleAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::ASSEMBLE]);
+    m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
+    m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
+    m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
+    m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
+    m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
+    m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
+    m_openCpuStateViewerAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE]);
 }
 
 void MainWindow::onTabClose(int tabIndex)
