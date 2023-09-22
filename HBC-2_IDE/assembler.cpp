@@ -49,6 +49,34 @@ bool Assembler::isAssembledForEeprom()
     return m_finalBinary.binaryData.size() == Eeprom::MEMORY_SIZE;
 }
 
+std::vector<Word> Assembler::getBreakpointsAddresses(std::vector<std::pair<QString, std::vector<int>>> filesBreakpoints)
+{
+    std::vector<Word> breakpoints;
+
+    QString fileWithBreakpointsPath;
+    int comparedLine;
+    for (unsigned int i(0); i < filesBreakpoints.size(); i++)
+    {
+        fileWithBreakpointsPath = filesBreakpoints[i].first;
+
+        for (unsigned int j(0); j < filesBreakpoints[i].second.size(); j++)
+        {
+            comparedLine = filesBreakpoints[i].second[j];
+
+            for (unsigned int t(Cpu::PROGRAM_START_ADDRESS); t < m_finalBinary.origin.size(); t += 4) // Only the first byte has an associated origin
+            {
+                if (m_finalBinary.origin[t].filePath == fileWithBreakpointsPath && m_finalBinary.origin[t].lineNb == comparedLine)
+                {
+                    breakpoints.push_back(t);
+                    break;
+                }
+            }
+        }
+    }
+
+    return breakpoints;
+}
+
 bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
 {
     m_consoleOutput->clear();

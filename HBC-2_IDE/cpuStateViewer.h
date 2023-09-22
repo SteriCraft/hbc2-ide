@@ -34,8 +34,6 @@ class CpuStateViewer : public QDialog // SINGLETON
     static CpuStatus m_savedState;
 
     public:
-        enum class Base { BINARY = 2, DECIMAL = 10, HEXADECIMAL = 16 };
-
         /*!
          * <i><b>SINGLETON:</b></i> Call this to instanciate the object (the constructor is private).
          *
@@ -48,27 +46,6 @@ class CpuStateViewer : public QDialog // SINGLETON
          * \param status New status information
          */
         static void update(const CpuStatus status);
-
-        /*!
-         * \brief Converts a byte to a QString
-         *
-         * Will add "0x" (and '0' if necessary) to be in "0x00" format
-         */
-        static QString byte2QString(Byte value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
-
-        /*!
-         * \brief Converts a word to a QString
-         *
-         * Will add "0x" (and '0' if necessary) to be in "0x0000" format
-         */
-        static QString word2QString(Word value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
-
-        /*!
-         * \brief Converts a dword to a QString
-         *
-         * Will add "0x" (and '0' if necessary) to be in "0x00000000" format
-         */
-        static QString dWord2QString(Dword value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
 
         static void close();
 

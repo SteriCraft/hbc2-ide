@@ -3,15 +3,18 @@
 
 /*!
  * \file disassembler.h
- * \brief QDialog to display a dissambled view of current RAM content
+ * \brief QDialog to display a disassembled view of current RAM content
  * \author Gianni Leclercq
  * \version 0.1
  * \date 20/09/2023
  */
 #include "computerDetails.h"
-#include "customizedEditor.h"
 #include "console.h"
+#include "config.h"
+#include "syntaxHighlighter.h"
 #include <QDialog>
+#include <QPlainTextEdit>
+#include <QPainter>
 
 /*!
  * \brief Holds structures used by the disassembler
@@ -51,6 +54,79 @@ namespace Disassembler
         QString name = "";
     };
 }
+
+/*!
+ * \brief Customised TextEdit to display disassembled HBC-2 assembly
+ */
+class DisassembledCodeTextEdit : public QPlainTextEdit
+{
+    Q_OBJECT
+
+    public:
+        DisassembledCodeTextEdit(QFont font, ConfigManager *configManager, QWidget *parent = nullptr);
+        ~DisassembledCodeTextEdit();
+
+        /*!
+         * \brief Called when a paint event is triggered in the QDialog
+         */
+        void lineNumberAreaPaintEvent(QPaintEvent *event);
+        int lineNumberAreaWidth(); //!< Returns the width of the line area in pixels
+
+        /*!
+         * \brief Highlights a line
+         * \param lineNb Line number (starting at 0)
+         *
+         * Doesn't do anything if the line number is negative or superior than the file's number of line
+         */
+        void highlightLine(int lineNb);
+
+        int getCurrentCursorLineNumber();
+        int getCurrentCursorColumnNumber();
+
+    protected:
+        void resizeEvent(QResizeEvent *event);
+
+    private slots:
+        void updateLineNumberAreaWidth(int newBlockCount);
+        void updateLineNumberArea(const QRect &, int);
+
+    private:
+        SyntaxHighlighter *m_highlighter;
+        QWidget *m_lineNumberArea;
+        ConfigManager *m_configManager;
+};
+
+
+/*!
+ * \brief HBC-2 code editor area for line numbers
+ */
+class DisassemblerLineNumberArea : public QWidget
+{
+    public:
+        DisassemblerLineNumberArea(DisassembledCodeTextEdit *disassembledCodeWidget) : QWidget(disassembledCodeWidget)
+        {
+            m_disassembledCodeWidget = disassembledCodeWidget;
+        }
+
+        QSize sizeHint() const
+        {
+            return QSize(m_disassembledCodeWidget->lineNumberAreaWidth(), 0);
+        }
+
+    protected:
+        /*!
+         * \brief Triggers the QDialog dedicated paint event for line number area
+         */
+        void paintEvent(QPaintEvent *event)
+        {
+            m_disassembledCodeWidget->lineNumberAreaPaintEvent(event);
+        }
+
+    private:
+        DisassembledCodeTextEdit *m_disassembledCodeWidget;
+};
+
+
 /*!
  * \class DisassemblyViewer
  * \brief Singleton of the disassembly viewer
@@ -112,7 +188,7 @@ class DisassemblyViewer : public QDialog
 
         int m_startAddressLineNumber;
 
-        CustomizedCodeEditor *m_disassembledCode;
+        DisassembledCodeTextEdit *m_disassembledCodeWidget;
 };
 
 #endif // DISASSEMBLER_H

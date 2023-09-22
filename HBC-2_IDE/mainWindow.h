@@ -19,7 +19,7 @@
 #include <QProcess>
 #include <QProcessEnvironment>
 #include <QDirIterator>
-#include "customizedEditor.h"
+#include "codeEditor.h"
 #include "assembler.h"
 #include "emulator.h"
 #include "config.h"
@@ -109,7 +109,7 @@ class MainWindow : public QMainWindow
         void updateEmulatorActions(Emulator::State newState);
         int getEditorIndex(CustomFile *file);
         int getEditorIndex(QString fileName);
-        CustomizedCodeEditor* getCCE(QWidget *w);
+        CodeEditor* getCodeEditor(QWidget *w);
         QString getItemPath(ProjectItem *item);
         ProjectItem* getFileProjectItem(QString fullFilePath);
         int findTab(CustomFile *file); // Returns -1 if no CCE/tab shows that file

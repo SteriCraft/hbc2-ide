@@ -371,7 +371,7 @@ void MainWindow::onFileChanged(QString filePath)
                 editorIndex = getEditorIndex(fileName);
                 m_assemblyEditor->setCurrentIndex(editorIndex);
 
-                CustomizedCodeEditor* editor(getCCE(m_assemblyEditor->currentWidget()));
+                CodeEditor* editor(getCodeEditor(m_assemblyEditor->currentWidget()));
                 editor->setPlainText(m_fileManager->getFileContent(fileName));
                 editor->getFile()->setSaved(true);
 
@@ -389,7 +389,7 @@ void MainWindow::onFileChanged(QString filePath)
 
 void MainWindow::onTextChanged()
 {
-    CustomizedCodeEditor *editor = qobject_cast<CustomizedCodeEditor*>(sender());
+    CodeEditor *editor = qobject_cast<CodeEditor*>(sender());
     std::shared_ptr<Project> associatedProject(editor->getFile()->getAssociatedProject());
 
     editor->getFile()->setContent(editor->toPlainText());
@@ -434,7 +434,7 @@ void MainWindow::onSettingsChanged()
 void MainWindow::onTabClose(int tabIndex)
 {
     // Identify file
-    CustomFile *file(getCCE(m_assemblyEditor->widget(tabIndex))->getFile());
+    CustomFile *file(getCodeEditor(m_assemblyEditor->widget(tabIndex))->getFile());
 
     closeFileAction(file, tabIndex);
 }
@@ -696,6 +696,8 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
             openCpuStateViewer();
         }
 
+        BinaryViewer::highlightInstruction(programCounter);
+        DisassemblyViewer::highlightInstruction(programCounter);
         highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
     }
 }
@@ -721,10 +723,8 @@ void MainWindow::onEmulatorStepped()
 
     BinaryViewer::highlightInstruction(programCounter);
 
-    // Disassembly viewer
     DisassemblyViewer::highlightInstruction(programCounter);
 
-    // Cpu state viewer
     updateCpuStateViewer();
     openCpuStateViewer();
 
@@ -984,7 +984,7 @@ void MainWindow::newFileAction()
     int newTabNb;
 
     newFile = m_fileManager->newFile();
-    CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(newFile, newFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
+    CodeEditor *newEditor = new CodeEditor(newFile, newFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
     connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
     connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
@@ -1062,7 +1062,7 @@ bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
         {
             for (int i(0); i < m_assemblyEditor->count(); i++)
             {
-                if (getCCE(m_assemblyEditor->widget(i))->getFile() == openedFile)
+                if (getCodeEditor(m_assemblyEditor->widget(i))->getFile() == openedFile)
                 {
                     m_assemblyEditor->setCurrentIndex(i);
                     success = true;
@@ -1077,7 +1077,7 @@ bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
         }
         else
         {
-            CustomizedCodeEditor *newEditor = new CustomizedCodeEditor(openedFile, openedFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
+            CodeEditor *newEditor = new CodeEditor(openedFile, openedFile->getName(), defaultEditorFont, m_configManager, m_assemblyEditor);
             connect(newEditor, SIGNAL(textChanged()), this, SLOT(onTextChanged()));
             connect(newEditor, SIGNAL(cursorPositionChanged()), this, SLOT(onTextCursorMoved()));
 
@@ -1100,7 +1100,7 @@ bool MainWindow::openFile(QString filePath, std::shared_ptr<Project> associatedP
 
 void MainWindow::saveCurrentFileAction()
 {
-    saveFileAction(getCCE(m_assemblyEditor->currentWidget())->getFile());
+    saveFileAction(getCodeEditor(m_assemblyEditor->currentWidget())->getFile());
 }
 
 void MainWindow::saveFileAction(CustomFile *file)
@@ -1176,7 +1176,7 @@ void MainWindow::closeCurrentProjectAction()
 
 void MainWindow::closeCurrentFileAction()
 {
-    CustomFile *file(getCCE(m_assemblyEditor->currentWidget())->getFile());
+    CustomFile *file(getCodeEditor(m_assemblyEditor->currentWidget())->getFile());
 
     if (!file->isSaved())
     {
@@ -1247,7 +1247,7 @@ void MainWindow::closeAllAction()
 
     for (int i(0); i < m_assemblyEditor->count(); i++)
     {
-        file = getCCE(m_assemblyEditor->widget(i))->getFile();
+        file = getCodeEditor(m_assemblyEditor->widget(i))->getFile();
 
         if (!file->isSaved())
         {
@@ -1290,8 +1290,8 @@ void MainWindow::settingsAction()
 // === ASSEMBLY AND EMULATOR ACTIONS ===
 void MainWindow::assembleAction()
 {
-    // Assemble the project
-    QList<QString> impactedFilesNames = m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList();
+    // Save files if necessary
+    QList<QString> impactedFilesNames(m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList());
     CustomFile *impactedFile;
 
     for (int i(0); i < impactedFilesNames.count(); i++)
@@ -1305,6 +1305,7 @@ void MainWindow::assembleAction()
         }
     }
 
+    // Assemble the project
     if (m_assembler->assembleProject(m_projectManager->getCurrentProject(), m_eepromTargetToggle->isChecked()))
     {
         // Emulator
@@ -1331,7 +1332,6 @@ void MainWindow::assembleAction()
 
         if (m_configManager->getOpenBinaryViewerOnAssembly())
         {
-            qDebug() << "NOT NORMAL";
             showBinaryAction();
         }
 
@@ -1370,6 +1370,11 @@ void MainWindow::showBinaryAction()
         }
 
         viewer->show();
+
+        if (m_emulator->getState() == Emulator::State::PAUSED)
+        {
+            BinaryViewer::highlightInstruction(m_emulator->getCurrentProgramCounter());
+        }
     }
 
     // Needless to show the binary data if the emulator is not initialized
@@ -1387,10 +1392,16 @@ void MainWindow::showDisassemblyAction()
         viewer->update(ramData, m_consoleOutput);
         viewer->show();
     }
+
+    if (m_emulator->getState() == Emulator::State::PAUSED)
+    {
+        DisassemblyViewer::highlightInstruction(m_emulator->getCurrentProgramCounter());
+    }
 }
 
 void MainWindow::runEmulatorAction()
 {
+    // If project not yet assembled, do it
     if (!m_projectManager->getCurrentProject()->getAssembled())
     {
         if (!m_configManager->getDismissReassemblyWarnings())
@@ -1406,6 +1417,7 @@ void MainWindow::runEmulatorAction()
         assembleAction();
     }
 
+    // Second check to see if the assembly was successful
     if (!m_projectManager->getCurrentProject()->getAssembled())
     {
         if (!m_configManager->getDismissReassemblyWarnings())
@@ -1423,6 +1435,37 @@ void MainWindow::runEmulatorAction()
                 monitorDialog->show();
 
                 connect(monitorDialog, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
+            }
+        }
+
+        // Extract breakpoints from opened files
+        std::vector<Word> breakpointsAddresses;
+        QList<QString> impactedFilesNames(m_projectManager->getCurrentProject()->getTopItem()->getFilesNamesList());
+
+        std::vector<std::pair<QString, std::vector<int>>> filesWithBreakpoints; // Files listed with their paths
+
+        for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
+        {
+            CodeEditor *editor(getCodeEditor(m_assemblyEditor->widget(i)));
+
+            for (unsigned int j(0); j < impactedFilesNames.size(); j++)
+            {
+                if (editor->getFileName() == impactedFilesNames[j])
+                {
+                    filesWithBreakpoints.push_back(editor->getBreakpoints());
+                }
+            }
+        }
+
+        if (!m_eepromTargetToggle->isChecked())
+        {
+            m_emulator->setBreakpoints(m_assembler->getBreakpointsAddresses(filesWithBreakpoints));
+        }
+        else
+        {
+            if (filesWithBreakpoints.size() != 0)
+            {
+                QMessageBox::warning(this, tr("Breakpoints unusable with EEPROM"), tr("Breakpoints refer to RAM addresses.\nInstructions addresses in the EEPROM may end up anywhere in the RAM.\n\nBreakpoints will not be used for this run."));
             }
         }
 
@@ -1751,7 +1794,7 @@ void MainWindow::renameItemActionRC()
 
             for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
             {
-                CustomizedCodeEditor *tab(getCCE(m_assemblyEditor->widget(i)));
+                CodeEditor *tab(getCodeEditor(m_assemblyEditor->widget(i)));
 
                 if (tab->getFileName() == oldName)
                 {
@@ -1903,7 +1946,7 @@ void MainWindow::closeProject(std::shared_ptr<Project> p)
 
 void MainWindow::updateTabs()
 {
-    CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
+    CodeEditor *currentEditor = getCodeEditor(m_assemblyEditor->currentWidget());
 
     if (currentEditor != nullptr)
     {
@@ -1913,7 +1956,7 @@ void MainWindow::updateTabs()
 
         for (int i(0); i < m_assemblyEditor->count(); i++)
         {
-            file = getCCE(m_assemblyEditor->widget(i))->getFile();
+            file = getCodeEditor(m_assemblyEditor->widget(i))->getFile();
 
             m_assemblyEditor->setTabText(i, file->getName() + (file->isSaved() ? "" : "*"));
         }
@@ -1970,7 +2013,7 @@ void MainWindow::updateWinTabMenu()
 
 void MainWindow::updateStatusBar()
 {
-    CustomizedCodeEditor *currentEditor = getCCE(m_assemblyEditor->currentWidget());
+    CodeEditor *currentEditor = getCodeEditor(m_assemblyEditor->currentWidget());
 
     if (currentEditor != nullptr)
     {
@@ -2025,7 +2068,7 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
 
     for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
     {
-        dynamic_cast<CustomizedCodeEditor*>(m_assemblyEditor->widget(i))->setReadOnly(newState != Emulator::State::NOT_INITIALIZED && newState != Emulator::State::READY);
+        dynamic_cast<CodeEditor*>(m_assemblyEditor->widget(i))->setReadOnly(newState != Emulator::State::NOT_INITIALIZED && newState != Emulator::State::READY);
     }
 }
 
@@ -2033,7 +2076,7 @@ int MainWindow::getEditorIndex(CustomFile *file)
 {
     for (int i(0); i < m_assemblyEditor->count(); i++)
     {
-        if (getCCE(m_assemblyEditor->widget(i))->getFile() == file)
+        if (getCodeEditor(m_assemblyEditor->widget(i))->getFile() == file)
             return i;
     }
 
@@ -2044,16 +2087,16 @@ int MainWindow::getEditorIndex(QString fileName)
 {
     for (int i(0); i < m_assemblyEditor->count(); i++)
     {
-        if (getCCE(m_assemblyEditor->widget(i))->getFileName() == fileName)
+        if (getCodeEditor(m_assemblyEditor->widget(i))->getFileName() == fileName)
             return i;
     }
 
     return -1;
 }
 
-CustomizedCodeEditor* MainWindow::getCCE(QWidget *w)
+CodeEditor* MainWindow::getCodeEditor(QWidget *w)
 {
-    return qobject_cast<CustomizedCodeEditor*>(w);
+    return qobject_cast<CodeEditor*>(w);
 }
 
 QString MainWindow::getItemPath(ProjectItem* item)
@@ -2065,7 +2108,7 @@ int MainWindow::findTab(CustomFile *file)
 {
     for (int i(0); i < m_assemblyEditor->count(); i++)
     {
-        CustomizedCodeEditor *editor = getCCE(m_assemblyEditor->widget(i));
+        CodeEditor *editor = getCodeEditor(m_assemblyEditor->widget(i));
 
         if (editor->getFile() == file)
             return i;
@@ -2131,7 +2174,7 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
 
         for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
         {
-            CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
+            CodeEditor *editor(getCodeEditor(m_assemblyEditor->widget(i)));
 
             if (editor->getFile()->getPath() == symbol.filePath)
             {
@@ -2153,7 +2196,7 @@ void MainWindow::highlightDebugSymbol(Assembly::ByteDebugSymbol symbol, Word pro
         }
         m_assemblyEditor->blockSignals(false);
 
-        CustomizedCodeEditor *currentEditor(getCCE(m_assemblyEditor->currentWidget()));
+        CodeEditor *currentEditor(getCodeEditor(m_assemblyEditor->currentWidget()));
         if (currentEditor != nullptr)
         {
             currentEditor->highlightLine(symbol.lineNb - 1);
@@ -2174,7 +2217,7 @@ void MainWindow::removeCodeHighlightings()
 {
     for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
     {
-        CustomizedCodeEditor *editor(getCCE(m_assemblyEditor->widget(i)));
+        CodeEditor *editor(getCodeEditor(m_assemblyEditor->widget(i)));
 
         editor->highlightLine(-1);
     }

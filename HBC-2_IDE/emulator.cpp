@@ -319,6 +319,11 @@ void HbcEmulator::setFrequencyTarget(Emulator::FrequencyTarget target)
     m_status.mutex.unlock();
 }
 
+void HbcEmulator::setBreakpoints(std::vector<Word> breakpoints)
+{
+    m_computer.breakpoints = breakpoints;
+}
+
 // PRIVATE
 HbcEmulator::HbcEmulator(MainWindow *mainWin, Console *consoleOutput)
 {
@@ -348,6 +353,8 @@ void HbcEmulator::run()
     QElapsedTimer frequencyTimer, commandsTimer, frequencyTargetTimer;
 
     int ticks(0), targetTicks(0);
+
+    m_computer.breakpoints.push_back(0x318);
 
     commandsTimer.start();
     frequencyTargetTimer.start();
@@ -386,6 +393,24 @@ void HbcEmulator::run()
                 ticks = 0;
 
                 frequencyTimer.restart();
+            }
+
+            // --- BREAKPOINT CHECK ---
+            for (unsigned int i(0); i < m_computer.breakpoints.size(); i++)
+            {
+                if (m_computer.motherboard.m_cpu.m_programCounter == m_computer.breakpoints[i])
+                {
+                    m_status.mutex.lock();
+                    m_status.state = Emulator::State::PAUSED;
+                    currentState = m_status.state;
+                    storeCpuStatus();
+                    m_status.mutex.unlock();
+
+                    m_consoleOutput->log(tr("Breakpoint reached at address ") + word2QString(m_computer.breakpoints[i]));
+
+                    emit statusChanged(currentState);
+                    break;
+                }
             }
         }
 

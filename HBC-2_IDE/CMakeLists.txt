@@ -28,6 +28,7 @@ add_executable(HBC-2_IDE
   chunks.h
   commands.cpp
   commands.h
+  computerDetails.cpp
   computerDetails.h
   config.cpp
   config.h
@@ -37,8 +38,8 @@ add_executable(HBC-2_IDE
   cpu.h
   cpuStateViewer.cpp
   cpuStateViewer.h
-  customizedEditor.cpp
-  customizedEditor.h
+  codeEditor.cpp
+  codeEditor.h
   diassembler.cpp
   disassembler.h
   emulator.cpp
@@ -67,6 +68,8 @@ add_executable(HBC-2_IDE
   ram.h
   realTimeClock.cpp
   realTimeClock.h
+  syntaxHighlighter.cpp
+  syntaxHighlighter.h
   token.cpp
   token.h
   mainWindow.ui

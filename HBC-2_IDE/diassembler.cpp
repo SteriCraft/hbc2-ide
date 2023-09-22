@@ -1,7 +1,135 @@
 #include "disassembler.h"
-#include "computerDetails.h"
 #include <QGuiApplication>
 
+// ===== DisassembledCodeTextEdit =====
+DisassembledCodeTextEdit::DisassembledCodeTextEdit(QFont font, ConfigManager *configManager, QWidget *parent) : QPlainTextEdit(parent)
+{
+    m_lineNumberArea = new DisassemblerLineNumberArea(this);
+
+    connect(this, SIGNAL(blockCountChanged(int)), this, SLOT(updateLineNumberAreaWidth(int)));
+    connect(this, SIGNAL(updateRequest(QRect,int)), this, SLOT(updateLineNumberArea(QRect,int)));
+
+    setStyleSheet("QPlainTextEdit {background-color: rgb(14, 14, 14); color:white; }");
+
+    updateLineNumberAreaWidth(0);
+
+    setFont(font);
+
+    m_highlighter = new SyntaxHighlighter(document());
+
+    m_configManager = configManager;
+}
+
+DisassembledCodeTextEdit::~DisassembledCodeTextEdit()
+{
+    delete m_highlighter;
+}
+
+void DisassembledCodeTextEdit::lineNumberAreaPaintEvent(QPaintEvent *event)
+{
+    QPainter painter(m_lineNumberArea);
+    painter.fillRect(event->rect(), QColor(64, 66, 68));
+
+    QTextBlock block = firstVisibleBlock();
+    int blockNumber = block.blockNumber();
+    int top = (int) blockBoundingGeometry(block).translated(contentOffset()).top();
+    int bottom = top + (int) blockBoundingRect(block).height();
+
+    while (block.isValid() && top <= event->rect().bottom())
+    {
+        if (block.isVisible() && bottom >= event->rect().top())
+        {
+            QString number(QString::number(blockNumber + 1));
+
+            painter.setPen(QColor(190, 192, 194));
+            painter.drawText(0, top, m_lineNumberArea->width(), fontMetrics().height(),
+                             Qt::AlignRight, number);
+        }
+
+        block = block.next();
+        top = bottom;
+        bottom = top + (int) blockBoundingRect(block).height();
+        ++blockNumber;
+    }
+}
+
+int DisassembledCodeTextEdit::lineNumberAreaWidth()
+{
+    int digits = 1;
+    int max = qMax(1, blockCount());
+    while (max >= 10) {
+        max /= 10;
+        ++digits;
+    }
+
+    int space = 3 + fontMetrics().horizontalAdvance(QLatin1Char('9')) * digits;
+
+    return space;
+}
+
+void DisassembledCodeTextEdit::highlightLine(int lineNb)
+{
+    QList<QTextEdit::ExtraSelection> extraSelections;
+    QTextEdit::ExtraSelection selection;
+
+    if (lineNb < 0 | lineNb >= blockCount())
+    {
+        setExtraSelections(extraSelections);
+        return;
+    }
+
+    QColor lineColor = QColor(128, 128, 128, 128);
+
+    QTextCursor cursor(document()->findBlockByLineNumber(lineNb));
+    setTextCursor(cursor);
+
+    selection.format.setBackground(lineColor);
+    selection.format.setProperty(QTextFormat::FullWidthSelection, true);
+    selection.cursor = textCursor();
+    selection.cursor.clearSelection();
+    extraSelections.append(selection);
+
+    setExtraSelections(extraSelections);
+}
+
+int DisassembledCodeTextEdit::getCurrentCursorLineNumber()
+{
+    return textCursor().blockNumber() + 1;
+}
+
+int DisassembledCodeTextEdit::getCurrentCursorColumnNumber()
+{
+    return textCursor().columnNumber() + 1;
+}
+
+// PROTECTED
+void DisassembledCodeTextEdit::resizeEvent(QResizeEvent *e)
+{
+    QPlainTextEdit::resizeEvent(e);
+
+    QRect cr = contentsRect();
+    m_lineNumberArea->setGeometry(QRect(cr.left(), cr.top(), lineNumberAreaWidth(), cr.height()));
+}
+
+// PRIVATE SLOTS
+void DisassembledCodeTextEdit::updateLineNumberAreaWidth(int newBlockCount)
+{
+    setViewportMargins(lineNumberAreaWidth(), 0, 0, 0);
+}
+
+void DisassembledCodeTextEdit::updateLineNumberArea(const QRect &rect, int dy)
+{
+    if (dy)
+        m_lineNumberArea->scroll(0, dy);
+    else
+        m_lineNumberArea->update(0, rect.y(), m_lineNumberArea->width(), rect.height());
+
+    if (rect.contains(viewport()->rect()))
+        updateLineNumberAreaWidth(0);
+}
+
+
+// ===== DisassemblyViewer class =====
 DisassemblyViewer* DisassemblyViewer::m_singleton = nullptr;
 
 DisassemblyViewer* DisassemblyViewer::getInstance(QFont font, ConfigManager *configManager, QWidget *parent)
@@ -73,14 +201,14 @@ DisassemblyViewer::DisassemblyViewer(QFont font, ConfigManager *configManager, Q
     setWindowIcon(QIcon(":/icons/res/logo.png"));
 
     // Widgets
-    m_disassembledCode = new CustomizedCodeEditor(font, configManager, this);
-    m_disassembledCode->setReadOnly(true);
+    m_disassembledCodeWidget = new DisassembledCodeTextEdit(font, configManager, this);
+    m_disassembledCodeWidget->setReadOnly(true);
 
     QPushButton *closeButton = new QPushButton(tr("Close"), this);
 
     // Layout
     QVBoxLayout *mainLayout = new QVBoxLayout;
-    mainLayout->addWidget(m_disassembledCode);
+    mainLayout->addWidget(m_disassembledCodeWidget);
     mainLayout->addWidget(closeButton);
 
     setLayout(mainLayout);
@@ -128,7 +256,7 @@ void DisassemblyViewer::disassemble(const QByteArray ramData)
     m_labelsList.clear();
     m_labelsList.push_back(startLabel);
 
-    m_disassembledCode->clear();
+    m_disassembledCodeWidget->clear();
     m_startAddressLineNumber = 0;
 
     // Program memory
@@ -142,7 +270,7 @@ void DisassemblyViewer::disassemble(const QByteArray ramData)
         decodeInstruction();
         convertInstructionToQString();
 
-        lines.push_back("                " + QString("0x" + QString::number(i, 16) + "\t" + m_disassembledInstructionStr));
+        lines.push_back("                " + word2QString(i) + "\t" + m_disassembledInstructionStr);
     }
 
     // Labels
@@ -203,12 +331,12 @@ void DisassemblyViewer::disassemble(const QByteArray ramData)
     // Final dump
     for (unsigned int i(0); i < lines.size(); i++)
     {
-        m_disassembledCode->appendPlainText(lines[i]);
+        m_disassembledCodeWidget->appendPlainText(lines[i]);
     }
 
-    QTextCursor cursor = m_disassembledCode->textCursor();
+    QTextCursor cursor = m_disassembledCodeWidget->textCursor();
     cursor.movePosition(QTextCursor::Start);
-    m_disassembledCode->setTextCursor(cursor);
+    m_disassembledCodeWidget->setTextCursor(cursor);
 }
 
 void DisassemblyViewer::decodeInstruction()
@@ -348,8 +476,7 @@ void DisassemblyViewer::convertInstructionToQString()
             }
             else
             {
-                argsStr = "0x";
-                argsStr += QString::number(m_decodedInstruction.vX, 16);
+                argsStr = word2QString(m_decodedInstruction.vX);
             }
 
             valid = true;
@@ -533,8 +660,7 @@ void DisassemblyViewer::convertInstructionToQString()
     {
         if (m_decodedInstruction.addressingMode == Cpu::AddressingMode::IMM8)
         {
-            argsStr =  "0x";
-            argsStr += QString::number(m_decodedInstruction.v1, 16);
+            argsStr = word2QString(m_decodedInstruction.v1);
             valid = true;
         }
     }
@@ -574,5 +700,5 @@ int DisassemblyViewer::getVariableIndex(Disassembler::Variable newVariable)
 
 void DisassemblyViewer::highlightAddress(Word programCounter)
 {
-    m_disassembledCode->highlightLine(m_startAddressLineNumber + (programCounter - Cpu::PROGRAM_START_ADDRESS) / Cpu::INSTRUCTION_SIZE);
+    m_disassembledCodeWidget->highlightLine(m_startAddressLineNumber + (programCounter - Cpu::PROGRAM_START_ADDRESS) / Cpu::INSTRUCTION_SIZE);
 }

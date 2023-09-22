@@ -45,11 +45,11 @@ class CustomKeySequenceEdit : public QKeySequenceEdit
  */
 namespace Configuration
 {
-    static constexpr int SHORTCUTS_COUNT = 18;
+    static constexpr int SHORTCUTS_COUNT = 19;
 
     enum class Command { NEW_PROJECT = 0, NEW_FILE, OPEN_PROJECT, OPEN_FILE, SAVE_CURRENT_FILE, SAVE_ALL, CLOSE_CURRENT_PROJECT,
                          CLOSE_CURRENT_FILE, CLOSE_ALL_FILES, QUIT, ASSEMBLE, SHOW_BIN_OUTPUT, SHOW_DISASSEMBLY, SHOW_CPU_STATE,
-                         RUN_EMULATOR, STEP_EMULATOR, PAUSE_EMULATOR, STOP_EMULATOR };
+                         RUN_EMULATOR, STEP_EMULATOR, PAUSE_EMULATOR, STOP_EMULATOR, TOGGLE_BREAKPOINT };
 
     const QString commandStrArr[] = { "Create a new project", "Create a new file",
                                       "Open a project", "Open a file",
@@ -59,7 +59,8 @@ namespace Configuration
                                       "Assemble the current project", "Show the binary output (RAM / EEPROM)",
                                       "Show the disassembly viewer", "Show the CPU State Viewer",
                                       "Run the emulator", "Step the emulator",
-                                      "Pause the emulator", "Stop the emulator" };
+                                      "Pause the emulator", "Stop the emulator",
+                                      "Toggle breakpoint" };
 
     /*!
  * \brief Stores the IDE settings on runtime
@@ -88,7 +89,8 @@ namespace Configuration
             {Configuration::Command::RUN_EMULATOR,          QKeySequence(Qt::Key_F9)},
             {Configuration::Command::STEP_EMULATOR,         QKeySequence(Qt::Key_F10)},
             {Configuration::Command::PAUSE_EMULATOR,        QKeySequence(Qt::Key_F11)},
-            {Configuration::Command::STOP_EMULATOR,         QKeySequence(Qt::Key_F12)}
+            {Configuration::Command::STOP_EMULATOR,         QKeySequence(Qt::Key_F12)},
+            {Configuration::Command::TOGGLE_BREAKPOINT,     QKeySequence(Qt::Key_Pause)}
         };
 
         // Assembler settings

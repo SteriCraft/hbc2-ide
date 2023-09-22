@@ -1,3 +1,4 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$class_custom_file.html" title="Describes a custom representation of a file in memory." alt="" coords="5,5,100,32"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,5,89,32"/>
+<area shape="rect" id="node2" href="$class_console.html" title="A console widget to show events and provide information to the user." alt="" coords="137,5,212,32"/>
 </map>

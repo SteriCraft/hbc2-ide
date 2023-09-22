@@ -117,86 +117,89 @@ $(function() {
 <div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160; </div>
 <div class="line"><a name="l00063"></a><span class="lineno"><a class="line" href="struct_emulator_1_1_computer.html#af7bb273fdf6b8de274e95627f4e57467">   63</a></span>&#160;        QByteArray <a class="code" href="struct_emulator_1_1_computer.html#af7bb273fdf6b8de274e95627f4e57467">initialRamData</a>; </div>
 <div class="line"><a name="l00064"></a><span class="lineno"><a class="line" href="struct_emulator_1_1_computer.html#a1a512707edac84c56456c11f6d1095d2">   64</a></span>&#160;        <a class="code" href="struct_cpu_status.html">CpuStatus</a> <a class="code" href="struct_emulator_1_1_computer.html#a1a512707edac84c56456c11f6d1095d2">cpuState</a>; </div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;    };</div>
-<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;}</div>
-<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160; </div>
-<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;<span class="keyword">class </span><a class="code" href="class_main_window.html">MainWindow</a>;</div>
-<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160; </div>
-<div class="line"><a name="l00153"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html">  153</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_hbc_emulator.html">HbcEmulator</a> : <span class="keyword">public</span> QThread</div>
-<div class="line"><a name="l00154"></a><span class="lineno">  154</span>&#160;{</div>
-<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;    Q_OBJECT</div>
-<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160; </div>
-<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_hbc_emulator.html">HbcEmulator</a> *m_singleton;</div>
-<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160; </div>
-<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00166"></a><span class="lineno">  166</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_hbc_emulator.html">HbcEmulator</a>* <a class="code" href="class_hbc_emulator.html#ae49711f4e8d6cbf2d68a1306d4e2384c">getInstance</a>(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
-<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        ~<a class="code" href="class_hbc_emulator.html">HbcEmulator</a>();</div>
-<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160; </div>
-<div class="line"><a name="l00177"></a><span class="lineno">  177</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#af04bf6c15a47e35ed16f31ce3a442b4d">runCmd</a>();</div>
-<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160; </div>
-<div class="line"><a name="l00187"></a><span class="lineno">  187</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a6ce953e554ef3e966c20421daa7de8cb">stepCmd</a>();</div>
-<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160; </div>
-<div class="line"><a name="l00197"></a><span class="lineno">  197</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a582aa1267090e5f5f1f16010602c4d7f">pauseCmd</a>();</div>
-<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160; </div>
-<div class="line"><a name="l00207"></a><span class="lineno">  207</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a430a463c0a620202bb11c72cc68c3937">stopCmd</a>();</div>
-<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160; </div>
-<div class="line"><a name="l00215"></a><span class="lineno">  215</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">loadProject</a>(QString romBinaryFilePath, QString projectName);</div>
-<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160; </div>
-<div class="line"><a name="l00223"></a><span class="lineno">  223</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">loadProject</a>(QByteArray initialRamData, QString projectName);</div>
-<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160; </div>
-<div class="line"><a name="l00228"></a><span class="lineno">  228</span>&#160;        <span class="keyword">const</span> QByteArray <a class="code" href="class_hbc_emulator.html#a5da5491e9863b06be8b2f2aceb126299">getCurrentRamBinaryData</a>();</div>
-<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160; </div>
-<div class="line"><a name="l00233"></a><span class="lineno">  233</span>&#160;        <span class="keyword">const</span> QByteArray <a class="code" href="class_hbc_emulator.html#ae7d676e0065db2dc7e5085b6949bfc37">getCurrentEepromBinaryData</a>();</div>
-<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160; </div>
-<div class="line"><a name="l00238"></a><span class="lineno">  238</span>&#160;        <span class="keyword">const</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> <a class="code" href="class_hbc_emulator.html#a458fa0c8d1ab304aecec12307758fab5">getCurrentCpuStatus</a>();</div>
-<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160; </div>
-<div class="line"><a name="l00243"></a><span class="lineno">  243</span>&#160;        <span class="keyword">const</span> Word <a class="code" href="class_hbc_emulator.html#aa39abff5c3b253a920e7cef2853ea393">getCurrentProgramCounter</a>();</div>
-<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160; </div>
-<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160;        <span class="keywordtype">void</span> useMonitor(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        <span class="keywordtype">void</span> useRTC(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        <span class="keywordtype">void</span> useKeyboard(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        <span class="keywordtype">void</span> setStartPaused(<span class="keywordtype">bool</span> enable);</div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160; </div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;        Emulator::State <a class="code" href="class_hbc_emulator.html#a82d2f994ca36d1bb5eadb19c28049467">getState</a>();</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160; </div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;        Emulator::FrequencyTarget <a class="code" href="class_hbc_emulator.html#ab31889d0b7f5d02621e87b69665ad850">getFrequencyTarget</a>();</div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160; </div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a>* <a class="code" href="class_hbc_emulator.html#a21161e5c5dbb2818527bdef02b81823b">getHbcMonitor</a>();</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160; </div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a>* <a class="code" href="class_hbc_emulator.html#a07771ecc30ace6ff8dd416ae012f7df3">getHbcRealTimeClock</a>();</div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160; </div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a>* <a class="code" href="class_hbc_emulator.html#a276cf315f4f4acbae6f0c36d2fb327ff">getHbcKeyboard</a>();</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160; </div>
-<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3">setFrequencyTarget</a>(Emulator::FrequencyTarget target);</div>
-<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160; </div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;    signals:</div>
-<div class="line"><a name="l00286"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">  286</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">statusChanged</a>(Emulator::State newState);</div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160; </div>
-<div class="line"><a name="l00291"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">  291</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">stepped</a>();</div>
-<div class="line"><a name="l00292"></a><span class="lineno">  292</span>&#160; </div>
-<div class="line"><a name="l00298"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">  298</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">tickCountSent</a>(<span class="keywordtype">int</span> countIn100Ms);</div>
-<div class="line"><a name="l00299"></a><span class="lineno">  299</span>&#160; </div>
-<div class="line"><a name="l00300"></a><span class="lineno">  300</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00301"></a><span class="lineno">  301</span>&#160;        <a class="code" href="class_hbc_emulator.html">HbcEmulator</a>(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
-<div class="line"><a name="l00302"></a><span class="lineno">  302</span>&#160; </div>
-<div class="line"><a name="l00303"></a><span class="lineno">  303</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
-<div class="line"><a name="l00304"></a><span class="lineno">  304</span>&#160; </div>
-<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160;        <span class="keywordtype">void</span> initComputer();</div>
-<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;        <span class="keywordtype">void</span> tickComputer(<span class="keywordtype">bool</span> step = <span class="keyword">false</span>);</div>
-<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160; </div>
-<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160;        <span class="keywordtype">void</span> storeCpuStatus(<span class="keywordtype">bool</span> lastState = <span class="keyword">false</span>);</div>
-<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160; </div>
-<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160;        <a class="code" href="struct_emulator_1_1_status.html">Emulator::Status</a> m_status;</div>
-<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;        <a class="code" href="struct_emulator_1_1_computer.html">Emulator::Computer</a> m_computer;</div>
-<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160; </div>
-<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160;        <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
-<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;        <a class="code" href="class_main_window.html">MainWindow</a> *m_mainWindow;</div>
-<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160;};</div>
-<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160; </div>
-<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// EMULATOR_H</span></div>
+<div class="line"><a name="l00065"></a><span class="lineno"><a class="line" href="struct_emulator_1_1_computer.html#a26498c707c03dccded7335ab5c886629">   65</a></span>&#160;        std::vector&lt;Word&gt; <a class="code" href="struct_emulator_1_1_computer.html#a26498c707c03dccded7335ab5c886629">breakpoints</a>; </div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;    };</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;}</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160; </div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;<span class="keyword">class </span><a class="code" href="class_main_window.html">MainWindow</a>;</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160; </div>
+<div class="line"><a name="l00154"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html">  154</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_hbc_emulator.html">HbcEmulator</a> : <span class="keyword">public</span> QThread</div>
+<div class="line"><a name="l00155"></a><span class="lineno">  155</span>&#160;{</div>
+<div class="line"><a name="l00156"></a><span class="lineno">  156</span>&#160;    Q_OBJECT</div>
+<div class="line"><a name="l00157"></a><span class="lineno">  157</span>&#160; </div>
+<div class="line"><a name="l00158"></a><span class="lineno">  158</span>&#160;    <span class="keyword">static</span> <a class="code" href="class_hbc_emulator.html">HbcEmulator</a> *m_singleton;</div>
+<div class="line"><a name="l00159"></a><span class="lineno">  159</span>&#160; </div>
+<div class="line"><a name="l00160"></a><span class="lineno">  160</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00167"></a><span class="lineno">  167</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_hbc_emulator.html">HbcEmulator</a>* <a class="code" href="class_hbc_emulator.html#ae49711f4e8d6cbf2d68a1306d4e2384c">getInstance</a>(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
+<div class="line"><a name="l00168"></a><span class="lineno">  168</span>&#160;        ~<a class="code" href="class_hbc_emulator.html">HbcEmulator</a>();</div>
+<div class="line"><a name="l00169"></a><span class="lineno">  169</span>&#160; </div>
+<div class="line"><a name="l00178"></a><span class="lineno">  178</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#af04bf6c15a47e35ed16f31ce3a442b4d">runCmd</a>();</div>
+<div class="line"><a name="l00179"></a><span class="lineno">  179</span>&#160; </div>
+<div class="line"><a name="l00188"></a><span class="lineno">  188</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a6ce953e554ef3e966c20421daa7de8cb">stepCmd</a>();</div>
+<div class="line"><a name="l00189"></a><span class="lineno">  189</span>&#160; </div>
+<div class="line"><a name="l00198"></a><span class="lineno">  198</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a582aa1267090e5f5f1f16010602c4d7f">pauseCmd</a>();</div>
+<div class="line"><a name="l00199"></a><span class="lineno">  199</span>&#160; </div>
+<div class="line"><a name="l00208"></a><span class="lineno">  208</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a430a463c0a620202bb11c72cc68c3937">stopCmd</a>();</div>
+<div class="line"><a name="l00209"></a><span class="lineno">  209</span>&#160; </div>
+<div class="line"><a name="l00216"></a><span class="lineno">  216</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">loadProject</a>(QString romBinaryFilePath, QString projectName);</div>
+<div class="line"><a name="l00217"></a><span class="lineno">  217</span>&#160; </div>
+<div class="line"><a name="l00224"></a><span class="lineno">  224</span>&#160;        <span class="keywordtype">bool</span> <a class="code" href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">loadProject</a>(QByteArray initialRamData, QString projectName);</div>
+<div class="line"><a name="l00225"></a><span class="lineno">  225</span>&#160; </div>
+<div class="line"><a name="l00229"></a><span class="lineno">  229</span>&#160;        <span class="keyword">const</span> QByteArray <a class="code" href="class_hbc_emulator.html#a5da5491e9863b06be8b2f2aceb126299">getCurrentRamBinaryData</a>();</div>
+<div class="line"><a name="l00230"></a><span class="lineno">  230</span>&#160; </div>
+<div class="line"><a name="l00234"></a><span class="lineno">  234</span>&#160;        <span class="keyword">const</span> QByteArray <a class="code" href="class_hbc_emulator.html#ae7d676e0065db2dc7e5085b6949bfc37">getCurrentEepromBinaryData</a>();</div>
+<div class="line"><a name="l00235"></a><span class="lineno">  235</span>&#160; </div>
+<div class="line"><a name="l00239"></a><span class="lineno">  239</span>&#160;        <span class="keyword">const</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> <a class="code" href="class_hbc_emulator.html#a458fa0c8d1ab304aecec12307758fab5">getCurrentCpuStatus</a>();</div>
+<div class="line"><a name="l00240"></a><span class="lineno">  240</span>&#160; </div>
+<div class="line"><a name="l00244"></a><span class="lineno">  244</span>&#160;        <span class="keyword">const</span> Word <a class="code" href="class_hbc_emulator.html#aa39abff5c3b253a920e7cef2853ea393">getCurrentProgramCounter</a>();</div>
+<div class="line"><a name="l00245"></a><span class="lineno">  245</span>&#160; </div>
+<div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        <span class="keywordtype">void</span> useMonitor(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        <span class="keywordtype">void</span> useRTC(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        <span class="keywordtype">void</span> useKeyboard(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;        <span class="keywordtype">void</span> setStartPaused(<span class="keywordtype">bool</span> enable);</div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160; </div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        Emulator::State <a class="code" href="class_hbc_emulator.html#a82d2f994ca36d1bb5eadb19c28049467">getState</a>();</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160; </div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        Emulator::FrequencyTarget <a class="code" href="class_hbc_emulator.html#ab31889d0b7f5d02621e87b69665ad850">getFrequencyTarget</a>();</div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160; </div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        <a class="code" href="class_hbc_monitor.html">HbcMonitor</a>* <a class="code" href="class_hbc_emulator.html#a21161e5c5dbb2818527bdef02b81823b">getHbcMonitor</a>();</div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160; </div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;        <a class="code" href="class_real_time_clock_1_1_hbc_real_time_clock.html">RealTimeClock::HbcRealTimeClock</a>* <a class="code" href="class_hbc_emulator.html#a07771ecc30ace6ff8dd416ae012f7df3">getHbcRealTimeClock</a>();</div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160; </div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;        <a class="code" href="class_keyboard_1_1_hbc_keyboard.html">Keyboard::HbcKeyboard</a>* <a class="code" href="class_hbc_emulator.html#a276cf315f4f4acbae6f0c36d2fb327ff">getHbcKeyboard</a>();</div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3">setFrequencyTarget</a>(Emulator::FrequencyTarget target);</div>
+<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160; </div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#adc24d3a8f47c79b2ef95f7ebbbe3dcf7">setBreakpoints</a>(std::vector&lt;Word&gt; breakpoints);</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160; </div>
+<div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160;    signals:</div>
+<div class="line"><a name="l00292"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">  292</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#a372e82f6e4229bb266c16494a00e1e97">statusChanged</a>(Emulator::State newState);</div>
+<div class="line"><a name="l00293"></a><span class="lineno">  293</span>&#160; </div>
+<div class="line"><a name="l00297"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">  297</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">stepped</a>();</div>
+<div class="line"><a name="l00298"></a><span class="lineno">  298</span>&#160; </div>
+<div class="line"><a name="l00304"></a><span class="lineno"><a class="line" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">  304</a></span>&#160;        <span class="keywordtype">void</span> <a class="code" href="class_hbc_emulator.html#a8aa3b8fb06f56dc8f272f99b8f7061fd">tickCountSent</a>(<span class="keywordtype">int</span> countIn100Ms);</div>
+<div class="line"><a name="l00305"></a><span class="lineno">  305</span>&#160; </div>
+<div class="line"><a name="l00306"></a><span class="lineno">  306</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00307"></a><span class="lineno">  307</span>&#160;        <a class="code" href="class_hbc_emulator.html">HbcEmulator</a>(<a class="code" href="class_main_window.html">MainWindow</a> *mainWin, <a class="code" href="class_console.html">Console</a> *consoleOutput);</div>
+<div class="line"><a name="l00308"></a><span class="lineno">  308</span>&#160; </div>
+<div class="line"><a name="l00309"></a><span class="lineno">  309</span>&#160;        <span class="keywordtype">void</span> run() <span class="keyword">override</span>;</div>
+<div class="line"><a name="l00310"></a><span class="lineno">  310</span>&#160; </div>
+<div class="line"><a name="l00311"></a><span class="lineno">  311</span>&#160;        <span class="keywordtype">void</span> initComputer();</div>
+<div class="line"><a name="l00312"></a><span class="lineno">  312</span>&#160;        <span class="keywordtype">void</span> tickComputer(<span class="keywordtype">bool</span> step = <span class="keyword">false</span>);</div>
+<div class="line"><a name="l00313"></a><span class="lineno">  313</span>&#160; </div>
+<div class="line"><a name="l00314"></a><span class="lineno">  314</span>&#160;        <span class="keywordtype">void</span> storeCpuStatus(<span class="keywordtype">bool</span> lastState = <span class="keyword">false</span>);</div>
+<div class="line"><a name="l00315"></a><span class="lineno">  315</span>&#160; </div>
+<div class="line"><a name="l00316"></a><span class="lineno">  316</span>&#160;        <a class="code" href="struct_emulator_1_1_status.html">Emulator::Status</a> m_status;</div>
+<div class="line"><a name="l00317"></a><span class="lineno">  317</span>&#160;        <a class="code" href="struct_emulator_1_1_computer.html">Emulator::Computer</a> m_computer;</div>
+<div class="line"><a name="l00318"></a><span class="lineno">  318</span>&#160; </div>
+<div class="line"><a name="l00319"></a><span class="lineno">  319</span>&#160;        <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
+<div class="line"><a name="l00320"></a><span class="lineno">  320</span>&#160;        <a class="code" href="class_main_window.html">MainWindow</a> *m_mainWindow;</div>
+<div class="line"><a name="l00321"></a><span class="lineno">  321</span>&#160;};</div>
+<div class="line"><a name="l00322"></a><span class="lineno">  322</span>&#160; </div>
+<div class="line"><a name="l00323"></a><span class="lineno">  323</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// EMULATOR_H</span></div>
 <div class="ttc" id="aclass_console_html"><div class="ttname"><a href="class_console.html">Console</a></div><div class="ttdoc">A console widget to show events and provide information to the user.</div><div class="ttdef"><b>Definition:</b> console.h:23</div></div>
 <div class="ttc" id="aclass_eeprom_1_1_hbc_eeprom_html"><div class="ttname"><a href="class_eeprom_1_1_hbc_eeprom.html">Eeprom::HbcEeprom</a></div><div class="ttdoc">Derived from HbcPeripheral, represents the EEPROM device.</div><div class="ttdef"><b>Definition:</b> eeprom.h:109</div></div>
-<div class="ttc" id="aclass_hbc_emulator_html"><div class="ttname"><a href="class_hbc_emulator.html">HbcEmulator</a></div><div class="ttdoc">Where the HBC-2 emulation is done.</div><div class="ttdef"><b>Definition:</b> emulator.h:154</div></div>
+<div class="ttc" id="aclass_hbc_emulator_html"><div class="ttname"><a href="class_hbc_emulator.html">HbcEmulator</a></div><div class="ttdoc">Where the HBC-2 emulation is done.</div><div class="ttdef"><b>Definition:</b> emulator.h:155</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_a07771ecc30ace6ff8dd416ae012f7df3"><div class="ttname"><a href="class_hbc_emulator.html#a07771ecc30ace6ff8dd416ae012f7df3">HbcEmulator::getHbcRealTimeClock</a></div><div class="ttdeci">RealTimeClock::HbcRealTimeClock * getHbcRealTimeClock()</div><div class="ttdef"><b>Definition:</b> emulator.cpp:305</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_a21161e5c5dbb2818527bdef02b81823b"><div class="ttname"><a href="class_hbc_emulator.html#a21161e5c5dbb2818527bdef02b81823b">HbcEmulator::getHbcMonitor</a></div><div class="ttdeci">HbcMonitor * getHbcMonitor()</div><div class="ttdef"><b>Definition:</b> emulator.cpp:300</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_a23dd733e87b95f6b75c64825c4936a56"><div class="ttname"><a href="class_hbc_emulator.html#a23dd733e87b95f6b75c64825c4936a56">HbcEmulator::loadProject</a></div><div class="ttdeci">bool loadProject(QString romBinaryFilePath, QString projectName)</div><div class="ttdoc">Loads the emulator with EEPROM data before running.</div><div class="ttdef"><b>Definition:</b> emulator.cpp:112</div></div>
@@ -213,6 +216,7 @@ $(function() {
 <div class="ttc" id="aclass_hbc_emulator_html_ab31889d0b7f5d02621e87b69665ad850"><div class="ttname"><a href="class_hbc_emulator.html#ab31889d0b7f5d02621e87b69665ad850">HbcEmulator::getFrequencyTarget</a></div><div class="ttdeci">Emulator::FrequencyTarget getFrequencyTarget()</div><div class="ttdef"><b>Definition:</b> emulator.cpp:289</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_ac6332eaca734c8fa70c1de6d6b1d5eb3"><div class="ttname"><a href="class_hbc_emulator.html#ac6332eaca734c8fa70c1de6d6b1d5eb3">HbcEmulator::stepped</a></div><div class="ttdeci">void stepped()</div><div class="ttdoc">Emitted wheneven the emulator executes the STEP command.</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_ad0379729554633eed39562a0d2f874d3"><div class="ttname"><a href="class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3">HbcEmulator::setFrequencyTarget</a></div><div class="ttdeci">void setFrequencyTarget(Emulator::FrequencyTarget target)</div><div class="ttdef"><b>Definition:</b> emulator.cpp:315</div></div>
+<div class="ttc" id="aclass_hbc_emulator_html_adc24d3a8f47c79b2ef95f7ebbbe3dcf7"><div class="ttname"><a href="class_hbc_emulator.html#adc24d3a8f47c79b2ef95f7ebbbe3dcf7">HbcEmulator::setBreakpoints</a></div><div class="ttdeci">void setBreakpoints(std::vector&lt; Word &gt; breakpoints)</div><div class="ttdoc">Loads the emulator with breakpoints addresses.</div><div class="ttdef"><b>Definition:</b> emulator.cpp:322</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_ae49711f4e8d6cbf2d68a1306d4e2384c"><div class="ttname"><a href="class_hbc_emulator.html#ae49711f4e8d6cbf2d68a1306d4e2384c">HbcEmulator::getInstance</a></div><div class="ttdeci">static HbcEmulator * getInstance(MainWindow *mainWin, Console *consoleOutput)</div><div class="ttdef"><b>Definition:</b> emulator.cpp:6</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_ae7d676e0065db2dc7e5085b6949bfc37"><div class="ttname"><a href="class_hbc_emulator.html#ae7d676e0065db2dc7e5085b6949bfc37">HbcEmulator::getCurrentEepromBinaryData</a></div><div class="ttdeci">const QByteArray getCurrentEepromBinaryData()</div><div class="ttdef"><b>Definition:</b> emulator.cpp:236</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html_af04bf6c15a47e35ed16f31ce3a442b4d"><div class="ttname"><a href="class_hbc_emulator.html#af04bf6c15a47e35ed16f31ce3a442b4d">HbcEmulator::runCmd</a></div><div class="ttdeci">bool runCmd()</div><div class="ttdoc">Runs the emulator at targeted frequency.</div><div class="ttdef"><b>Definition:</b> emulator.cpp:25</div></div>
@@ -225,9 +229,10 @@ $(function() {
 <div class="ttc" id="amotherboard_8h_html"><div class="ttname"><a href="motherboard_8h.html">motherboard.h</a></div><div class="ttdoc">HBC-2 Motherboard implementation.</div></div>
 <div class="ttc" id="anamespace_emulator_html"><div class="ttname"><a href="namespace_emulator.html">Emulator</a></div><div class="ttdoc">HbcEmulator specifications.</div></div>
 <div class="ttc" id="areal_time_clock_8h_html"><div class="ttname"><a href="real_time_clock_8h.html">realTimeClock.h</a></div><div class="ttdoc">RTC device derived from HbcPeripheral.</div></div>
-<div class="ttc" id="astruct_cpu_status_html"><div class="ttname"><a href="struct_cpu_status.html">CpuStatus</a></div><div class="ttdoc">Used to send the current HbcCpu state to the CpuStateViewer.</div><div class="ttdef"><b>Definition:</b> computerDetails.h:80</div></div>
+<div class="ttc" id="astruct_cpu_status_html"><div class="ttname"><a href="struct_cpu_status.html">CpuStatus</a></div><div class="ttdoc">Used to send the current HbcCpu state to the CpuStateViewer.</div><div class="ttdef"><b>Definition:</b> computerDetails.h:81</div></div>
 <div class="ttc" id="astruct_emulator_1_1_computer_html"><div class="ttname"><a href="struct_emulator_1_1_computer.html">Emulator::Computer</a></div><div class="ttdoc">Stores the computer information for the emulator (only used in the emulator thread)</div><div class="ttdef"><b>Definition:</b> emulator.h:54</div></div>
 <div class="ttc" id="astruct_emulator_1_1_computer_html_a1a512707edac84c56456c11f6d1095d2"><div class="ttname"><a href="struct_emulator_1_1_computer.html#a1a512707edac84c56456c11f6d1095d2">Emulator::Computer::cpuState</a></div><div class="ttdeci">CpuStatus cpuState</div><div class="ttdoc">Only updated when the emulator is stopped or when requested.</div><div class="ttdef"><b>Definition:</b> emulator.h:64</div></div>
+<div class="ttc" id="astruct_emulator_1_1_computer_html_a26498c707c03dccded7335ab5c886629"><div class="ttname"><a href="struct_emulator_1_1_computer.html#a26498c707c03dccded7335ab5c886629">Emulator::Computer::breakpoints</a></div><div class="ttdeci">std::vector&lt; Word &gt; breakpoints</div><div class="ttdoc">Stores addresses at which the emulator must pause (breakpoints)</div><div class="ttdef"><b>Definition:</b> emulator.h:65</div></div>
 <div class="ttc" id="astruct_emulator_1_1_computer_html_a92faf6ba9fd04a3b342d8fa0338692cf"><div class="ttname"><a href="struct_emulator_1_1_computer.html#a92faf6ba9fd04a3b342d8fa0338692cf">Emulator::Computer::peripherals</a></div><div class="ttdeci">std::vector&lt; HbcPeripheral * &gt; peripherals</div><div class="ttdoc">General vector of the peripherals for simpler systemwide iterations.</div><div class="ttdef"><b>Definition:</b> emulator.h:61</div></div>
 <div class="ttc" id="astruct_emulator_1_1_computer_html_af7bb273fdf6b8de274e95627f4e57467"><div class="ttname"><a href="struct_emulator_1_1_computer.html#af7bb273fdf6b8de274e95627f4e57467">Emulator::Computer::initialRamData</a></div><div class="ttdeci">QByteArray initialRamData</div><div class="ttdoc">Binary data used on emulator first run.</div><div class="ttdef"><b>Definition:</b> emulator.h:63</div></div>
 <div class="ttc" id="astruct_emulator_1_1_status_html"><div class="ttname"><a href="struct_emulator_1_1_status.html">Emulator::Status</a></div><div class="ttdoc">Contains thread safe data to control the emulator.</div><div class="ttdef"><b>Definition:</b> emulator.h:35</div></div>

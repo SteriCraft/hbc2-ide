@@ -482,6 +482,10 @@ ConfigManager::ConfigManager()
                     {
                         m_settings->shortcutsMap[Configuration::Command::STOP_EMULATOR] = QKeySequence::fromString(value);
                     }
+                    else if (key == "TOGGLE_BREAKPOINT_SHORTCUT")
+                    {
+                        m_settings->shortcutsMap[Configuration::Command::TOGGLE_BREAKPOINT] = QKeySequence::fromString(value);
+                    }
                 }
             }
         }
@@ -573,6 +577,7 @@ bool ConfigManager::saveConfigFile()
         out << "STEP_EMULATOR_SHORTCUT=" << m_settings->shortcutsMap[Configuration::Command::STEP_EMULATOR].toString() << "\n";
         out << "PAUSE_EMULATOR_SHORTCUT=" << m_settings->shortcutsMap[Configuration::Command::PAUSE_EMULATOR].toString() << "\n";
         out << "STOP_EMULATOR_SHORTCUT=" << m_settings->shortcutsMap[Configuration::Command::STOP_EMULATOR].toString() << "\n";
+        out << "TOGGLE_BREAKPOINT_SHORTCUT=" << m_settings->shortcutsMap[Configuration::Command::TOGGLE_BREAKPOINT].toString() << "\n";
 
         configFile.close();
         return true;

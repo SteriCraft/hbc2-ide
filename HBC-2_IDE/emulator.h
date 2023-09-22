@@ -62,6 +62,7 @@ namespace Emulator
 
         QByteArray initialRamData; //!< Binary data used on emulator first run
         CpuStatus cpuState; //!< Only updated when the emulator is stopped or when requested
+        std::vector<Word> breakpoints; //!< Stores addresses at which the emulator must pause (breakpoints)
     };
 }
 
@@ -276,6 +277,11 @@ class HbcEmulator : public QThread
          * \param target Desired frequency target
          */
         void setFrequencyTarget(Emulator::FrequencyTarget target);
+
+        /*!
+         * \brief Loads the emulator with breakpoints addresses
+         */
+        void setBreakpoints(std::vector<Word> breakpoints);
 
     signals:
         /*!

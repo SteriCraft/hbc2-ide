@@ -173,6 +173,12 @@ namespace Assembly
             bool isAssembledForEeprom();
 
             /*!
+             * \return a vector of addresses corresponding to user defined breakpoints
+             * \param The list of files with breakpoints, and the lines at which they are
+             */
+            std::vector<Word> getBreakpointsAddresses(std::vector<std::pair<QString, std::vector<int>>> filesBreakpoints);
+
+            /*!
              * \brief Assembles the project and returns true it succeeded.
              *
              * Prompts in the console output statistics and error (if any).

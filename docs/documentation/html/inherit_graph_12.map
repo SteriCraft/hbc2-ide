@@ -1,3 +1,6 @@
 <map id="Graphical Class Hierarchy" name="Graphical Class Hierarchy">
-<area shape="rect" id="node1" href="$struct_configuration_1_1_settings.html" title="Stores the IDE settings on runtime." alt="" coords="5,5,176,32"/>
+<area shape="rect" id="node1" title=" " alt="" coords="5,56,84,83"/>
+<area shape="rect" id="node2" href="$class_code_editor_breakpoint_area.html" title="HBC&#45;2 code editor area for breakpoint markers." alt="" coords="145,5,339,32"/>
+<area shape="rect" id="node3" href="$class_code_editor_line_number_area.html" title="HBC&#45;2 code editor area for line numbers." alt="" coords="141,56,343,83"/>
+<area shape="rect" id="node4" href="$class_disassembler_line_number_area.html" title="HBC&#45;2 code editor area for line numbers." alt="" coords="132,107,352,133"/>
 </map>

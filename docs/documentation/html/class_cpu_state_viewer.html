@@ -65,7 +65,6 @@ $(function() {
 </div><!-- top -->
 <div class="header">
   <div class="summary">
-<a href="#pub-types">Public Types</a> &#124;
 <a href="#pub-static-methods">Static Public Member Functions</a> &#124;
 <a href="#pro-methods">Protected Member Functions</a> &#124;
 <a href="class_cpu_state_viewer-members.html">List of all members</a>  </div>
@@ -97,14 +96,6 @@ Collaboration diagram for CpuStateViewer:</div>
 </map>
 <center><span class="legend">[<a href="graph_legend.html">legend</a>]</span></center></div>
 <table class="memberdecls">
-<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-types"></a>
-Public Types</h2></td></tr>
-<tr class="memitem:afb958da7f87bf4b683e4142e1075d0cd"><td class="memItemLeft" align="right" valign="top"><a id="afb958da7f87bf4b683e4142e1075d0cd"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Base</b> { <b>BINARY</b> = 2
-, <b>DECIMAL</b> = 10
-, <b>HEXADECIMAL</b> = 16
- }</td></tr>
-<tr class="separator:afb958da7f87bf4b683e4142e1075d0cd"><td class="memSeparator" colspan="2">&#160;</td></tr>
-</table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="pub-static-methods"></a>
 Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a3908fc057eeff72b3d9d14eb76b4d02b"><td class="memItemLeft" align="right" valign="top">static <a class="el" href="class_cpu_state_viewer.html">CpuStateViewer</a> *&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">getInstance</a> (QWidget *parent=nullptr)</td></tr>
@@ -112,15 +103,6 @@ Static Public Member Functions</h2></td></tr>
 <tr class="memitem:a2335100c37947f00afdbcfead5e1f7d4"><td class="memItemLeft" align="right" valign="top">static void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">update</a> (const <a class="el" href="struct_cpu_status.html">CpuStatus</a> status)</td></tr>
 <tr class="memdesc:a2335100c37947f00afdbcfead5e1f7d4"><td class="mdescLeft">&#160;</td><td class="mdescRight">Updates displayed status information.  <a href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">More...</a><br /></td></tr>
 <tr class="separator:a2335100c37947f00afdbcfead5e1f7d4"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a9ddf6e7dd3e99723dd4b830041041876"><td class="memItemLeft" align="right" valign="top">static QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_cpu_state_viewer.html#a9ddf6e7dd3e99723dd4b830041041876">byte2QString</a> (Byte value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
-<tr class="memdesc:a9ddf6e7dd3e99723dd4b830041041876"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a byte to a QString.  <a href="class_cpu_state_viewer.html#a9ddf6e7dd3e99723dd4b830041041876">More...</a><br /></td></tr>
-<tr class="separator:a9ddf6e7dd3e99723dd4b830041041876"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:afbc4c7e5ae6a15911edf0d243a8a506d"><td class="memItemLeft" align="right" valign="top">static QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_cpu_state_viewer.html#afbc4c7e5ae6a15911edf0d243a8a506d">word2QString</a> (Word value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
-<tr class="memdesc:afbc4c7e5ae6a15911edf0d243a8a506d"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a word to a QString.  <a href="class_cpu_state_viewer.html#afbc4c7e5ae6a15911edf0d243a8a506d">More...</a><br /></td></tr>
-<tr class="separator:afbc4c7e5ae6a15911edf0d243a8a506d"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:aae70f06257f0117fed98616f00cef725"><td class="memItemLeft" align="right" valign="top">static QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_cpu_state_viewer.html#aae70f06257f0117fed98616f00cef725">dWord2QString</a> (Dword value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
-<tr class="memdesc:aae70f06257f0117fed98616f00cef725"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a dword to a QString.  <a href="class_cpu_state_viewer.html#aae70f06257f0117fed98616f00cef725">More...</a><br /></td></tr>
-<tr class="separator:aae70f06257f0117fed98616f00cef725"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:af6f86c193b692adac4ac6335a93a4de7"><td class="memItemLeft" align="right" valign="top"><a id="af6f86c193b692adac4ac6335a93a4de7"></a>
 static void&#160;</td><td class="memItemRight" valign="bottom"><b>close</b> ()</td></tr>
 <tr class="separator:af6f86c193b692adac4ac6335a93a4de7"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -136,96 +118,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>showEvent</b> (QShowE
 <p>QDialog showing the current state of <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a>.</p>
 <p>Pressing F7 will open the <a class="el" href="struct_hbc_cpu.html" title="Stores the Cpu state.">HbcCpu</a> state viewer. </p>
 </div><h2 class="groupheader">Member Function Documentation</h2>
-<a id="a9ddf6e7dd3e99723dd4b830041041876"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#a9ddf6e7dd3e99723dd4b830041041876">&#9670;&nbsp;</a></span>byte2QString()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">QString CpuStateViewer::byte2QString </td>
-          <td>(</td>
-          <td class="paramtype">Byte&#160;</td>
-          <td class="paramname"><em>value</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Base&#160;</td>
-          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">unsigned int&#160;</td>
-          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Converts a byte to a QString. </p>
-<p>Will add "0x" (and '0' if necessary) to be in "0x00" format </p>
-
-</div>
-</div>
-<a id="aae70f06257f0117fed98616f00cef725"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#aae70f06257f0117fed98616f00cef725">&#9670;&nbsp;</a></span>dWord2QString()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">QString CpuStateViewer::dWord2QString </td>
-          <td>(</td>
-          <td class="paramtype">Dword&#160;</td>
-          <td class="paramname"><em>value</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Base&#160;</td>
-          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">unsigned int&#160;</td>
-          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Converts a dword to a QString. </p>
-<p>Will add "0x" (and '0' if necessary) to be in "0x00000000" format </p>
-
-</div>
-</div>
 <a id="a3908fc057eeff72b3d9d14eb76b4d02b"></a>
 <h2 class="memtitle"><span class="permalink"><a href="#a3908fc057eeff72b3d9d14eb76b4d02b">&#9670;&nbsp;</a></span>getInstance()</h2>
 
@@ -290,51 +182,6 @@ void&#160;</td><td class="memItemRight" valign="bottom"><b>showEvent</b> (QShowE
   </table>
   </dd>
 </dl>
-
-</div>
-</div>
-<a id="afbc4c7e5ae6a15911edf0d243a8a506d"></a>
-<h2 class="memtitle"><span class="permalink"><a href="#afbc4c7e5ae6a15911edf0d243a8a506d">&#9670;&nbsp;</a></span>word2QString()</h2>
-
-<div class="memitem">
-<div class="memproto">
-<table class="mlabels">
-  <tr>
-  <td class="mlabels-left">
-      <table class="memname">
-        <tr>
-          <td class="memname">QString CpuStateViewer::word2QString </td>
-          <td>(</td>
-          <td class="paramtype">Word&#160;</td>
-          <td class="paramname"><em>value</em>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">Base&#160;</td>
-          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
-        </tr>
-        <tr>
-          <td class="paramkey"></td>
-          <td></td>
-          <td class="paramtype">unsigned int&#160;</td>
-          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
-        </tr>
-        <tr>
-          <td></td>
-          <td>)</td>
-          <td></td><td></td>
-        </tr>
-      </table>
-  </td>
-  <td class="mlabels-right">
-<span class="mlabels"><span class="mlabel">static</span></span>  </td>
-  </tr>
-</table>
-</div><div class="memdoc">
-
-<p>Converts a word to a QString. </p>
-<p>Will add "0x" (and '0' if necessary) to be in "0x0000" format </p>
 
 </div>
 </div>

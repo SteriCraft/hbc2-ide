@@ -93,92 +93,81 @@ $(function() {
 <div class="line"><a name="l00034"></a><span class="lineno">   34</span>&#160;    <span class="keyword">static</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> m_savedState;</div>
 <div class="line"><a name="l00035"></a><span class="lineno">   35</span>&#160; </div>
 <div class="line"><a name="l00036"></a><span class="lineno">   36</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00037"></a><span class="lineno">   37</span>&#160;        <span class="keyword">enum class</span> Base { BINARY = 2, DECIMAL = 10, HEXADECIMAL = 16 };</div>
-<div class="line"><a name="l00038"></a><span class="lineno">   38</span>&#160; </div>
-<div class="line"><a name="l00044"></a><span class="lineno">   44</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>* <a class="code" href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">getInstance</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00045"></a><span class="lineno">   45</span>&#160; </div>
-<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">update</a>(<span class="keyword">const</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
+<div class="line"><a name="l00042"></a><span class="lineno">   42</span>&#160;        <span class="keyword">static</span> <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>* <a class="code" href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">getInstance</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00043"></a><span class="lineno">   43</span>&#160; </div>
+<div class="line"><a name="l00048"></a><span class="lineno">   48</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> <a class="code" href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">update</a>(<span class="keyword">const</span> <a class="code" href="struct_cpu_status.html">CpuStatus</a> status);</div>
+<div class="line"><a name="l00049"></a><span class="lineno">   49</span>&#160; </div>
+<div class="line"><a name="l00050"></a><span class="lineno">   50</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
 <div class="line"><a name="l00051"></a><span class="lineno">   51</span>&#160; </div>
-<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;        <span class="keyword">static</span> QString <a class="code" href="class_cpu_state_viewer.html#a9ddf6e7dd3e99723dd4b830041041876">byte2QString</a>(Byte value, Base base = Base::HEXADECIMAL, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> significantDigits = 0);</div>
-<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160; </div>
-<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;        <span class="keyword">static</span> QString <a class="code" href="class_cpu_state_viewer.html#afbc4c7e5ae6a15911edf0d243a8a506d">word2QString</a>(Word value, Base base = Base::HEXADECIMAL, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> significantDigits = 0);</div>
-<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160; </div>
-<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;        <span class="keyword">static</span> QString <a class="code" href="class_cpu_state_viewer.html#aae70f06257f0117fed98616f00cef725">dWord2QString</a>(Dword value, Base base = Base::HEXADECIMAL, <span class="keywordtype">unsigned</span> <span class="keywordtype">int</span> significantDigits = 0);</div>
-<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160; </div>
-<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <span class="keyword">static</span> <span class="keywordtype">void</span> close();</div>
-<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160; </div>
-<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160;    <span class="keyword">protected</span>:</div>
-<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;        <span class="keywordtype">void</span> showEvent(QShowEvent* event);</div>
-<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160; </div>
-<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;    <span class="keyword">private</span> slots:</div>
-<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;        <span class="keywordtype">void</span> switchToBinaryBase();</div>
-<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160;        <span class="keywordtype">void</span> switchToDecimalBase();</div>
-<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        <span class="keywordtype">void</span> switchToHexadecimalBase();</div>
+<div class="line"><a name="l00052"></a><span class="lineno">   52</span>&#160;    <span class="keyword">protected</span>:</div>
+<div class="line"><a name="l00053"></a><span class="lineno">   53</span>&#160;        <span class="keywordtype">void</span> showEvent(QShowEvent* event);</div>
+<div class="line"><a name="l00054"></a><span class="lineno">   54</span>&#160; </div>
+<div class="line"><a name="l00055"></a><span class="lineno">   55</span>&#160;    <span class="keyword">private</span> slots:</div>
+<div class="line"><a name="l00056"></a><span class="lineno">   56</span>&#160;        <span class="keywordtype">void</span> switchToBinaryBase();</div>
+<div class="line"><a name="l00057"></a><span class="lineno">   57</span>&#160;        <span class="keywordtype">void</span> switchToDecimalBase();</div>
+<div class="line"><a name="l00058"></a><span class="lineno">   58</span>&#160;        <span class="keywordtype">void</span> switchToHexadecimalBase();</div>
+<div class="line"><a name="l00059"></a><span class="lineno">   59</span>&#160; </div>
+<div class="line"><a name="l00060"></a><span class="lineno">   60</span>&#160;    <span class="keyword">private</span>:</div>
+<div class="line"><a name="l00061"></a><span class="lineno">   61</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH = 500;</div>
+<div class="line"><a name="l00062"></a><span class="lineno">   62</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH_BINARY = 630;</div>
+<div class="line"><a name="l00063"></a><span class="lineno">   63</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> STATE_WIDTH = 250;</div>
+<div class="line"><a name="l00064"></a><span class="lineno">   64</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> INSTRUCTION_WIDTH = 300;</div>
+<div class="line"><a name="l00065"></a><span class="lineno">   65</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REGISTER_LINE_EDIT_WIDTH = 80;</div>
+<div class="line"><a name="l00066"></a><span class="lineno">   66</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DECODED_INSTRUCTION_TABLE_WIDTH = 452;</div>
+<div class="line"><a name="l00067"></a><span class="lineno">   67</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DECODED_INSTRUCTION_TABLE_WIDTH_BINARY = 582;</div>
+<div class="line"><a name="l00068"></a><span class="lineno">   68</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> FLAGS_TABLE_WIDTH = 306;</div>
+<div class="line"><a name="l00069"></a><span class="lineno">   69</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> TABLE_HEIGHT = 50;</div>
+<div class="line"><a name="l00070"></a><span class="lineno">   70</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ADDR_MODE_TABLE_ITEM_WIDTH = 80;</div>
+<div class="line"><a name="l00071"></a><span class="lineno">   71</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REG_ITEM_WIDTH = 50;</div>
+<div class="line"><a name="l00072"></a><span class="lineno">   72</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BYTE_ITEM_WIDTH = 80;</div>
+<div class="line"><a name="l00073"></a><span class="lineno">   73</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WORD_ITEM_WIDTH = 60;</div>
+<div class="line"><a name="l00074"></a><span class="lineno">   74</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WORD_ITEM_WIDTH_BINARY = 130;</div>
+<div class="line"><a name="l00075"></a><span class="lineno">   75</span>&#160; </div>
+<div class="line"><a name="l00076"></a><span class="lineno">   76</span>&#160;        <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00077"></a><span class="lineno">   77</span>&#160;        <span class="keywordtype">void</span> setPosition();</div>
+<div class="line"><a name="l00078"></a><span class="lineno">   78</span>&#160;        <span class="keywordtype">void</span> updateStatus();</div>
+<div class="line"><a name="l00079"></a><span class="lineno">   79</span>&#160;        <span class="keywordtype">void</span> changeValueBase();</div>
+<div class="line"><a name="l00080"></a><span class="lineno">   80</span>&#160; </div>
+<div class="line"><a name="l00081"></a><span class="lineno">   81</span>&#160;        Base m_base;</div>
 <div class="line"><a name="l00082"></a><span class="lineno">   82</span>&#160; </div>
-<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;    <span class="keyword">private</span>:</div>
-<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH = 500;</div>
-<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> CPU_STATE_VIEWER_WIDTH_BINARY = 630;</div>
-<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> STATE_WIDTH = 250;</div>
-<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> INSTRUCTION_WIDTH = 300;</div>
-<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REGISTER_LINE_EDIT_WIDTH = 80;</div>
-<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DECODED_INSTRUCTION_TABLE_WIDTH = 452;</div>
-<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> DECODED_INSTRUCTION_TABLE_WIDTH_BINARY = 582;</div>
-<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> FLAGS_TABLE_WIDTH = 306;</div>
-<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> TABLE_HEIGHT = 50;</div>
-<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> ADDR_MODE_TABLE_ITEM_WIDTH = 80;</div>
-<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> REG_ITEM_WIDTH = 50;</div>
-<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> BYTE_ITEM_WIDTH = 80;</div>
-<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WORD_ITEM_WIDTH = 60;</div>
-<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WORD_ITEM_WIDTH_BINARY = 130;</div>
-<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160; </div>
-<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;        <a class="code" href="class_cpu_state_viewer.html">CpuStateViewer</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;        <span class="keywordtype">void</span> setPosition();</div>
-<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;        <span class="keywordtype">void</span> updateStatus();</div>
-<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;        <span class="keywordtype">void</span> changeValueBase();</div>
-<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160; </div>
-<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;        Base m_base;</div>
+<div class="line"><a name="l00083"></a><span class="lineno">   83</span>&#160;        QPushButton *m_binaryBaseButton;</div>
+<div class="line"><a name="l00084"></a><span class="lineno">   84</span>&#160;        QPushButton *m_decimalBaseButton;</div>
+<div class="line"><a name="l00085"></a><span class="lineno">   85</span>&#160;        QPushButton *m_hexadecimalBaseButton;</div>
+<div class="line"><a name="l00086"></a><span class="lineno">   86</span>&#160; </div>
+<div class="line"><a name="l00087"></a><span class="lineno">   87</span>&#160;        QLabel *m_lastStateLabel;</div>
+<div class="line"><a name="l00088"></a><span class="lineno">   88</span>&#160; </div>
+<div class="line"><a name="l00089"></a><span class="lineno">   89</span>&#160;        QLineEdit *m_stateLineEdit;</div>
+<div class="line"><a name="l00090"></a><span class="lineno">   90</span>&#160;        QLineEdit *m_interruptReadyLineEdit;</div>
+<div class="line"><a name="l00091"></a><span class="lineno">   91</span>&#160; </div>
+<div class="line"><a name="l00092"></a><span class="lineno">   92</span>&#160;        QLineEdit *m_programCounterLineEdit;</div>
+<div class="line"><a name="l00093"></a><span class="lineno">   93</span>&#160;        QLineEdit *m_instructionRegisterLineEdit;</div>
+<div class="line"><a name="l00094"></a><span class="lineno">   94</span>&#160;        QLineEdit *m_addressingModeLineEdit;</div>
+<div class="line"><a name="l00095"></a><span class="lineno">   95</span>&#160;        QTableWidget *m_decodedInstructionTable;</div>
+<div class="line"><a name="l00096"></a><span class="lineno">   96</span>&#160; </div>
+<div class="line"><a name="l00097"></a><span class="lineno">   97</span>&#160;        QTableWidgetItem *m_opcodeTableItem;</div>
+<div class="line"><a name="l00098"></a><span class="lineno">   98</span>&#160;        QTableWidgetItem *m_addrModeTableItem;</div>
+<div class="line"><a name="l00099"></a><span class="lineno">   99</span>&#160;        QTableWidgetItem *m_r1TableItem;</div>
+<div class="line"><a name="l00100"></a><span class="lineno">  100</span>&#160;        QTableWidgetItem *m_r2TableItem;</div>
+<div class="line"><a name="l00101"></a><span class="lineno">  101</span>&#160;        QTableWidgetItem *m_r3TableItem;</div>
+<div class="line"><a name="l00102"></a><span class="lineno">  102</span>&#160;        QTableWidgetItem *m_v1TableItem;</div>
+<div class="line"><a name="l00103"></a><span class="lineno">  103</span>&#160;        QTableWidgetItem *m_v2TableItem;</div>
+<div class="line"><a name="l00104"></a><span class="lineno">  104</span>&#160;        QTableWidgetItem *m_vXTableItem;</div>
 <div class="line"><a name="l00105"></a><span class="lineno">  105</span>&#160; </div>
-<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;        QPushButton *m_binaryBaseButton;</div>
-<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;        QPushButton *m_decimalBaseButton;</div>
-<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160;        QPushButton *m_hexadecimalBaseButton;</div>
-<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160; </div>
-<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160;        QLabel *m_lastStateLabel;</div>
-<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160; </div>
-<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;        QLineEdit *m_stateLineEdit;</div>
-<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;        QLineEdit *m_interruptReadyLineEdit;</div>
+<div class="line"><a name="l00106"></a><span class="lineno">  106</span>&#160;        std::vector&lt;QTableWidgetItem*&gt; m_flagsTableItem;</div>
+<div class="line"><a name="l00107"></a><span class="lineno">  107</span>&#160;        std::vector&lt;QLineEdit*&gt; m_registersLineEdits;</div>
+<div class="line"><a name="l00108"></a><span class="lineno">  108</span>&#160; </div>
+<div class="line"><a name="l00109"></a><span class="lineno">  109</span>&#160;        QLineEdit *m_stackPointerLineEdit;</div>
+<div class="line"><a name="l00110"></a><span class="lineno">  110</span>&#160; </div>
+<div class="line"><a name="l00111"></a><span class="lineno">  111</span>&#160;        QLineEdit *m_addressBusLineEdit;</div>
+<div class="line"><a name="l00112"></a><span class="lineno">  112</span>&#160;        QLineEdit *m_dataBusLineEdit;</div>
+<div class="line"><a name="l00113"></a><span class="lineno">  113</span>&#160;};</div>
 <div class="line"><a name="l00114"></a><span class="lineno">  114</span>&#160; </div>
-<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;        QLineEdit *m_programCounterLineEdit;</div>
-<div class="line"><a name="l00116"></a><span class="lineno">  116</span>&#160;        QLineEdit *m_instructionRegisterLineEdit;</div>
-<div class="line"><a name="l00117"></a><span class="lineno">  117</span>&#160;        QLineEdit *m_addressingModeLineEdit;</div>
-<div class="line"><a name="l00118"></a><span class="lineno">  118</span>&#160;        QTableWidget *m_decodedInstructionTable;</div>
-<div class="line"><a name="l00119"></a><span class="lineno">  119</span>&#160; </div>
-<div class="line"><a name="l00120"></a><span class="lineno">  120</span>&#160;        QTableWidgetItem *m_opcodeTableItem;</div>
-<div class="line"><a name="l00121"></a><span class="lineno">  121</span>&#160;        QTableWidgetItem *m_addrModeTableItem;</div>
-<div class="line"><a name="l00122"></a><span class="lineno">  122</span>&#160;        QTableWidgetItem *m_r1TableItem;</div>
-<div class="line"><a name="l00123"></a><span class="lineno">  123</span>&#160;        QTableWidgetItem *m_r2TableItem;</div>
-<div class="line"><a name="l00124"></a><span class="lineno">  124</span>&#160;        QTableWidgetItem *m_r3TableItem;</div>
-<div class="line"><a name="l00125"></a><span class="lineno">  125</span>&#160;        QTableWidgetItem *m_v1TableItem;</div>
-<div class="line"><a name="l00126"></a><span class="lineno">  126</span>&#160;        QTableWidgetItem *m_v2TableItem;</div>
-<div class="line"><a name="l00127"></a><span class="lineno">  127</span>&#160;        QTableWidgetItem *m_vXTableItem;</div>
-<div class="line"><a name="l00128"></a><span class="lineno">  128</span>&#160; </div>
-<div class="line"><a name="l00129"></a><span class="lineno">  129</span>&#160;        std::vector&lt;QTableWidgetItem*&gt; m_flagsTableItem;</div>
-<div class="line"><a name="l00130"></a><span class="lineno">  130</span>&#160;        std::vector&lt;QLineEdit*&gt; m_registersLineEdits;</div>
-<div class="line"><a name="l00131"></a><span class="lineno">  131</span>&#160; </div>
-<div class="line"><a name="l00132"></a><span class="lineno">  132</span>&#160;        QLineEdit *m_stackPointerLineEdit;</div>
-<div class="line"><a name="l00133"></a><span class="lineno">  133</span>&#160; </div>
-<div class="line"><a name="l00134"></a><span class="lineno">  134</span>&#160;        QLineEdit *m_addressBusLineEdit;</div>
-<div class="line"><a name="l00135"></a><span class="lineno">  135</span>&#160;        QLineEdit *m_dataBusLineEdit;</div>
-<div class="line"><a name="l00136"></a><span class="lineno">  136</span>&#160;};</div>
-<div class="line"><a name="l00137"></a><span class="lineno">  137</span>&#160; </div>
-<div class="line"><a name="l00138"></a><span class="lineno">  138</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CPUSTATEVIEWER_H</span></div>
+<div class="line"><a name="l00115"></a><span class="lineno">  115</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// CPUSTATEVIEWER_H</span></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html"><div class="ttname"><a href="class_cpu_state_viewer.html">CpuStateViewer</a></div><div class="ttdoc">Singleton of the HbcCpu state viewer.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.h:30</div></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html_a2335100c37947f00afdbcfead5e1f7d4"><div class="ttname"><a href="class_cpu_state_viewer.html#a2335100c37947f00afdbcfead5e1f7d4">CpuStateViewer::update</a></div><div class="ttdeci">static void update(const CpuStatus status)</div><div class="ttdoc">Updates displayed status information.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:20</div></div>
 <div class="ttc" id="aclass_cpu_state_viewer_html_a3908fc057eeff72b3d9d14eb76b4d02b"><div class="ttname"><a href="class_cpu_state_viewer.html#a3908fc057eeff72b3d9d14eb76b4d02b">CpuStateViewer::getInstance</a></div><div class="ttdeci">static CpuStateViewer * getInstance(QWidget *parent=nullptr)</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:10</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_a9ddf6e7dd3e99723dd4b830041041876"><div class="ttname"><a href="class_cpu_state_viewer.html#a9ddf6e7dd3e99723dd4b830041041876">CpuStateViewer::byte2QString</a></div><div class="ttdeci">static QString byte2QString(Byte value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</div><div class="ttdoc">Converts a byte to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:30</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_aae70f06257f0117fed98616f00cef725"><div class="ttname"><a href="class_cpu_state_viewer.html#aae70f06257f0117fed98616f00cef725">CpuStateViewer::dWord2QString</a></div><div class="ttdeci">static QString dWord2QString(Dword value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</div><div class="ttdoc">Converts a dword to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:105</div></div>
-<div class="ttc" id="aclass_cpu_state_viewer_html_afbc4c7e5ae6a15911edf0d243a8a506d"><div class="ttname"><a href="class_cpu_state_viewer.html#afbc4c7e5ae6a15911edf0d243a8a506d">CpuStateViewer::word2QString</a></div><div class="ttdeci">static QString word2QString(Word value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</div><div class="ttdoc">Converts a word to a QString.</div><div class="ttdef"><b>Definition:</b> cpuStateViewer.cpp:66</div></div>
 <div class="ttc" id="acomputer_details_8h_html"><div class="ttname"><a href="computer_details_8h.html">computerDetails.h</a></div><div class="ttdoc">Constants, structures and enumerations according to the computer specifications.</div></div>
-<div class="ttc" id="astruct_cpu_status_html"><div class="ttname"><a href="struct_cpu_status.html">CpuStatus</a></div><div class="ttdoc">Used to send the current HbcCpu state to the CpuStateViewer.</div><div class="ttdef"><b>Definition:</b> computerDetails.h:80</div></div>
+<div class="ttc" id="astruct_cpu_status_html"><div class="ttname"><a href="struct_cpu_status.html">CpuStatus</a></div><div class="ttdoc">Used to send the current HbcCpu state to the CpuStateViewer.</div><div class="ttdef"><b>Definition:</b> computerDetails.h:81</div></div>
 </div><!-- fragment --></div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>

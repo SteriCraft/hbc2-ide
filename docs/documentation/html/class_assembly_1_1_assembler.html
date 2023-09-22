@@ -97,6 +97,8 @@ Public Member Functions</h2></td></tr>
 <tr class="separator:ae4ba888475d6d262b4fee0758b82a4d2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:ab643b080dc8b79de257625c56a5da453"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#ab643b080dc8b79de257625c56a5da453">isAssembledForEeprom</a> ()</td></tr>
 <tr class="separator:ab643b080dc8b79de257625c56a5da453"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a50005591cb5ef0717dad3cf092da383e"><td class="memItemLeft" align="right" valign="top">std::vector&lt; Word &gt;&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a50005591cb5ef0717dad3cf092da383e">getBreakpointsAddresses</a> (std::vector&lt; std::pair&lt; QString, std::vector&lt; int &gt;&gt;&gt; filesBreakpoints)</td></tr>
+<tr class="separator:a50005591cb5ef0717dad3cf092da383e"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a28aa51f1ceaacb713222ad797c72d07a"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_assembly_1_1_assembler.html#a28aa51f1ceaacb713222ad797c72d07a">assembleProject</a> (std::shared_ptr&lt; <a class="el" href="class_project.html">Project</a> &gt; p, bool targetEeprom)</td></tr>
 <tr class="memdesc:a28aa51f1ceaacb713222ad797c72d07a"><td class="mdescLeft">&#160;</td><td class="mdescRight">Assembles the project and returns true it succeeded.  <a href="class_assembly_1_1_assembler.html#a28aa51f1ceaacb713222ad797c72d07a">More...</a><br /></td></tr>
 <tr class="separator:a28aa51f1ceaacb713222ad797c72d07a"><td class="memSeparator" colspan="2">&#160;</td></tr>
@@ -200,6 +202,31 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd>the path for the EEPROM binary file <b>(empty if the EEPROM was not targeted)</b> </dd></dl>
+
+</div>
+</div>
+<a id="a50005591cb5ef0717dad3cf092da383e"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a50005591cb5ef0717dad3cf092da383e">&#9670;&nbsp;</a></span>getBreakpointsAddresses()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">std::vector&lt; Word &gt; Assembler::getBreakpointsAddresses </td>
+          <td>(</td>
+          <td class="paramtype">std::vector&lt; std::pair&lt; QString, std::vector&lt; int &gt;&gt;&gt;&#160;</td>
+          <td class="paramname"><em>filesBreakpoints</em></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>a vector of addresses corresponding to user defined breakpoints </dd></dl>
+<dl class="params"><dt>Parameters</dt><dd>
+  <table class="params">
+    <tr><td class="paramname">The</td><td>list of files with breakpoints, and the lines at which they are </td></tr>
+  </table>
+  </dd>
+</dl>
 
 </div>
 </div>

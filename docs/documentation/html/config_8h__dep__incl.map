@@ -1,10 +1,10 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/config.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/config.h">
-<area shape="rect" id="node1" title="IDE settings management." alt="" coords="267,5,439,61"/>
-<area shape="rect" id="node2" href="$customized_editor_8h.html" title="Specialized QPlainTextEdit for the HBC&#45;2 assembly language." alt="" coords="30,109,254,165"/>
-<area shape="rect" id="node4" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="255,317,451,373"/>
-<area shape="rect" id="node5" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="329,109,501,165"/>
-<area shape="rect" id="node7" href="$project_manager_8h.html" title="The class that stores and manages opened projects." alt="" coords="526,109,739,165"/>
-<area shape="rect" id="node3" href="$disassembler_8h.html" title="QDialog to display a dissambled view of current RAM content." alt="" coords="5,213,204,269"/>
-<area shape="rect" id="node6" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="329,213,501,269"/>
-<area shape="rect" id="node8" href="$assembler_8h.html" title="The assembler that procudes binary for the HBC&#45;2 based on its custom assembly language." alt="" coords="535,213,714,269"/>
+<area shape="rect" id="node1" title="IDE settings management." alt="" coords="273,5,445,61"/>
+<area shape="rect" id="node2" href="$code_editor_8h_source.html" title=" " alt="" coords="5,213,185,269"/>
+<area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="243,317,439,373"/>
+<area shape="rect" id="node4" href="$disassembler_8h.html" title="QDialog to display a disassembled view of current RAM content." alt="" coords="260,109,459,165"/>
+<area shape="rect" id="node5" href="$monitor_8h.html" title="Monitor device derived from HbcPeripheral." alt="" coords="483,109,655,165"/>
+<area shape="rect" id="node7" href="$project_manager_8h.html" title="The class that stores and manages opened projects." alt="" coords="679,109,893,165"/>
+<area shape="rect" id="node6" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="372,213,544,269"/>
+<area shape="rect" id="node8" href="$assembler_8h.html" title="The assembler that procudes binary for the HBC&#45;2 based on its custom assembly language." alt="" coords="633,213,811,269"/>
 </map>

@@ -9,6 +9,7 @@
  * \date 27/08/2023
  */
 #include <string>
+#include <QString>
 #include <QMutex>
 
 using Byte = uint8_t;
@@ -161,6 +162,30 @@ namespace Iod
         Byte data; //!< Where PortSocket.portDataPointer leads to
     };
 }
+
+// ============ UTILITIES ============
+enum class Base { BINARY = 2, DECIMAL = 10, HEXADECIMAL = 16 };
+
+/*!
+ * \brief Converts a byte to a QString
+ *
+ * Will add "0x" (and '0' if necessary) to be in "0x00" format
+ */
+QString byte2QString(Byte value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
+
+/*!
+ * \brief Converts a word to a QString
+ *
+ * Will add "0x" (and '0' if necessary) to be in "0x0000" format
+ */
+QString word2QString(Word value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
+
+/*!
+ * \brief Converts a dword to a QString
+ *
+ * Will add "0x" (and '0' if necessary) to be in "0x00000000" format
+ */
+QString dWord2QString(Dword value, Base base = Base::HEXADECIMAL, unsigned int significantDigits = 0);
 
 
 #endif // COMPUTERDETAILS_H

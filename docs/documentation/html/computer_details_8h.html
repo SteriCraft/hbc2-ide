@@ -73,6 +73,7 @@ $(function() {
 <a href="#namespaces">Namespaces</a> &#124;
 <a href="#typedef-members">Typedefs</a> &#124;
 <a href="#enum-members">Enumerations</a> &#124;
+<a href="#func-members">Functions</a> &#124;
 <a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">computerDetails.h File Reference</div>  </div>
@@ -82,15 +83,17 @@ $(function() {
 <p>Constants, structures and enumerations according to the computer specifications.  
 <a href="#details">More...</a></p>
 <div class="textblock"><code>#include &lt;string&gt;</code><br />
+<code>#include &lt;QString&gt;</code><br />
 <code>#include &lt;QMutex&gt;</code><br />
 </div><div class="textblock"><div class="dynheader">
 Include dependency graph for computerDetails.h:</div>
 <div class="dyncontent">
 <div class="center"><img src="computer_details_8h__incl.png" border="0" usemap="#a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2computer_details_8h" alt=""/></div>
 <map name="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2computer_details_8h" id="a_2home_2stericraft_2coding_2c_09_09_2projects_2hbc2-ide_2_h_b_c-2___i_d_e_2computer_details_8h">
-<area shape="rect" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="5,5,225,61"/>
-<area shape="rect" title=" " alt="" coords="41,109,99,136"/>
-<area shape="rect" title=" " alt="" coords="124,109,197,136"/>
+<area shape="rect" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="14,5,234,61"/>
+<area shape="rect" title=" " alt="" coords="5,109,64,136"/>
+<area shape="rect" title=" " alt="" coords="89,109,159,136"/>
+<area shape="rect" title=" " alt="" coords="183,109,257,136"/>
 </map>
 </div>
 </div><div class="textblock"><div class="dynheader">
@@ -101,7 +104,7 @@ This graph shows which files directly or indirectly include this file:</div>
 <area shape="rect" title="Constants, structures and enumerations according to the computer specifications." alt="" coords="709,5,929,61"/>
 <area shape="rect" href="cpu_8h.html" title="HBC&#45;2 Central Processing Unit implementation." alt="" coords="636,109,808,165"/>
 <area shape="rect" href="cpu_state_viewer_8h.html" title="QDialog to display the HbcCpu state." alt="" coords="1029,109,1242,165"/>
-<area shape="rect" href="disassembler_8h.html" title="QDialog to display a dissambled view of current RAM content." alt="" coords="1267,109,1465,165"/>
+<area shape="rect" href="disassembler_8h.html" title="QDialog to display a disassembled view of current RAM content." alt="" coords="1267,109,1465,165"/>
 <area shape="rect" href="iod_8h.html" title="Defines the Input/Output Device." alt="" coords="244,109,416,165"/>
 <area shape="rect" href="ram_8h.html" title="HBC&#45;2 Random Access Memory implementation." alt="" coords="440,109,612,165"/>
 <area shape="rect" href="token_8h.html" title="Defines token elements used in the assembly." alt="" coords="832,109,1004,165"/>
@@ -265,6 +268,23 @@ Enumerations</h2></td></tr>
 , <b>INTERRUPT_MANAGEMENT</b> = 1
  }</td></tr>
 <tr class="separator:ae80b9e9dc19af4519a0c3403278cf555"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a450696a95d6cb29d7723838846948340"><td class="memItemLeft" align="right" valign="top"><a id="a450696a95d6cb29d7723838846948340"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>Base</b> { <b>BINARY</b> = 2
+, <b>DECIMAL</b> = 10
+, <b>HEXADECIMAL</b> = 16
+ }</td></tr>
+<tr class="separator:a450696a95d6cb29d7723838846948340"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="func-members"></a>
+Functions</h2></td></tr>
+<tr class="memitem:afcd787a166825efbb64e5a1f93b75784"><td class="memItemLeft" align="right" valign="top">QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="computer_details_8h.html#afcd787a166825efbb64e5a1f93b75784">byte2QString</a> (Byte value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
+<tr class="memdesc:afcd787a166825efbb64e5a1f93b75784"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a byte to a QString.  <a href="computer_details_8h.html#afcd787a166825efbb64e5a1f93b75784">More...</a><br /></td></tr>
+<tr class="separator:afcd787a166825efbb64e5a1f93b75784"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a87fe73fb2a91a9dec391b77852538465"><td class="memItemLeft" align="right" valign="top">QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="computer_details_8h.html#a87fe73fb2a91a9dec391b77852538465">word2QString</a> (Word value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
+<tr class="memdesc:a87fe73fb2a91a9dec391b77852538465"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a word to a QString.  <a href="computer_details_8h.html#a87fe73fb2a91a9dec391b77852538465">More...</a><br /></td></tr>
+<tr class="separator:a87fe73fb2a91a9dec391b77852538465"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a1cddf70d17ab53673727cd568055ef32"><td class="memItemLeft" align="right" valign="top">QString&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="computer_details_8h.html#a1cddf70d17ab53673727cd568055ef32">dWord2QString</a> (Dword value, Base base=Base::HEXADECIMAL, unsigned int significantDigits=0)</td></tr>
+<tr class="memdesc:a1cddf70d17ab53673727cd568055ef32"><td class="mdescLeft">&#160;</td><td class="mdescRight">Converts a dword to a QString.  <a href="computer_details_8h.html#a1cddf70d17ab53673727cd568055ef32">More...</a><br /></td></tr>
+<tr class="separator:a1cddf70d17ab53673727cd568055ef32"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
 Variables</h2></td></tr>
@@ -361,7 +381,119 @@ constexpr int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" h
 <dl class="section author"><dt>Author</dt><dd>Gianni Leclercq </dd></dl>
 <dl class="section version"><dt>Version</dt><dd>0.1 </dd></dl>
 <dl class="section date"><dt>Date</dt><dd>27/08/2023 </dd></dl>
-</div></div><!-- contents -->
+</div><h2 class="groupheader">Function Documentation</h2>
+<a id="afcd787a166825efbb64e5a1f93b75784"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#afcd787a166825efbb64e5a1f93b75784">&#9670;&nbsp;</a></span>byte2QString()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">QString byte2QString </td>
+          <td>(</td>
+          <td class="paramtype">Byte&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Base&#160;</td>
+          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Converts a byte to a QString. </p>
+<p>Will add "0x" (and '0' if necessary) to be in "0x00" format </p>
+
+</div>
+</div>
+<a id="a1cddf70d17ab53673727cd568055ef32"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a1cddf70d17ab53673727cd568055ef32">&#9670;&nbsp;</a></span>dWord2QString()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">QString dWord2QString </td>
+          <td>(</td>
+          <td class="paramtype">Dword&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Base&#160;</td>
+          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Converts a dword to a QString. </p>
+<p>Will add "0x" (and '0' if necessary) to be in "0x00000000" format </p>
+
+</div>
+</div>
+<a id="a87fe73fb2a91a9dec391b77852538465"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a87fe73fb2a91a9dec391b77852538465">&#9670;&nbsp;</a></span>word2QString()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">QString word2QString </td>
+          <td>(</td>
+          <td class="paramtype">Word&#160;</td>
+          <td class="paramname"><em>value</em>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">Base&#160;</td>
+          <td class="paramname"><em>base</em> = <code>Base::HEXADECIMAL</code>, </td>
+        </tr>
+        <tr>
+          <td class="paramkey"></td>
+          <td></td>
+          <td class="paramtype">unsigned int&#160;</td>
+          <td class="paramname"><em>significantDigits</em> = <code>0</code>&#160;</td>
+        </tr>
+        <tr>
+          <td></td>
+          <td>)</td>
+          <td></td><td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+
+<p>Converts a word to a QString. </p>
+<p>Will add "0x" (and '0' if necessary) to be in "0x0000" format </p>
+
+</div>
+</div>
+</div><!-- contents -->
 <!-- start footer part -->
 <hr class="footer"/><address class="footer"><small>
 Generated by&#160;<a href="https://www.doxygen.org/index.html"><img class="footer" src="doxygen.svg" width="104" height="31" alt="doxygen"/></a> 1.9.1

@@ -1,7 +1,7 @@
 <map id="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/console.h" name="/home/stericraft/coding/c++/projects/hbc2&#45;ide/HBC&#45;2_IDE/console.h">
 <area shape="rect" id="node1" title="Console widget for the IDE." alt="" coords="151,5,323,61"/>
 <area shape="rect" id="node2" href="$assembler_8h.html" title="The assembler that procudes binary for the HBC&#45;2 based on its custom assembly language." alt="" coords="5,421,184,477"/>
-<area shape="rect" id="node4" href="$disassembler_8h.html" title="QDialog to display a dissambled view of current RAM content." alt="" coords="70,109,269,165"/>
+<area shape="rect" id="node4" href="$disassembler_8h.html" title="QDialog to display a disassembled view of current RAM content." alt="" coords="70,109,269,165"/>
 <area shape="rect" id="node5" href="$emulator_8h.html" title="Main code for the HBC&#45;2 Emulator." alt="" coords="270,421,442,477"/>
 <area shape="rect" id="node6" href="$peripheral_8h.html" title="HBC&#45;2 Peripheral implementation." alt="" coords="504,109,683,165"/>
 <area shape="rect" id="node3" href="$main_window_8h.html" title="Creates and manages the IDE main window." alt="" coords="97,525,293,581"/>
