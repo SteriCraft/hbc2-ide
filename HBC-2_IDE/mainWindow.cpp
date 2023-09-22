@@ -67,8 +67,12 @@ void MainWindow::loadIcons()
     m_settingsIcon = new QIcon(":/icons/res/settingsIcon.png");
     m_quitIcon = new QIcon(":/icons/res/quitIcon.png");
     m_assembleIcon = new QIcon(":/icons/res/assembleIcon.png");
-    m_runIcon = new QIcon(":/icons/res/runIcon.png");
+    m_disassemblyIcon = new QIcon(":/icons/res/disassemblyIcon.png");
     m_binaryOutputIcon = new QIcon(":/icons/res/binaryOutputIcon.png");
+    m_runIcon = new QIcon(":/icons/res/runIcon.png");
+    m_stepIcon = new QIcon(":/icons/res/stepIcon.png");
+    m_pauseIcon = new QIcon(":/icons/res/pauseIcon.png");
+    m_stopIcon = new QIcon(":/icons/res/stopIcon.png");
 }
 
 void MainWindow::setupMenuBar()
@@ -143,7 +147,7 @@ void MainWindow::setupMenuBar()
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
     m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
 
-    m_showDisassemblyAction = m_assemblerMenu->addAction(tr("Show disassembly"), this, &MainWindow::showDisassemblyAction);
+    m_showDisassemblyAction = m_assemblerMenu->addAction(*m_disassemblyIcon, tr("Show disassembly"), this, &MainWindow::showDisassemblyAction);
     m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
 
     // - Emulator menu -
@@ -152,13 +156,13 @@ void MainWindow::setupMenuBar()
     m_runEmulatorAction = m_emulatorMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
     m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
 
-    m_stepEmulatorAction = m_emulatorMenu->addAction(tr("Step forward"), this, &MainWindow::stepEmulatorAction);
+    m_stepEmulatorAction = m_emulatorMenu->addAction(*m_stepIcon, tr("Step forward"), this, &MainWindow::stepEmulatorAction);
     m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
 
-    m_pauseEmulatorAction = m_emulatorMenu->addAction(tr("Pause"), this, &MainWindow::pauseEmulatorAction);
+    m_pauseEmulatorAction = m_emulatorMenu->addAction(*m_pauseIcon, tr("Pause"), this, &MainWindow::pauseEmulatorAction);
     m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
 
-    m_stopEmulatorAction = m_emulatorMenu->addAction(tr("Stop"), this, &MainWindow::stopEmulatorAction);
+    m_stopEmulatorAction = m_emulatorMenu->addAction(*m_stopIcon, tr("Stop"), this, &MainWindow::stopEmulatorAction);
     m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
 
     m_emulatorMenu->addSeparator();
@@ -703,8 +707,7 @@ void MainWindow::onEmulatorStepped()
     // Binary viewer
     if (m_eepromToggle->isChecked())
     {
-        BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
-        BinaryViewer::showRam();
+        showBinaryAction();
 
         if (!DisassemblyViewer::isOpen())
         {
@@ -823,9 +826,7 @@ void MainWindow::onStopKeyPressed()
 
 void MainWindow::onDisassemblyViewerKeyPressed()
 {
-    Emulator::State state(m_emulator->getState());
-
-    if (state != Emulator::State::NOT_INITIALIZED)
+    if (m_showDisassemblyAction->isEnabled())
     {
         showDisassemblyAction();
     }
@@ -833,9 +834,7 @@ void MainWindow::onDisassemblyViewerKeyPressed()
 
 void MainWindow::onCpuStateViewerKeyPressed()
 {
-    Emulator::State state(m_emulator->getState());
-
-    if (state != Emulator::State::NOT_INITIALIZED)
+    if (m_openCpuStateViewerAction->isEnabled())
     {
         openCpuStateViewer();
     }
@@ -843,12 +842,9 @@ void MainWindow::onCpuStateViewerKeyPressed()
 
 void MainWindow::onBinaryViewerKeyPressed()
 {
-    if (m_assembler != nullptr)
+    if (m_showBinOutputAction->isEnabled())
     {
-        if (m_assembler->isBinaryReady())
-        {
-            showBinaryAction();
-        }
+        showBinaryAction();
     }
 }
 
@@ -1423,7 +1419,7 @@ void MainWindow::runEmulatorAction()
         {
             if (m_monitorToggle->isChecked())
             {
-                MonitorDialog *monitorDialog = MonitorDialog::getInstance(m_projectManager->getCurrentProject()->getName(), m_configManager->getPixelScale(), m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
+                MonitorDialog *monitorDialog = MonitorDialog::getInstance(m_projectManager->getCurrentProject()->getName(), m_configManager, m_emulator->getHbcMonitor(), m_emulator->getHbcKeyboard(), m_consoleOutput, this);
                 monitorDialog->show();
 
                 connect(monitorDialog, SIGNAL(closed()), this, SLOT(onMonitorClosed()));
@@ -2004,7 +2000,9 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
         m_pauseEmulatorAction->setEnabled(newState == Emulator::State::RUNNING);
         m_stopEmulatorAction->setEnabled(newState == Emulator::State::RUNNING || newState == Emulator::State::PAUSED);
 
-        m_openCpuStateViewerAction->setEnabled(newState != Emulator::State::NOT_INITIALIZED);
+        m_openCpuStateViewerAction->setEnabled(newState != Emulator::State::NOT_INITIALIZED && newState != Emulator::State::RUNNING);
+        m_showDisassemblyAction->setEnabled(newState != Emulator::State::RUNNING && m_assembler->isBinaryReady());
+        m_showBinOutputAction->setEnabled(newState != Emulator::State::RUNNING && m_assembler->isBinaryReady());
     }
     else
     {
@@ -2018,6 +2016,8 @@ void MainWindow::updateEmulatorActions(Emulator::State newState)
         m_stopEmulatorAction->setEnabled(false);
 
         m_openCpuStateViewerAction->setEnabled(false);
+        m_showDisassemblyAction->setEnabled(false);
+        m_showBinOutputAction->setEnabled(false);
     }
 
     m_emulatorPeripheralsMenu->setEnabled(newState == Emulator::State::NOT_INITIALIZED || newState == Emulator::State::READY);

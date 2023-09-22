@@ -293,44 +293,48 @@ $(function() {
 <div class="line"><a name="l00246"></a><span class="lineno">  246</span>&#160;        QIcon *m_settingsIcon;</div>
 <div class="line"><a name="l00247"></a><span class="lineno">  247</span>&#160;        QIcon *m_quitIcon;</div>
 <div class="line"><a name="l00248"></a><span class="lineno">  248</span>&#160;        QIcon *m_assembleIcon;</div>
-<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;        QIcon *m_binaryOutputIcon;</div>
-<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;        QIcon *m_runIcon;</div>
-<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160; </div>
-<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;        <span class="comment">// Widgets</span></div>
-<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;        QLabel *m_statusBarLabel;</div>
-<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        QTabWidget *m_assemblyEditor;</div>
-<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160;        QLabel *m_consoleLabel;</div>
-<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;        <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
-<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;        <a class="code" href="class_file_manager.html">FileManager</a> *m_fileManager;</div>
-<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;        <a class="code" href="class_project_manager.html">ProjectManager</a> *m_projectManager;</div>
-<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160; </div>
-<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;        <span class="comment">// Others</span></div>
-<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;        <a class="code" href="class_assembly_1_1_assembler.html">Assembly::Assembler</a> *m_assembler;</div>
-<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;        <a class="code" href="class_hbc_emulator.html">HbcEmulator</a> *m_emulator;</div>
-<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
-<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160; </div>
-<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;        <span class="comment">// Dialogs</span></div>
-<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        <a class="code" href="class_settings_dialog.html">SettingsDialog</a> *m_settingsDialog;</div>
-<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160; </div>
-<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WINDOW_WIDTH = 1280;</div>
-<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WINDOW_HEIGHT = 720;</div>
-<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160; </div>
-<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160;        QFont defaultEditorFont;</div>
-<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;        QWidget *m_window;</div>
-<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        Ui::MainWindow *ui;</div>
-<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160;};</div>
-<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160; </div>
-<div class="line"><a name="l00279"></a><span class="lineno"><a class="line" href="class_about_dialog.html">  279</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_about_dialog.html">AboutDialog</a> : <span class="keyword">public</span> QDialog</div>
-<div class="line"><a name="l00280"></a><span class="lineno">  280</span>&#160;{</div>
-<div class="line"><a name="l00281"></a><span class="lineno">  281</span>&#160;    Q_OBJECT</div>
-<div class="line"><a name="l00282"></a><span class="lineno">  282</span>&#160; </div>
-<div class="line"><a name="l00283"></a><span class="lineno">  283</span>&#160;    <span class="keyword">public</span>:</div>
-<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;        <a class="code" href="class_about_dialog.html">AboutDialog</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
-<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;};</div>
+<div class="line"><a name="l00249"></a><span class="lineno">  249</span>&#160;        QIcon *m_disassemblyIcon;</div>
+<div class="line"><a name="l00250"></a><span class="lineno">  250</span>&#160;        QIcon *m_binaryOutputIcon;</div>
+<div class="line"><a name="l00251"></a><span class="lineno">  251</span>&#160;        QIcon *m_runIcon;</div>
+<div class="line"><a name="l00252"></a><span class="lineno">  252</span>&#160;        QIcon *m_stepIcon;</div>
+<div class="line"><a name="l00253"></a><span class="lineno">  253</span>&#160;        QIcon *m_pauseIcon;</div>
+<div class="line"><a name="l00254"></a><span class="lineno">  254</span>&#160;        QIcon *m_stopIcon;</div>
+<div class="line"><a name="l00255"></a><span class="lineno">  255</span>&#160; </div>
+<div class="line"><a name="l00256"></a><span class="lineno">  256</span>&#160;        <span class="comment">// Widgets</span></div>
+<div class="line"><a name="l00257"></a><span class="lineno">  257</span>&#160;        QLabel *m_statusBarLabel;</div>
+<div class="line"><a name="l00258"></a><span class="lineno">  258</span>&#160;        QTabWidget *m_assemblyEditor;</div>
+<div class="line"><a name="l00259"></a><span class="lineno">  259</span>&#160;        QLabel *m_consoleLabel;</div>
+<div class="line"><a name="l00260"></a><span class="lineno">  260</span>&#160;        <a class="code" href="class_console.html">Console</a> *m_consoleOutput;</div>
+<div class="line"><a name="l00261"></a><span class="lineno">  261</span>&#160;        <a class="code" href="class_file_manager.html">FileManager</a> *m_fileManager;</div>
+<div class="line"><a name="l00262"></a><span class="lineno">  262</span>&#160;        <a class="code" href="class_project_manager.html">ProjectManager</a> *m_projectManager;</div>
+<div class="line"><a name="l00263"></a><span class="lineno">  263</span>&#160; </div>
+<div class="line"><a name="l00264"></a><span class="lineno">  264</span>&#160;        <span class="comment">// Others</span></div>
+<div class="line"><a name="l00265"></a><span class="lineno">  265</span>&#160;        <a class="code" href="class_assembly_1_1_assembler.html">Assembly::Assembler</a> *m_assembler;</div>
+<div class="line"><a name="l00266"></a><span class="lineno">  266</span>&#160;        <a class="code" href="class_hbc_emulator.html">HbcEmulator</a> *m_emulator;</div>
+<div class="line"><a name="l00267"></a><span class="lineno">  267</span>&#160;        <a class="code" href="class_config_manager.html">ConfigManager</a> *m_configManager;</div>
+<div class="line"><a name="l00268"></a><span class="lineno">  268</span>&#160; </div>
+<div class="line"><a name="l00269"></a><span class="lineno">  269</span>&#160;        <span class="comment">// Dialogs</span></div>
+<div class="line"><a name="l00270"></a><span class="lineno">  270</span>&#160;        <a class="code" href="class_settings_dialog.html">SettingsDialog</a> *m_settingsDialog;</div>
+<div class="line"><a name="l00271"></a><span class="lineno">  271</span>&#160; </div>
+<div class="line"><a name="l00272"></a><span class="lineno">  272</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WINDOW_WIDTH = 1280;</div>
+<div class="line"><a name="l00273"></a><span class="lineno">  273</span>&#160;        <span class="keyword">static</span> constexpr <span class="keywordtype">int</span> WINDOW_HEIGHT = 720;</div>
+<div class="line"><a name="l00274"></a><span class="lineno">  274</span>&#160; </div>
+<div class="line"><a name="l00275"></a><span class="lineno">  275</span>&#160;        QFont defaultEditorFont;</div>
+<div class="line"><a name="l00276"></a><span class="lineno">  276</span>&#160;        QWidget *m_window;</div>
+<div class="line"><a name="l00277"></a><span class="lineno">  277</span>&#160;        Ui::MainWindow *ui;</div>
+<div class="line"><a name="l00278"></a><span class="lineno">  278</span>&#160;};</div>
+<div class="line"><a name="l00279"></a><span class="lineno">  279</span>&#160; </div>
+<div class="line"><a name="l00283"></a><span class="lineno"><a class="line" href="class_about_dialog.html">  283</a></span>&#160;<span class="keyword">class </span><a class="code" href="class_about_dialog.html">AboutDialog</a> : <span class="keyword">public</span> QDialog</div>
+<div class="line"><a name="l00284"></a><span class="lineno">  284</span>&#160;{</div>
+<div class="line"><a name="l00285"></a><span class="lineno">  285</span>&#160;    Q_OBJECT</div>
 <div class="line"><a name="l00286"></a><span class="lineno">  286</span>&#160; </div>
-<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MAINWINDOW_H</span></div>
+<div class="line"><a name="l00287"></a><span class="lineno">  287</span>&#160;    <span class="keyword">public</span>:</div>
+<div class="line"><a name="l00288"></a><span class="lineno">  288</span>&#160;        <a class="code" href="class_about_dialog.html">AboutDialog</a>(QWidget *parent = <span class="keyword">nullptr</span>);</div>
+<div class="line"><a name="l00289"></a><span class="lineno">  289</span>&#160;};</div>
+<div class="line"><a name="l00290"></a><span class="lineno">  290</span>&#160; </div>
+<div class="line"><a name="l00291"></a><span class="lineno">  291</span>&#160;<span class="preprocessor">#endif </span><span class="comment">// MAINWINDOW_H</span></div>
 <div class="ttc" id="aassembler_8h_html"><div class="ttname"><a href="assembler_8h.html">assembler.h</a></div><div class="ttdoc">The assembler that procudes binary for the HBC-2 based on its custom assembly language.</div></div>
-<div class="ttc" id="aclass_about_dialog_html"><div class="ttname"><a href="class_about_dialog.html">AboutDialog</a></div><div class="ttdoc">QDialog that displays general information about the IDE.</div><div class="ttdef"><b>Definition:</b> mainWindow.h:280</div></div>
+<div class="ttc" id="aclass_about_dialog_html"><div class="ttname"><a href="class_about_dialog.html">AboutDialog</a></div><div class="ttdoc">QDialog that displays general information about the IDE.</div><div class="ttdef"><b>Definition:</b> mainWindow.h:284</div></div>
 <div class="ttc" id="aclass_assembly_1_1_assembler_html"><div class="ttname"><a href="class_assembly_1_1_assembler.html">Assembly::Assembler</a></div><div class="ttdoc">Singleton of the assembler.</div><div class="ttdef"><b>Definition:</b> assembler.h:130</div></div>
 <div class="ttc" id="aclass_config_manager_html"><div class="ttname"><a href="class_config_manager.html">ConfigManager</a></div><div class="ttdoc">Singleton of the configuration manager, that handles IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:131</div></div>
 <div class="ttc" id="aclass_console_html"><div class="ttname"><a href="class_console.html">Console</a></div><div class="ttdoc">A console widget to show events and provide information to the user.</div><div class="ttdef"><b>Definition:</b> console.h:23</div></div>
@@ -339,8 +343,8 @@ $(function() {
 <div class="ttc" id="aclass_file_manager_html"><div class="ttname"><a href="class_file_manager.html">FileManager</a></div><div class="ttdoc">Singleton of the file manager.</div><div class="ttdef"><b>Definition:</b> fileManager.h:66</div></div>
 <div class="ttc" id="aclass_hbc_emulator_html"><div class="ttname"><a href="class_hbc_emulator.html">HbcEmulator</a></div><div class="ttdoc">Where the HBC-2 emulation is done.</div><div class="ttdef"><b>Definition:</b> emulator.h:154</div></div>
 <div class="ttc" id="aclass_main_window_html"><div class="ttname"><a href="class_main_window.html">MainWindow</a></div><div class="ttdoc">Creates and manages the IDE main window.</div><div class="ttdef"><b>Definition:</b> mainWindow.h:55</div></div>
-<div class="ttc" id="aclass_main_window_html_a05fb9d72c044aa3bb7d187b994704e2f"><div class="ttname"><a href="class_main_window.html#a05fb9d72c044aa3bb7d187b994704e2f">MainWindow::closeEvent</a></div><div class="ttdeci">void closeEvent(QCloseEvent *event) override</div><div class="ttdoc">Called when the window's cross is clicked.</div><div class="ttdef"><b>Definition:</b> mainWindow.cpp:861</div></div>
-<div class="ttc" id="aclass_main_window_html_a279a612e05dd76662acbe55f85c2a89d"><div class="ttname"><a href="class_main_window.html#a279a612e05dd76662acbe55f85c2a89d">MainWindow::onClose</a></div><div class="ttdeci">void onClose()</div><div class="ttdoc">Called when Quit action is clicked in File menu.</div><div class="ttdef"><b>Definition:</b> mainWindow.cpp:856</div></div>
+<div class="ttc" id="aclass_main_window_html_a05fb9d72c044aa3bb7d187b994704e2f"><div class="ttname"><a href="class_main_window.html#a05fb9d72c044aa3bb7d187b994704e2f">MainWindow::closeEvent</a></div><div class="ttdeci">void closeEvent(QCloseEvent *event) override</div><div class="ttdoc">Called when the window's cross is clicked.</div><div class="ttdef"><b>Definition:</b> mainWindow.cpp:857</div></div>
+<div class="ttc" id="aclass_main_window_html_a279a612e05dd76662acbe55f85c2a89d"><div class="ttname"><a href="class_main_window.html#a279a612e05dd76662acbe55f85c2a89d">MainWindow::onClose</a></div><div class="ttdeci">void onClose()</div><div class="ttdoc">Called when Quit action is clicked in File menu.</div><div class="ttdef"><b>Definition:</b> mainWindow.cpp:852</div></div>
 <div class="ttc" id="aclass_project_item_html"><div class="ttname"><a href="class_project_item.html">ProjectItem</a></div><div class="ttdoc">Describes a custom project item in the project tree.</div><div class="ttdef"><b>Definition:</b> projectManager.h:71</div></div>
 <div class="ttc" id="aclass_project_manager_html"><div class="ttname"><a href="class_project_manager.html">ProjectManager</a></div><div class="ttdoc">Singleton of the project manager.</div><div class="ttdef"><b>Definition:</b> projectManager.h:242</div></div>
 <div class="ttc" id="aclass_settings_dialog_html"><div class="ttname"><a href="class_settings_dialog.html">SettingsDialog</a></div><div class="ttdoc">QDialog to modify IDE settings.</div><div class="ttdef"><b>Definition:</b> config.h:373</div></div>

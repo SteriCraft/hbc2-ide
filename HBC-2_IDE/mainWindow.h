@@ -246,8 +246,12 @@ class MainWindow : public QMainWindow
         QIcon *m_settingsIcon;
         QIcon *m_quitIcon;
         QIcon *m_assembleIcon;
+        QIcon *m_disassemblyIcon;
         QIcon *m_binaryOutputIcon;
         QIcon *m_runIcon;
+        QIcon *m_stepIcon;
+        QIcon *m_pauseIcon;
+        QIcon *m_stopIcon;
 
         // Widgets
         QLabel *m_statusBarLabel;

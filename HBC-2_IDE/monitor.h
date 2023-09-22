@@ -14,6 +14,7 @@
 #include <QOpenGLWidget>
 #include <QOpenGLFunctions>
 #include "keyboard.h"
+#include "config.h"
 
 /*!
  * \namespace Monitor
@@ -289,7 +290,7 @@ class MonitorDialog : public QDialog
         /*!
          * \brief Creates the monitor dialog and runs the HbcMonitor thread
          */
-        static MonitorDialog* getInstance(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        static MonitorDialog* getInstance(QString projectName, ConfigManager *configManager, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
 
         /*!
          * \return <b>true</b> if the monitor dialog is opened
@@ -321,11 +322,12 @@ class MonitorDialog : public QDialog
         void closeEvent(QCloseEvent *event) override; //!< Called on dialog close button click
 
     private:
-        MonitorDialog(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
+        MonitorDialog(QString projectName, ConfigManager *configManager, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin);
         void setPosition();
 
         Keyboard::HbcKeyboard *m_hbcKeyboard;
 
+        ConfigManager *m_configManager;
         MonitorWidget *m_monitor;
 };
 

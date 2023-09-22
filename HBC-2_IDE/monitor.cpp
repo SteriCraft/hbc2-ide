@@ -463,10 +463,10 @@ int MonitorThread::getFPS()
 MonitorDialog* MonitorDialog::m_singleton = nullptr;
 
 // PUBLIC
-MonitorDialog* MonitorDialog::getInstance(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
+MonitorDialog* MonitorDialog::getInstance(QString projectName, ConfigManager *configManager, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin)
 {
     if (m_singleton == nullptr)
-        m_singleton = new MonitorDialog(projectName, pixelScale, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
+        m_singleton = new MonitorDialog(projectName, configManager, hbcMonitor, hbcKeyboard, consoleOutput, mainWin);
 
     return m_singleton;
 }
@@ -510,31 +510,32 @@ void MonitorDialog::showEvent(QShowEvent* event)
 
 void MonitorDialog::keyPressEvent(QKeyEvent *event)
 {
-    if (event->key() == Qt::Key_F9)
+    if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR])
     {
         emit runKeyPressed();
     }
-    else if (event->key() == Qt::Key_F10)
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR])
     {
         emit stepKeyPressed();
     }
-    else if (event->key() == Qt::Key_F11)
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR])
     {
         emit pauseKeyPressed();
     }
-    else if (event->key() == Qt::Key_F12 || event->matches(QKeySequence::Quit))
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]
+          || event->matches(QKeySequence::Quit))
     {
         emit stopKeyPressed();
     }
-    else if (event->key() == Qt::Key_F6)
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT])
     {
         emit binaryViewerKeyPressed();
     }
-    else if (event->key() == Qt::Key_F7)
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE])
     {
         emit cpuStateViewerKeyPressed();
     }
-    else if (event->key() == Qt::Key_F8)
+    else if (QKeySequence(event->keyCombination()) == m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY])
     {
         emit disassemblyViewerKeyPressed();
     }
@@ -564,11 +565,12 @@ void MonitorDialog::closeEvent(QCloseEvent *event)
 
 
 // PRIVATE
-MonitorDialog::MonitorDialog(QString projectName, unsigned int pixelScale, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QDialog(qobject_cast<QWidget*>(mainWin))
+MonitorDialog::MonitorDialog(QString projectName, ConfigManager *configManager, HbcMonitor *hbcMonitor, Keyboard::HbcKeyboard *hbcKeyboard, Console *consoleOutput, MainWindow *mainWin) : QDialog(qobject_cast<QWidget*>(mainWin))
 {
     m_monitor = new MonitorWidget(hbcMonitor, consoleOutput);
+    m_configManager = configManager;
 
-    resize(WIDTH * pixelScale + WINDOW_MARGIN, HEIGHT * pixelScale + WINDOW_MARGIN);
+    resize(WIDTH * m_configManager->getPixelScale() + WINDOW_MARGIN, HEIGHT * m_configManager->getPixelScale() + WINDOW_MARGIN);
     setPosition();
     setWindowTitle(projectName + " - HBC-2 Monitor");
     setWindowIcon(QIcon(":/icons/res/logo.png"));

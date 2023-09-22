@@ -12,6 +12,10 @@
         <file>res/runIcon.png</file>
         <file>res/logo.png</file>
         <file>res/settingsIcon.png</file>
+        <file>res/disassemblyIcon.png</file>
+        <file>res/stepIcon.png</file>
+        <file>res/pauseIcon.png</file>
+        <file>res/stopIcon.png</file>
     </qresource>
     <qresource prefix="/font">
         <file>res/charMap.png</file>

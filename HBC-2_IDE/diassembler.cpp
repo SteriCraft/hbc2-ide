@@ -329,18 +329,27 @@ void DisassemblyViewer::convertInstructionToQString()
         }
         else if (m_decodedInstruction.addressingMode == Cpu::AddressingMode::IMM16)
         {
-            newLabel.address = m_decodedInstruction.vX;
-            newLabel.name = "_location" + QString::number(m_labelsList.size());
-            int labelIndex(getLabelIndex(newLabel));
-
-            if (labelIndex == -1)
+            // if address < 0x300 -> pas de label
+            if (m_decodedInstruction.vX >= Cpu::PROGRAM_START_ADDRESS)
             {
-                m_labelsList.push_back(newLabel);
-                argsStr = newLabel.name;
+                newLabel.address = m_decodedInstruction.vX;
+                newLabel.name = "_location" + QString::number(m_labelsList.size());
+                int labelIndex(getLabelIndex(newLabel));
+
+                if (labelIndex == -1)
+                {
+                    m_labelsList.push_back(newLabel);
+                    argsStr = newLabel.name;
+                }
+                else
+                {
+                    argsStr = m_labelsList[labelIndex].name;
+                }
             }
             else
             {
-                argsStr = m_labelsList[labelIndex].name;
+                argsStr = "0x";
+                argsStr += QString::number(m_decodedInstruction.vX, 16);
             }
 
             valid = true;
