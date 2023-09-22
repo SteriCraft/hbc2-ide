@@ -8,6 +8,7 @@
  * \version 0.1
  * \date 29/08/2023
  */
+#include "computerDetails.h"
 #include <QStandardPaths>
 #include <QDialog>
 #include <QHBoxLayout>
@@ -24,6 +25,7 @@
 #include <QMessageBox>
 #include <QTableWidget>
 #include <QKeySequenceEdit>
+#include <QComboBox>
 
 /*!
  * \brief A customized KeySequenceEdit widget that limits to one KeySequence only
@@ -104,6 +106,7 @@ namespace Configuration
         bool eepromPlugged = false; //!< Sets if the emulator starts with the HbcEeprom plugged in
         bool dismissReassemblyWarnings = false; //!< Sets if warnings are thrown when trying to run a project which was modified or not yet assembled
         unsigned int pixelScale = 4; //!< Sets the size of a pixel in the HbcMonitor
+        Emulator::FrequencyTargetIndex frequencyTarget = Emulator::FrequencyTargetIndex::MHZ_2; //!< Sets the default frequency target for the emulator on startup
 
         // CPU state viewer settings
         bool openCpuStateViewerOnEmulatorPaused = true;
@@ -161,7 +164,7 @@ class ConfigManager
 
 
         // ==== SETTERS ====
-        // Editor settings
+        // ===== Editor settings =====
         /*!
          * \brief Sets the number of spaces representing a tab
          */
@@ -178,7 +181,7 @@ class ConfigManager
          */
         void setRamAsDefaultMemoryTarget(bool ramAsDefault);
 
-        // Emulator settings
+        // ===== Emulator settings =====
         /*!
          * \param paused Desired behaviour for the emulator on run command
          */
@@ -214,7 +217,12 @@ class ConfigManager
          */
         void setPixelScale(unsigned int scale);
 
-        // CPU state viewer settings
+        /*!
+         * \brief Sets the default frequency target on startup
+         */
+        void setFrequencyTarget(Emulator::FrequencyTargetIndex target);
+
+        // ===== CPU state viewer settings =====
         /*!
          * \param enable Desired behaviour for the CpuStateViewer when the emulator is paused
          */
@@ -225,7 +233,7 @@ class ConfigManager
          */
         void setOpenCpuStateViewerOnEmulatorStopped(bool enable);
 
-        // Binary viewer settings
+        // ===== Binary viewer settings =====
         /*!
          * \param enable Desired behaviour for the BinaryViewer on project assembly
          */
@@ -241,7 +249,7 @@ class ConfigManager
          */
         void setOpenBinaryViewerOnEmulatorStopped(bool enable);
 
-        // Disassembly viewer settings
+        // ===== Disassembly viewer settings =====
         /*!
          * \param enable Desired behaviour for the DisassemblyViewer on project assembly
          */
@@ -259,7 +267,7 @@ class ConfigManager
 
 
         // ==== GETTERS ====
-        // Editor settings
+        // ===== Editor settings =====
         /*!
          * \return the number of spaces representing a tab char
          */
@@ -269,13 +277,13 @@ class ConfigManager
 
         std::map<Configuration::Command, QKeySequence>& getShortcutsMap();
 
-        // Assembler settings
+        // ===== Assembler settings =====
         /*!
          * \return <b>true</b> if the code must be assembled in the RAM by default
          */
         bool getRamAsDefaultMemoryTarget();
 
-        // Emulator settings
+        // ===== Emulator settings =====
         /*!
          * \return <b>true</b> if the emulator starts paused
          */
@@ -311,7 +319,12 @@ class ConfigManager
          */
         unsigned int getPixelScale();
 
-        // Cpu state viewer settings
+        /*!
+         * \return the default frequency target on startup
+         */
+        Emulator::FrequencyTargetIndex getFrequencyTarget();
+
+        // ===== Cpu state viewer settings =====
         /*!
          * \return <b>true</b> if the CpuStateViewer opens when the emulator is paused
          */
@@ -322,7 +335,7 @@ class ConfigManager
          */
         bool getOpenCpuStateViewerOnEmulatorStopped();
 
-        // Binary viewer settings
+        // ===== Binary viewer settings =====
         /*!
          * \return <b>true</b> if the BinaryViewer opens on project assembly
          */
@@ -338,7 +351,7 @@ class ConfigManager
          */
         bool getOpenBinaryViewerOnEmulatorStopped();
 
-        // Disassembly viewer settings
+        // ===== Disassembly viewer settings =====
         /*!
          * \return <b>true</b> if the DisassemblyViewer opens on project assembly
          */
@@ -405,6 +418,7 @@ class SettingsDialog : public QDialog
         void plugEepromChanged();
         void dismissReassemblyWarningsChanged();
         void pixelScaleChanged(int scale);
+        void frequencyTargetChanged(int index);
 
         // CpuStateViewer
         void openCpuStateViewerOnEmulatorPausedChanged();
@@ -480,6 +494,7 @@ class SettingsDialog : public QDialog
         // General tab
         QCheckBox *m_startPausedCheckBox;
         QCheckBox *m_dismissReassemblyWarningsCheckBox;
+        QComboBox *m_frequencyTargetComboBox;
         QVBoxLayout *m_emulatorSettingsGeneralTabLayout;
         QWidget *m_emulatorSettingsGeneralTabWidget;
         // Monitor tab

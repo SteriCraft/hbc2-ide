@@ -82,18 +82,14 @@ void MainWindow::setupMenuBar()
     m_fileMenu = menuBar()->addMenu(tr("File"));
 
     m_newProjectAction = m_fileMenu->addAction(*m_newFileIcon, tr("New project"), this, &MainWindow::newProjectAction);
-    m_newProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_PROJECT]);
 
     m_newFileAction = m_fileMenu->addAction(*m_newFileIcon, tr("New file"), this, &MainWindow::newFileAction);
-    m_newFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_FILE]);
 
     m_fileMenu->addSeparator();
 
     m_openProjectAction = m_fileMenu->addAction(*m_openFileIcon, tr("Open project"), this, &MainWindow::openProjectAction);
-    m_openProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_PROJECT]);
 
     m_openFileAction = m_fileMenu->addAction(*m_openFileIcon, tr("Open file"), this, &MainWindow::openFileAction);
-    m_openFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_FILE]);
 
     m_recentProjectsMenu = m_fileMenu->addMenu(tr("Recent projects"));
     updateRecentProjectsMenu();
@@ -101,21 +97,16 @@ void MainWindow::setupMenuBar()
     m_fileMenu->addSeparator();
 
     m_saveFileAction = m_fileMenu->addAction(*m_saveFileIcon, tr("Save current file"), this, &MainWindow::saveCurrentFileAction);
-    m_saveFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_CURRENT_FILE]);
 
     m_saveAllAction = m_fileMenu->addAction(*m_saveAllFilesIcon, tr("Save all"), this, &MainWindow::saveAllAction);
-    m_saveAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_ALL]);
 
     m_fileMenu->addSeparator();
 
     m_closeProjectAction = m_fileMenu->addAction(tr("Close current project"), this, &MainWindow::closeCurrentProjectAction);
-    m_closeProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_PROJECT]);
 
     m_closeFileAction = m_fileMenu->addAction(tr("Close current file"), this, &MainWindow::closeCurrentFileAction);
-    m_closeFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_FILE]);
 
     m_closeAllAction = m_fileMenu->addAction(tr("Close all files"), this, &MainWindow::closeAllAction);
-    m_closeAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_ALL_FILES]);
 
     m_fileMenu->addSeparator();
 
@@ -124,13 +115,11 @@ void MainWindow::setupMenuBar()
     m_fileMenu->addSeparator();
 
     m_quitAction = m_fileMenu->addAction(*m_quitIcon, tr("Quit"), this, &MainWindow::onClose);
-    m_quitAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::QUIT]);
 
     // - Assembler menu -
     m_assemblerMenu = menuBar()->addMenu(tr("Assembler"));
 
     m_assembleAction = m_assemblerMenu->addAction(*m_assembleIcon, tr("Assemble"), this, &MainWindow::assembleAction);
-    m_assembleAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::ASSEMBLE]);
 
     m_memoryTargetMenu = m_assemblerMenu->addMenu(tr("Memory target"));
 
@@ -145,60 +134,46 @@ void MainWindow::setupMenuBar()
     m_assemblerMenu->addSeparator();
 
     m_showBinOutputAction = m_assemblerMenu->addAction(*m_binaryOutputIcon, tr("Show binary output"), this, &MainWindow::showBinaryAction);
-    m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
 
     m_showDisassemblyAction = m_assemblerMenu->addAction(*m_disassemblyIcon, tr("Show disassembly"), this, &MainWindow::showDisassemblyAction);
-    m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
 
     // - Emulator menu -
     m_emulatorMenu = menuBar()->addMenu(tr("Emulator"));
 
     m_runEmulatorAction = m_emulatorMenu->addAction(*m_runIcon, tr("Run"), this, &MainWindow::runEmulatorAction);
-    m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
 
     m_stepEmulatorAction = m_emulatorMenu->addAction(*m_stepIcon, tr("Step forward"), this, &MainWindow::stepEmulatorAction);
-    m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
 
     m_pauseEmulatorAction = m_emulatorMenu->addAction(*m_pauseIcon, tr("Pause"), this, &MainWindow::pauseEmulatorAction);
-    m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
 
     m_stopEmulatorAction = m_emulatorMenu->addAction(*m_stopIcon, tr("Stop"), this, &MainWindow::stopEmulatorAction);
-    m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
 
     m_emulatorMenu->addSeparator();
 
     m_openCpuStateViewerAction = m_emulatorMenu->addAction(tr("Show CPU state"), this, &MainWindow::openCpuStateViewer);
-    m_openCpuStateViewerAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE]);
 
     m_emulatorFrequencyMenu = m_emulatorMenu->addMenu(tr("CPU frequency"));
 
     m_100khzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("100 KHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::KHZ_100));
     m_100khzFrequencyToggle->setCheckable(true);
-    m_100khzFrequencyToggle->setChecked(false);
 
     m_1mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("1 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_1));
     m_1mhzFrequencyToggle->setCheckable(true);
-    m_1mhzFrequencyToggle->setChecked(false);
 
     m_2mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("2 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_2));
     m_2mhzFrequencyToggle->setCheckable(true);
-    m_2mhzFrequencyToggle->setChecked(true); // 2 MHz default frequency, as specified in the HBC-2 documentation
 
     m_5kmzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("5 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_5));
     m_5kmzFrequencyToggle->setCheckable(true);
-    m_5kmzFrequencyToggle->setChecked(false);
 
     m_10mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("10 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_10));
     m_10mhzFrequencyToggle->setCheckable(true);
-    m_10mhzFrequencyToggle->setChecked(false);
 
     m_20mhzFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("20 MHz"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::MHZ_20));
     m_20mhzFrequencyToggle->setCheckable(true);
-    m_20mhzFrequencyToggle->setChecked(false);
 
     m_maxFrequencyToggle = m_emulatorFrequencyMenu->addAction(tr("Fastest"), this, std::bind(&MainWindow::setFrequencyTargetAction, this, Emulator::FrequencyTarget::FASTEST));
     m_maxFrequencyToggle->setCheckable(true);
-    m_maxFrequencyToggle->setChecked(false);
 
     m_emulatorMenu->addSeparator();
 
@@ -265,6 +240,10 @@ void MainWindow::setupMenuBar()
 
     m_closeProjectActionRC = new QAction(tr("Close"), this);
     connect(m_closeProjectActionRC, &QAction::triggered, this, &MainWindow::closeProjectActionRC);
+
+    // Load values from settings
+    reloadTargetFrequency();
+    reloadShortcuts();
 }
 
 void MainWindow::setupWidgets()
@@ -305,6 +284,69 @@ void MainWindow::setupLayout()
     setCentralWidget(m_window);
 }
 
+void MainWindow::reloadShortcuts()
+{
+    m_newProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_PROJECT]);
+    m_newFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_FILE]);
+    m_openProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_PROJECT]);
+    m_openFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_FILE]);
+    m_saveFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_CURRENT_FILE]);
+    m_saveAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_ALL]);
+    m_closeProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_PROJECT]);
+    m_closeFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_FILE]);
+    m_closeAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_ALL_FILES]);
+    m_quitAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::QUIT]);
+    m_assembleAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::ASSEMBLE]);
+    m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
+    m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
+    m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
+    m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
+    m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
+    m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
+    m_openCpuStateViewerAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE]);
+}
+
+void MainWindow::reloadTargetFrequency()
+{
+    m_100khzFrequencyToggle->setChecked(false);
+    m_1mhzFrequencyToggle->setChecked(false);
+    m_2mhzFrequencyToggle->setChecked(false);
+    m_5kmzFrequencyToggle->setChecked(false);
+    m_10mhzFrequencyToggle->setChecked(false);
+    m_20mhzFrequencyToggle->setChecked(false);
+    m_maxFrequencyToggle->setChecked(false);
+
+    switch ((int)m_configManager->getFrequencyTarget())
+    {
+        case (int)Emulator::FrequencyTargetIndex::KHZ_100:
+            m_100khzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::MHZ_1:
+            m_1mhzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::MHZ_2:
+            m_2mhzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::MHZ_5:
+            m_5kmzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::MHZ_10:
+            m_10mhzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::MHZ_20:
+            m_20mhzFrequencyToggle->setChecked(true);
+            break;
+
+        case (int)Emulator::FrequencyTargetIndex::FASTEST:
+            m_maxFrequencyToggle->setChecked(true);
+            break;
+    }
+}
 
 // === SLOTS ===
 void MainWindow::onTabSelect()
@@ -410,25 +452,8 @@ void MainWindow::onTextCursorMoved()
 
 void MainWindow::onSettingsChanged()
 {
-    // Reload shortcuts
-    m_newProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_PROJECT]);
-    m_newFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::NEW_FILE]);
-    m_openProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_PROJECT]);
-    m_openFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::OPEN_FILE]);
-    m_saveFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_CURRENT_FILE]);
-    m_saveAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SAVE_ALL]);
-    m_closeProjectAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_PROJECT]);
-    m_closeFileAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_CURRENT_FILE]);
-    m_closeAllAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::CLOSE_ALL_FILES]);
-    m_quitAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::QUIT]);
-    m_assembleAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::ASSEMBLE]);
-    m_showBinOutputAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_BIN_OUTPUT]);
-    m_showDisassemblyAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_DISASSEMBLY]);
-    m_runEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::RUN_EMULATOR]);
-    m_stepEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STEP_EMULATOR]);
-    m_pauseEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::PAUSE_EMULATOR]);
-    m_stopEmulatorAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::STOP_EMULATOR]);
-    m_openCpuStateViewerAction->setShortcut(m_configManager->getShortcutsMap()[Configuration::Command::SHOW_CPU_STATE]);
+    reloadShortcuts();
+    reloadTargetFrequency();
 }
 
 void MainWindow::onTabClose(int tabIndex)

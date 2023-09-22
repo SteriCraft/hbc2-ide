@@ -66,7 +66,8 @@ $(function() {
 <div class="header">
   <div class="summary">
 <a href="#nested-classes">Classes</a> &#124;
-<a href="#enum-members">Enumerations</a>  </div>
+<a href="#enum-members">Enumerations</a> &#124;
+<a href="#var-members">Variables</a>  </div>
   <div class="headertitle">
 <div class="title">Emulator Namespace Reference</div>  </div>
 </div><!--header-->
@@ -86,6 +87,30 @@ Classes</h2></td></tr>
 </table><table class="memberdecls">
 <tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="enum-members"></a>
 Enumerations</h2></td></tr>
+<tr class="memitem:a5108250317567f332f4a86660b7fe423"><td class="memItemLeft" align="right" valign="top"><a id="a5108250317567f332f4a86660b7fe423"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>FrequencyTargetIndex</b> { <br />
+&#160;&#160;<b>KHZ_100</b> = 0
+, <b>MHZ_1</b> = 1
+, <b>MHZ_2</b> = 2
+, <b>MHZ_5</b> = 3
+, <br />
+&#160;&#160;<b>MHZ_10</b> = 4
+, <b>MHZ_20</b> = 5
+, <b>FASTEST</b> = 6
+<br />
+ }</td></tr>
+<tr class="separator:a5108250317567f332f4a86660b7fe423"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a61b7ec761e42f2720b79ac9894abbdc6"><td class="memItemLeft" align="right" valign="top"><a id="a61b7ec761e42f2720b79ac9894abbdc6"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>FrequencyTarget</b> { <br />
+&#160;&#160;<b>KHZ_100</b> = 100000
+, <b>MHZ_1</b> = 1000000
+, <b>MHZ_2</b> = 2000000
+, <b>MHZ_5</b> = 5000000
+, <br />
+&#160;&#160;<b>MHZ_10</b> = 10000000
+, <b>MHZ_20</b> = 20000000
+, <b>FASTEST</b> = 0
+<br />
+ }</td></tr>
+<tr class="separator:a61b7ec761e42f2720b79ac9894abbdc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7f7bb296115b39859e6d341ad5187e3a"><td class="memItemLeft" align="right" valign="top"><a id="a7f7bb296115b39859e6d341ad5187e3a"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>State</b> { <b>NOT_INITIALIZED</b> = 0
 , <b>READY</b> = 1
 , <b>RUNNING</b> = 2
@@ -103,18 +128,15 @@ Enumerations</h2></td></tr>
 <br />
  }</td></tr>
 <tr class="separator:a2a2c4a8c4eb5d0dd9a23a656a88d8084"><td class="memSeparator" colspan="2">&#160;</td></tr>
-<tr class="memitem:a61b7ec761e42f2720b79ac9894abbdc6"><td class="memItemLeft" align="right" valign="top"><a id="a61b7ec761e42f2720b79ac9894abbdc6"></a>enum class &#160;</td><td class="memItemRight" valign="bottom"><b>FrequencyTarget</b> { <br />
-&#160;&#160;<b>KHZ_100</b> = 100000
-, <b>MHZ_1</b> = 1000000
-, <b>MHZ_2</b> = 2000000
-, <b>MHZ_5</b> = 5000000
-, <br />
-&#160;&#160;<b>MHZ_10</b> = 10000000
-, <b>MHZ_20</b> = 20000000
-, <b>FASTEST</b> = 0
-<br />
- }</td></tr>
-<tr class="separator:a61b7ec761e42f2720b79ac9894abbdc6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+</table><table class="memberdecls">
+<tr class="heading"><td colspan="2"><h2 class="groupheader"><a name="var-members"></a>
+Variables</h2></td></tr>
+<tr class="memitem:ae5f7719e28f4b632e67f6423b354f50f"><td class="memItemLeft" align="right" valign="top"><a id="ae5f7719e28f4b632e67f6423b354f50f"></a>
+constexpr int&#160;</td><td class="memItemRight" valign="bottom"><b>FREQUENCIES_NB</b> = 7</td></tr>
+<tr class="separator:ae5f7719e28f4b632e67f6423b354f50f"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aa541528199354d4f7f2534a8a399b83f"><td class="memItemLeft" align="right" valign="top"><a id="aa541528199354d4f7f2534a8a399b83f"></a>
+const std::string&#160;</td><td class="memItemRight" valign="bottom"><b>frequencyTargetStr</b> [] = { &quot;100 kHz&quot;, &quot;1 MHz&quot;, &quot;2 MHz&quot;, &quot;5 MHz&quot;, &quot;10 MHz&quot;, &quot;20 MHz&quot;, &quot;Fastest&quot; }</td></tr>
+<tr class="separator:aa541528199354d4f7f2534a8a399b83f"><td class="memSeparator" colspan="2">&#160;</td></tr>
 </table>
 <a name="details" id="details"></a><h2 class="groupheader">Detailed Description</h2>
 <div class="textblock"><p><a class="el" href="class_hbc_emulator.html" title="Where the HBC-2 emulation is done.">HbcEmulator</a> specifications. </p>

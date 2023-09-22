@@ -125,6 +125,10 @@ void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="clas
 void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a85159a542df9aec416d211a29c294ee6">setPixelScale</a> (unsigned int scale)</td></tr>
 <tr class="memdesc:a85159a542df9aec416d211a29c294ee6"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the scale of a pixel in <a class="el" href="class_hbc_monitor.html" title="Derived from HbcPeripheral, represents the Monitor device.">HbcMonitor</a>. <br /></td></tr>
 <tr class="separator:a85159a542df9aec416d211a29c294ee6"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:aed4443b298719603d5a4ee395419e535"><td class="memItemLeft" align="right" valign="top"><a id="aed4443b298719603d5a4ee395419e535"></a>
+void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#aed4443b298719603d5a4ee395419e535">setFrequencyTarget</a> (Emulator::FrequencyTargetIndex target)</td></tr>
+<tr class="memdesc:aed4443b298719603d5a4ee395419e535"><td class="mdescLeft">&#160;</td><td class="mdescRight">Sets the default frequency target on startup. <br /></td></tr>
+<tr class="separator:aed4443b298719603d5a4ee395419e535"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a7164ebbaeddbf69b321529382b7e46f2"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a7164ebbaeddbf69b321529382b7e46f2">setOpenCpuStateViewerOnEmulatorPaused</a> (bool enable)</td></tr>
 <tr class="separator:a7164ebbaeddbf69b321529382b7e46f2"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:aa2ebea530cf3b6f4f984b08d25c4dc82"><td class="memItemLeft" align="right" valign="top">void&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#aa2ebea530cf3b6f4f984b08d25c4dc82">setOpenCpuStateViewerOnEmulatorStopped</a> (bool enable)</td></tr>
@@ -165,6 +169,8 @@ std::map&lt; Configuration::Command, QKeySequence &gt; &amp;&#160;</td><td class
 <tr class="separator:aa75c94feb82e7a580cd79dd527154cf1"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a6d12907065297d22ae3790d9b140f779"><td class="memItemLeft" align="right" valign="top">unsigned int&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a6d12907065297d22ae3790d9b140f779">getPixelScale</a> ()</td></tr>
 <tr class="separator:a6d12907065297d22ae3790d9b140f779"><td class="memSeparator" colspan="2">&#160;</td></tr>
+<tr class="memitem:a2267a6c34c0e709bd3903b9cab03c953"><td class="memItemLeft" align="right" valign="top">Emulator::FrequencyTargetIndex&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a2267a6c34c0e709bd3903b9cab03c953">getFrequencyTarget</a> ()</td></tr>
+<tr class="separator:a2267a6c34c0e709bd3903b9cab03c953"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a3fd1a2c06e89f1f9fa624a77fc273ddb"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a3fd1a2c06e89f1f9fa624a77fc273ddb">getOpenCpuStateViewerOnEmulatorPaused</a> ()</td></tr>
 <tr class="separator:a3fd1a2c06e89f1f9fa624a77fc273ddb"><td class="memSeparator" colspan="2">&#160;</td></tr>
 <tr class="memitem:a52c669010102c371919ed910621dd896"><td class="memItemLeft" align="right" valign="top">bool&#160;</td><td class="memItemRight" valign="bottom"><a class="el" href="class_config_manager.html#a52c669010102c371919ed910621dd896">getOpenCpuStateViewerOnEmulatorStopped</a> ()</td></tr>
@@ -227,6 +233,24 @@ Static Public Member Functions</h2></td></tr>
       </table>
 </div><div class="memdoc">
 <dl class="section return"><dt>Returns</dt><dd><b>true</b> if the emulator starts with the EEPROM plugged in </dd></dl>
+
+</div>
+</div>
+<a id="a2267a6c34c0e709bd3903b9cab03c953"></a>
+<h2 class="memtitle"><span class="permalink"><a href="#a2267a6c34c0e709bd3903b9cab03c953">&#9670;&nbsp;</a></span>getFrequencyTarget()</h2>
+
+<div class="memitem">
+<div class="memproto">
+      <table class="memname">
+        <tr>
+          <td class="memname">Emulator::FrequencyTargetIndex ConfigManager::getFrequencyTarget </td>
+          <td>(</td>
+          <td class="paramname"></td><td>)</td>
+          <td></td>
+        </tr>
+      </table>
+</div><div class="memdoc">
+<dl class="section return"><dt>Returns</dt><dd>the default frequency target on startup </dd></dl>
 
 </div>
 </div>

@@ -163,6 +163,19 @@ namespace Iod
     };
 }
 
+// Documentation is written in emulator.h
+namespace Emulator
+{
+    constexpr int FREQUENCIES_NB = 7;
+
+    enum class FrequencyTargetIndex { KHZ_100 = 0, MHZ_1 = 1, MHZ_2 = 2, MHZ_5 = 3, MHZ_10 = 4, MHZ_20 = 5, FASTEST = 6 }; //!< Lists frequency targets per index
+
+    const std::string frequencyTargetStr[] = { "100 kHz", "1 MHz", "2 MHz", "5 MHz", "10 MHz", "20 MHz", "Fastest" };
+
+    enum class FrequencyTarget { KHZ_100 = 100000, MHZ_1 = 1000000, MHZ_2 = 2000000,
+                                 MHZ_5 = 5000000, MHZ_10 = 10000000, MHZ_20 = 20000000, FASTEST = 0 }; //!< Lists possible frequency targets
+}
+
 // ============ UTILITIES ============
 enum class Base { BINARY = 2, DECIMAL = 10, HEXADECIMAL = 16 };
 

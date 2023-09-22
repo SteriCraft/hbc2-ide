@@ -21,7 +21,7 @@ var searchData=
   ['setfilepath_362',['setFilePath',['../class_file_manager.html#a47f655202d3bba550a0a40d6446ea00c',1,'FileManager::setFilePath(CustomFile *file, QString filePath)'],['../class_file_manager.html#a1f5f166539982aa5280b3e0ae23cf60d',1,'FileManager::setFilePath(QString fileName, QString filePath)']]],
   ['setfileunsaved_363',['setFileUnsaved',['../class_file_manager.html#ae5824f6d95ad8242eb1c10316fc418b8',1,'FileManager::setFileUnsaved(QString fileName)'],['../class_file_manager.html#ad444476b9c6b204804850a7beeef21f1',1,'FileManager::setFileUnsaved(CustomFile *file)']]],
   ['setfont_364',['setFont',['../class_q_hex_edit.html#a57221461a9c9e1b2c0e1882788ac9911',1,'QHexEdit']]],
-  ['setfrequencytarget_365',['setFrequencyTarget',['../class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3',1,'HbcEmulator']]],
+  ['setfrequencytarget_365',['setFrequencyTarget',['../class_hbc_emulator.html#ad0379729554633eed39562a0d2f874d3',1,'HbcEmulator::setFrequencyTarget()'],['../class_config_manager.html#aed4443b298719603d5a4ee395419e535',1,'ConfigManager::setFrequencyTarget(Emulator::FrequencyTargetIndex target)']]],
   ['setkeyboardplugged_366',['setKeyboardPlugged',['../class_config_manager.html#ad94e829745c46994456b69284dd77f68',1,'ConfigManager']]],
   ['setmonitorplugged_367',['setMonitorPlugged',['../class_config_manager.html#a02c5e604d03e24033ca248c9d46b1063',1,'ConfigManager']]],
   ['setopenbinaryvieweronassembly_368',['setOpenBinaryViewerOnAssembly',['../class_config_manager.html#af2dec72afac3cbb9e42a04fa2b79257d',1,'ConfigManager']]],

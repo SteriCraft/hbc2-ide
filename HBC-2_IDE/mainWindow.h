@@ -98,6 +98,8 @@ class MainWindow : public QMainWindow
         void setupMenuBar();
         void setupWidgets();
         void setupLayout();
+        void reloadShortcuts();
+        void reloadTargetFrequency();
 
         // General methods
         void closeAssociatedTabs(ProjectItem* item);

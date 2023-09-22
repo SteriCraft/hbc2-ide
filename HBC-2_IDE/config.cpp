@@ -148,6 +148,11 @@ void ConfigManager::setPixelScale(unsigned int scale)
     m_settings->pixelScale = scale;
 }
 
+void ConfigManager::setFrequencyTarget(Emulator::FrequencyTargetIndex target)
+{
+    m_settings->frequencyTarget = target;
+}
+
 // Cpu state viewer settings
 void ConfigManager::setOpenCpuStateViewerOnEmulatorPaused(bool enable)
 {
@@ -248,6 +253,11 @@ bool ConfigManager::getDismissReassemblyWarnings()
 unsigned int ConfigManager::getPixelScale()
 {
     return m_settings->pixelScale;
+}
+
+Emulator::FrequencyTargetIndex ConfigManager::getFrequencyTarget()
+{
+    return m_settings->frequencyTarget;
 }
 
 // Cpu state viewer settings
@@ -377,6 +387,16 @@ ConfigManager::ConfigManager()
                     else if (key == "DISMISS_REASSEMBLY_WARNINGS")
                     {
                         m_settings->dismissReassemblyWarnings = (value == "TRUE");
+                    }
+                    else if (key == "DEFAULT_FREQUENCY_TARGET")
+                    {
+                        bool ok;
+                        int index = value.toInt(&ok);
+
+                        if (ok && index < Emulator::FREQUENCIES_NB)
+                        {
+                            m_settings->frequencyTarget = (Emulator::FrequencyTargetIndex)index;
+                        }
                     }
                     else if (key == "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED")
                     {
@@ -546,6 +566,7 @@ bool ConfigManager::saveConfigFile()
         out << "KEYBOARD_PLUGGED=" << (m_settings->keyboardPlugged ? "TRUE" : "FALSE") << "\n";
         out << "EEPROM_PLUGGED=" << (m_settings->eepromPlugged ? "TRUE" : "FALSE") << "\n";
         out << "DISMISS_REASSEMBLY_WARNINGS=" << (m_settings->dismissReassemblyWarnings ? "TRUE" : "FALSE") << "\n";
+        out << "DEFAULT_FREQUENCY_TARGET=" << QString::number((int)m_settings->frequencyTarget) << "\n";
         out << "PIXEL_SCALE=" << QString::number(m_settings->pixelScale) << "\n";
 
         out << "OPEN_CPU_STATE_VIEWER_EMULATOR_PAUSED=" << (m_settings->openCpuStateViewerOnEmulatorPaused ? "TRUE" : "FALSE") << "\n";
@@ -792,6 +813,11 @@ void SettingsDialog::dismissReassemblyWarningsChanged()
 void SettingsDialog::pixelScaleChanged(int scale)
 {
     m_configManager->setPixelScale(scale);
+}
+
+void SettingsDialog::frequencyTargetChanged(int index)
+{
+    m_configManager->setFrequencyTarget((Emulator::FrequencyTargetIndex)index);
 }
 
 void SettingsDialog::openCpuStateViewerOnEmulatorPausedChanged()
@@ -1050,6 +1076,12 @@ void SettingsDialog::initEmulatorSettingsLayout()
 
     m_startPausedCheckBox = new QCheckBox(tr("Start paused"), qobject_cast<QWidget*>(m_emulatorSettingsGeneralTabLayout));
     m_dismissReassemblyWarningsCheckBox = new QCheckBox(tr("Dismiss warnings when running an unassembled project"), qobject_cast<QWidget*>(m_emulatorSettingsGeneralTabLayout));
+    m_frequencyTargetComboBox = new QComboBox(qobject_cast<QWidget*>(m_emulatorSettingsGeneralTabLayout));
+    for (unsigned int i(0); i < Emulator::FREQUENCIES_NB; i++)
+    {
+        m_frequencyTargetComboBox->addItem(QString::fromStdString(Emulator::frequencyTargetStr[i]));
+    }
+
     m_plugMonitorCheckBox = new QCheckBox(tr("Monitor plugged-in by default"), qobject_cast<QWidget*>(m_emulatorSettingsMonitorTabLayout));
 
     QLabel *pixelScaleLabel = new QLabel(tr("Pixel scale"), qobject_cast<QWidget*>(m_emulatorSettingsMonitorTabLayout));
@@ -1068,6 +1100,7 @@ void SettingsDialog::initEmulatorSettingsLayout()
     // Final layout configuration
     m_emulatorSettingsGeneralTabLayout->addWidget(m_startPausedCheckBox);
     m_emulatorSettingsGeneralTabLayout->addWidget(m_dismissReassemblyWarningsCheckBox);
+    m_emulatorSettingsGeneralTabLayout->addWidget(m_frequencyTargetComboBox);
     m_emulatorSettingsGeneralTabLayout->addStretch();
     m_emulatorSettingsGeneralTabWidget->setLayout(m_emulatorSettingsGeneralTabLayout);
 
@@ -1101,12 +1134,13 @@ void SettingsDialog::initEmulatorSettingsLayout()
 
     // Connections
     connect(m_startPausedCheckBox, SIGNAL(stateChanged(int)), this, SLOT(startPausedChanged()));
+    connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
+    connect(m_frequencyTargetComboBox, SIGNAL(currentIndexChanged(int)), this, SLOT(frequencyTargetChanged(int)));
     connect(m_plugMonitorCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugMonitorChanged()));
     connect(m_pixelScaleSpinBox, SIGNAL(valueChanged(int)), this, SLOT(pixelScaleChanged(int)));
     connect(m_plugRTCCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugRTCChanged()));
     connect(m_plugKeyboardCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugKeyboardChanged()));
     connect(m_plugEepromCheckBox, SIGNAL(stateChanged(int)), this, SLOT(plugEepromChanged()));
-    connect(m_dismissReassemblyWarningsCheckBox, SIGNAL(stateChanged(int)), this, SLOT(dismissReassemblyWarningsChanged()));
 }
 
 void SettingsDialog::initCpuStateViewerSettingsLayout()
@@ -1263,6 +1297,7 @@ void SettingsDialog::updateWidgets()
     // Emulator settings
     m_startPausedCheckBox->setChecked(m_configManager->getStartEmulatorPaused());
     m_dismissReassemblyWarningsCheckBox->setChecked(m_configManager->getDismissReassemblyWarnings());
+    m_frequencyTargetComboBox->setCurrentIndex((int)m_configManager->getFrequencyTarget());
     m_plugMonitorCheckBox->setChecked(m_configManager->getMonitorPlugged());
     m_pixelScaleSpinBox->setValue(m_configManager->getPixelScale());
     m_plugRTCCheckBox->setChecked(m_configManager->getRTCPlugged());

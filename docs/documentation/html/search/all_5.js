@@ -8,5 +8,5 @@ var searchData=
   ['font_107',['font',['../class_q_hex_edit.html#a9579dc7273c48b89c9e4f26adda78671',1,'QHexEdit']]],
   ['fpscount_108',['fpsCount',['../struct_monitor_1_1_status.html#a1ab8254d6fb2ec7e712ff27ad52fe42d',1,'Monitor::Status']]],
   ['fpscounttimer_109',['fpsCountTimer',['../struct_monitor_1_1_status.html#a9b27ba943787001d339402dc9809d5b4',1,'Monitor::Status']]],
-  ['frequencytarget_110',['frequencyTarget',['../struct_emulator_1_1_status.html#aacd6b3da47da3ca31359d6a17b6905ea',1,'Emulator::Status']]]
+  ['frequencytarget_110',['frequencyTarget',['../struct_configuration_1_1_settings.html#a025d37293538db452fee43ef6e1facf2',1,'Configuration::Settings::frequencyTarget()'],['../struct_emulator_1_1_status.html#aacd6b3da47da3ca31359d6a17b6905ea',1,'Emulator::Status::frequencyTarget()']]]
 ];
