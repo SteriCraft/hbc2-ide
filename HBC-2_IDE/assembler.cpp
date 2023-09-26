@@ -39,11 +39,6 @@ ByteDebugSymbol Assembler::getSymbolFromAddress(Word address)
     return m_finalBinary.origin[address];
 }
 
-QString Assembler::getBinaryFilePath()
-{
-    return m_finalBinary.binaryFilePath;
-}
-
 bool Assembler::isAssembledForEeprom()
 {
     return m_finalBinary.binaryData.size() == Eeprom::MEMORY_SIZE;
@@ -309,26 +304,12 @@ bool Assembler::assembleProject(std::shared_ptr<Project> p, bool targetEeprom)
         return false;
     }
 
-    // UNDER CONSTRUCTION
 // -> Minor pass 2: Data integration
     if (!convertDataToBinary())
     {
         m_consoleOutput->log("Assembly failed");
         m_consoleOutput->returnLine();
         return false;
-    }
-
-// -> Minor pass 3: Binary save in file (only if the EEPROM is the target)
-    if (targetEeprom)
-    {
-        if (!saveBinaryToFile())
-        {
-            m_consoleOutput->log("Assembly failed");
-            m_consoleOutput->returnLine();
-            return false;
-        }
-
-        m_consoleOutput->log("EEPROM binary file written");
     }
 
     m_consoleOutput->log("Assembly terminated successfuly");
@@ -395,7 +376,6 @@ void Assembler::initBinary(bool targetEeprom)
 
     m_finalBinary.binaryData.clear();
     m_finalBinary.origin.clear();
-    m_finalBinary.binaryFilePath = ""; // Will be set by saveBinaryToFile() if the EEPROM is the memory target
 
     memorySize = (targetEeprom ? Eeprom::MEMORY_SIZE : Ram::MEMORY_SIZE);
 
@@ -1641,45 +1621,6 @@ bool Assembler::convertDataToBinary()
             }
         }
     }
-
-    return true;
-}
-
-bool Assembler::saveBinaryToFile()
-{
-    QString romDirectoryPath(QFileInfo(m_finalFile.m_filePath).path() + "/rom/");
-    QDir romDirectory(romDirectoryPath);
-
-    if (!romDirectory.exists())
-    {
-        romDirectory.mkpath(romDirectoryPath);
-    }
-
-    QString filePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
-    QFile file(filePath);
-
-    if (!file.open(QIODevice::WriteOnly))
-    {
-        m_error.originFilePath = "";
-        m_error.originLineNb = 0;
-        m_error.type = Token::ErrorType::BIN_FILE_OPEN;
-        m_error.additionalInfo = file.errorString().toStdString() + ")";
-
-        logError();
-        return false;
-    }
-
-    QDataStream out(&file);
-
-    for (unsigned int i(0); i < Eeprom::MEMORY_SIZE; i++)
-    {
-        out << m_finalBinary.binaryData[i];
-    }
-
-    file.flush();
-    file.close();
-
-    m_finalBinary.binaryFilePath = QFileInfo(m_finalFile.m_filePath).path() + "/rom/" + m_finalFile.m_fileName + ".bin";
 
     return true;
 }

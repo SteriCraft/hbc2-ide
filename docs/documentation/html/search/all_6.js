@@ -1,10 +1,9 @@
 var searchData=
 [
-  ['getaddress_111',['getAddress',['../class_token_1_1_token_item.html#aacbbea174a60e1c7740ddeb89da47ece',1,'Token::TokenItem']]],
-  ['getassembled_112',['getAssembled',['../class_project.html#a2a9c3d87028e025135703bb567bca0c0',1,'Project']]],
-  ['getbinarydata_113',['getBinaryData',['../class_assembly_1_1_assembler.html#abbf5e0ded53671ff117d05e83316bfc4',1,'Assembly::Assembler']]],
-  ['getbinarydatawithsymbols_114',['getBinaryDataWithSymbols',['../class_assembly_1_1_assembler.html#a838dcbd18d67428ed30d3b194b12d2fe',1,'Assembly::Assembler']]],
-  ['getbinaryfilepath_115',['getBinaryFilePath',['../class_assembly_1_1_assembler.html#ae4ba888475d6d262b4fee0758b82a4d2',1,'Assembly::Assembler']]],
+  ['getaddress_112',['getAddress',['../class_token_1_1_token_item.html#aacbbea174a60e1c7740ddeb89da47ece',1,'Token::TokenItem']]],
+  ['getassembled_113',['getAssembled',['../class_project.html#a2a9c3d87028e025135703bb567bca0c0',1,'Project']]],
+  ['getbinarydata_114',['getBinaryData',['../class_assembly_1_1_assembler.html#abbf5e0ded53671ff117d05e83316bfc4',1,'Assembly::Assembler']]],
+  ['getbinarydatawithsymbols_115',['getBinaryDataWithSymbols',['../class_assembly_1_1_assembler.html#a838dcbd18d67428ed30d3b194b12d2fe',1,'Assembly::Assembler']]],
   ['getbreakpoints_116',['getBreakpoints',['../class_code_editor.html#a4c7bdb90bf795a9b2a626043b6898a90',1,'CodeEditor']]],
   ['getbreakpointsaddresses_117',['getBreakpointsAddresses',['../class_assembly_1_1_assembler.html#a50005591cb5ef0717dad3cf092da383e',1,'Assembly::Assembler']]],
   ['getconcatregs_118',['getConcatRegs',['../class_token_1_1_token_item.html#a1ff726f58fb18a5745f3bfb98f2d8b46',1,'Token::TokenItem']]],

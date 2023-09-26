@@ -1,4 +1,5 @@
 ﻿#include "projectManager.h"
+#include "eeprom.h"
 
 #include <QVBoxLayout>
 #include <QLabel>
@@ -411,6 +412,9 @@ Project::Project(QString name, QString path, ProjectItem* mainNode)
     m_name = name;
     m_path = path;
     m_assembled = false;
+    m_romFilePath = QFileInfo(m_path).path() + "/rom/" + m_name + ".bin";
+
+    m_binaryFileExists = QFile(m_romFilePath).exists();
 
     if (mainNode == nullptr)
     {
@@ -580,9 +584,24 @@ QString Project::getPath()
     return m_path;
 }
 
+QString Project::getRomFilePath()
+{
+    if (m_binaryFileExists)
+    {
+        return m_romFilePath;
+    }
+
+    return "";
+}
+
 bool Project::getAssembled()
 {
     return m_assembled;
+}
+
+bool Project::binaryFileExists()
+{
+    return m_binaryFileExists;
 }
 
 ProjectItem* Project::getTopItem()
@@ -629,6 +648,35 @@ bool Project::contains(QString path)
 void Project::setAssembled(bool assembled)
 {
     m_assembled = assembled;
+}
+
+bool Project::saveRomData(QByteArray romData)
+{
+    QDir romDirectory(QFileInfo(m_romFilePath).path());
+
+    if (!romDirectory.exists())
+    {
+        romDirectory.mkpath(m_romFilePath);
+    }
+
+    QFile file(m_romFilePath);
+
+    if (!file.open(QIODevice::WriteOnly))
+    {
+        return false;
+    }
+
+    QDataStream out(&file);
+
+    for (unsigned int i(0); i < Eeprom::MEMORY_SIZE; i++)
+    {
+        out << romData[i];
+    }
+
+    file.flush();
+    file.close();
+
+    return true;
 }
 
 

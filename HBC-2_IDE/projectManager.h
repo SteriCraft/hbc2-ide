@@ -210,7 +210,9 @@ class Project
         QString getName();
         QString getDirPath();
         QString getPath();
+        QString getRomFilePath(); //<! Returns the file path to the ram file <b>(empty if it does not exist)</b>
         bool getAssembled(); //!< Returns if the project is currently assembled in binary
+        bool binaryFileExists(); //!< Returns if a binary rom file exists
         ProjectItem* getTopItem(); //!< Returns the tree's main node
         ProjectItem* getSourceFilesItem(); //!< Returns "Source files" folder item
         bool isPartOf(ProjectItem* item); //!< Returns <b>true</b> if the passed item is a child of this project <b>(recursive)</b>
@@ -224,10 +226,14 @@ class Project
 
         void setAssembled(bool assembled);
 
+        bool saveRomData(QByteArray romData); //!< Saves Eeprom content in the rom file
+
     private:
         QString m_name;
         QString m_path;
         bool m_assembled;
+        bool m_binaryFileExists;
+        QString m_romFilePath;
 
         ProjectItem *m_topItem;
 };

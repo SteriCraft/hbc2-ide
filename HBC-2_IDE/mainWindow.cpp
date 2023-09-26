@@ -673,7 +673,7 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
         BinaryViewer::close();
         CpuStateViewer::close();
     }
-    else if (newState == Emulator::State::READY)
+    else if (newState == Emulator::State::READY) // Emulator stopped
     {
         setStatusBarRightMessage("");
 
@@ -694,6 +694,20 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
         if (m_configManager->getOpenCpuStateViewerOnEmulatorStopped())
         {
             openCpuStateViewer();
+        }
+
+        if (QMessageBox::question(this, tr("Save EEPROM"), tr("Do you wish to save the EEPROM data in the rom file?"), QMessageBox::Yes | QMessageBox::No) == QMessageBox::Yes)
+        {
+            QByteArray eepromData(m_emulator->getCurrentEepromBinaryData());
+
+            if (!m_projectManager->getCurrentProject()->saveRomData(eepromData))
+            {
+                m_consoleOutput->log("Could not save the EEPROM data in the rom file");
+            }
+            else
+            {
+                m_consoleOutput->log("EEPROM data successfuly saved in the rom file");
+            }
         }
     }
     else if (newState == Emulator::State::PAUSED)
@@ -723,7 +737,11 @@ void MainWindow::onEmulatorStatusChanged(Emulator::State newState)
 
         BinaryViewer::highlightInstruction(programCounter);
         DisassemblyViewer::highlightInstruction(programCounter);
-        highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
+
+        if (m_assembler->isBinaryReady())
+        {
+            highlightDebugSymbol(m_assembler->getSymbolFromAddress(programCounter), programCounter);
+        }
     }
 }
 
@@ -935,7 +953,7 @@ void MainWindow::closeEvent(QCloseEvent *event)
     m_projectManager->closeAllProjects();
 
     if (event == nullptr)
-            QCoreApplication::quit();
+        QCoreApplication::quit();
 }
 
 
@@ -1055,6 +1073,23 @@ void MainWindow::openProject(QString projectPath)
 
     m_configManager->addRecentProject(projectPath);
     updateRecentProjectsMenu();
+
+    if (m_projectManager->getCurrentProject()->binaryFileExists())
+    {
+        bool loaded(false);
+
+        memoryTargetAction(false);
+        loaded = m_emulator->loadProject(m_projectManager->getCurrentProject()->getRomFilePath(), m_projectManager->getCurrentProject()->getName());
+
+        m_projectManager->getCurrentProject()->setAssembled(loaded);
+
+        plugMonitorPeripheralAction();
+        plugRTCPeripheralAction();
+        plugKeyboardPeripheralAction();
+        startPausedAction();
+
+        BinaryViewer::update(m_emulator->getCurrentRamBinaryData());
+    }
 
     updateWinTabMenu();
 }
@@ -1341,9 +1376,18 @@ void MainWindow::assembleAction()
 
         if (m_eepromTargetToggle->isChecked())
         {
-            m_emulator->loadProject(m_assembler->getBinaryFilePath(), m_projectManager->getCurrentProject()->getName());
+            m_emulator->loadProject(m_projectManager->getCurrentProject()->getRomFilePath(), m_projectManager->getCurrentProject()->getName());
 
             BinaryViewer::update(m_emulator->getCurrentRamBinaryData(), m_emulator->getCurrentEepromBinaryData());
+
+            if (m_projectManager->getCurrentProject()->saveRomData(m_emulator->getCurrentEepromBinaryData()))
+            {
+                m_consoleOutput->log("EEPROM binary file written");
+            }
+            else
+            {
+                m_consoleOutput->log(Token::errStr[(int)Token::ErrorType::BIN_FILE_OPEN] + m_projectManager->getCurrentProject()->getRomFilePath().toStdString() + ")");
+            }
         }
         else
         {
@@ -1416,11 +1460,11 @@ void MainWindow::showDisassemblyAction()
 
         viewer->update(ramData, m_consoleOutput);
         viewer->show();
-    }
 
-    if (m_emulator->getState() == Emulator::State::PAUSED)
-    {
-        DisassemblyViewer::highlightInstruction(m_emulator->getCurrentProgramCounter());
+        if (m_emulator->getState() == Emulator::State::PAUSED)
+        {
+            DisassemblyViewer::highlightInstruction(m_emulator->getCurrentProgramCounter());
+        }
     }
 }
 
@@ -1472,12 +1516,16 @@ void MainWindow::runEmulatorAction()
         for (unsigned int i(0); i < m_assemblyEditor->count(); i++)
         {
             CodeEditor *editor(getCodeEditor(m_assemblyEditor->widget(i)));
+            std::pair<QString, std::vector<int>> breakpoints;
 
             for (unsigned int j(0); j < impactedFilesNames.size(); j++)
             {
                 if (editor->getFileName() == impactedFilesNames[j])
                 {
-                    filesWithBreakpoints.push_back(editor->getBreakpoints());
+                    breakpoints = editor->getBreakpoints();
+
+                    if (breakpoints.second.size() != 0)
+                        filesWithBreakpoints.push_back(breakpoints);
                 }
             }
         }
@@ -1494,6 +1542,7 @@ void MainWindow::runEmulatorAction()
             }
         }
 
+        removeCodeHighlightings();
         m_emulator->runCmd();
     }
 }

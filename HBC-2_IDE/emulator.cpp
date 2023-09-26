@@ -354,8 +354,6 @@ void HbcEmulator::run()
 
     int ticks(0), targetTicks(0);
 
-    m_computer.breakpoints.push_back(0x318);
-
     commandsTimer.start();
     frequencyTargetTimer.start();
     while (!stop)
@@ -451,7 +449,7 @@ void HbcEmulator::run()
             }
             else if (m_status.command == Emulator::Command::STOP)
             {
-                qDebug() << "EMULATOR STOP COMMAND EXECUTED";
+                qDebug() << "EMULATOR STOP COMMAND EXECUTED"; // TODO: for debug of persisting thread on closure
                 m_status.state = Emulator::State::READY;
                 m_status.command = Emulator::Command::NONE;
 
@@ -463,7 +461,7 @@ void HbcEmulator::run()
             }
             else if (m_status.command == Emulator::Command::CLOSE)
             {
-                qDebug() << "EMULATOR CLOSE COMMAND EXECUTED";
+                qDebug() << "EMULATOR CLOSE COMMAND EXECUTED"; // TODO: for debug of persisting thread on closure
                 m_status.state = Emulator::State::NOT_INITIALIZED;
                 m_status.command = Emulator::Command::NONE;
 

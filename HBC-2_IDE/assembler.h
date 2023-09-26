@@ -113,7 +113,6 @@ namespace Assembly
      */
     struct BinaryWithSymbols
     {
-        QString binaryFilePath = "";
         QByteArray binaryData;
         std::vector<ByteDebugSymbol> origin;
     };
@@ -161,11 +160,6 @@ namespace Assembly
              * \return an empty struct if the memory address does not point to the first byte of an instruction
              */
             ByteDebugSymbol getSymbolFromAddress(Word address);
-
-            /*!
-             * \return the path for the EEPROM binary file <b>(empty if the EEPROM was not targeted)</b>
-             */
-            QString getBinaryFilePath();
 
             /*!
              * \return <b>true</b> if the project has been assembled in a binary file for the EEPROM
@@ -228,7 +222,6 @@ namespace Assembly
             // Major pass 7 = BINARY CONVERSION
             bool convertTokensToBinary();
             bool convertDataToBinary();
-            bool saveBinaryToFile();
 
             // Utils
             Token::TokenFile* findTokenFile(QString fileName);
