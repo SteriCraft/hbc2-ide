@@ -1,0 +1,22 @@
+[package]
+name = "hbc2-ide"
+description = "HBC-2 IDE: editor, assembler and emulator with CPU and peripheral views"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[[bin]]
+name = "hbc2-ide"
+path = "src/main.rs"
+
+[dependencies]
+hbc2-core = { path = "../hbc2-core" }
+hbc2-asm = { path = "../hbc2-asm" }
+hbc2-runner = { path = "../hbc2-runner" }
+eframe = { version = "0.36", default-features = false, features = ["accesskit", "default_fonts", "glow", "links", "persistence", "wayland", "x11"] }
+egui_dock = { version = "0.21.1", features = ["serde"] }
+rfd = "0.17.2"
+serde = { version = "1", features = ["derive"] }
+
+[dev-dependencies]
+ron = "0.12.2"

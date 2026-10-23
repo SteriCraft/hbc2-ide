@@ -1,0 +1,292 @@
+//! The source code editor: line numbers, breakpoints, highlighting, and the
+//! current instruction and errors marked on their lines.
+
+use std::collections::BTreeSet;
+use std::hash::{Hash, Hasher};
+use std::sync::Arc;
+
+use eframe::egui::text::{CCursor, CCursorRange};
+use eframe::egui::{
+    self, Align, Align2, Color32, FontId, Frame, Galley, Id, Margin, Rect, Sense, Shape, Stroke,
+    TextEdit, pos2, vec2,
+};
+
+use crate::document::{Document, shift_breakpoints};
+use crate::highlight;
+
+/// What the editor shows besides the text.
+pub struct Marks<'a> {
+    pub breakpoints: &'a mut BTreeSet<u32>,
+    /// Line of the instruction the CPU will run next (when paused).
+    pub pc_line: Option<u32>,
+    /// Errors and warnings: (line, is_error, message).
+    pub diagnostics: &'a [(u32, bool, String)],
+    /// Lines holding an instruction in the last build (`None` = no build).
+    pub code_lines: Option<&'a BTreeSet<u32>>,
+    pub font_size: f32,
+}
+
+#[derive(Default)]
+pub struct EditorResponse {
+    pub changed: bool,
+    pub breakpoints_changed: bool,
+}
+
+const MARKER_WIDTH: f32 = 16.0;
+
+pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> EditorResponse {
+    let mut result = EditorResponse::default();
+    let font = FontId::monospace(marks.font_size);
+    let dark = ui.visuals().dark_mode;
+    let digit_width = ui.fonts_mut(|f| f.glyph_width(&font, '0'));
+    let line_total = crate::document::line_count(&doc.text);
+    let digits = line_total.to_string().len().max(3) as f32;
+    let gutter_width = (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0);
+    let editor_id = Id::new(("editor", &doc.path));
+
+    let Document {
+        text,
+        layout_cache,
+        scroll_to,
+        ..
+    } = doc;
+
+    egui::ScrollArea::both()
+        .id_salt(("editor-scroll", editor_id))
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            // Placeholder painted under the text, filled once the layout is known.
+            let background = ui.painter().add(Shape::Noop);
+
+            let mut layouter = |ui: &egui::Ui, buffer: &dyn egui::TextBuffer, _wrap: f32| {
+                let source = buffer.as_str();
+                let mut hasher = std::collections::hash_map::DefaultHasher::new();
+                (source, dark, marks.font_size.to_bits()).hash(&mut hasher);
+                let key = hasher.finish();
+                let job = match layout_cache {
+                    Some((k, job)) if *k == key => job.clone(),
+                    _ => {
+                        let mut job = highlight::layout_job(source, font.clone(), dark);
+                        job.wrap.max_width = f32::INFINITY;
+                        *layout_cache = Some((key, job.clone()));
+                        job
+                    }
+                };
+                ui.fonts_mut(|f| f.layout_job(job))
+            };
+
+            // Fill the tab even when the file is short (the background is the editor).
+            let row_height = ui.fonts_mut(|f| f.row_height(&font));
+            let visible_rows = ((ui.available_height() - 6.0) / row_height)
+                .floor()
+                .max(1.0) as usize;
+            let focused = ui.memory(|m| m.has_focus(editor_id));
+            let before = focused.then(|| text.clone());
+            let mut output = TextEdit::multiline(text)
+                .id(editor_id)
+                .font(font.clone())
+                .code_editor()
+                .lock_focus(true)
+                .desired_width(f32::INFINITY)
+                .desired_rows((line_total as usize).max(visible_rows))
+                .frame(Frame::NONE.inner_margin(Margin {
+                    left: gutter_width as i8,
+                    right: 8,
+                    top: 2,
+                    bottom: 2,
+                }))
+                .layouter(&mut layouter)
+                .show(ui);
+
+            if output.response.changed() {
+                result.changed = true;
+                if let Some(before) = before {
+                    let count = marks.breakpoints.len();
+                    let old: Vec<u32> = marks.breakpoints.iter().copied().collect();
+                    shift_breakpoints(marks.breakpoints, &before, text);
+                    result.breakpoints_changed = count != marks.breakpoints.len()
+                        || !marks.breakpoints.iter().eq(old.iter());
+                }
+            }
+
+            let rows = line_rows(&output.galley, output.galley_pos);
+            let full = output.response.rect;
+            let gutter = Rect::from_min_max(full.min, pos2(full.min.x + gutter_width, full.max.y));
+            let row_rect = |line: u32| {
+                rows.get(line.wrapping_sub(1) as usize)
+                    .map(|&(top, bottom)| Rect::from_x_y_ranges(full.x_range(), top..=bottom))
+            };
+
+            // Backgrounds: editor, current instruction, error lines.
+            let visuals = ui.visuals();
+            let mut shapes = vec![Shape::rect_filled(full, 0.0, visuals.extreme_bg_color)];
+            shapes.push(Shape::rect_filled(gutter, 0.0, visuals.faint_bg_color));
+            for (line, is_error, _) in marks.diagnostics {
+                if let Some(rect) = row_rect(*line) {
+                    let color = if *is_error {
+                        Color32::from_rgba_unmultiplied(255, 60, 60, 40)
+                    } else {
+                        Color32::from_rgba_unmultiplied(255, 190, 0, 30)
+                    };
+                    shapes.push(Shape::rect_filled(rect, 0.0, color));
+                }
+            }
+            if let Some(rect) = marks.pc_line.and_then(row_rect) {
+                shapes.push(Shape::rect_filled(rect, 0.0, pc_color(dark)));
+            }
+            ui.painter().set(background, Shape::Vec(shapes));
+
+            // Gutter: breakpoints, PC arrow, line numbers.
+            let painter = ui.painter();
+            let number_color = visuals.weak_text_color();
+            for (index, &(top, bottom)) in rows.iter().enumerate() {
+                let line = index as u32 + 1;
+                let y = (top + bottom) / 2.0;
+                let marker = pos2(gutter.min.x + MARKER_WIDTH / 2.0, y);
+                if marks.breakpoints.contains(&line) {
+                    let bound = marks.code_lines.is_none_or(|lines| lines.contains(&line));
+                    let red = Color32::from_rgb(220, 50, 50);
+                    if bound {
+                        painter.circle_filled(marker, 5.0, red);
+                    } else {
+                        painter.circle_stroke(marker, 4.5, Stroke::new(1.5, red));
+                    }
+                }
+                if let Some((_, is_error, _)) = marks.diagnostics.iter().find(|d| d.0 == line) {
+                    let color = if *is_error {
+                        Color32::from_rgb(240, 70, 70)
+                    } else {
+                        Color32::from_rgb(230, 170, 0)
+                    };
+                    painter.rect_filled(
+                        Rect::from_center_size(
+                            pos2(gutter.max.x - 3.0, y),
+                            vec2(3.0, bottom - top),
+                        ),
+                        0.0,
+                        color,
+                    );
+                }
+                if marks.pc_line == Some(line) {
+                    painter.text(
+                        marker,
+                        Align2::CENTER_CENTER,
+                        "▶",
+                        FontId::proportional(marks.font_size * 0.8),
+                        Color32::from_rgb(240, 200, 40),
+                    );
+                }
+                painter.text(
+                    pos2(gutter.max.x - 8.0, y),
+                    Align2::RIGHT_CENTER,
+                    line.to_string(),
+                    font.clone(),
+                    number_color,
+                );
+            }
+
+            // Click in the gutter: toggle a breakpoint. Hover: show the line's diagnostics.
+            let gutter_response = ui
+                .interact(gutter, editor_id.with("gutter"), Sense::click())
+                .on_hover_cursor(egui::CursorIcon::PointingHand);
+            let pointer_line = gutter_response.hover_pos().and_then(|p| {
+                rows.iter()
+                    .position(|&(top, bottom)| (top..=bottom).contains(&p.y))
+                    .map(|i| i as u32 + 1)
+            });
+            if gutter_response.clicked()
+                && let Some(line) = pointer_line
+            {
+                if !marks.breakpoints.remove(&line) {
+                    marks.breakpoints.insert(line);
+                }
+                result.breakpoints_changed = true;
+            }
+            if let Some(line) = pointer_line {
+                let messages: Vec<&str> = marks
+                    .diagnostics
+                    .iter()
+                    .filter(|d| d.0 == line)
+                    .map(|d| d.2.as_str())
+                    .collect();
+                if !messages.is_empty() {
+                    gutter_response.on_hover_ui_at_pointer(|ui| {
+                        for message in messages {
+                            ui.label(message);
+                        }
+                    });
+                }
+            }
+
+            // Go to a line: scroll there and put the cursor at its start.
+            if let Some(line) = scroll_to.take()
+                && let Some(rect) = row_rect(line)
+            {
+                ui.scroll_to_rect(
+                    rect.expand2(vec2(0.0, rect.height() * 2.0)),
+                    Some(Align::Center),
+                );
+                let index = char_index_of_line(text, line);
+                output
+                    .state
+                    .cursor
+                    .set_char_range(Some(CCursorRange::one(CCursor::new(index))));
+                output.state.store(ui.ctx(), editor_id);
+            }
+        });
+    result
+}
+
+/// Screen y range (top, bottom) of each line of the text.
+fn line_rows(galley: &Arc<Galley>, origin: egui::Pos2) -> Vec<(f32, f32)> {
+    let mut rows = Vec::new();
+    let mut line_start = true;
+    for row in &galley.rows {
+        let rect = row.rect().translate(origin.to_vec2());
+        if line_start {
+            rows.push((rect.min.y, rect.max.y));
+        } else if let Some(last) = rows.last_mut() {
+            last.1 = rect.max.y; // a wrapped line continues
+        }
+        line_start = row.ends_with_newline;
+    }
+    rows
+}
+
+fn char_index_of_line(text: &str, line: u32) -> usize {
+    if line <= 1 {
+        return 0;
+    }
+    let mut seen = 1;
+    for (index, c) in text.chars().enumerate() {
+        if c == '\n' {
+            seen += 1;
+            if seen == line {
+                return index + 1;
+            }
+        }
+    }
+    text.chars().count()
+}
+
+pub fn pc_color(dark: bool) -> Color32 {
+    if dark {
+        Color32::from_rgba_unmultiplied(255, 210, 0, 45)
+    } else {
+        Color32::from_rgba_unmultiplied(255, 220, 0, 90)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn line_starts() {
+        let text = "ab\ncé\n\nd";
+        assert_eq!(char_index_of_line(text, 1), 0);
+        assert_eq!(char_index_of_line(text, 2), 3);
+        assert_eq!(char_index_of_line(text, 4), 7);
+        assert_eq!(char_index_of_line(text, 9), 8);
+    }
+}
