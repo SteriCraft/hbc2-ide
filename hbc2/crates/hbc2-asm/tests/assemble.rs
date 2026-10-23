@@ -347,6 +347,22 @@ loop:
     assert!(m.cpu.flag(Flag::Carry) && m.cpu.flag(Flag::Equal));
     assert!(m.cpu.flag(Flag::Interrupt));
     assert_eq!(m.cpu.sp, 0, "stack balanced");
+
+    // The RTC (ports 6-12) gets the default handler, so its ticks change nothing.
+    assert_eq!(m.board.ram.read(addr(&p, "rtcPort") as u16), 6);
+    let entry = 0x0100 + 2 * 6;
+    let handler = addr(&p, "_rtc_default_handler") as u16;
+    assert_eq!(m.board.ram.read_u16(entry), handler);
+    for _ in 0..3 {
+        m.advance_time(1_000_000_000);
+        m.run(1_000);
+    }
+    assert_eq!(m.cpu.sp, 0, "RTC ticks leave the stack balanced");
+    assert_eq!(
+        (m.cpu.reg(Register::A), m.cpu.reg(Register::B)),
+        (0x55, 0x66)
+    );
+    assert_eq!(m.board.iod.queue().len(), 0, "RTC ticks handled");
 }
 
 #[test]

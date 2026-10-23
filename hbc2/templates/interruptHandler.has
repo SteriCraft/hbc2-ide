@@ -63,6 +63,23 @@ _iod_interrupt_handler_keyboard_plugged:
 
 _iod_interrupt_handler_rtc_plugged:
     str rtcPort, a
+    psh x                           ; The RTC interrupts every second: point its vector
+    psh y                           ; to a default handler, so it is ignored until the
+    mov x, 0x01                     ; program installs its own.
+    mov y, a                        ; [x:y] = IVT entry of the port = $0x0100 + 2 * port
+    shl y
+    jmc _iod_interrupt_handler_rtc_high_port
+    jmp _iod_interrupt_handler_rtc_vector
+_iod_interrupt_handler_rtc_high_port:
+    inc x                           ; Port 128 or more: entry in $0x02xx
+_iod_interrupt_handler_rtc_vector:
+    mov a, _rtc_default_handler.msb
+    str [x:y], a
+    inc y
+    mov a, _rtc_default_handler.lsb
+    str [x:y], a
+    pop y
+    pop x
     jmp _iod_interrupt_handler_id_done
 
 _iod_interrupt_handler_eeprom_plugged:
@@ -75,4 +92,9 @@ _iod_interrupt_handler_id_done:
 _iod_interrupt_handler_end:
     pop a                           ; Restore in reverse order
     pof
+    irt
+
+; Default RTC handler: does nothing. To use the RTC, write your own handler
+; and store its address in the IVT entry of rtcPort.
+_rtc_default_handler:
     irt
