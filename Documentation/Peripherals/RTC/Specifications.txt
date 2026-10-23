@@ -1,0 +1,31 @@
+=== Real-Time Clock (RTC) Specifications ===
+Keeps the current date and time, and interrupts the CPU once per second.
+Device ID: 0x95
+Default date and time at power-on: 2000-01-01 00:00:00
+
+=== Ports ===
+0: YEAR    (years since 1900: 0 = 1900, 255 = 2155)
+1: MONTH   (1-12)
+2: DAY     (1-31)
+3: HOUR    (0-23)
+4: MINUTE  (0-59)
+5: SECOND  (0-59)
+6: CMD
+
+=== Commands ===
+0: NOP
+1: GET_TIME : puts the current date and time on ports 0-5
+2: SET_TIME : reads the date and time from ports 0-5 and sets the clock
+              The YEAR port then holds the result: 1 = success, 0 = invalid date or time (clock unchanged)
+
+A command runs once, when the CPU writes the CMD port (OUT).
+CMD is then reset to NOP.
+Any invalid command results in NOP.
+
+=== Interrupts ===
+Every second, the RTC puts the current date and time on ports 0-5,
+then sends an interrupt on its first port (YEAR). The data sent with it is the YEAR value.
+
+The clock only moves forward while the emulator is running (not while paused).
+After 2155-12-31 23:59:59, it goes back to 1900-01-01.
+Leap years are handled (February 29).
