@@ -12,3 +12,4 @@ path = "src/main.rs"
 [dependencies]
 hbc2-core = { path = "../hbc2-core" }
 hbc2-asm = { path = "../hbc2-asm" }
+hbc2-runner = { path = "../hbc2-runner" }

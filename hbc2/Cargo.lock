@@ -15,8 +15,17 @@ version = "0.1.0"
 dependencies = [
  "hbc2-asm",
  "hbc2-core",
+ "hbc2-runner",
 ]
 
 [[package]]
 name = "hbc2-core"
 version = "0.1.0"
+
+[[package]]
+name = "hbc2-runner"
+version = "0.1.0"
+dependencies = [
+ "hbc2-asm",
+ "hbc2-core",
+]

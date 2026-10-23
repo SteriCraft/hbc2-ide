@@ -1,6 +1,11 @@
 [workspace]
 resolver = "3"
-members = ["crates/hbc2-core", "crates/hbc2-asm", "crates/hbc2-cli"]
+members = [
+    "crates/hbc2-core",
+    "crates/hbc2-asm",
+    "crates/hbc2-runner",
+    "crates/hbc2-cli",
+]
 
 [workspace.package]
 version = "0.1.0"

@@ -210,6 +210,20 @@ fn halted_breakpoint_does_not_retrigger() {
 }
 
 #[test]
+fn idle_cycles_are_counted_without_being_simulated() {
+    let mut m = machine(&[none(O::Hlt)]);
+    // A billion cycles would take seconds if they were simulated one by one.
+    let result = m.run(1_000_000_000);
+    assert_eq!(result.ticks, 1_000_000_000);
+    assert_eq!(m.ticks(), 1_000_000_000);
+    assert!(m.is_idle());
+
+    // A pending interrupt means the next cycles matter again.
+    m.board.iod.trigger_interrupt(0x20);
+    assert!(!m.is_idle());
+}
+
+#[test]
 fn power_on_restores_initial_state() {
     let mut m = machine(&[reg_imm8(O::Mov, A, 1), reg_ram(O::Str, A, 0x0300)]);
     m.breakpoints.set(0x1234, true);

@@ -34,6 +34,8 @@ pub const BOOT_RANGES: [std::ops::Range<usize>; 2] = [0x0100..0x0500, 0xF000..0x
 pub struct Eeprom {
     first_port: Option<u8>,
     memory: Box<[u8]>,
+    /// Incremented on every write, so viewers can skip copying the memory.
+    generation: u64,
 }
 
 impl std::fmt::Debug for Eeprom {
@@ -65,6 +67,7 @@ impl Eeprom {
         Eeprom {
             first_port: None,
             memory: vec![0; MEMORY_SIZE].into_boxed_slice(),
+            generation: 0,
         }
     }
 
@@ -76,11 +79,16 @@ impl Eeprom {
         Ok(Eeprom {
             first_port: None,
             memory: image.into_boxed_slice(),
+            generation: 0,
         })
     }
 
     pub fn memory(&self) -> &[u8] {
         &self.memory
+    }
+
+    pub fn generation(&self) -> u64 {
+        self.generation
     }
 }
 
@@ -116,7 +124,10 @@ impl Peripheral for Eeprom {
 
         match iod.port(first + port::CMD) {
             command::READ => iod.set_port(first + port::DATA, self.memory[address]),
-            command::WRITE => self.memory[address] = iod.port(first + port::DATA),
+            command::WRITE => {
+                self.memory[address] = iod.port(first + port::DATA);
+                self.generation += 1;
+            }
             _ => {}
         }
     }

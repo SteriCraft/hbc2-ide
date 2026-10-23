@@ -15,8 +15,8 @@ usage:
         assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom)
   hbc2 run <main.has | ram.bin> [--ticks N] [--eeprom <file.has | eeprom.bin>]
         run headless, then print the CPU state
-  hbc2 bench [--seconds N]
-        measure emulation speed";
+  hbc2 bench [--seconds N] [--hz N]
+        measure emulation speed (flat out, or paced on the emulator thread)";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -85,6 +85,12 @@ fn bench(args: &[String]) -> Result<(), String> {
     let ram = bench_program();
     let mut machine =
         Machine::new(MachineConfig::default(), Some(&ram)).map_err(|e| e.to_string())?;
+    if let Some(hz) = option(args, "--hz") {
+        let hz = hz
+            .parse()
+            .map_err(|_| format!("invalid value for --hz: {hz}"))?;
+        return paced_bench(machine, hz, seconds);
+    }
 
     const BATCH: u64 = 1_000_000;
     let budget = Duration::from_secs_f64(seconds);
@@ -101,6 +107,28 @@ fn bench(args: &[String]) -> Result<(), String> {
     println!(
         "{ticks} cycles in {elapsed:.2} s -> {:.1} MHz",
         ticks as f64 / elapsed / 1e6
+    );
+    Ok(())
+}
+
+/// Runs the benchmark on the emulator thread at a target speed, and checks
+/// how close it gets.
+fn paced_bench(machine: Machine, hz: u64, seconds: f64) -> Result<(), String> {
+    use hbc2_runner::{Runner, Speed};
+    let runner = Runner::new(machine);
+    runner.set_speed(Speed::Hz(hz));
+    let start = Instant::now();
+    runner.run();
+    std::thread::sleep(Duration::from_secs_f64(seconds));
+    runner.pause();
+    let snapshot = runner.sync();
+    let elapsed = start.elapsed().as_secs_f64();
+    let reached = snapshot.ticks as f64 / elapsed;
+    println!(
+        "target {:.3} MHz, reached {:.3} MHz ({:.1} %) over {elapsed:.2} s",
+        hz as f64 / 1e6,
+        reached / 1e6,
+        reached / hz as f64 * 100.0
     );
     Ok(())
 }

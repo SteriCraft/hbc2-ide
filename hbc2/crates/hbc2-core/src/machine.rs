@@ -1,8 +1,8 @@
 //! A complete HBC-2: CPU, board and peripherals, driven one clock cycle at a time.
 
 use crate::board::Board;
-use crate::cpu::Cpu;
-use crate::isa::RAM_SIZE;
+use crate::cpu::{Cpu, CpuState};
+use crate::isa::{Flag, RAM_SIZE};
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
 
 /// Which peripherals are plugged in.
@@ -183,19 +183,41 @@ impl Machine {
     /// Runs at most `max_ticks` cycles, stopping early when the PC lands on
     /// a breakpoint. The instruction at the current PC always runs first, so
     /// calling `run` again resumes from a breakpoint.
+    ///
+    /// When the machine becomes idle (see [`Machine::is_idle`]), the rest of
+    /// the budget is counted without being simulated: those cycles would
+    /// change nothing.
     pub fn run(&mut self, max_ticks: u64) -> RunResult {
         for n in 1..=max_ticks {
-            if self.tick() && self.breakpoints.contains(self.cpu.pc) {
-                return RunResult {
-                    ticks: n,
-                    stop: Some(StopReason::Breakpoint(self.cpu.pc)),
-                };
+            if self.tick() {
+                if self.breakpoints.contains(self.cpu.pc) {
+                    return RunResult {
+                        ticks: n,
+                        stop: Some(StopReason::Breakpoint(self.cpu.pc)),
+                    };
+                }
+            } else if self.is_idle() {
+                self.ticks += max_ticks - n;
+                break;
             }
         }
         RunResult {
             ticks: max_ticks,
             stop: None,
         }
+    }
+
+    /// True when the CPU is halted and nothing can wake it up without an
+    /// outside event (a key press, the RTC, a debugger write): every clock
+    /// cycle until then would leave the machine unchanged.
+    pub fn is_idle(&self) -> bool {
+        let cpu = &self.cpu;
+        cpu.is_halted()
+            && cpu.state == CpuState::Executing
+            && !self.board.int
+            && !self.board.inr
+            && !self.board.iod.has_pending_interrupt()
+            && (cpu.pending_software_interrupt().is_none() || !cpu.flag(Flag::Interrupt))
     }
 
     /// Tells time-based peripherals (the RTC) that `nanos` of host time went by.

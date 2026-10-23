@@ -1,0 +1,12 @@
+[package]
+name = "hbc2-runner"
+description = "Runs an HBC-2 machine on its own thread, at a chosen clock speed, and publishes snapshots of its state"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+hbc2-core = { path = "../hbc2-core" }
+
+[dev-dependencies]
+hbc2-asm = { path = "../hbc2-asm" }

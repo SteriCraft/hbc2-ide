@@ -1,0 +1,316 @@
+//! The emulator thread: owns the machine, handles commands, keeps the pace.
+
+use std::sync::Arc;
+use std::sync::mpsc::{Receiver, TryRecvError};
+use std::time::{Duration, Instant};
+
+use hbc2_core::Machine;
+use hbc2_core::peripherals::{Eeprom, Monitor};
+
+use crate::{Command, RunState, Shared, Snapshot, Speed};
+
+/// Most cycles run between two looks at the command channel
+/// (about 1-2 ms of work in a release build).
+const SLICE: u64 = 200_000;
+/// Time between two snapshots while running (about 60 per second).
+const SNAPSHOT_INTERVAL: Duration = Duration::from_millis(16);
+/// Window over which the reached frequency is measured.
+const METER_WINDOW: Duration = Duration::from_millis(250);
+/// Longest sleep while running, so commands are never left waiting long.
+const MAX_SLEEP: Duration = Duration::from_millis(10);
+/// Shortest sleep: shorter ones cost more than they are worth.
+const MIN_SLEEP: Duration = Duration::from_millis(1);
+/// When the host cannot keep up with the target speed, the delay is
+/// forgiven beyond this, instead of being caught up in a long burst.
+const MAX_LATE: Duration = Duration::from_millis(100);
+
+pub(crate) struct Worker {
+    machine: Machine,
+    commands: Receiver<Command>,
+    state: RunState,
+    stop: Option<hbc2_core::StopReason>,
+    speed: Speed,
+
+    /// Pace keeping: cycles run since `epoch`.
+    epoch: Instant,
+    paced_ticks: u64,
+    /// Host time already reported to the peripherals.
+    clock: Instant,
+
+    /// Frequency meter.
+    meter_start: Instant,
+    meter_ticks: u64,
+    measured_hz: f64,
+
+    seq: u64,
+    last_publish: Instant,
+    /// Something changed since the last snapshot.
+    dirty: bool,
+    /// Sleep before the next slice.
+    sleep: Option<Duration>,
+    /// Copies reused while the peripheral content does not change.
+    monitor_copy: Option<(u64, Arc<Monitor>)>,
+    eeprom_copy: Option<(u64, Arc<Eeprom>)>,
+}
+
+enum Flow {
+    Continue,
+    Exit,
+}
+
+impl Worker {
+    pub(crate) fn new(machine: Machine, commands: Receiver<Command>) -> Worker {
+        let now = Instant::now();
+        Worker {
+            machine,
+            commands,
+            state: RunState::Paused,
+            stop: None,
+            speed: Speed::default(),
+            epoch: now,
+            paced_ticks: 0,
+            clock: now,
+            meter_start: now,
+            meter_ticks: 0,
+            measured_hz: 0.0,
+            seq: 0,
+            last_publish: now,
+            dirty: false,
+            sleep: None,
+            monitor_copy: None,
+            eeprom_copy: None,
+        }
+    }
+
+    pub(crate) fn main_loop(mut self, shared: &Shared) {
+        loop {
+            let due = match self.state {
+                RunState::Paused => self.dirty,
+                RunState::Running => self.last_publish.elapsed() >= SNAPSHOT_INTERVAL,
+            };
+            if due {
+                shared.publish(self.snapshot());
+            }
+
+            let command = match self.state {
+                // Nothing to do until told otherwise: block.
+                RunState::Paused => match self.commands.recv() {
+                    Ok(command) => Some(command),
+                    Err(_) => return, // the Runner is gone
+                },
+                RunState::Running => {
+                    if let Some(duration) = self.sleep.take() {
+                        std::thread::sleep(duration);
+                    }
+                    match self.commands.try_recv() {
+                        Ok(command) => Some(command),
+                        Err(TryRecvError::Empty) => None,
+                        Err(TryRecvError::Disconnected) => return,
+                    }
+                }
+            };
+
+            match command {
+                // Handle every waiting command before running again.
+                Some(command) => {
+                    if let Flow::Exit = self.handle(command, shared) {
+                        return;
+                    }
+                }
+                None => self.run_slice(),
+            }
+        }
+    }
+
+    fn handle(&mut self, command: Command, shared: &Shared) -> Flow {
+        self.dirty = true;
+        match command {
+            Command::Run => {
+                self.stop = None;
+                self.resume();
+            }
+            Command::Pause => self.pause(),
+            Command::Step(instructions) => {
+                self.pause();
+                self.stop = None;
+                for _ in 0..instructions {
+                    self.machine.step();
+                }
+            }
+            Command::PowerCycle => {
+                self.machine.power_on();
+                self.forget_copies();
+                self.restart_pacing();
+            }
+            Command::Load(machine) => {
+                self.pause();
+                self.stop = None;
+                self.machine = *machine;
+                self.forget_copies();
+            }
+            Command::SetSpeed(speed) => {
+                self.speed = match speed {
+                    Speed::Hz(hz) => Speed::Hz(hz.max(1)),
+                    fastest => fastest,
+                };
+                self.restart_pacing();
+            }
+            Command::SetBreakpoint(address, enabled) => {
+                self.machine.breakpoints.set(address, enabled)
+            }
+            Command::ClearBreakpoints => self.machine.breakpoints.clear(),
+            Command::Key { scan_code, pressed } => {
+                self.machine.key_event(scan_code, pressed);
+            }
+            Command::Exec(f) => {
+                f(&mut self.machine);
+                self.forget_copies(); // `f` may have replaced a peripheral
+            }
+            Command::Sync(reply) => {
+                let snapshot = self.snapshot();
+                shared.publish(snapshot.clone());
+                let _ = reply.send(snapshot);
+            }
+            Command::Shutdown => return Flow::Exit,
+        }
+        Flow::Continue
+    }
+
+    fn resume(&mut self) {
+        if self.state == RunState::Paused {
+            self.state = RunState::Running;
+            self.clock = Instant::now();
+            self.restart_pacing();
+        }
+    }
+
+    fn pause(&mut self) {
+        if self.state == RunState::Running {
+            self.report_host_time();
+            self.state = RunState::Paused;
+            self.measured_hz = 0.0;
+        }
+    }
+
+    fn restart_pacing(&mut self) {
+        let now = Instant::now();
+        self.epoch = now;
+        self.paced_ticks = 0;
+        self.meter_start = now;
+        self.meter_ticks = 0;
+    }
+
+    fn forget_copies(&mut self) {
+        self.monitor_copy = None;
+        self.eeprom_copy = None;
+    }
+
+    /// Runs the machine for a short while, or decides how long to sleep.
+    fn run_slice(&mut self) {
+        let budget = match self.speed {
+            Speed::Fastest => {
+                if self.machine.is_idle() {
+                    // Halted, waiting for a key or the RTC: no need to spin.
+                    self.sleep = Some(MIN_SLEEP);
+                    self.report_host_time();
+                    return;
+                }
+                SLICE
+            }
+            Speed::Hz(hz) => {
+                let elapsed = self.epoch.elapsed();
+                let due = (elapsed.as_nanos() * hz as u128 / 1_000_000_000) as u64;
+                if due <= self.paced_ticks {
+                    // Ahead of time: sleep until the next cycle is due.
+                    let next = Duration::from_nanos(
+                        ((self.paced_ticks + 1) as u128 * 1_000_000_000 / hz as u128) as u64,
+                    );
+                    self.sleep = Some(next.saturating_sub(elapsed).clamp(MIN_SLEEP, MAX_SLEEP));
+                    self.report_host_time();
+                    return;
+                }
+                let late = due - self.paced_ticks;
+                if Duration::from_nanos((late as u128 * 1_000_000_000 / hz as u128) as u64)
+                    > MAX_LATE
+                {
+                    // The host cannot keep up: start counting again from now.
+                    self.epoch = Instant::now();
+                    self.paced_ticks = 0;
+                }
+                late.min(SLICE)
+            }
+        };
+
+        let result = self.machine.run(budget);
+        self.paced_ticks += result.ticks;
+        self.meter_ticks += result.ticks;
+        self.report_host_time();
+        self.update_meter();
+        if let Some(stop) = result.stop {
+            self.pause();
+            self.stop = Some(stop);
+            self.dirty = true;
+        }
+    }
+
+    /// Tells time-based peripherals (the RTC) how much host time went by.
+    fn report_host_time(&mut self) {
+        let now = Instant::now();
+        let nanos = now.duration_since(self.clock).as_nanos() as u64;
+        self.clock = now;
+        self.machine.advance_time(nanos);
+    }
+
+    fn update_meter(&mut self) {
+        let elapsed = self.meter_start.elapsed();
+        if elapsed >= METER_WINDOW {
+            self.measured_hz = self.meter_ticks as f64 / elapsed.as_secs_f64();
+            self.meter_start = Instant::now();
+            self.meter_ticks = 0;
+        }
+    }
+
+    pub(crate) fn snapshot(&mut self) -> Arc<Snapshot> {
+        self.seq += 1;
+        self.dirty = false;
+        self.last_publish = Instant::now();
+
+        let peripherals = &self.machine.peripherals;
+        let monitor = peripherals
+            .monitor
+            .as_ref()
+            .map(|m| reuse(&mut self.monitor_copy, m, m.generation()));
+        let eeprom = peripherals
+            .eeprom
+            .as_ref()
+            .map(|e| reuse(&mut self.eeprom_copy, e, e.generation()));
+
+        Arc::new(Snapshot {
+            seq: self.seq,
+            state: self.state,
+            stop: self.stop,
+            speed: self.speed,
+            measured_hz: self.measured_hz,
+            ticks: self.machine.ticks(),
+            cpu: self.machine.cpu.clone(),
+            board: self.machine.board.clone(),
+            breakpoints: self.machine.breakpoints.clone(),
+            monitor,
+            rtc: peripherals.rtc.clone(),
+            keyboard: peripherals.keyboard.clone(),
+            eeprom,
+        })
+    }
+}
+
+/// Returns the kept copy if `generation` did not change, else a new copy.
+fn reuse<T: Clone>(copy: &mut Option<(u64, Arc<T>)>, value: &T, generation: u64) -> Arc<T> {
+    match copy {
+        Some((kept, arc)) if *kept == generation => arc.clone(),
+        _ => {
+            let arc = Arc::new(value.clone());
+            *copy = Some((generation, arc.clone()));
+            arc
+        }
+    }
+}
