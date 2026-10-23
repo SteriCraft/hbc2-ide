@@ -10,17 +10,20 @@ until this one does everything it did.
 | Crate | Role |
 |---|---|
 | `hbc2-core` | CPU, RAM, IOD, peripherals (monitor, keyboard, RTC, EEPROM) and `Machine`. No GUI, no threads, no dependencies. |
-| `hbc2-cli` | `hbc2` command: speed benchmark and headless run. |
+| `hbc2-asm` | Assembler and disassembler for `.has` files. The language is described in `../Documentation/HBC-2 Assembly Language.md`. |
+| `hbc2-cli` | `hbc2` command: assemble, headless run, speed benchmark. |
 
-Planned: `hbc2-asm` (assembler, disassembler), `hbc2-runner` (emulator
-thread), `hbc2-ide` (egui GUI).
+Planned: `hbc2-runner` (emulator thread), `hbc2-ide` (egui GUI).
+
+`templates/` holds the default project files (`main.has`, `interruptHandler.has`).
 
 ## Commands
 
 ```sh
-cargo test                                # run all tests
-cargo run --release -- bench              # emulation speed in MHz
-cargo run --release -- run ram.bin --ticks 1000000
+cargo test                                          # run all tests
+cargo run --release -- asm templates/main.has --symbols
+cargo run --release -- run templates/main.has --ticks 10000
+cargo run --release -- bench                        # emulation speed in MHz
 ```
 
 ## Design notes

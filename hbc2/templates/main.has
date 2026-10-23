@@ -1,0 +1,15 @@
+; === DEFINES ===
+
+
+; === VARIABLES ===
+
+
+; === LIBRARIES ===
+.include "interruptHandler.has"
+
+
+; === PROGRAM ===
+_start:
+    nop
+    nop
+    jmp _start

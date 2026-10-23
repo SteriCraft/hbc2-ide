@@ -1,23 +1,27 @@
-//! `hbc2`: command-line tools for the HBC-2.
-//!
-//!   hbc2 bench [--seconds N]                      measure emulation speed
-//!   hbc2 run <ram.bin> [--ticks N] [--eeprom F]   run headless, print the CPU state
+//! `hbc2`: command-line tools for the HBC-2. See [`USAGE`].
 
+use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
+use hbc2_asm::{Program, Target};
 use hbc2_core::isa::{PROGRAM_START, encode};
 use hbc2_core::peripherals::Eeprom;
 use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
 const USAGE: &str = "\
 usage:
-  hbc2 bench [--seconds N]                      measure emulation speed
-  hbc2 run <ram.bin> [--ticks N] [--eeprom F]   run headless, print the CPU state";
+  hbc2 asm <main.has> [-o out.bin] [--eeprom] [--symbols]
+        assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom)
+  hbc2 run <main.has | ram.bin> [--ticks N] [--eeprom <file.has | eeprom.bin>]
+        run headless, then print the CPU state
+  hbc2 bench [--seconds N]
+        measure emulation speed";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
     let result = match args.first().map(String::as_str) {
+        Some("asm") => asm(&args[1..]),
         Some("bench") => bench(&args[1..]),
         Some("run") => run(&args[1..]),
         _ => Err(USAGE.to_string()),
@@ -101,24 +105,120 @@ fn bench(args: &[String]) -> Result<(), String> {
     Ok(())
 }
 
+fn has(args: &[String], flag: &str) -> bool {
+    args.iter().any(|a| a == flag)
+}
+
+/// The first argument, if it is not an option.
+fn input(args: &[String]) -> Result<&str, String> {
+    args.first()
+        .map(String::as_str)
+        .filter(|a| !a.starts_with('-'))
+        .ok_or_else(|| USAGE.to_string())
+}
+
+/// Assembles a file, printing warnings; errors are returned as one message.
+fn assemble(path: &str, target: Target) -> Result<Program, String> {
+    match hbc2_asm::assemble_file(path, target) {
+        Ok(program) => {
+            for warning in &program.warnings {
+                eprintln!("{warning}");
+            }
+            Ok(program)
+        }
+        Err(errors) => {
+            let lines: Vec<String> = errors.iter().map(ToString::to_string).collect();
+            Err(format!(
+                "{}\nassembly failed ({} error(s))",
+                lines.join("\n"),
+                errors.len()
+            ))
+        }
+    }
+}
+
+fn is_source(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("has"))
+}
+
+fn asm(args: &[String]) -> Result<(), String> {
+    let path = input(args)?;
+    let target = if has(args, "--eeprom") {
+        Target::Eeprom
+    } else {
+        Target::Ram
+    };
+    let program = assemble(path, target)?;
+
+    let output = option(args, "-o")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(path).with_extension("bin"));
+    std::fs::write(&output, &program.image).map_err(|e| format!("{}: {e}", output.display()))?;
+    println!(
+        "{} -> {} ({} bytes used, {} files)",
+        path,
+        output.display(),
+        program.bytes_used,
+        program.files.len()
+    );
+
+    if has(args, "--symbols") {
+        for s in &program.symbols {
+            let kind = match s.kind {
+                hbc2_asm::SymbolKind::Label => "label",
+                hbc2_asm::SymbolKind::Data => "data ",
+            };
+            println!(
+                "  ${:#07x}  {kind}  {:>5} bytes  {}",
+                s.address, s.size, s.name
+            );
+        }
+    }
+    Ok(())
+}
+
 fn run(args: &[String]) -> Result<(), String> {
-    let path = args.first().filter(|a| !a.starts_with("--")).ok_or(USAGE)?;
+    let path = input(args)?;
     let ticks: u64 = parse(args, "--ticks", 1_000_000)?;
-    let ram = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
 
     let mut config = MachineConfig::default();
     if let Some(eeprom_path) = option(args, "--eeprom") {
-        let image = std::fs::read(eeprom_path).map_err(|e| format!("{eeprom_path}: {e}"))?;
+        let image = if is_source(eeprom_path) {
+            assemble(eeprom_path, Target::Eeprom)?.image
+        } else {
+            std::fs::read(eeprom_path).map_err(|e| format!("{eeprom_path}: {e}"))?
+        };
         config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
     }
+    let (ram, program) = if is_source(path) {
+        let program = assemble(path, Target::Ram)?;
+        (program.image.clone(), Some(program))
+    } else {
+        (
+            std::fs::read(path).map_err(|e| format!("{path}: {e}"))?,
+            None,
+        )
+    };
+
     let mut machine = Machine::new(config, Some(&ram)).map_err(|e| e.to_string())?;
     let result = machine.run(ticks);
 
     let cpu = &machine.cpu;
+    let name_of = |address: u16| {
+        program
+            .as_ref()
+            .and_then(|p| p.symbol_at(address as u32))
+            .map(|s| s.name.clone())
+    };
     println!("cycles: {}", result.ticks);
     println!(
-        "pc: {:#06x}   sp: {:#04x}   last instruction: {:#06x}",
-        cpu.pc, cpu.sp, cpu.last_pc
+        "pc: {:#06x}   sp: {:#04x}   last instruction: {:#06x}  {}",
+        cpu.pc,
+        cpu.sp,
+        cpu.last_pc,
+        hbc2_asm::disasm::disassemble_with(cpu.ir.0, name_of)
     );
     for r in Register::ALL {
         print!("{}={:#04x} ", r.name(), cpu.reg(r));

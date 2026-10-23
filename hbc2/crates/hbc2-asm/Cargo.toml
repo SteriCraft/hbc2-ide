@@ -1,0 +1,9 @@
+[package]
+name = "hbc2-asm"
+description = "Assembler and disassembler for the HBC-2 assembly language (.has)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+hbc2-core = { path = "../hbc2-core" }

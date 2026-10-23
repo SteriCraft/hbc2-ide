@@ -1,0 +1,526 @@
+//! Turns the tokens of one line into statements: labels, instructions and `.data`.
+
+use hbc2_core::{Opcode, Register};
+
+use crate::diagnostic::{Loc, Report};
+use crate::lexer::{Tok, Token};
+
+/// An 8-bit value, resolved once addresses are known.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Value8 {
+    Number(i64),
+    /// High byte of a label or variable address (`name.msb`).
+    Msb(String),
+    /// Low byte of a label or variable address (`name.lsb`).
+    Lsb(String),
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Address {
+    /// `$0x9000`
+    Absolute(u32),
+    /// `name`, `name + 3`, `name - 4`
+    Symbol { name: String, offset: i64 },
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum Operand {
+    Reg(Register),
+    /// `[x:y]`: x = most significant byte.
+    Pair(Register, Register),
+    Imm(Value8),
+    Mem(Address),
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Op {
+    pub operand: Operand,
+    pub col: u32,
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum DataValue {
+    Bytes(Vec<u8>),
+    Byte(Value8, u32),
+}
+
+impl DataValue {
+    pub fn size(&self) -> u32 {
+        match self {
+            DataValue::Bytes(b) => b.len() as u32,
+            DataValue::Byte(..) => 1,
+        }
+    }
+}
+
+#[derive(Clone, Debug)]
+pub(crate) enum Stmt {
+    Label {
+        name: String,
+        address: Option<u32>,
+    },
+    Instr {
+        opcode: Opcode,
+        operands: Vec<Op>,
+    },
+    Data {
+        name: String,
+        address: Option<u32>,
+        values: Vec<DataValue>,
+    },
+}
+
+#[derive(Clone, Debug)]
+pub(crate) struct Located {
+    pub loc: Loc,
+    pub stmt: Stmt,
+}
+
+/// Registers are case-insensitive.
+pub(crate) fn register(name: &str) -> Option<Register> {
+    Register::ALL
+        .into_iter()
+        .find(|r| r.name().eq_ignore_ascii_case(name))
+}
+
+/// Mnemonics and register names cannot be used as names.
+pub(crate) fn is_reserved(name: &str) -> bool {
+    register(name).is_some() || Opcode::from_mnemonic(name).is_some()
+}
+
+type ParseResult<T> = Result<T, (u32, String)>;
+
+struct Cursor<'a> {
+    tokens: &'a [Token],
+    pos: usize,
+}
+
+impl<'a> Cursor<'a> {
+    fn peek(&self) -> Option<&'a Tok> {
+        self.tokens.get(self.pos).map(|t| &t.tok)
+    }
+
+    fn next(&mut self) -> Option<&'a Tok> {
+        let tok = self.peek();
+        self.pos += 1;
+        tok
+    }
+
+    fn at_end(&self) -> bool {
+        self.pos >= self.tokens.len()
+    }
+
+    /// Column of the current token (or just after the last one).
+    fn col(&self) -> u32 {
+        match self.tokens.get(self.pos) {
+            Some(t) => t.col,
+            None => self.tokens.last().map_or(1, |t| t.col + 1),
+        }
+    }
+
+    fn error<T>(&self, message: impl Into<String>) -> ParseResult<T> {
+        Err((self.col(), message.into()))
+    }
+
+    fn found(&self) -> String {
+        self.peek().map_or("end of line".into(), Tok::describe)
+    }
+
+    fn expect(&mut self, expected: Tok, what: &str) -> ParseResult<()> {
+        if self.peek() == Some(&expected) {
+            self.pos += 1;
+            Ok(())
+        } else {
+            self.error(format!("expected {what}, found {}", self.found()))
+        }
+    }
+}
+
+pub(crate) fn parse_line(
+    file: usize,
+    line: u32,
+    tokens: &[Token],
+    report: &mut Report,
+) -> Vec<Located> {
+    let mut out = Vec::new();
+    let mut cursor = Cursor { tokens, pos: 0 };
+    if let Err((col, message)) = statement(&mut cursor, file, line, &mut out) {
+        report.error(Loc::new(file, line, col), message);
+    }
+    out
+}
+
+fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> ParseResult<()> {
+    let loc = Loc::new(file, line, c.col());
+    match c.peek() {
+        Some(Tok::Directive(d)) if d == "data" => {
+            c.next();
+            out.push(Located {
+                loc,
+                stmt: data(c)?,
+            });
+            Ok(())
+        }
+        Some(Tok::Directive(d)) => c.error(format!("unknown directive '.{d}'")),
+        Some(Tok::Ident(name)) if c.tokens.get(1).map(|t| &t.tok) == Some(&Tok::Colon) => {
+            let name = definition_name(c, name)?;
+            c.next(); // ':'
+            let address = if c.peek() == Some(&Tok::Dollar) {
+                Some(absolute(c)?)
+            } else {
+                None
+            };
+            out.push(Located {
+                loc,
+                stmt: Stmt::Label { name, address },
+            });
+            if c.at_end() {
+                Ok(())
+            } else if address.is_some() {
+                c.error(
+                    "nothing can follow a label's address; put the instruction on the next line",
+                )
+            } else {
+                let loc = Loc::new(file, line, c.col());
+                out.push(Located {
+                    loc,
+                    stmt: instruction(c)?,
+                });
+                Ok(())
+            }
+        }
+        Some(Tok::Ident(_)) => {
+            out.push(Located {
+                loc,
+                stmt: instruction(c)?,
+            });
+            Ok(())
+        }
+        _ => c.error(format!(
+            "expected an instruction, a label or a directive, found {}",
+            c.found()
+        )),
+    }
+}
+
+/// Validates a label / variable name and moves past it.
+fn definition_name(c: &mut Cursor, name: &str) -> ParseResult<String> {
+    if name.contains('.') {
+        return c.error(format!("'{name}': names cannot contain '.'"));
+    }
+    if is_reserved(name) {
+        return c.error(format!("'{name}' is a reserved word"));
+    }
+    c.next();
+    Ok(name.to_string())
+}
+
+fn instruction(c: &mut Cursor) -> ParseResult<Stmt> {
+    let Some(Tok::Ident(mnemonic)) = c.peek() else {
+        return c.error(format!("expected an instruction, found {}", c.found()));
+    };
+    let Some(opcode) = Opcode::from_mnemonic(mnemonic) else {
+        return c.error(format!("unknown instruction '{mnemonic}'"));
+    };
+    c.next();
+    let mut operands = Vec::new();
+    while !c.at_end() {
+        let col = c.col();
+        operands.push(Op {
+            operand: operand(c)?,
+            col,
+        });
+        if !c.at_end() {
+            c.expect(Tok::Comma, "',' between operands")?;
+            if c.at_end() {
+                return c.error("expected an operand after ','");
+            }
+        }
+    }
+    Ok(Stmt::Instr { opcode, operands })
+}
+
+fn operand(c: &mut Cursor) -> ParseResult<Operand> {
+    match c.peek() {
+        Some(Tok::LBracket) => {
+            c.next();
+            if let Some(Tok::Ident(name)) = c.peek()
+                && name.len() == 2
+                && name.chars().all(|ch| register(&ch.to_string()).is_some())
+            {
+                let (high, low) = name.split_at(1);
+                return c.error(format!("write register pairs with a colon: [{high}:{low}]"));
+            }
+            let high = expect_register(c)?;
+            c.expect(Tok::Colon, "':' between the two registers, as in [x:y]")?;
+            let low = expect_register(c)?;
+            c.expect(Tok::RBracket, "']'")?;
+            Ok(Operand::Pair(high, low))
+        }
+        Some(Tok::Dollar) => Ok(Operand::Mem(Address::Absolute(absolute(c)?))),
+        Some(Tok::Ident(name)) => {
+            if let Some(r) = register(name) {
+                c.next();
+                return Ok(Operand::Reg(r));
+            }
+            if let Some(value) = byte_of(name) {
+                c.next();
+                return Ok(Operand::Imm(value));
+            }
+            let name = reference_name(c, name)?;
+            let offset = match c.peek() {
+                Some(Tok::Plus) => {
+                    c.next();
+                    number(c)?
+                }
+                Some(Tok::Minus) => {
+                    c.next();
+                    -number(c)?
+                }
+                _ => 0,
+            };
+            Ok(Operand::Mem(Address::Symbol { name, offset }))
+        }
+        Some(Tok::Number(_) | Tok::Minus | Tok::Char(_)) => Ok(Operand::Imm(value8(c)?)),
+        Some(Tok::Str(_)) => c.error("strings are only allowed in .data"),
+        _ => c.error(format!("expected an operand, found {}", c.found())),
+    }
+}
+
+/// `name.msb` / `name.lsb`
+fn byte_of(name: &str) -> Option<Value8> {
+    let (base, suffix) = name.rsplit_once('.')?;
+    if base.is_empty() || base.contains('.') {
+        return None;
+    }
+    match suffix.to_ascii_lowercase().as_str() {
+        "msb" => Some(Value8::Msb(base.to_string())),
+        "lsb" => Some(Value8::Lsb(base.to_string())),
+        _ => None,
+    }
+}
+
+/// A name used as an operand (label or variable).
+fn reference_name(c: &mut Cursor, name: &str) -> ParseResult<String> {
+    if name.contains('.') {
+        return c.error(format!(
+            "'{name}': only '.msb' and '.lsb' can follow a name"
+        ));
+    }
+    if Opcode::from_mnemonic(name).is_some() {
+        return c.error(format!("'{name}' is an instruction; missing line break?"));
+    }
+    c.next();
+    Ok(name.to_string())
+}
+
+fn expect_register(c: &mut Cursor) -> ParseResult<Register> {
+    match c.peek() {
+        Some(Tok::Ident(name)) if register(name).is_some() => {
+            c.next();
+            Ok(register(name).unwrap())
+        }
+        _ => c.error(format!(
+            "expected a register (a b c d i j x y), found {}",
+            c.found()
+        )),
+    }
+}
+
+fn number(c: &mut Cursor) -> ParseResult<i64> {
+    match c.peek() {
+        Some(Tok::Number(n)) => {
+            c.next();
+            Ok(*n)
+        }
+        _ => c.error(format!("expected a number, found {}", c.found())),
+    }
+}
+
+/// `$` followed by a number: an absolute address (up to 20 bits for the EEPROM).
+fn absolute(c: &mut Cursor) -> ParseResult<u32> {
+    c.expect(Tok::Dollar, "'$'")?;
+    let col = c.col();
+    let n = number(c)?;
+    if !(0..=0xF_FFFF).contains(&n) {
+        return Err((
+            col,
+            format!("address {n:#x} is out of range (max $0xFFFFF)"),
+        ));
+    }
+    Ok(n as u32)
+}
+
+/// An 8-bit value: number (-128 to 255), character, or name.msb / name.lsb.
+fn value8(c: &mut Cursor) -> ParseResult<Value8> {
+    let col = c.col();
+    match c.peek() {
+        Some(Tok::Char(ch)) => {
+            c.next();
+            Ok(Value8::Number(*ch as i64))
+        }
+        Some(Tok::Ident(name)) => match byte_of(name) {
+            Some(value) => {
+                c.next();
+                Ok(value)
+            }
+            None => c.error(format!(
+                "expected a number, a character or name.msb / name.lsb, found '{name}'"
+            )),
+        },
+        _ => {
+            let negative = c.peek() == Some(&Tok::Minus);
+            if negative {
+                c.next();
+            }
+            let n = number(c)?;
+            let n = if negative { -n } else { n };
+            if !(-128..=255).contains(&n) {
+                return Err((col, format!("{n} does not fit in 8 bits (-128 to 255)")));
+            }
+            Ok(Value8::Number(n))
+        }
+    }
+}
+
+/// `.data name [$address] value, value, …`
+fn data(c: &mut Cursor) -> ParseResult<Stmt> {
+    let usage =
+        ".data expects a name, an optional $address, then values: .data name 1, 2, \"text\"";
+    let Some(Tok::Ident(name)) = c.peek() else {
+        return c.error(usage);
+    };
+    let name = definition_name(c, name)?;
+    let address = if c.peek() == Some(&Tok::Dollar) {
+        Some(absolute(c)?)
+    } else {
+        None
+    };
+    if c.at_end() {
+        return c.error(usage);
+    }
+    let mut values = Vec::new();
+    loop {
+        let col = c.col();
+        match c.peek() {
+            Some(Tok::Str(bytes)) => {
+                c.next();
+                values.push(DataValue::Bytes(bytes.clone()));
+            }
+            _ => values.push(DataValue::Byte(value8(c)?, col)),
+        }
+        if c.at_end() {
+            break;
+        }
+        c.expect(Tok::Comma, "',' between values")?;
+    }
+    Ok(Stmt::Data {
+        name,
+        address,
+        values,
+    })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::lexer::lex_line;
+
+    fn parse(line: &str) -> Result<Vec<Stmt>, String> {
+        let mut report = Report::default();
+        let stmts = parse_line(0, 1, &lex_line(line).unwrap(), &mut report);
+        match report.entries.first() {
+            Some((_, _, message)) => Err(message.clone()),
+            None => Ok(stmts.into_iter().map(|s| s.stmt).collect()),
+        }
+    }
+
+    fn operands(line: &str) -> Vec<Operand> {
+        match parse(line).unwrap().pop().unwrap() {
+            Stmt::Instr { operands, .. } => operands.into_iter().map(|o| o.operand).collect(),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn operand_kinds() {
+        use Register::*;
+        assert_eq!(
+            operands("MOV A, 'z'"),
+            [Operand::Reg(A), Operand::Imm(Value8::Number(b'z' as i64))]
+        );
+        assert_eq!(
+            operands("str [x:y], b"),
+            [Operand::Pair(X, Y), Operand::Reg(B)]
+        );
+        assert_eq!(
+            operands("lod a, $0x9000"),
+            [Operand::Reg(A), Operand::Mem(Address::Absolute(0x9000))]
+        );
+        assert_eq!(
+            operands("lod a, buffer - 2"),
+            [
+                Operand::Reg(A),
+                Operand::Mem(Address::Symbol {
+                    name: "buffer".into(),
+                    offset: -2
+                })
+            ]
+        );
+        assert_eq!(
+            operands("mov x, msg.MSB"),
+            [Operand::Reg(X), Operand::Imm(Value8::Msb("msg".into()))]
+        );
+        assert_eq!(
+            operands("add a, -1"),
+            [Operand::Reg(A), Operand::Imm(Value8::Number(-1))]
+        );
+    }
+
+    #[test]
+    fn labels() {
+        assert!(matches!(
+            &parse("loop:").unwrap()[..],
+            [Stmt::Label { address: None, .. }]
+        ));
+        assert!(matches!(
+            &parse("h: $0xF000").unwrap()[..],
+            [Stmt::Label {
+                address: Some(0xF000),
+                ..
+            }]
+        ));
+        assert!(matches!(
+            &parse("loop: inc a").unwrap()[..],
+            [Stmt::Label { .. }, Stmt::Instr { .. }]
+        ));
+        assert!(parse("h: $0xF000 nop").is_err());
+        assert!(parse("mov: nop").is_err());
+    }
+
+    #[test]
+    fn data() {
+        let stmts = parse(".data msg $0x0100 \"Hi\", 0, v.lsb").unwrap();
+        let Stmt::Data {
+            name,
+            address,
+            values,
+        } = &stmts[0]
+        else {
+            panic!()
+        };
+        assert_eq!((name.as_str(), *address), ("msg", Some(0x0100)));
+        assert_eq!(values.iter().map(DataValue::size).sum::<u32>(), 4);
+        assert!(parse(".data x").is_err());
+        assert!(parse(".data x 256").is_err());
+    }
+
+    #[test]
+    fn errors() {
+        assert_eq!(parse("foo a").unwrap_err(), "unknown instruction 'foo'");
+        assert!(parse("mov a b").unwrap_err().contains("','"));
+        assert!(parse("mov a, 300").unwrap_err().contains("8 bits"));
+        assert!(parse("str [xy], b").unwrap_err().contains("[x:y]"));
+        assert!(parse(".org 5").unwrap_err().contains("unknown directive"));
+    }
+}
