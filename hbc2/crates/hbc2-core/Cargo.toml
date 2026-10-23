@@ -1,0 +1,8 @@
+[package]
+name = "hbc2-core"
+description = "Emulation core of the HBC-2 (HomeBrew Computer 2): CPU, RAM, IOD and peripherals"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]

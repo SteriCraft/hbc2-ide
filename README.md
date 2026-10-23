@@ -18,5 +18,7 @@ You can also gather information about the computer on the official blog [here](h
 
 The IDE allows you to create projects, write code with syntax highlighting, check binary output of your code, and run an emulator of the computer easily reaching the 2 MHz target frequency of the CPU.
 
+The IDE is being rewritten in Rust in [hbc2/](hbc2/). The previous Qt version is kept in [old_code_archive/](old_code_archive/) for reference.
+
 ### Documentation
 The IDE project's documentation is available [here](https://stericraft.github.io/hbc2-ide/)
