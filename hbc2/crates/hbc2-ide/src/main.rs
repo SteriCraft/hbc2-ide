@@ -29,7 +29,11 @@ fn main() -> eframe::Result {
         viewport: egui::ViewportBuilder::default()
             .with_title("HBC-2 IDE")
             .with_inner_size([1500.0, 900.0])
-            .with_min_inner_size([800.0, 500.0]),
+            .with_min_inner_size([800.0, 500.0])
+            .with_icon(
+                eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png"))
+                    .expect("the icon is a valid PNG"),
+            ),
         ..Default::default()
     };
     eframe::run_native(
