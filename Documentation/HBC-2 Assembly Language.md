@@ -92,7 +92,7 @@ The form decides the addressing mode.
 | `in out` | `in r, r` (r1 = port r2) · `out r, r` (port r1 = r2) |
 | `int` | `int value` |
 | `psh pop shl asr shr` | `op r` |
-| `nop hlt irt ret clc cle cli cln cls clz clf stc ste sti stn sts stz stf` | no operand |
+| `nop hlt irt ret clc cle cli cln cls clz clf stc ste sti stn sts stz stf psf pof` | no operand |
 
 `op address` with `[r:r]` uses the pair as the address (for jumps: the address to jump to; for `inc`/`dec`: the memory byte to change).
 

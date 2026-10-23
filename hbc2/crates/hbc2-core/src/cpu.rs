@@ -407,6 +407,17 @@ impl Cpu {
                     self.set_r(i.r1(), value);
                 }
             }
+            O::Psf => {
+                if mode == M::None {
+                    self.push(board, self.flags.0);
+                }
+            }
+            // All 8 flags are restored, Interrupt and Halt included.
+            O::Pof => {
+                if mode == M::None {
+                    self.flags = Flags(self.pop(board));
+                }
+            }
 
             // ----- Control flow
             O::Jmp | O::Jmc | O::Jme | O::Jmn | O::Jms | O::Jmz | O::Jmf => {

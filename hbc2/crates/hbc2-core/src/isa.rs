@@ -166,7 +166,7 @@ impl AddrMode {
     }
 }
 
-/// The 48 implemented opcodes (6-bit field).
+/// The 50 implemented opcodes (6-bit field).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Opcode {
@@ -215,16 +215,18 @@ pub enum Opcode {
     Sts = 0x2A,
     Stz = 0x2B,
     Stf = 0x2C,
-    Sub = 0x2D,
-    Sbb = 0x2E,
-    Xor = 0x2F,
+    Psf = 0x2D,
+    Pof = 0x2E,
+    Sub = 0x2F,
+    Sbb = 0x30,
+    Xor = 0x31,
 }
 
 /// Number of implemented opcodes.
-pub const OPCODE_COUNT: usize = 48;
+pub const OPCODE_COUNT: usize = 50;
 
 impl Opcode {
-    /// Decodes the 6-bit opcode field. Values 0x30-0x3F are not implemented.
+    /// Decodes the 6-bit opcode field. Values 0x32-0x3F are not implemented.
     pub const fn from_bits(bits: u8) -> Option<Opcode> {
         let bits = (bits & 0x3F) as usize;
         if bits < OPCODE_COUNT {
@@ -276,6 +278,7 @@ const INC_DEC: &[AddrMode] = &[M::Reg, M::Reg16, M::Imm16];
 const REG: &[AddrMode] = &[M::Reg];
 const CNZ: &[Flag] = &[F::Carry, F::Negative, F::Zero];
 const ZN: &[Flag] = &[F::Zero, F::Negative];
+const ALL_FLAGS: &[Flag] = &Flag::ALL;
 
 const fn op(
     opcode: Opcode,
@@ -343,6 +346,8 @@ pub static INSTRUCTION_TABLE: [OpcodeInfo; OPCODE_COUNT] = [
     op(Opcode::Sts, "sts", NONE, &[F::Superior]),
     op(Opcode::Stz, "stz", NONE, &[F::Zero]),
     op(Opcode::Stf, "stf", NONE, &[F::Inferior]),
+    op(Opcode::Psf, "psf", NONE, &[]),
+    op(Opcode::Pof, "pof", NONE, ALL_FLAGS),
     op(Opcode::Sub, "sub", ALU, CNZ),
     op(Opcode::Sbb, "sbb", ALU, CNZ),
     op(Opcode::Xor, "xor", ALU, ZN),
@@ -470,7 +475,7 @@ mod tests {
 
     #[test]
     fn unimplemented_values_decode_to_none() {
-        assert_eq!(Opcode::from_bits(0x30), None);
+        assert_eq!(Opcode::from_bits(0x32), None);
         assert_eq!(AddrMode::from_bits(0x8), None);
     }
 

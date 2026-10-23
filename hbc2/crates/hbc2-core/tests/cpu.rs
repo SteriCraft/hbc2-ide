@@ -272,6 +272,47 @@ fn push_and_pop() {
 }
 
 #[test]
+fn push_and_pop_flags() {
+    let mut m = machine(&[
+        none(O::Stc),
+        none(O::Stz),
+        none(O::Psf), // C I Z pushed
+        none(O::Clc),
+        none(O::Clz),
+        none(O::Cli),
+        none(O::Ste),
+        none(O::Pof),
+    ]);
+    steps(&mut m, 3);
+    assert_eq!(m.cpu.sp, 1);
+    assert_eq!(
+        ram(&m, 0x0001),
+        0b0010_0101,
+        "flag register: C=bit 0 … H=bit 7"
+    );
+    assert_eq!(flags(&m), "C-I--Z--", "PSF changes no flag");
+    steps(&mut m, 4);
+    assert_eq!(flags(&m), "-E------");
+    steps(&mut m, 1);
+    assert_eq!(flags(&m), "C-I--Z--", "POF restores all 8 flags");
+    assert_eq!(m.cpu.sp, 0);
+}
+
+#[test]
+fn pof_restores_the_halt_flag_too() {
+    let mut m = machine(&[
+        raw(O::Mov, AddrMode::RegImm8, A as u8, 0, 0x80, 0),
+        raw(O::Psh, AddrMode::Reg, A as u8, 0, 0, 0),
+        none(O::Pof),
+        reg_imm8(O::Mov, B, 1),
+    ]);
+    steps(&mut m, 3);
+    assert!(m.cpu.is_halted());
+    m.run(100);
+    assert_eq!(m.cpu.reg(B), 0, "halted by POF");
+}
+
+#[test]
 fn conditional_jumps() {
     // For each jump: set its flag, jump over a "mov a, 1"; then clear it, and fall through.
     let cases = [

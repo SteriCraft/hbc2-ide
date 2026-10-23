@@ -3,7 +3,7 @@ use std::path::Path;
 use hbc2_asm::encode::{Kind, forms};
 use hbc2_asm::{MemoryFiles, Program, SymbolKind, Target, assemble, disassemble};
 use hbc2_core::isa::{Instruction, encode};
-use hbc2_core::{Machine, MachineConfig, Opcode, Register};
+use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
 fn build(files: MemoryFiles, target: Target) -> Result<Program, Vec<String>> {
     assemble(Path::new("main.has"), &files, target)
@@ -306,6 +306,47 @@ fn templates_assemble_and_detect_peripherals() {
     assert_eq!(ram("rtcPort"), 6);
     assert_eq!(ram("keyboardPort"), 13);
     assert_eq!(ram("firstInterrupt"), 0);
+}
+
+#[test]
+fn template_handler_preserves_the_main_program_state() {
+    let handler = std::fs::read_to_string(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/interruptHandler.has"),
+    )
+    .unwrap();
+    // Registers and flags are set up before interrupts are allowed in.
+    let main = "
+.include \"interruptHandler.has\"
+_start:
+    cli
+    mov a, 0x55
+    mov b, 0x66
+    stc
+    ste
+    sti
+loop:
+    jmp loop
+";
+    let files = MemoryFiles::new()
+        .with("main.has", main)
+        .with("interruptHandler.has", handler);
+    let p = build(files, Target::Ram).unwrap_or_else(|e| panic!("{}", e.join("\n")));
+
+    let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    m.run(10_000);
+    assert_eq!(
+        m.board.iod.queue().len(),
+        0,
+        "all plug-in interrupts handled"
+    );
+    assert_eq!(m.board.ram.read(addr(&p, "keyboardPort") as u16), 13);
+    assert_eq!(
+        (m.cpu.reg(Register::A), m.cpu.reg(Register::B)),
+        (0x55, 0x66)
+    );
+    assert!(m.cpu.flag(Flag::Carry) && m.cpu.flag(Flag::Equal));
+    assert!(m.cpu.flag(Flag::Interrupt));
+    assert_eq!(m.cpu.sp, 0, "stack balanced");
 }
 
 #[test]

@@ -100,7 +100,9 @@ pub fn forms(op: Opcode) -> &'static [Form] {
         | O::Stn
         | O::Sts
         | O::Stz
-        | O::Stf => NO_OPERAND,
+        | O::Stf
+        | O::Psf
+        | O::Pof => NO_OPERAND,
     }
 }
 

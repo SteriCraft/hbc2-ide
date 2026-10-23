@@ -10,6 +10,7 @@
 ; - IOD interrupt handler -
 .data IOD_INT_HANDLER_ADDR $0x0100 _iod_interrupt_handler.msb, _iod_interrupt_handler.lsb  ; Interrupt vector of port 0
 .data firstInterrupt 0x00   ; IOD sends 2 interrupts when a peripheral is plugged, 1: First connected port, 2: ID
+.data pendingPort 0x00      ; First connected port, kept between the 2 interrupts
 .data monitorPort 0x00      ; First connected port for each peripheral
 .data keyboardPort 0x00
 .data rtcPort 0x00
@@ -17,17 +18,26 @@
 
 
 ; === PROGRAM ===
+; An interrupt can happen between any two instructions of the main program,
+; and only I and PC are saved by the CPU. So the handler saves everything
+; else it changes (flags first, as most instructions change them) and
+; restores it before IRT.
 _iod_interrupt_handler: $0xF000
+    psf                             ; Save the main program's flags
+    psh a                           ; Save 'A', used below
+
     lod a, firstInterrupt           ; Check if we are handling the first or the second IOD interrupt
     cmp a, 1
     jme _iod_interrupt_handler_id   ; Jump if managing the second interrupt
 
-    mov b, i                        ; Store first connected port in 'B' for now
+    str pendingPort, i              ; First interrupt: 'I' holds the first connected port
     mov a, 1
     str firstInterrupt, a           ; Prepare for the second interrupt
-    irt
+    jmp _iod_interrupt_handler_end
 
 _iod_interrupt_handler_id:
+    lod a, pendingPort              ; 'A' = the peripheral's first port, 'I' = its ID
+
     cmp i, MONITOR_ID
     jme _iod_interrupt_handler_monitor_plugged
 
@@ -41,30 +51,28 @@ _iod_interrupt_handler_id:
     jme _iod_interrupt_handler_eeprom_plugged
 
     ; Reaching this point means the peripheral wasn't recognized. Interrupt discarded.
-    mov a, 0
-    str firstInterrupt, a
-    irt
+    jmp _iod_interrupt_handler_id_done
 
 _iod_interrupt_handler_monitor_plugged:
-    str monitorPort, b              ; 'B' holds the peripheral's first port
-    mov a, 0
-    str firstInterrupt, a           ; Prepare for a future IOD interrupt
-    irt
+    str monitorPort, a
+    jmp _iod_interrupt_handler_id_done
 
 _iod_interrupt_handler_keyboard_plugged:
-    str keyboardPort, b
-    mov a, 0
-    str firstInterrupt, a
-    irt
+    str keyboardPort, a
+    jmp _iod_interrupt_handler_id_done
 
 _iod_interrupt_handler_rtc_plugged:
-    str rtcPort, b
-    mov a, 0
-    str firstInterrupt, a
-    irt
+    str rtcPort, a
+    jmp _iod_interrupt_handler_id_done
 
 _iod_interrupt_handler_eeprom_plugged:
-    str eepromPort, b
+    str eepromPort, a
+
+_iod_interrupt_handler_id_done:
     mov a, 0
-    str firstInterrupt, a
+    str firstInterrupt, a           ; Prepare for a future IOD interrupt
+
+_iod_interrupt_handler_end:
+    pop a                           ; Restore in reverse order
+    pof
     irt
