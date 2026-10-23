@@ -14,12 +14,12 @@ Logisim/
 # ignore code line counter script
 codeLinesNumbers.sh
 
-# ignore files from "HBC-2_IDE"
-HBC-2_IDE/mainwindow.ui
+# ignore files from "old_code_archive"
+old_code_archive/mainwindow.ui
 
-# ignore build directories from "HBC-2_IDE"
-HBC-2_IDE/build-HBC-2_IDE-Desktop-Debug
-HBC-2_IDE/build-HBC-2_IDE-Desktop-MinSizeRel
-HBC-2_IDE/build-HBC-2_IDE-Desktop-Profile
-HBC-2_IDE/build-HBC-2_IDE-Desktop-Release
-HBC-2_IDE/build-HBC-2_IDE-Desktop-RelWithDebInfo
+# ignore build directories from "old_code_archive"
+old_code_archive/build-HBC-2_IDE-Desktop-Debug
+old_code_archive/build-HBC-2_IDE-Desktop-MinSizeRel
+old_code_archive/build-HBC-2_IDE-Desktop-Profile
+old_code_archive/build-HBC-2_IDE-Desktop-Release
+old_code_archive/build-HBC-2_IDE-Desktop-RelWithDebInfo
