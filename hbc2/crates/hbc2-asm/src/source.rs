@@ -41,6 +41,17 @@ impl SourceProvider for MemoryFiles {
     }
 }
 
+/// Two normalized paths name the same file when their keys are equal.
+/// Windows file names ignore letter case, so `Lib/Math.has` and
+/// `lib/math.has` are one file there.
+pub fn same_file_key(path: &Path) -> PathBuf {
+    if cfg!(windows) {
+        PathBuf::from(path.to_string_lossy().to_lowercase())
+    } else {
+        path.to_path_buf()
+    }
+}
+
 /// Removes `.` and resolves `..` without touching the file system.
 pub fn normalize(path: &Path) -> PathBuf {
     let mut out = PathBuf::new();

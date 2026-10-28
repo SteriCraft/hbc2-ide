@@ -395,6 +395,29 @@ fn write(
                     }
                     a += 1;
                 }
+                DataValue::Address(address, size, col) => {
+                    let loc = Loc { col: *col, ..d.loc };
+                    let value = match address {
+                        Address::Absolute(n) => Some(*n as i64),
+                        Address::Symbol { name, offset } => {
+                            lookup(name, loc, report).map(|n| n as i64 + offset)
+                        }
+                    };
+                    let size = *size as usize;
+                    let bits = size * 8;
+                    match value {
+                        Some(v) if (0..1i64 << bits).contains(&v) => {
+                            let bytes = (v as u64).to_be_bytes();
+                            image[a..a + size].copy_from_slice(&bytes[8 - size..]);
+                        }
+                        Some(v) => report.error(
+                            loc,
+                            format!("address {v:#x} does not fit in {bits} bits"),
+                        ),
+                        None => {}
+                    }
+                    a += size;
+                }
             }
         }
         bytes_used += d.size() as usize;

@@ -42,6 +42,9 @@ pub(crate) struct Op {
 pub(crate) enum DataValue {
     Bytes(Vec<u8>),
     Byte(Value8, u32),
+    /// The address of a label or variable on `size` bytes, most significant
+    /// first (`.data16 v handler`): (address, size, column).
+    Address(Address, u32, u32),
 }
 
 impl DataValue {
@@ -49,6 +52,7 @@ impl DataValue {
         match self {
             DataValue::Bytes(b) => b.len() as u32,
             DataValue::Byte(..) => 1,
+            DataValue::Address(_, size, _) => *size,
         }
     }
 }
@@ -153,11 +157,12 @@ pub(crate) fn parse_line(
 fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> ParseResult<()> {
     let loc = Loc::new(file, line, c.col());
     match c.peek() {
-        Some(Tok::Directive(d)) if d == "data" => {
+        Some(Tok::Directive(d)) if data_width(d).is_some() => {
+            let width = data_width(d).unwrap();
             c.next();
             out.push(Located {
                 loc,
-                stmt: data(c)?,
+                stmt: data(c, width)?,
             });
             Ok(())
         }
@@ -411,10 +416,24 @@ fn value8(c: &mut Cursor) -> ParseResult<Value8> {
     }
 }
 
-/// `.data name [$address] value, value, …`
-fn data(c: &mut Cursor) -> ParseResult<Stmt> {
-    let usage =
-        ".data expects a name, an optional $address, then values: .data name 1, 2, \"text\"";
+/// Bytes per value of `.data`, `.data16` and `.data32`.
+fn data_width(directive: &str) -> Option<u32> {
+    match directive {
+        "data" => Some(1),
+        "data16" => Some(2),
+        "data32" => Some(4),
+        _ => None,
+    }
+}
+
+/// `.data name [$address] value, value, …` (`width` = 1), or `.data16` /
+/// `.data32`, whose values take 2 / 4 bytes each, most significant first.
+fn data(c: &mut Cursor, width: u32) -> ParseResult<Stmt> {
+    let usage = match width {
+        1 => ".data expects a name, an optional $address, then values: .data name 1, 2, \"text\"",
+        2 => ".data16 expects a name, an optional $address, then values: .data16 name 1000, label",
+        _ => ".data32 expects a name, an optional $address, then values: .data32 name 100000, label",
+    };
     let Some(Tok::Ident(name)) = c.peek() else {
         return c.error(usage);
     };
@@ -431,11 +450,12 @@ fn data(c: &mut Cursor) -> ParseResult<Stmt> {
     loop {
         let col = c.col();
         match c.peek() {
-            Some(Tok::Str(bytes)) => {
+            Some(Tok::Str(bytes)) if width == 1 => {
                 c.next();
                 values.push(DataValue::Bytes(bytes.clone()));
             }
-            _ => values.push(DataValue::Byte(value8(c)?, col)),
+            _ if width == 1 => values.push(DataValue::Byte(value8(c)?, col)),
+            _ => values.push(wide_value(c, width)?),
         }
         if c.at_end() {
             break;
@@ -447,6 +467,65 @@ fn data(c: &mut Cursor) -> ParseResult<Stmt> {
         address,
         values,
     })
+}
+
+/// A `.data16` / `.data32` value: a number, a character, `$address`, or a
+/// label or variable (its address; `name + n` allowed).
+fn wide_value(c: &mut Cursor, width: u32) -> ParseResult<DataValue> {
+    let col = c.col();
+    let bits = width * 8;
+    let number = match c.peek() {
+        Some(Tok::Char(ch)) => {
+            c.next();
+            *ch as i64
+        }
+        Some(Tok::Dollar) => {
+            c.next();
+            number(c)?
+        }
+        Some(Tok::Minus) => {
+            c.next();
+            -number(c)?
+        }
+        Some(Tok::Number(_)) => number(c)?,
+        Some(Tok::Str(_)) => return c.error("strings are only allowed in .data"),
+        Some(Tok::Ident(name)) => {
+            if byte_of(name).is_some() {
+                return c.error(format!(
+                    "'{name}' is one byte: use .data for name.msb / name.lsb"
+                ));
+            }
+            let name = reference_name(c, name)?;
+            let offset = match c.peek() {
+                Some(Tok::Plus) => {
+                    c.next();
+                    number(c)?
+                }
+                Some(Tok::Minus) => {
+                    c.next();
+                    -number(c)?
+                }
+                _ => 0,
+            };
+            return Ok(DataValue::Address(
+                Address::Symbol { name, offset },
+                width,
+                col,
+            ));
+        }
+        _ => return c.error(format!("expected a value, found {}", c.found())),
+    };
+    let min = -(1i64 << (bits - 1));
+    let max = (1i64 << bits) - 1;
+    if !(min..=max).contains(&number) {
+        return Err((
+            col,
+            format!("{number} does not fit in {bits} bits ({min} to {max})"),
+        ));
+    }
+    // Negative numbers in two's complement; most significant byte first.
+    let bytes = (number as u64).to_be_bytes()[8 - width as usize..].to_vec();
+    Ok(DataValue::Bytes(bytes))
 }
 
 #[cfg(test)]
@@ -578,6 +657,42 @@ mod tests {
         assert!(parse("pop a, [x:y]").unwrap_err().contains("only take registers"));
         assert!(parse("psh a, 5").unwrap_err().contains("only take registers"));
         assert!(parse("psh a,").unwrap_err().contains("after ','"));
+    }
+
+    /// Bytes of a `.data16` / `.data32` line made only of numbers.
+    fn data_bytes(line: &str) -> Vec<u8> {
+        let Stmt::Data { values, .. } = parse(line).unwrap().remove(0) else {
+            panic!()
+        };
+        values
+            .into_iter()
+            .flat_map(|v| match v {
+                DataValue::Bytes(b) => b,
+                other => panic!("{other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn wide_data() {
+        assert_eq!(data_bytes(".data16 v 0x1234, 1"), [0x12, 0x34, 0, 1]);
+        assert_eq!(data_bytes(".DATA32 v 100000"), [0x00, 0x01, 0x86, 0xA0]);
+        assert_eq!(data_bytes(".data32 v -1"), [0xFF; 4]);
+        assert_eq!(data_bytes(".data16 v -32768, 'A'"), [0x80, 0x00, 0x00, 0x41]);
+        assert_eq!(data_bytes(".data16 v $0x0100 $0x9000"), [0x90, 0x00]);
+        let Stmt::Data { values, .. } = parse(".data16 v handler + 4").unwrap().remove(0) else {
+            panic!()
+        };
+        assert!(matches!(
+            &values[..],
+            [DataValue::Address(Address::Symbol { name, offset: 4 }, 2, _)] if name == "handler"
+        ));
+        assert!(parse(".data16 v 65536").unwrap_err().contains("16 bits"));
+        assert!(parse(".data16 v -32769").unwrap_err().contains("16 bits"));
+        assert!(parse(".data32 v 0x1_0000_0000").unwrap_err().contains("32 bits"));
+        assert!(parse(".data16 v \"hi\"").unwrap_err().contains("strings"));
+        assert!(parse(".data16 v h.msb").unwrap_err().contains("one byte"));
+        assert!(parse(".data16 v").is_err());
     }
 
     #[test]

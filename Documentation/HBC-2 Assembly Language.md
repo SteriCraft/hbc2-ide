@@ -42,7 +42,7 @@ Each line holds one of:
 
 * an instruction: `mnemonic operand, operand`
 * a label: `name:`, optionally followed by an address (`handler: $0xF000`) or by an instruction (`loop: inc a`)
-* a directive: `.data`, `.define` or `.include`
+* a directive: `.data`, `.data16`, `.data32`, `.define` or `.include`
 
 Comments start with `;` and run to the end of the line.
 
@@ -141,6 +141,24 @@ handler: $0xF000     ; starts a block at $0xF000
 
 A variable's name stands for its address: `lod a, counter`, `str table + 3, a`.
 
+### `.data16` and `.data32`: 16- and 32-bit values
+
+```
+.data32 population 100000          ; 0x00, 0x01, 0x86, 0xA0
+.data16 offsets 1000, -1, 'A'      ; 0x03, 0xE8, 0xFF, 0xFF, 0x00, 0x41
+.data16 vector $0x0100 handler     ; handler.msb, handler.lsb
+```
+
+Each value takes 2 bytes (`.data16`) or 4 bytes (`.data32`), **most significant
+byte first**. A value is one of:
+
+* a number: 0 to 65535 (`.data16`) or 0 to 4294967295 (`.data32`). Negative
+  numbers down to -32768 / -2147483648 are stored in two's complement.
+* a character: `'A'`
+* an address: `$0x9000`, or a label or variable name (`handler`, `table + 2`)
+
+Strings and `name.msb` / `name.lsb` are only allowed in `.data`.
+
 ## Automatic placement
 
 Floating blocks and `.data` without an address are placed in source order, in
@@ -168,6 +186,8 @@ can use other defines. A name can only be defined once.
 Inserts another file at this point. The path is relative to the file that
 contains the `.include`. A file is included once only: later `.include`s of
 the same file are ignored, so libraries can include each other freely.
+`..` goes up one folder: `.include "../lib/math.has"`. On Windows, letter case
+does not matter: `Lib/Math.has` and `lib/math.has` are the same file.
 
 ## EEPROM target
 
@@ -188,4 +208,4 @@ copies only `$0x0100-$0x04FF` and `$0xF000-$0xFFFF` into RAM, so:
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32` |

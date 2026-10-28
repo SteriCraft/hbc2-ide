@@ -10,6 +10,7 @@ use crate::project::Project;
 pub enum FileAction {
     Open(PathBuf),
     NewFile(PathBuf),
+    NewFolder(PathBuf),
     Rename(PathBuf),
     Delete(PathBuf),
     Refresh,
@@ -22,22 +23,41 @@ struct Folder {
     files: Vec<PathBuf>,
 }
 
+impl Folder {
+    /// The subfolder at `relative`, created in the tree if needed.
+    fn at(&mut self, relative: &Path) -> &mut Folder {
+        let mut folder = self;
+        for part in relative.iter() {
+            folder = folder
+                .folders
+                .entry(part.to_string_lossy().into())
+                .or_default();
+        }
+        folder
+    }
+}
+
 fn tree(project: &Project) -> Folder {
     let mut root = Folder::default();
+    // Folders first, so the empty ones show too.
+    for dir in &project.folders {
+        root.at(project.relative(dir));
+    }
     for path in &project.files {
-        let relative = project.relative(path);
-        let mut folder = &mut root;
-        if let Some(parent) = relative.parent() {
-            for part in parent.iter() {
-                folder = folder
-                    .folders
-                    .entry(part.to_string_lossy().into())
-                    .or_default();
-            }
-        }
-        folder.files.push(path.clone());
+        let parent = project.relative(path).parent().unwrap_or(Path::new(""));
+        root.at(parent).files.push(path.clone());
     }
     root
+}
+
+/// "New file…" and "New folder…", creating in `dir`.
+fn new_buttons(ui: &mut egui::Ui, dir: &Path, action: &mut Option<FileAction>) {
+    if ui.button("New file…").clicked() {
+        *action = Some(FileAction::NewFile(dir.to_path_buf()));
+    }
+    if ui.button("New folder…").clicked() {
+        *action = Some(FileAction::NewFolder(dir.to_path_buf()));
+    }
 }
 
 pub fn files_ui(
@@ -56,6 +76,9 @@ pub fn files_ui(
         ui.strong(project.name());
         if ui.small_button("+").on_hover_text("New file").clicked() {
             action = Some(FileAction::NewFile(project.root.clone()));
+        }
+        if ui.small_button("🗀").on_hover_text("New folder").clicked() {
+            action = Some(FileAction::NewFolder(project.root.clone()));
         }
         if ui.small_button("⟳").on_hover_text("Refresh").clicked() {
             action = Some(FileAction::Refresh);
@@ -79,9 +102,7 @@ pub fn files_ui(
             egui::Sense::click(),
         );
         rest.context_menu(|ui| {
-            if ui.button("New file…").clicked() {
-                action = Some(FileAction::NewFile(project.root.clone()));
-            }
+            new_buttons(ui, &project.root, &mut action);
             if ui.button("Show folder").clicked() {
                 action = Some(FileAction::ShowFolder);
             }
@@ -108,9 +129,7 @@ fn folder_ui(
                 folder_ui(ui, sub, &sub_dir, project, is_open, is_dirty, action)
             });
         header.header_response.context_menu(|ui| {
-            if ui.button("New file…").clicked() {
-                *action = Some(FileAction::NewFile(sub_dir.clone()));
-            }
+            new_buttons(ui, &sub_dir, action);
         });
     }
     for path in &folder.files {
@@ -146,11 +165,7 @@ fn folder_ui(
                 *action = Some(FileAction::Delete(path.clone()));
             }
             ui.separator();
-            if ui.button("New file…").clicked() {
-                *action = Some(FileAction::NewFile(
-                    path.parent().unwrap_or(dir).to_path_buf(),
-                ));
-            }
+            new_buttons(ui, path.parent().unwrap_or(dir), action);
         });
     }
 }

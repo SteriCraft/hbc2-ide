@@ -124,6 +124,7 @@ impl egui_dock::TabViewer for Viewer<'_> {
                     state.actions.push(match action {
                         FileAction::Open(path) => Action::OpenFile(path, None),
                         FileAction::NewFile(dir) => Action::NewFile(dir),
+                        FileAction::NewFolder(dir) => Action::NewFolder(dir),
                         FileAction::Rename(path) => Action::RenameFile(path),
                         FileAction::Delete(path) => Action::DeleteFile(path),
                         FileAction::Refresh => Action::RefreshFiles,

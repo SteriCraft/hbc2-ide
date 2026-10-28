@@ -5,7 +5,7 @@ use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
 use crate::app::{Action, Dialog, State};
-use crate::project::{NEW_FILE_TEMPLATE, project_folder_name, source_file_name};
+use crate::project::{NEW_FILE_TEMPLATE, folder_name, project_folder_name, source_file_name};
 use crate::settings::{SPEEDS, TargetSetting, frequency_label, speed_label};
 
 fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
@@ -527,7 +527,49 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                         keep = false;
                     }
                 });
-                ui.label(RichText::new("Include it from another file with .include \"name.has\".").weak());
+                let file = source_file_name(name).unwrap_or_else(|_| name.trim().to_string());
+                let include = match &state.project {
+                    Some(project) => project.include_path(&dir.join(&file)),
+                    None => file,
+                };
+                ui.label(
+                    RichText::new(format!("Include it from main.has with .include \"{include}\"."))
+                        .weak(),
+                );
+            }
+            Dialog::NewFolder { dir, name, error } => {
+                ui.heading("New folder");
+                ui.label(format!("In {}", dir.display()));
+                let edit = ui.text_edit_singleline(name);
+                edit.request_focus();
+                if let Some(error) = error {
+                    ui.colored_label(ui.visuals().error_fg_color, error.as_str());
+                }
+                let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+                ui.horizontal(|ui| {
+                    if ui.button("Create").clicked() || enter {
+                        match folder_name(name) {
+                            Err(e) => *error = Some(e.into()),
+                            Ok(folder) => {
+                                let path = dir.join(folder);
+                                if path.exists() {
+                                    *error = Some("A file or folder with this name already exists.".into());
+                                } else {
+                                    match std::fs::create_dir(&path) {
+                                        Ok(()) => {
+                                            keep = false;
+                                            state.actions.push(Action::RefreshFiles);
+                                        }
+                                        Err(e) => *error = Some(e.to_string()),
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    if ui.button("Cancel").clicked() {
+                        keep = false;
+                    }
+                });
             }
             Dialog::Rename { path, name, error } => {
                 ui.heading("Rename");

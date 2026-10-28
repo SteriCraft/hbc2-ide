@@ -11,7 +11,7 @@ use std::path::{Path, PathBuf};
 use crate::diagnostic::{Loc, Report};
 use crate::lexer::{Tok, Token, lex_line};
 use crate::parser::is_reserved;
-use crate::source::{SourceProvider, normalize};
+use crate::source::{SourceProvider, normalize, same_file_key};
 
 /// One non-empty source line, after `.include` / `.define` handling.
 pub(crate) struct Line {
@@ -85,7 +85,7 @@ struct Loader<'a> {
 impl Loader<'_> {
     fn load_file(&mut self, path: PathBuf, included_from: Option<Loc>) {
         let path = normalize(&path);
-        if !self.seen.insert(path.clone()) {
+        if !self.seen.insert(same_file_key(&path)) {
             return; // already included
         }
         let text = match self.provider.read(&path) {

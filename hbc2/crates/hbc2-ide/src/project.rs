@@ -25,6 +25,8 @@ pub struct Project {
     pub root: PathBuf,
     /// Every `.has` file in the folder and its subfolders, sorted.
     pub files: Vec<PathBuf>,
+    /// Every subfolder, empty ones included, sorted.
+    pub folders: Vec<PathBuf>,
 }
 
 impl Project {
@@ -40,6 +42,7 @@ impl Project {
         let mut project = Project {
             root,
             files: Vec::new(),
+            folders: Vec::new(),
         };
         project.rescan();
         Ok(project)
@@ -75,14 +78,26 @@ impl Project {
         self.root.join(ENTRY_FILE)
     }
 
-    /// Re-reads the file list from disk. Returns true if it changed.
+    /// Re-reads the file and folder lists from disk. Returns true if they changed.
     pub fn rescan(&mut self) -> bool {
         let mut files = Vec::new();
-        collect_sources(&self.root, &mut files, 0);
+        let mut folders = Vec::new();
+        collect_sources(&self.root, &mut files, &mut folders, 0);
         files.sort();
-        let changed = files != self.files;
+        folders.sort();
+        let changed = files != self.files || folders != self.folders;
         self.files = files;
+        self.folders = folders;
         changed
+    }
+
+    /// How `main.has` includes `path`: relative to the project folder, with `/`.
+    pub fn include_path(&self, path: &Path) -> String {
+        self.relative(path)
+            .iter()
+            .map(|part| part.to_string_lossy())
+            .collect::<Vec<_>>()
+            .join("/")
     }
 
     /// Path relative to the project folder, for display.
@@ -91,7 +106,7 @@ impl Project {
     }
 }
 
-fn collect_sources(dir: &Path, out: &mut Vec<PathBuf>, depth: usize) {
+fn collect_sources(dir: &Path, out: &mut Vec<PathBuf>, folders: &mut Vec<PathBuf>, depth: usize) {
     const MAX_DEPTH: usize = 8;
     let Ok(entries) = std::fs::read_dir(dir) else {
         return;
@@ -103,7 +118,8 @@ fn collect_sources(dir: &Path, out: &mut Vec<PathBuf>, depth: usize) {
             continue;
         };
         if kind.is_dir() && !hidden && depth < MAX_DEPTH {
-            collect_sources(&path, out, depth + 1);
+            collect_sources(&path, out, folders, depth + 1);
+            folders.push(path);
         } else if kind.is_file()
             && path
                 .extension()
@@ -175,6 +191,11 @@ pub fn project_folder_name(name: &str) -> Result<&str, &'static str> {
     checked_name(name)
 }
 
+/// Checks a folder name typed by the user.
+pub fn folder_name(name: &str) -> Result<&str, &'static str> {
+    checked_name(name)
+}
+
 /// Checks a file name typed by the user and adds `.has` if it has no extension.
 pub fn source_file_name(name: &str) -> Result<String, &'static str> {
     let name = checked_name(name)?;
@@ -203,7 +224,13 @@ mod tests {
         std::fs::write(project.root.join("notes.txt"), "").unwrap();
         let mut project = Project::open(&project.root).unwrap();
         assert_eq!(project.files.len(), 3);
+        assert_eq!(project.folders, vec![project.root.join("lib")]);
+        assert_eq!(project.include_path(&project.root.join("lib/math.has")), "lib/math.has");
         assert!(!project.rescan(), "nothing changed");
+
+        std::fs::create_dir(project.root.join("empty")).unwrap();
+        assert!(project.rescan(), "empty folders count");
+        assert_eq!(project.folders.len(), 2);
 
         assert!(Project::open(&dir).is_err(), "no main.has");
 
@@ -223,5 +250,7 @@ mod tests {
         assert!(source_file_name("a/b").is_err());
         assert_eq!(project_folder_name(" demo "), Ok("demo"));
         assert!(project_folder_name("a:b").is_err());
+        assert_eq!(folder_name(" lib "), Ok("lib"));
+        assert!(folder_name("a/b").is_err());
     }
 }

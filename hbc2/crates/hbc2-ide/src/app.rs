@@ -50,6 +50,7 @@ pub enum Action {
     OpenFileDialog,
     OpenFile(PathBuf, Option<u32>),
     NewFile(PathBuf),
+    NewFolder(PathBuf),
     RenameFile(PathBuf),
     DeleteFile(PathBuf),
     RefreshFiles,
@@ -94,6 +95,11 @@ pub enum Dialog {
         error: Option<String>,
     },
     NewFile {
+        dir: PathBuf,
+        name: String,
+        error: Option<String>,
+    },
+    NewFolder {
         dir: PathBuf,
         name: String,
         error: Option<String>,
@@ -600,6 +606,13 @@ impl Ide {
                 state.dialog = Some(Dialog::NewFile {
                     dir,
                     name: "newFile.has".into(),
+                    error: None,
+                })
+            }
+            Action::NewFolder(dir) => {
+                state.dialog = Some(Dialog::NewFolder {
+                    dir,
+                    name: "lib".into(),
                     error: None,
                 })
             }

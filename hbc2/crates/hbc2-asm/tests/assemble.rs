@@ -188,6 +188,26 @@ fn include_once_and_relative_paths() {
     assert!(p.symbol("b_var").is_some());
 }
 
+/// Windows file names ignore letter case: a second spelling is the same file.
+#[cfg(windows)]
+#[test]
+fn include_once_ignores_case_on_windows() {
+    let files = MemoryFiles::new()
+        .with(
+            "main.has",
+            ".include \"lib/b.has\"
+.include \"Lib/B.HAS\"
+_start:
+    jmp _start
+",
+        )
+        .with("lib/b.has", ".data b_var 0
+");
+    let p = build(files, Target::Ram).unwrap_or_else(|e| panic!("{}", e.join("
+")));
+    assert_eq!(p.files.len(), 2);
+}
+
 #[test]
 fn defines() {
     let p = asm("
@@ -413,4 +433,24 @@ done:
     assert_eq!(m.cpu.sp, 0, "stack balanced");
 
     assert!(errors("_start:\n    psh a, b, a\n")[0].contains("2:15"));
+}
+
+#[test]
+fn wide_data_is_big_endian() {
+    let p = asm("
+.data16 vector $0x0100 handler, handler + 4
+.data32 big 100000, -2
+_start:
+    jmp _start
+handler: $0x1234
+    irt
+");
+    let image = |a: u32, n: usize| p.image[a as usize..a as usize + n].to_vec();
+    assert_eq!(image(0x0100, 4), [0x12, 0x34, 0x12, 0x38]);
+    assert_eq!(
+        image(addr(&p, "big"), 8),
+        [0x00, 0x01, 0x86, 0xA0, 0xFF, 0xFF, 0xFF, 0xFE]
+    );
+    assert_eq!(p.symbol("big").unwrap().size, 8);
+    assert!(errors(".data16 v nowhere\n_start:\n    jmp _start\n")[0].contains("unknown"));
 }
