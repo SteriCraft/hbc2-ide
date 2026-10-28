@@ -1,12 +1,14 @@
-//! CPU state: registers, flags, PC/SP/IR, stack and clock.
+//! CPU state: registers, flags, PC/SP/IR. The stack is in the Memory tab,
+//! the clock in the status bar.
 
-use eframe::egui::{self, Color32, RichText, Sense, Stroke, StrokeKind, vec2};
+use super::columns::Section;
+use eframe::egui::{
+    self, Align, Color32, Label, Layout, RichText, Sense, Stroke, StrokeKind, vec2,
+};
 use hbc2_asm::Program;
 use hbc2_asm::disasm::disassemble_with;
 use hbc2_core::{CpuState, Flag, Register};
-use hbc2_runner::{RunState, Snapshot};
-
-use crate::settings::{frequency_label, speed_label};
+use hbc2_runner::Snapshot;
 
 pub fn changed_color(dark: bool) -> Color32 {
     if dark {
@@ -21,14 +23,14 @@ pub fn name_of(program: Option<&Program>, address: u16) -> Option<String> {
     program?.symbol_at(address as u32).map(|s| s.name.clone())
 }
 
-pub fn cpu_ui(
-    ui: &mut egui::Ui,
-    s: &Snapshot,
-    baseline: Option<&Snapshot>,
-    program: Option<&Program>,
-) {
-    let dark = ui.visuals().dark_mode;
-    let mono = |text: String, changed: bool| {
+/// The CPU state, as columns of sections for [`super::columns::columns`].
+pub fn cpu_sections<'a>(
+    dark: bool,
+    s: &'a Snapshot,
+    baseline: Option<&'a Snapshot>,
+    program: Option<&'a Program>,
+) -> Vec<Vec<Section<'a>>> {
+    let mono = move |text: String, changed: bool| {
         let text = RichText::new(text).monospace();
         if changed {
             text.color(changed_color(dark)).strong()
@@ -39,9 +41,8 @@ pub fn cpu_ui(
     let cpu = &s.cpu;
     let before = baseline.map(|b| &b.cpu);
 
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
-        .show(ui, |ui| {
+    vec![
+        vec![Box::new(move |ui| {
             ui.heading("Registers");
             egui::Grid::new("registers")
                 .striped(true)
@@ -70,125 +71,118 @@ pub fn cpu_ui(
                         ui.end_row();
                     }
                 });
-
-            ui.add_space(8.0);
-            ui.heading("Flags");
-            ui.horizontal(|ui| {
-                // Bit 7 (H) on the left, bit 0 (C) on the right, as in the flag register.
-                for flag in Flag::ALL.iter().rev() {
-                    let on = cpu.flag(*flag);
-                    let changed = before.is_some_and(|b| b.flag(*flag) != on);
-                    flag_box(ui, flag.letter(), on, changed, dark).on_hover_text(format!(
-                        "{} (bit {}): {}",
-                        flag.name(),
-                        *flag as u8,
-                        if on { "set" } else { "clear" }
-                    ));
-                }
-                ui.label(mono(
-                    format!("{:08b}", cpu.flags.0),
-                    before.is_some_and(|b| b.flags != cpu.flags),
-                ));
-            });
-
-            ui.add_space(8.0);
-            ui.heading("Control");
-            egui::Grid::new("control")
-                .striped(true)
-                .num_columns(3)
-                .show(ui, |ui| {
-                    let source = |address: u16| {
-                        let program = program?;
-                        let line = program.source_of(address as u32)?;
-                        let file = program.files.get(line.file)?.file_name()?.to_string_lossy();
-                        Some(format!("{file}:{}", line.line))
-                    };
-                    ui.label("PC");
-                    ui.label(mono(
-                        format!("{:04X}", cpu.pc),
-                        before.is_some_and(|b| b.pc != cpu.pc),
-                    ));
-                    ui.label(RichText::new(source(cpu.pc).unwrap_or_default()).weak());
-                    ui.end_row();
-
-                    ui.label("SP");
-                    ui.label(mono(
-                        format!("{:02X}", cpu.sp),
-                        before.is_some_and(|b| b.sp != cpu.sp),
-                    ));
-                    ui.label(RichText::new(format!("top item at {:04X}", cpu.sp)).weak());
-                    ui.end_row();
-
-                    ui.label("IR");
-                    ui.label(mono(
-                        format!("{:08X}", cpu.ir.0),
-                        before.is_some_and(|b| b.ir != cpu.ir),
-                    ));
-                    ui.label(
-                        RichText::new(disassemble_with(cpu.ir.0, |a| name_of(program, a)))
-                            .monospace(),
-                    );
-                    ui.end_row();
-
-                    ui.label("Last PC");
-                    ui.label(mono(format!("{:04X}", cpu.last_pc), false));
-                    ui.label(RichText::new(source(cpu.last_pc).unwrap_or_default()).weak());
-                    ui.end_row();
-
-                    ui.label("State");
-                    let state = match (cpu.state, cpu.is_halted()) {
-                        (CpuState::InterruptAcknowledge, _) => "Acknowledging an interrupt",
-                        (_, true) => "Halted (waiting for an interrupt)",
-                        _ => "Executing",
-                    };
-                    ui.label(state);
-                    ui.label("");
-                    ui.end_row();
-
-                    if let Some((port, data)) = cpu.pending_software_interrupt() {
-                        ui.label("INT");
-                        ui.label(mono(format!("port {port:02X}, data {data:02X}"), false));
-                        ui.label(RichText::new("waiting for the I flag").weak());
-                        ui.end_row();
+        })],
+        vec![
+            Box::new(move |ui| {
+                ui.heading("Flags");
+                ui.horizontal(|ui| {
+                    // Bit 7 (H) on the left, bit 0 (C) on the right, as in the flag register.
+                    for flag in Flag::ALL.iter().rev() {
+                        let on = cpu.flag(*flag);
+                        let changed = before.is_some_and(|b| b.flag(*flag) != on);
+                        flag_box(ui, flag.letter(), on, changed, dark).on_hover_text(format!(
+                            "{} (bit {}): {}",
+                            flag.name(),
+                            *flag as u8,
+                            if on { "set" } else { "clear" }
+                        ));
                     }
+                    ui.label(mono(
+                        format!("{:08b}", cpu.flags.0),
+                        before.is_some_and(|b| b.flags != cpu.flags),
+                    ));
                 });
-
-            ui.add_space(8.0);
-            ui.heading("Stack");
-            ui.label(RichText::new("Top of the stack first. SP points at the top item.").weak());
-            egui::Grid::new("stack")
-                .striped(true)
-                .num_columns(2)
-                .show(ui, |ui| {
-                    for depth in 0..8u8 {
-                        let address = cpu.sp.wrapping_sub(depth);
-                        let value = s.board.ram.read(address as u16);
-                        let changed =
-                            baseline.is_some_and(|b| b.board.ram.read(address as u16) != value);
-                        let marker = if depth == 0 { "SP ▶" } else { "" };
-                        ui.label(RichText::new(format!("{marker} {address:04X}")).monospace());
-                        ui.label(mono(format!("{value:02X}"), changed));
+            }),
+            Box::new(move |ui| {
+                ui.heading("Control");
+                egui::Grid::new("control")
+                    .striped(true)
+                    .num_columns(3)
+                    .show(ui, |ui| {
+                        let source = |address: u16| {
+                            let program = program?;
+                            let line = program.source_of(address as u32)?;
+                            let file = program.files.get(line.file)?.file_name()?.to_string_lossy();
+                            Some(format!("{file}:{}", line.line))
+                        };
+                        ui.label("PC");
+                        ui.label(mono(
+                            format!("{:04X}", cpu.pc),
+                            before.is_some_and(|b| b.pc != cpu.pc),
+                        ));
+                        note(ui, RichText::new(source(cpu.pc).unwrap_or_default()).weak());
                         ui.end_row();
-                    }
-                });
 
-            ui.add_space(8.0);
-            ui.heading("Clock");
-            egui::Grid::new("clock").num_columns(2).show(ui, |ui| {
-                ui.label("Cycles");
-                ui.label(RichText::new(group_digits(s.ticks)).monospace());
-                ui.end_row();
-                ui.label("Target");
-                ui.label(speed_label(s.speed));
-                ui.end_row();
-                ui.label("Measured");
-                ui.label(match s.state {
-                    RunState::Running => frequency_label(s.measured_hz),
-                    RunState::Paused => "paused".into(),
-                });
-                ui.end_row();
-            });
-        });
+                        ui.label("SP");
+                        ui.label(mono(
+                            format!("{:02X}", cpu.sp),
+                            before.is_some_and(|b| b.sp != cpu.sp),
+                        ));
+                        note(
+                            ui,
+                            RichText::new(format!("top item at {:04X}", cpu.sp)).weak(),
+                        );
+                        ui.end_row();
+
+                        ui.label("IR");
+                        ui.label(mono(
+                            format!("{:08X}", cpu.ir.0),
+                            before.is_some_and(|b| b.ir != cpu.ir),
+                        ));
+                        note(
+                            ui,
+                            RichText::new(disassemble_with(cpu.ir.0, |a| name_of(program, a)))
+                                .monospace(),
+                        );
+                        ui.end_row();
+
+                        ui.label("Last PC");
+                        ui.label(mono(format!("{:04X}", cpu.last_pc), false));
+                        note(
+                            ui,
+                            RichText::new(source(cpu.last_pc).unwrap_or_default()).weak(),
+                        );
+                        ui.end_row();
+
+                        ui.label("State");
+                        // Short words here, details in the note: the column keeps its width.
+                        let (state, detail) = match (cpu.state, cpu.is_halted()) {
+                            (CpuState::InterruptAcknowledge, _) => {
+                                ("Interrupt", "being acknowledged")
+                            }
+                            (_, true) => ("Halted", "waiting for an interrupt"),
+                            _ => ("Executing", ""),
+                        };
+                        ui.label(state);
+                        note(ui, RichText::new(detail).weak());
+                        ui.end_row();
+
+                        if let Some((port, data)) = cpu.pending_software_interrupt() {
+                            ui.label("INT");
+                            ui.label(mono(format!("port {port:02X}, data {data:02X}"), false));
+                            note(ui, RichText::new("waiting for the I flag").weak());
+                            ui.end_row();
+                        }
+                    });
+            }),
+        ],
+    ]
+}
+
+/// Width of the notes column of the control grid. Longer notes are cut
+/// (hover shows them whole), so the layout does not move while running.
+const NOTE_WIDTH: f32 = 190.0;
+
+fn note(ui: &mut egui::Ui, text: RichText) {
+    let height = ui.spacing().interact_size.y;
+    ui.allocate_ui_with_layout(
+        vec2(NOTE_WIDTH, height),
+        Layout::left_to_right(Align::Center),
+        |ui| {
+            ui.set_min_width(NOTE_WIDTH);
+            ui.add(Label::new(text).truncate());
+        },
+    );
 }
 
 fn flag_box(

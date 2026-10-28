@@ -3,11 +3,12 @@
 use std::path::PathBuf;
 
 use eframe::egui::{self, RichText, WidgetText};
+use egui_dock::TabStyle;
 use egui_dock::tab_viewer::OnCloseResponse;
 use hbc2_runner::RunState;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Action, State};
+use crate::app::{Action, State, TOOL_TABS};
 use crate::views;
 use crate::views::editor::{Marks, editor_ui};
 use crate::views::files::FileAction;
@@ -18,42 +19,30 @@ pub enum Tab {
     Project,
     Editor(PathBuf),
     Console,
-    Monitor,
+    /// The CPU, then the IOD and peripherals.
     Cpu,
     Memory,
     Disassembly,
-    Io,
 }
 
 impl Tab {
-    /// Tool tabs, in the order of the View menu.
-    pub const TOOLS: [Tab; 7] = [
-        Tab::Project,
-        Tab::Console,
-        Tab::Monitor,
-        Tab::Cpu,
-        Tab::Disassembly,
-        Tab::Memory,
-        Tab::Io,
-    ];
-
     pub fn name(&self) -> &'static str {
         match self {
             Tab::Welcome => "Start",
             Tab::Project => "Project",
             Tab::Editor(_) => "Editor",
             Tab::Console => "Console",
-            Tab::Monitor => "Monitor",
-            Tab::Cpu => "CPU",
+            Tab::Cpu => "CPU & I/O",
             Tab::Memory => "Memory",
             Tab::Disassembly => "Disassembly",
-            Tab::Io => "I/O",
         }
     }
 }
 
 pub struct Viewer<'a> {
     pub state: &'a mut State,
+    /// Width of the right-hand group, shared equally by its tabs.
+    pub tools_width: f32,
 }
 
 impl egui_dock::TabViewer for Viewer<'_> {
@@ -81,22 +70,32 @@ impl egui_dock::TabViewer for Viewer<'_> {
         }
     }
 
+    /// Only editor tabs close; the other tabs are fixed.
+    fn is_closeable(&self, tab: &Tab) -> bool {
+        matches!(tab, Tab::Editor(_))
+    }
+
+    /// The close action asks about unsaved changes and puts the start page
+    /// back after the last editor.
     fn on_close(&mut self, tab: &mut Tab) -> OnCloseResponse {
-        let Tab::Editor(path) = tab else {
-            return OnCloseResponse::Close;
-        };
-        if self
-            .state
-            .docs
-            .iter()
-            .any(|d| &d.path == path && d.is_dirty())
-        {
+        if let Tab::Editor(path) = tab {
             self.state.actions.push(Action::CloseTab(path.clone()));
-            OnCloseResponse::Ignore
-        } else {
-            self.state.docs.retain(|d| &d.path != path);
-            OnCloseResponse::Close
         }
+        OnCloseResponse::Ignore
+    }
+
+    fn allowed_in_windows(&self, _tab: &mut Tab) -> bool {
+        false
+    }
+
+    fn tab_style_override(&self, tab: &Tab, global_style: &TabStyle) -> Option<TabStyle> {
+        if !TOOL_TABS.contains(tab) || self.tools_width <= 0.0 {
+            return None;
+        }
+        Some(TabStyle {
+            minimum_width: Some((self.tools_width / TOOL_TABS.len() as f32).floor()),
+            ..global_style.clone()
+        })
     }
 
     fn scroll_bars(&self, tab: &Tab) -> [bool; 2] {
@@ -138,20 +137,20 @@ impl egui_dock::TabViewer for Viewer<'_> {
                     state.actions.push(Action::OpenFile(path, Some(line)));
                 }
             }
-            Tab::Monitor => {
-                let keyboard = snapshot.keyboard.is_some();
-                state.monitor_view.ui(
-                    ui,
-                    snapshot.monitor.as_ref(),
-                    keyboard,
-                    &state.emulator.runner,
-                );
-            }
             Tab::Cpu => {
                 let baseline = baseline
                     .as_deref()
                     .filter(|_| snapshot.state == RunState::Paused);
-                views::cpu::cpu_ui(ui, &snapshot, baseline, state.emulator.program.as_deref());
+                let (min_width, rtc_interrupt) = views::machine::machine_ui(
+                    ui,
+                    &snapshot,
+                    baseline,
+                    state.emulator.program.as_deref(),
+                );
+                state.tools_min_width = min_width;
+                if rtc_interrupt {
+                    state.actions.push(Action::RtcInterrupt);
+                }
             }
             Tab::Memory => {
                 let baseline = baseline
@@ -167,7 +166,6 @@ impl egui_dock::TabViewer for Viewer<'_> {
                     state.actions.push(Action::ToggleAddressBreakpoint(address));
                 }
             }
-            Tab::Io => views::io::io_ui(ui, &snapshot),
         }
     }
 }

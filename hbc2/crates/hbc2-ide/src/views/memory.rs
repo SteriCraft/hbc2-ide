@@ -7,6 +7,8 @@ use hbc2_runner::{RunState, Runner, Snapshot};
 use crate::views::cpu::changed_color;
 
 const BYTES_PER_ROW: usize = 16;
+/// Stack items shown under the hex view.
+const STACK_ITEMS: u8 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Source {
@@ -44,6 +46,7 @@ impl MemoryView {
         baseline: Option<&Snapshot>,
         runner: &Runner,
     ) {
+        stack_strip(ui, s, baseline);
         let eeprom = s.eeprom.as_ref().map(|e| e.memory());
         if eeprom.is_none() {
             self.source = Source::Ram;
@@ -143,9 +146,7 @@ impl MemoryView {
                         if in_ram && (pc..pc + INSTRUCTION_SIZE as usize).contains(&address) {
                             text = text.background_color(crate::views::editor::pc_color(dark));
                         } else if in_ram && address == sp {
-                            text = text.background_color(Color32::from_rgba_unmultiplied(
-                                80, 160, 255, 60,
-                            ));
+                            text = text.background_color(sp_color());
                         }
                         if in_ram && self.selected == Some(address as u16) {
                             text = text
@@ -216,6 +217,52 @@ impl MemoryView {
             }
         }
     }
+}
+
+/// Background of the byte SP points at, here and in the hex view.
+fn sp_color() -> Color32 {
+    Color32::from_rgba_unmultiplied(80, 160, 255, 60)
+}
+
+/// The top of the stack, left to right, at the bottom of the tab.
+fn stack_strip(ui: &mut egui::Ui, s: &Snapshot, baseline: Option<&Snapshot>) {
+    let dark = ui.visuals().dark_mode;
+    let sp = s.cpu.sp;
+    egui::Panel::bottom("memory_stack")
+        .resizable(false)
+        .show(ui, |ui| {
+            ui.add_space(4.0);
+            ui.horizontal(|ui| {
+                ui.strong("Stack")
+                    .on_hover_text("Top of the stack first. SP points at the top item.");
+                ui.label(RichText::new(format!("SP {sp:02X}, top item first")).weak());
+            });
+            egui::Grid::new("stack_strip")
+                .spacing([12.0, 2.0])
+                .show(ui, |ui| {
+                    ui.label(RichText::new("Address").weak());
+                    for depth in 0..STACK_ITEMS {
+                        let address = sp.wrapping_sub(depth) as u16;
+                        ui.label(RichText::new(format!("{address:04X}")).monospace().weak());
+                    }
+                    ui.end_row();
+                    ui.label(RichText::new("Value").weak());
+                    for depth in 0..STACK_ITEMS {
+                        let address = sp.wrapping_sub(depth) as u16;
+                        let value = s.board.ram.read(address);
+                        let mut text = RichText::new(format!("{value:02X}")).monospace();
+                        if baseline.is_some_and(|b| b.board.ram.read(address) != value) {
+                            text = text.color(changed_color(dark)).strong();
+                        }
+                        if depth == 0 {
+                            text = text.background_color(sp_color());
+                        }
+                        ui.label(text);
+                    }
+                    ui.end_row();
+                });
+            ui.add_space(4.0);
+        });
 }
 
 fn describe(address: usize, source: Source) -> String {

@@ -1,20 +1,18 @@
 //! Menu bar, toolbar, status bar, start page and dialogs.
 
 use eframe::egui::{self, Align, Button, Color32, Layout, RichText};
-use egui_dock::DockState;
 use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
 use crate::app::{Action, Dialog, State};
-use crate::project::{NEW_FILE_TEMPLATE, source_file_name};
+use crate::project::{NEW_FILE_TEMPLATE, project_folder_name, source_file_name};
 use crate::settings::{SPEEDS, TargetSetting, frequency_label, speed_label};
-use crate::tabs::Tab;
 
 fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
     Button::new(text.to_string()).shortcut_text(shortcut.to_string())
 }
 
-pub fn menu_bar(ui: &mut egui::Ui, state: &mut State, dock: &DockState<Tab>) {
+pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
     let actions = &mut state.actions;
     let has_project = state.project.is_some();
     egui::Panel::top("menu_bar").show(ui, |ui| {
@@ -64,6 +62,15 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State, dock: &DockState<Tab>) {
                 if ui.add(shortcut_button("Close tab", "Ctrl+W")).clicked() {
                     actions.push(Action::CloseCurrentTab);
                 }
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.label("Editor font");
+                    ui.add(
+                        egui::DragValue::new(&mut state.settings.editor_font_size)
+                            .range(8.0..=32.0)
+                            .suffix(" px"),
+                    );
+                });
                 ui.separator();
                 if ui.button("Quit").clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -125,6 +132,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State, dock: &DockState<Tab>) {
                 {
                     actions.push(Action::Step);
                 }
+                ui.checkbox(&mut state.settings.monitor_window, "Monitor window");
                 if ui.add(shortcut_button("Power cycle", "Ctrl+F5")).clicked() {
                     actions.push(Action::Reset);
                 }
@@ -184,32 +192,6 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State, dock: &DockState<Tab>) {
                 }
             });
 
-            ui.menu_button("View", |ui| {
-                for tab in Tab::TOOLS {
-                    let open = dock.find_tab(&tab).is_some();
-                    let text = if open {
-                        format!("✔ {}", tab.name())
-                    } else {
-                        format!("   {}", tab.name())
-                    };
-                    if ui.button(text).clicked() {
-                        actions.push(Action::ShowTab(tab));
-                    }
-                }
-                ui.separator();
-                ui.horizontal(|ui| {
-                    ui.label("Editor font");
-                    ui.add(
-                        egui::DragValue::new(&mut state.settings.editor_font_size)
-                            .range(8.0..=32.0)
-                            .suffix(" px"),
-                    );
-                });
-                if ui.button("Reset layout").clicked() {
-                    actions.push(Action::ResetLayout);
-                }
-            });
-
             ui.menu_button("Help", |ui| {
                 if ui.button("Keyboard map…").clicked() {
                     actions.push(Action::ShowDialog(Dialog::Keyboard));
@@ -258,6 +240,9 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             {
                 actions.push(Action::Reset);
             }
+            ui.separator();
+            ui.toggle_value(&mut state.settings.monitor_window, "🖥 Monitor")
+                .on_hover_text("Show or hide the monitor window");
             ui.separator();
             ui.label("Clock");
             let current: Speed = state.settings.speed.into();
@@ -430,6 +415,82 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     if ui.button("Cancel").clicked() {
                         keep = false;
                     }
+                });
+            }
+            Dialog::NewProject {
+                parent,
+                name,
+                interrupt_handler,
+                error,
+            } => {
+                egui::Frame::new().inner_margin(16.0).show(ui, |ui| {
+                    ui.set_max_width(560.0);
+                    ui.spacing_mut().item_spacing.y = 6.0;
+                    ui.spacing_mut().button_padding = egui::vec2(10.0, 4.0);
+                    ui.heading("New project");
+                    ui.add_space(12.0);
+
+                    ui.label("Name");
+                    let edit = ui.add(egui::TextEdit::singleline(name).desired_width(380.0));
+                    edit.request_focus();
+                    ui.add_space(10.0);
+
+                    ui.label("Location");
+                    ui.horizontal(|ui| {
+                        ui.monospace(parent.display().to_string());
+                        if ui.button("Browse…").clicked() {
+                            let mut picker = rfd::FileDialog::new()
+                                .set_title("Folder where the project folder is created");
+                            if parent.is_dir() {
+                                picker = picker.set_directory(&*parent);
+                            }
+                            if let Some(dir) = picker.pick_folder() {
+                                *parent = dir;
+                                *error = None;
+                            }
+                        }
+                    });
+                    ui.add_space(10.0);
+
+                    ui.checkbox(interrupt_handler, "Include a default interrupt handler");
+                    ui.add_space(10.0);
+
+                    if let Ok(folder) = project_folder_name(name) {
+                        ui.label(
+                            RichText::new(format!("Creates {}", parent.join(folder).display()))
+                                .weak(),
+                        );
+                    }
+                    if let Some(error) = error {
+                        ui.colored_label(ui.visuals().error_fg_color, error.as_str());
+                    }
+                    let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+                    ui.add_space(12.0);
+                    ui.horizontal(|ui| {
+                        if ui.button("Create").clicked() || enter {
+                            match project_folder_name(name) {
+                                Err(e) => *error = Some(e.into()),
+                                Ok(_) if !parent.is_dir() => {
+                                    *error = Some("The location folder does not exist.".into())
+                                }
+                                Ok(folder) => {
+                                    let root = parent.join(folder);
+                                    if root.exists() {
+                                        *error =
+                                            Some("A folder with this name already exists.".into());
+                                    } else {
+                                        keep = false;
+                                        state
+                                            .actions
+                                            .push(Action::CreateProject(root, *interrupt_handler));
+                                    }
+                                }
+                            }
+                        }
+                        if ui.button("Cancel").clicked() {
+                            keep = false;
+                        }
+                    });
                 });
             }
             Dialog::NewFile { dir, name, error } => {

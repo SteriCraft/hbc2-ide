@@ -124,6 +124,8 @@ pub struct Settings {
     /// Show the source line of the current instruction when the emulator pauses.
     pub follow_pc: bool,
     pub editor_font_size: f32,
+    /// The monitor window is open.
+    pub monitor_window: bool,
     pub projects: HashMap<PathBuf, ProjectSettings>,
 }
 
@@ -135,6 +137,7 @@ impl Default for Settings {
             speed: Speed::default().into(),
             follow_pc: true,
             editor_font_size: 14.0,
+            monitor_window: true,
             projects: HashMap::new(),
         }
     }

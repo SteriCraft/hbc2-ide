@@ -30,10 +30,7 @@ fn main() -> eframe::Result {
             .with_title("HBC-2 IDE")
             .with_inner_size([1500.0, 900.0])
             .with_min_inner_size([800.0, 500.0])
-            .with_icon(
-                eframe::icon_data::from_png_bytes(include_bytes!("../assets/icon.png"))
-                    .expect("the icon is a valid PNG"),
-            ),
+            .with_icon(hbc2_ide::icon()),
         ..Default::default()
     };
     eframe::run_native(
@@ -42,6 +39,11 @@ fn main() -> eframe::Result {
         Box::new(|cc| {
             let saved: Option<Saved> = cc.storage.and_then(|s| eframe::get_value(s, STORAGE_KEY));
             let mut ide = Ide::new(&cc.egui_ctx, saved);
+            if let Err(e) = hbc2_ide::project::create_projects_dir() {
+                ide.state
+                    .console
+                    .error(format!("Cannot create the projects folder: {e}"));
+            }
             let args: Vec<String> = std::env::args().skip(1).collect();
             if let Some(dir) = args.iter().find(|a| !a.starts_with("--")) {
                 ide.state.actions.push(Action::OpenProject(dir.into()));

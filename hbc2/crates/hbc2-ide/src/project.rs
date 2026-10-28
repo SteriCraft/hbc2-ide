@@ -45,14 +45,17 @@ impl Project {
         Ok(project)
     }
 
-    /// Creates `main.has` and `interruptHandler.has` from the templates in
-    /// `root` (created if needed), then opens it. Existing files are kept.
-    pub fn create(root: &Path) -> io::Result<Project> {
+    /// Creates `main.has` from its template in `root` (created if needed),
+    /// with `interruptHandler.has` when `interrupt_handler` is set, then opens
+    /// it. Existing files are kept.
+    pub fn create(root: &Path, interrupt_handler: bool) -> io::Result<Project> {
         std::fs::create_dir_all(root)?;
-        for (name, content) in [
-            (ENTRY_FILE, MAIN_TEMPLATE),
-            (INTERRUPT_HANDLER_FILE, INTERRUPT_HANDLER_TEMPLATE),
-        ] {
+        let main = main_source(interrupt_handler);
+        let mut files = vec![(ENTRY_FILE, main.as_str())];
+        if interrupt_handler {
+            files.push((INTERRUPT_HANDLER_FILE, INTERRUPT_HANDLER_TEMPLATE));
+        }
+        for (name, content) in files {
             let path = root.join(name);
             if !path.exists() {
                 std::fs::write(path, content)?;
@@ -111,14 +114,52 @@ fn collect_sources(dir: &Path, out: &mut Vec<PathBuf>, depth: usize) {
     }
 }
 
+/// The `main.has` template, without its `.include` of the interrupt handler
+/// when the project has none.
+fn main_source(interrupt_handler: bool) -> String {
+    if interrupt_handler {
+        return MAIN_TEMPLATE.to_string();
+    }
+    let include = format!(".include \"{INTERRUPT_HANDLER_FILE}\"");
+    MAIN_TEMPLATE
+        .split_inclusive('\n')
+        .filter(|line| line.trim() != include)
+        .collect()
+}
+
+/// Name of the folder, inside the user's Documents, where project dialogs open.
+pub const PROJECTS_DIR_NAME: &str = "hbc2_projects";
+
+/// `Documents/hbc2_projects`, or `None` when the system has no Documents folder.
+pub fn projects_dir() -> Option<PathBuf> {
+    dirs::document_dir().map(|docs| docs.join(PROJECTS_DIR_NAME))
+}
+
+/// Where the "New project" dialog creates projects unless another folder is chosen.
+pub fn default_projects_parent() -> PathBuf {
+    projects_dir()
+        .filter(|dir| dir.is_dir())
+        .or_else(dirs::document_dir)
+        .or_else(dirs::home_dir)
+        .unwrap_or_default()
+}
+
+/// Creates `Documents/hbc2_projects` if it is missing.
+pub fn create_projects_dir() -> io::Result<()> {
+    match projects_dir() {
+        Some(dir) => std::fs::create_dir_all(dir),
+        None => Ok(()),
+    }
+}
+
 /// Absolute and normalized, without resolving links (which on Windows would
 /// add a `\\?\` prefix the assembler's paths do not have).
 pub fn absolute(path: &Path) -> io::Result<PathBuf> {
     Ok(hbc2_asm::source::normalize(&std::path::absolute(path)?))
 }
 
-/// Checks a file name typed by the user and adds `.has` if it has no extension.
-pub fn source_file_name(name: &str) -> Result<String, &'static str> {
+/// Trims a file or folder name typed by the user and checks it.
+fn checked_name(name: &str) -> Result<&str, &'static str> {
     let name = name.trim();
     if name.is_empty() {
         return Err("The name is empty.");
@@ -126,6 +167,17 @@ pub fn source_file_name(name: &str) -> Result<String, &'static str> {
     if name.contains(['\\', '/', ':', '*', '?', '"', '<', '>', '|']) || name.starts_with('.') {
         return Err("The name contains characters that are not allowed in file names.");
     }
+    Ok(name)
+}
+
+/// Checks a project name typed by the user: it becomes the project's folder.
+pub fn project_folder_name(name: &str) -> Result<&str, &'static str> {
+    checked_name(name)
+}
+
+/// Checks a file name typed by the user and adds `.has` if it has no extension.
+pub fn source_file_name(name: &str) -> Result<String, &'static str> {
+    let name = checked_name(name)?;
     Ok(if Path::new(name).extension().is_some() {
         name.to_string()
     } else {
@@ -141,7 +193,7 @@ mod tests {
     fn create_open_and_scan() {
         let dir = std::env::temp_dir().join(format!("hbc2-ide-project-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
-        let project = Project::create(&dir.join("demo")).unwrap();
+        let project = Project::create(&dir.join("demo"), true).unwrap();
         assert_eq!(project.name(), "demo");
         assert_eq!(project.files.len(), 2);
         assert!(project.entry().is_absolute());
@@ -154,6 +206,12 @@ mod tests {
         assert!(!project.rescan(), "nothing changed");
 
         assert!(Project::open(&dir).is_err(), "no main.has");
+
+        let bare = Project::create(&dir.join("bare"), false).unwrap();
+        assert_eq!(bare.files, vec![bare.entry()]);
+        let main = std::fs::read_to_string(bare.entry()).unwrap();
+        assert!(!main.contains(INTERRUPT_HANDLER_FILE));
+        assert!(main.contains("_start:"));
         std::fs::remove_dir_all(&dir).unwrap();
     }
 
@@ -163,5 +221,7 @@ mod tests {
         assert_eq!(source_file_name("data.inc"), Ok("data.inc".into()));
         assert!(source_file_name("").is_err());
         assert!(source_file_name("a/b").is_err());
+        assert_eq!(project_folder_name(" demo "), Ok("demo"));
+        assert!(project_folder_name("a:b").is_err());
     }
 }

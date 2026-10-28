@@ -37,6 +37,18 @@ pub enum Speed {
 
 impl Speed {
     pub const MHZ: u64 = 1_000_000;
+    /// Below this speed, the RTC sends no interrupts (as when paused or
+    /// stepping): the CPU could not handle one per second, and they would
+    /// only pile up.
+    pub const RTC_INTERRUPT_MIN_HZ: u64 = 100;
+
+    /// Whether the RTC sends its once-per-second interrupt while running.
+    pub fn sends_rtc_interrupts(self) -> bool {
+        match self {
+            Speed::Hz(hz) => hz >= Speed::RTC_INTERRUPT_MIN_HZ,
+            Speed::Fastest => true,
+        }
+    }
 }
 
 impl Default for Speed {

@@ -1,10 +1,12 @@
 //! The emulator thread: owns the machine, handles commands, keeps the pace.
 
 use std::sync::Arc;
-use std::sync::mpsc::{Receiver, TryRecvError};
+use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
 use hbc2_core::Machine;
+use chrono::{Datelike, Timelike};
+use hbc2_core::peripherals::rtc::DateTime;
 use hbc2_core::peripherals::{Eeprom, Monitor};
 
 use crate::{Command, RunState, Shared, Snapshot, Speed};
@@ -23,6 +25,10 @@ const MIN_SLEEP: Duration = Duration::from_millis(1);
 /// When the host cannot keep up with the target speed, the delay is
 /// forgiven beyond this, instead of being caught up in a long burst.
 const MAX_LATE: Duration = Duration::from_millis(100);
+/// Time between two looks at the host clock for the RTC while running.
+const RTC_SYNC_INTERVAL: Duration = Duration::from_millis(10);
+/// Time between two looks at the host clock for the RTC while paused.
+const PAUSED_RTC_SYNC_INTERVAL: Duration = Duration::from_millis(200);
 
 pub(crate) struct Worker {
     machine: Machine,
@@ -34,8 +40,8 @@ pub(crate) struct Worker {
     /// Pace keeping: cycles run since `epoch`.
     epoch: Instant,
     paced_ticks: u64,
-    /// Host time already reported to the peripherals.
-    clock: Instant,
+    /// Last time the RTC was synced with the host clock.
+    rtc_synced: Instant,
 
     /// Frequency meter.
     meter_start: Instant,
@@ -61,7 +67,7 @@ enum Flow {
 impl Worker {
     pub(crate) fn new(machine: Machine, commands: Receiver<Command>) -> Worker {
         let now = Instant::now();
-        Worker {
+        let mut worker = Worker {
             machine,
             commands,
             state: RunState::Paused,
@@ -69,7 +75,7 @@ impl Worker {
             speed: Speed::default(),
             epoch: now,
             paced_ticks: 0,
-            clock: now,
+            rtc_synced: now,
             meter_start: now,
             meter_ticks: 0,
             measured_hz: 0.0,
@@ -79,7 +85,9 @@ impl Worker {
             sleep: None,
             monitor_copy: None,
             eeprom_copy: None,
-        }
+        };
+        worker.sync_rtc(false);
+        worker
     }
 
     pub(crate) fn main_loop(mut self, shared: &Shared) {
@@ -93,10 +101,17 @@ impl Worker {
             }
 
             let command = match self.state {
-                // Nothing to do until told otherwise: block.
-                RunState::Paused => match self.commands.recv() {
+                // Nothing to run until told otherwise: wait, only waking up
+                // to keep the RTC on time.
+                RunState::Paused => match self.commands.recv_timeout(PAUSED_RTC_SYNC_INTERVAL) {
                     Ok(command) => Some(command),
-                    Err(_) => return, // the Runner is gone
+                    Err(RecvTimeoutError::Timeout) => {
+                        if self.sync_rtc(false) {
+                            self.dirty = true;
+                        }
+                        continue;
+                    }
+                    Err(RecvTimeoutError::Disconnected) => return, // the Runner is gone
                 },
                 RunState::Running => {
                     if let Some(duration) = self.sleep.take() {
@@ -139,6 +154,7 @@ impl Worker {
             }
             Command::PowerCycle => {
                 self.machine.power_on();
+                self.sync_rtc(false);
                 self.forget_copies();
                 self.restart_pacing();
             }
@@ -146,6 +162,7 @@ impl Worker {
                 self.pause();
                 self.stop = None;
                 self.machine = *machine;
+                self.sync_rtc(false);
                 self.forget_copies();
             }
             Command::SetSpeed(speed) => {
@@ -179,7 +196,6 @@ impl Worker {
     fn resume(&mut self) {
         if self.state == RunState::Paused {
             self.state = RunState::Running;
-            self.clock = Instant::now();
             self.restart_pacing();
         }
     }
@@ -253,12 +269,19 @@ impl Worker {
         }
     }
 
-    /// Tells time-based peripherals (the RTC) how much host time went by.
+    /// While running: keeps the RTC on the host's local time, which sends
+    /// its once-per-second interrupt (unless the speed is too low for it).
+    /// Cheap enough to call after every slice.
     fn report_host_time(&mut self) {
-        let now = Instant::now();
-        let nanos = now.duration_since(self.clock).as_nanos() as u64;
-        self.clock = now;
-        self.machine.advance_time(nanos);
+        if self.rtc_synced.elapsed() >= RTC_SYNC_INTERVAL {
+            self.sync_rtc(self.speed.sends_rtc_interrupts());
+        }
+    }
+
+    /// Sets the RTC to the host's local time. Returns true if it changed.
+    fn sync_rtc(&mut self, interrupt: bool) -> bool {
+        self.rtc_synced = Instant::now();
+        self.machine.sync_rtc(host_time(), interrupt)
     }
 
     fn update_meter(&mut self) {
@@ -300,6 +323,20 @@ impl Worker {
             keyboard: peripherals.keyboard.clone(),
             eeprom,
         })
+    }
+}
+
+/// The host's local date and time (its time zone, daylight saving included).
+fn host_time() -> DateTime {
+    let now = chrono::Local::now();
+    DateTime {
+        year: now.year().clamp(1900, 2155) as u16,
+        month: now.month() as u8,
+        day: now.day() as u8,
+        hour: now.hour() as u8,
+        minute: now.minute() as u8,
+        // A leap second shows as 60: keep it in range.
+        second: now.second().min(59) as u8,
     }
 }
 

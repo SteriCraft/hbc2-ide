@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use eframe::egui;
 use hbc2_ide::Ide;
-use hbc2_ide::app::{Action, Saved, default_layout};
+use hbc2_ide::app::{Action, Saved};
 use hbc2_ide::settings::Settings;
 use hbc2_ide::tabs::Tab;
 use hbc2_runner::{RunState, Speed};
@@ -37,7 +37,7 @@ impl Harness {
         let ctx = egui::Context::default();
         let saved = Saved {
             settings: Settings::default(),
-            dock: default_layout(),
+            splits: Vec::new(),
         };
         let ide = Ide::new(&ctx, Some(saved));
         Harness { ctx, ide }
@@ -78,7 +78,7 @@ impl Harness {
 fn temp_project(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("hbc2-ide-smoke-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    hbc2_ide::project::Project::create(&dir).unwrap();
+    hbc2_ide::project::Project::create(&dir, true).unwrap();
     std::fs::write(dir.join("main.has"), PROGRAM).unwrap();
     hbc2_ide::project::absolute(&dir).unwrap()
 }
@@ -249,6 +249,49 @@ fn layout_and_settings_survive_a_restart() {
     assert!(editor_open(&ide, &dir.join("main.has")));
     assert_eq!(Speed::from(ide.state.settings.speed), Speed::Hz(5_000_000));
     std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn the_layout_stays_when_editors_close() {
+    let dir = temp_project("layout");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.frame();
+    let tabs =
+        |ide: &Ide| -> Vec<Tab> { ide.dock.iter_all_tabs().map(|(_, t)| t.clone()).collect() };
+    let start = tabs(&h.ide);
+    assert!(start.contains(&Tab::Welcome));
+
+    // Closing the last editor brings the start page back in its place.
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::CloseTab(main.clone()));
+    assert_eq!(tabs(&h.ide), start);
+
+    // So does closing the project.
+    h.act(Action::OpenFile(main.clone(), None));
+    assert!(editor_open(&h.ide, &main));
+    h.act(Action::CloseProject);
+    assert_eq!(tabs(&h.ide), start, "start page and console stay");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn split_sizes_survive_a_restart() {
+    let mut h = Harness::new();
+    h.frame();
+    let saved = h.ide.saved();
+    let mut splits = saved.splits.clone();
+    assert!(!splits.is_empty());
+    splits[0] = 0.3;
+    let ctx = egui::Context::default();
+    let mut ide = Ide::new(
+        &ctx,
+        Some(Saved {
+            splits: splits.clone(),
+            ..saved
+        }),
+    );
+    assert_eq!(ide.saved().splits, splits);
 }
 
 fn doc_dirty(ide: &Ide, path: &Path) -> bool {

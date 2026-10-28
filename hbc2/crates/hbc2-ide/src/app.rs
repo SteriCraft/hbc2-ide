@@ -12,7 +12,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use eframe::egui;
-use egui_dock::{DockState, NodeIndex, TabIndex};
+use egui_dock::{DockState, Node, NodeIndex};
 use hbc2_asm::source::normalize;
 use hbc2_asm::{Diagnostic, Program, Severity, SourceProvider, Target};
 use hbc2_runner::{RunState, Snapshot, Speed};
@@ -28,16 +28,22 @@ use crate::views::disasm::DisasmView;
 use crate::views::memory::MemoryView;
 use crate::views::monitor::MonitorView;
 
-/// Saved between sessions.
+/// Saved between sessions. The layout is fixed: only the sizes of its parts
+/// are kept.
 #[derive(Serialize, Deserialize)]
 pub struct Saved {
     pub settings: Settings,
-    pub dock: DockState<Tab>,
+    /// Fractions of the layout's splits, in the order of `default_layout`.
+    #[serde(default)]
+    pub splits: Vec<f32>,
 }
 
 #[derive(Clone, Debug)]
 pub enum Action {
     NewProject,
+    /// Creates a project in this folder and opens it. The flag adds the
+    /// default interrupt handler.
+    CreateProject(PathBuf, bool),
     OpenProjectDialog,
     OpenProject(PathBuf),
     CloseProject,
@@ -64,11 +70,11 @@ pub enum Action {
     SetTarget(TargetSetting),
     SetPeripherals(Peripherals),
     SetSpeed(Speed),
-    ShowTab(Tab),
-    ResetLayout,
     /// Breakpoint lines changed: send the new addresses to the emulator.
     BreakpointsChanged,
     ToggleAddressBreakpoint(u16),
+    /// Sends the RTC's interrupt now.
+    RtcInterrupt,
     Quit,
     ShowDialog(Dialog),
 }
@@ -79,6 +85,13 @@ pub enum Dialog {
     Unsaved {
         paths: Vec<PathBuf>,
         then: Box<Action>,
+    },
+    NewProject {
+        /// The project goes in `parent/name`.
+        parent: PathBuf,
+        name: String,
+        interrupt_handler: bool,
+        error: Option<String>,
     },
     NewFile {
         dir: PathBuf,
@@ -135,6 +148,9 @@ pub struct State {
     last_disk_check: f64,
     quit_confirmed: bool,
     title: String,
+    /// Width the "CPU & I/O" tab needs to show all its text: the fixed
+    /// width of the right-hand group.
+    pub tools_min_width: f32,
 }
 
 pub struct Ide {
@@ -160,20 +176,51 @@ pub fn default_layout() -> DockState<Tab> {
     let surface = dock.main_surface_mut();
     // The fraction is the share of the left or top part.
     let [center, _] = surface.split_left(NodeIndex::root(), 0.16, vec![Tab::Project]);
-    let [center, right] = surface.split_right(center, 0.56, vec![Tab::Monitor]);
-    surface.split_below(
-        right,
-        0.5,
-        vec![Tab::Cpu, Tab::Disassembly, Tab::Memory, Tab::Io],
-    );
+    let [center, _] = surface.split_right(center, 0.56, TOOL_TABS.to_vec());
     surface.split_below(center, 0.74, vec![Tab::Console]);
+    dock
+}
+
+/// Tabs of the right-hand group, which share its width equally.
+pub const TOOL_TABS: [Tab; 3] = [Tab::Cpu, Tab::Disassembly, Tab::Memory];
+
+/// Fractions of the splits (the sizes the user set with the mouse).
+fn split_fractions(dock: &DockState<Tab>) -> Vec<f32> {
+    dock.main_surface()
+        .iter()
+        .filter_map(|node| match node {
+            Node::Horizontal(split) | Node::Vertical(split) => Some(split.fraction),
+            _ => None,
+        })
+        .collect()
+}
+
+/// The fixed layout, with the split fractions of an earlier session when
+/// they fit it.
+fn layout_with(splits: &[f32]) -> DockState<Tab> {
+    let mut dock = default_layout();
+    if splits.len() != split_fractions(&dock).len()
+        || splits.iter().any(|f| !(0.0..=1.0).contains(f))
+    {
+        return dock;
+    }
+    let splits_in_layout = dock
+        .main_surface_mut()
+        .iter_mut()
+        .filter_map(|node| match node {
+            Node::Horizontal(split) | Node::Vertical(split) => Some(split),
+            _ => None,
+        });
+    for (split, &fraction) in splits_in_layout.zip(splits) {
+        split.fraction = fraction;
+    }
     dock
 }
 
 impl Ide {
     pub fn new(ctx: &egui::Context, saved: Option<Saved>) -> Ide {
         let (settings, dock) = match saved {
-            Some(saved) => (saved.settings, saved.dock),
+            Some(saved) => (saved.settings, layout_with(&saved.splits)),
             None => (Settings::default(), default_layout()),
         };
         let repaint = ctx.clone();
@@ -204,6 +251,7 @@ impl Ide {
                 last_disk_check: 0.0,
                 quit_confirmed: false,
                 title: String::new(),
+                tools_min_width: 0.0,
             },
         };
         ide.state.disasm_view.follow_pc = ide.state.settings.follow_pc;
@@ -211,27 +259,9 @@ impl Ide {
             .console
             .info("HBC-2 IDE ready. F7 assembles, F5 runs, F10 steps.");
 
-        // Reopen the last project, with the editor tabs saved in the layout.
-        let restored: Vec<PathBuf> = ide
-            .dock
-            .iter_all_tabs()
-            .filter_map(|(_, t)| match t {
-                Tab::Editor(path) => Some(path.clone()),
-                _ => None,
-            })
-            .collect();
-        ide.dock.retain_tabs(|t| !matches!(t, Tab::Editor(_)));
+        // Reopen the last project, with the files that were open in it.
         if let Some(root) = ide.state.settings.last_project.clone() {
-            ide.open_project(&root, false);
-        }
-        for path in restored {
-            if let Ok(doc) = Document::open(&path) {
-                ide.state.docs.push(doc);
-                ide.add_editor_tab(Tab::Editor(path));
-            }
-        }
-        if ide.dock.iter_all_tabs().next().is_none() {
-            ide.dock = default_layout();
+            ide.open_project(&root, true);
         }
         ide
     }
@@ -241,7 +271,7 @@ impl Ide {
         self.store_project_settings();
         Saved {
             settings: self.state.settings.clone(),
-            dock: self.dock.clone(),
+            splits: split_fractions(&self.dock),
         }
     }
 
@@ -280,21 +310,36 @@ impl Ide {
         self.check_disk(&ctx);
         self.handle_close_request(&ctx);
 
-        crate::chrome::menu_bar(ui, &mut self.state, &self.dock);
+        crate::chrome::menu_bar(ui, &mut self.state);
         crate::chrome::toolbar(ui, &mut self.state);
         crate::chrome::status_bar(ui, &self.state);
         egui::CentralPanel::default()
             .frame(egui::Frame::central_panel(ui.style()).inner_margin(0.0))
             .show(ui, |ui| {
+                self.fix_tools_width();
+                // Width of the right-hand group, as laid out last frame.
+                let tools_width = self
+                    .dock
+                    .find_tab(&TOOL_TABS[0])
+                    .and_then(|path| self.dock.leaf(path.node_path()).ok())
+                    .map_or(0.0, |leaf| leaf.rect.width());
                 let mut viewer = crate::tabs::Viewer {
                     state: &mut self.state,
+                    tools_width,
                 };
+                // Tabs cannot be moved, and only editor tabs can be closed;
+                // the separators still resize the groups.
                 egui_dock::DockArea::new(&mut self.dock)
                     .style(egui_dock::Style::from_egui(ui.style().as_ref()))
+                    .draggable_tabs(false)
+                    .tab_context_menus(false)
                     .show_leaf_collapse_buttons(false)
+                    .show_leaf_close_all_buttons(false)
                     .show_inside(ui, &mut viewer);
             });
+        self.hide_fixed_separator_cursor(&ctx);
         crate::chrome::dialogs(&ctx, &mut self.state);
+        self.monitor_window(&ctx);
 
         while !self.state.actions.is_empty() {
             let actions = std::mem::take(&mut self.state.actions);
@@ -384,6 +429,79 @@ impl Ide {
         }
     }
 
+    /// Gives the right-hand group exactly the width the "CPU & I/O" tab
+    /// needs. Done before the dock is drawn, it also undoes any drag of the
+    /// separator, so that group's width is fixed.
+    fn fix_tools_width(&mut self) {
+        let need = self.state.tools_min_width;
+        if need <= 0.0 {
+            return; // not measured yet
+        }
+        let Some((node, _)) = self.dock.find_main_surface_tab(&TOOL_TABS[0]) else {
+            return;
+        };
+        let Some(parent) = node.parent().filter(|_| node.is_right()) else {
+            return;
+        };
+        if let Node::Horizontal(split) = &mut self.dock.main_surface_mut()[parent] {
+            let total = split.rect.width();
+            if total > 0.0 {
+                split.fraction = ((total - need) / total).clamp(0.05, 0.95);
+            }
+        }
+    }
+
+    /// The separator left of the right-hand group cannot be dragged: no
+    /// resize cursor over it.
+    fn hide_fixed_separator_cursor(&self, ctx: &egui::Context) {
+        let Some(rect) = self
+            .dock
+            .find_tab(&TOOL_TABS[0])
+            .and_then(|path| self.dock.leaf(path.node_path()).ok())
+            .map(|leaf| leaf.rect)
+        else {
+            return;
+        };
+        let Some(pointer) = ctx.pointer_hover_pos() else {
+            return;
+        };
+        let near = (pointer.x - rect.left()).abs() <= 8.0;
+        if near && (rect.top()..=rect.bottom()).contains(&pointer.y) {
+            ctx.set_cursor_icon(egui::CursorIcon::Default);
+        }
+    }
+
+    /// The HBC-2 monitor, in a window of its own.
+    fn monitor_window(&mut self, ctx: &egui::Context) {
+        if !self.state.settings.monitor_window {
+            return;
+        }
+        let state = &mut self.state;
+        let snapshot = &state.snapshot;
+        let builder = egui::ViewportBuilder::default()
+            .with_title("HBC-2 Monitor")
+            .with_inner_size([600.0, 480.0])
+            .with_min_inner_size([300.0, 250.0])
+            .with_icon(crate::icon());
+        ctx.show_viewport_immediate(
+            egui::ViewportId::from_hash_of("hbc2-monitor"),
+            builder,
+            |ui, _class| {
+                egui::CentralPanel::default().show(ui, |ui| {
+                    state.monitor_view.ui(
+                        ui,
+                        snapshot.monitor.as_ref(),
+                        snapshot.keyboard.is_some(),
+                        &state.emulator.runner,
+                    );
+                });
+                if ui.input(|i| i.viewport().close_requested()) {
+                    state.settings.monitor_window = false;
+                }
+            },
+        );
+    }
+
     fn handle_close_request(&mut self, ctx: &egui::Context) {
         if !ctx.input(|i| i.viewport().close_requested()) || self.state.quit_confirmed {
             return;
@@ -423,13 +541,15 @@ impl Ide {
                 if state.guard_unsaved(state.dirty_paths(), Action::NewProject) {
                     return;
                 }
-                let Some(dir) = rfd::FileDialog::new()
-                    .set_title("Folder for the new project (main.has goes there)")
-                    .pick_folder()
-                else {
-                    return;
-                };
-                match Project::create(&dir) {
+                state.dialog = Some(Dialog::NewProject {
+                    parent: project::default_projects_parent(),
+                    name: "newProject".into(),
+                    interrupt_handler: true,
+                    error: None,
+                });
+            }
+            Action::CreateProject(dir, interrupt_handler) => {
+                match Project::create(&dir, interrupt_handler) {
                     Ok(project) => {
                         let root = project.root.clone();
                         self.open_project(&root, true);
@@ -438,7 +558,7 @@ impl Ide {
                 }
             }
             Action::OpenProjectDialog => {
-                if let Some(dir) = rfd::FileDialog::new()
+                if let Some(dir) = projects_dialog()
                     .set_title("Open a project folder")
                     .pick_folder()
                 {
@@ -524,9 +644,7 @@ impl Ide {
                 {
                     return;
                 }
-                if let Some(tab) = self.dock.find_tab(&Tab::Editor(path.clone())) {
-                    self.dock.remove_tab(tab);
-                }
+                self.remove_editor_tabs(|p| p == path);
                 self.state.docs.retain(|d| d.path != path);
             }
             Action::CloseCurrentTab => {
@@ -584,14 +702,9 @@ impl Ide {
                 state.settings.speed = speed.into();
                 state.emulator.runner.set_speed(speed);
             }
-            Action::ShowTab(tab) => self.show_tab(tab),
-            Action::ResetLayout => {
-                let editors = self.editor_paths();
-                self.dock = default_layout();
-                for path in editors {
-                    self.add_editor_tab(Tab::Editor(path));
-                }
-            }
+            Action::RtcInterrupt => state.emulator.runner.exec(|machine| {
+                machine.rtc_interrupt();
+            }),
             Action::BreakpointsChanged => {
                 if state.emulator.program.is_some() {
                     let addresses = state.breakpoint_addresses();
@@ -667,7 +780,6 @@ impl Ide {
         if state.project.take().is_none() {
             return;
         }
-        self.dock.retain_tabs(|t| !matches!(t, Tab::Editor(_)));
         state.docs.clear();
         state.build = None;
         state.loaded_edits = None;
@@ -675,9 +787,25 @@ impl Ide {
         state.emulator.peripherals = Peripherals::default();
         state.emulator.unload();
         state.followed = None;
-        if self.dock.iter_all_tabs().next().is_none() {
-            self.dock = default_layout();
+        self.remove_editor_tabs(|_| true);
+    }
+
+    /// Removes the editor tabs whose path matches. The start page takes the
+    /// place of the last one, so the editor group never goes away.
+    fn remove_editor_tabs(&mut self, remove: impl Fn(&Path) -> bool) {
+        let editor = |t: &Tab| matches!(t, Tab::Editor(p) if remove(p));
+        let kept = self
+            .dock
+            .iter_all_tabs()
+            .any(|(_, t)| matches!(t, Tab::Editor(_)) && !editor(t));
+        if !kept
+            && self.dock.find_tab(&Tab::Welcome).is_none()
+            && let Some(path) = self.dock.find_tab_from(|t| matches!(t, Tab::Editor(_)))
+            && let Ok(leaf) = self.dock.leaf_mut(path.node_path())
+        {
+            leaf.append_tab(Tab::Welcome);
         }
+        self.dock.retain_tabs(|t| !editor(t));
     }
 
     pub fn open_file(&mut self, path: &Path, line: Option<u32>) {
@@ -708,55 +836,24 @@ impl Ide {
         }
     }
 
-    /// Puts a new editor tab next to the other editors (or where the start page is).
+    /// Puts a new editor tab next to the other editors, or in place of the
+    /// start page.
     fn add_editor_tab(&mut self, tab: Tab) {
         let near = self
             .dock
             .find_tab_from(|t| matches!(t, Tab::Editor(_)))
             .or_else(|| self.dock.find_tab(&Tab::Welcome));
-        if let Some(path) = near
-            && let Ok(leaf) = self.dock.leaf_mut(path.node_path())
-        {
-            leaf.append_tab(tab.clone());
-        } else if let Some((node, _)) = self.dock.find_main_surface_tab(&Tab::Console) {
-            self.dock
-                .main_surface_mut()
-                .split_above(node, 0.74, vec![tab.clone()]);
-        } else {
-            self.dock.push_to_first_leaf(tab.clone());
+        match near.and_then(|path| self.dock.leaf_mut(path.node_path()).ok()) {
+            Some(leaf) => leaf.append_tab(tab.clone()),
+            None => self.dock.push_to_first_leaf(tab.clone()),
         }
+        // The editor group holds the new tab, so it stays when the start page goes.
         if let Some(welcome) = self.dock.find_tab(&Tab::Welcome) {
             self.dock.remove_tab(welcome);
         }
         if let Some(found) = self.dock.find_tab(&tab) {
             let _ = self.dock.set_active_tab(found);
             self.dock.set_focused_node_and_surface(found.node_path());
-        }
-    }
-
-    fn show_tab(&mut self, tab: Tab) {
-        if let Some(found) = self.dock.find_tab(&tab) {
-            let _ = self.dock.set_active_tab(found);
-            self.dock.set_focused_node_and_surface(found.node_path());
-            return;
-        }
-        // Tools go back to the right-hand group, next to the CPU view if possible.
-        let near = [
-            Tab::Cpu,
-            Tab::Disassembly,
-            Tab::Memory,
-            Tab::Io,
-            Tab::Monitor,
-        ]
-        .iter()
-        .find_map(|t| self.dock.find_tab(t));
-        match near.and_then(|p| self.dock.leaf_mut(p.node_path()).ok()) {
-            Some(leaf) => {
-                leaf.append_tab(tab.clone());
-                let last = leaf.len() - 1;
-                let _ = leaf.set_active_tab(TabIndex(last));
-            }
-            None => self.dock.push_to_first_leaf(tab),
         }
     }
 
@@ -1073,4 +1170,13 @@ fn breakpoint_addresses(program: &Program, settings: &ProjectSettings) -> Vec<u1
         }
     }
     addresses
+}
+
+/// A folder dialog that opens in `Documents/hbc2_projects` when it exists.
+fn projects_dialog() -> rfd::FileDialog {
+    let dialog = rfd::FileDialog::new();
+    match project::projects_dir() {
+        Some(dir) if dir.is_dir() => dialog.set_directory(dir),
+        _ => dialog,
+    }
 }

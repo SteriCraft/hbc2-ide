@@ -3,6 +3,7 @@
 use crate::board::Board;
 use crate::cpu::{Cpu, CpuState};
 use crate::isa::{Flag, RAM_SIZE};
+use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
 
 /// Which peripherals are plugged in.
@@ -223,6 +224,23 @@ impl Machine {
     /// Tells time-based peripherals (the RTC) that `nanos` of host time went by.
     pub fn advance_time(&mut self, nanos: u64) {
         self.peripherals.advance_time(nanos, &mut self.board);
+    }
+
+    /// Sets the RTC to the host's local time (see `Rtc::sync`).
+    /// Returns true if the clock changed.
+    pub fn sync_rtc(&mut self, host: DateTime, interrupt: bool) -> bool {
+        match &mut self.peripherals.rtc {
+            Some(rtc) => rtc.sync(host, interrupt, &mut self.board),
+            None => false,
+        }
+    }
+
+    /// Sends the RTC's interrupt now (see `Rtc::interrupt`).
+    pub fn rtc_interrupt(&mut self) -> bool {
+        match &self.peripherals.rtc {
+            Some(rtc) => rtc.interrupt(&mut self.board),
+            None => false,
+        }
     }
 
     /// Sends a key event through the keyboard. Returns false if it was dropped.
