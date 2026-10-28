@@ -108,7 +108,7 @@ pub fn forms(op: Opcode) -> &'static [Form] {
 
 /// "mov r, r | mov r, value"
 pub fn usage(op: Opcode) -> String {
-    forms(op)
+    let mut usages: Vec<String> = forms(op)
         .iter()
         .map(|f| {
             let operands: Vec<&str> = f.kinds.iter().map(|k| k.usage()).collect();
@@ -118,8 +118,12 @@ pub fn usage(op: Opcode) -> String {
                 format!("{} {}", op.mnemonic(), operands.join(", "))
             }
         })
-        .collect::<Vec<_>>()
-        .join(" | ")
+        .collect();
+    if matches!(op, Opcode::Psh | Opcode::Pop) {
+        // Register lists, expanded by the parser.
+        usages.push(format!("{} r, r, …", op.mnemonic()));
+    }
+    usages.join(" | ")
 }
 
 /// An operand once names are resolved.
@@ -215,5 +219,6 @@ mod tests {
     fn usage_text() {
         assert_eq!(usage(Opcode::Mov), "mov r, r | mov r, value");
         assert_eq!(usage(Opcode::Ret), "ret");
+        assert_eq!(usage(Opcode::Pop), "pop r | pop r, r, …");
     }
 }

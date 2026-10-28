@@ -182,18 +182,12 @@ fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> 
                 )
             } else {
                 let loc = Loc::new(file, line, c.col());
-                out.push(Located {
-                    loc,
-                    stmt: instruction(c)?,
-                });
+                out.extend(instruction(c)?.into_iter().map(|stmt| Located { loc, stmt }));
                 Ok(())
             }
         }
         Some(Tok::Ident(_)) => {
-            out.push(Located {
-                loc,
-                stmt: instruction(c)?,
-            });
+            out.extend(instruction(c)?.into_iter().map(|stmt| Located { loc, stmt }));
             Ok(())
         }
         _ => c.error(format!(
@@ -215,7 +209,8 @@ fn definition_name(c: &mut Cursor, name: &str) -> ParseResult<String> {
     Ok(name.to_string())
 }
 
-fn instruction(c: &mut Cursor) -> ParseResult<Stmt> {
+/// One instruction, or several for a register list (`psh a, b` / `pop a, b`).
+fn instruction(c: &mut Cursor) -> ParseResult<Vec<Stmt>> {
     let Some(Tok::Ident(mnemonic)) = c.peek() else {
         return c.error(format!("expected an instruction, found {}", c.found()));
     };
@@ -237,7 +232,40 @@ fn instruction(c: &mut Cursor) -> ParseResult<Stmt> {
             }
         }
     }
-    Ok(Stmt::Instr { opcode, operands })
+    if matches!(opcode, Opcode::Psh | Opcode::Pop) && operands.len() > 1 {
+        return register_list(opcode, operands);
+    }
+    Ok(vec![Stmt::Instr { opcode, operands }])
+}
+
+/// `psh a, b, c` pushes a, b, then c. `pop a, b, c` pops c, b, then a, so
+/// the same list restores what `psh` saved.
+fn register_list(opcode: Opcode, operands: Vec<Op>) -> ParseResult<Vec<Stmt>> {
+    let mnemonic = opcode.mnemonic();
+    let mut seen: Vec<Register> = Vec::new();
+    for op in &operands {
+        let Operand::Reg(r) = op.operand else {
+            return Err((
+                op.col,
+                format!("{mnemonic} lists only take registers: {mnemonic} a, b, …"),
+            ));
+        };
+        if seen.contains(&r) {
+            return Err((op.col, format!("register '{}' is listed twice", r.name())));
+        }
+        seen.push(r);
+    }
+    let mut stmts: Vec<Stmt> = operands
+        .into_iter()
+        .map(|op| Stmt::Instr {
+            opcode,
+            operands: vec![op],
+        })
+        .collect();
+    if opcode == Opcode::Pop {
+        stmts.reverse();
+    }
+    Ok(stmts)
 }
 
 fn operand(c: &mut Cursor) -> ParseResult<Operand> {
@@ -513,6 +541,43 @@ mod tests {
         assert_eq!(values.iter().map(DataValue::size).sum::<u32>(), 4);
         assert!(parse(".data x").is_err());
         assert!(parse(".data x 256").is_err());
+    }
+
+    /// (mnemonic, register) of each statement.
+    fn expanded(line: &str) -> Vec<(&'static str, Register)> {
+        parse(line)
+            .unwrap()
+            .into_iter()
+            .map(|s| match s {
+                Stmt::Instr { opcode, operands } => match operands[..] {
+                    [Op {
+                        operand: Operand::Reg(r),
+                        ..
+                    }] => (opcode.mnemonic(), r),
+                    _ => panic!("{operands:?}"),
+                },
+                other => panic!("{other:?}"),
+            })
+            .collect()
+    }
+
+    #[test]
+    fn register_lists() {
+        use Register::*;
+        assert_eq!(
+            expanded("psh a, i, y"),
+            [("psh", A), ("psh", I), ("psh", Y)]
+        );
+        assert_eq!(
+            expanded("POP a, i, y"),
+            [("pop", Y), ("pop", I), ("pop", A)]
+        );
+        assert_eq!(expanded("pop b"), [("pop", B)]);
+        assert_eq!(parse("loop: psh a, b").unwrap().len(), 3); // label + 2
+        assert!(parse("psh a, a").unwrap_err().contains("twice"));
+        assert!(parse("pop a, [x:y]").unwrap_err().contains("only take registers"));
+        assert!(parse("psh a, 5").unwrap_err().contains("only take registers"));
+        assert!(parse("psh a,").unwrap_err().contains("after ','"));
     }
 
     #[test]

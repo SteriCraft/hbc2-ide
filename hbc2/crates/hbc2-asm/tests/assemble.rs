@@ -382,3 +382,35 @@ fn language_documentation_example_prints_hi() {
     );
     assert_eq!(screen[0].colors, 0x0F);
 }
+
+#[test]
+fn register_lists_expand_and_restore() {
+    let p = asm("
+_start:
+    cli
+    mov a, 1
+    mov i, 2
+    mov y, 3
+    psh a, i, y
+    mov a, 0
+    mov i, 0
+    mov y, 0
+    pop a, i, y
+done:
+    jmp done
+");
+    // One instruction per register, all on the same source line.
+    assert_eq!(word(&p, 0x0310), encode::reg(O::Psh, A, A));
+    assert_eq!(word(&p, 0x0318), encode::reg(O::Psh, Y, A));
+    assert_eq!(word(&p, 0x0328), encode::reg(O::Pop, Y, A));
+    assert_eq!(word(&p, 0x0330), encode::reg(O::Pop, A, A));
+    assert_eq!(p.source_of(0x0318).unwrap().line, 7);
+    assert_eq!(p.address_of(0, 11), Some(0x0328), "breakpoints stop at the first one");
+
+    let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    m.run(20);
+    assert_eq!((m.cpu.reg(A), m.cpu.reg(I), m.cpu.reg(Y)), (1, 2, 3));
+    assert_eq!(m.cpu.sp, 0, "stack balanced");
+
+    assert!(errors("_start:\n    psh a, b, a\n")[0].contains("2:15"));
+}

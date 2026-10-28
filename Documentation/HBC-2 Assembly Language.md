@@ -91,10 +91,28 @@ The form decides the addressing mode.
 | `jmp jmc jme jmn jms jmz jmf cal` | `op address` · `op [r:r]` |
 | `in out` | `in r, r` (r1 = port r2) · `out r, r` (port r1 = r2) |
 | `int` | `int value` |
-| `psh pop shl asr shr` | `op r` |
+| `psh pop` | `op r` · `op r, r, …` (see [Register lists](#register-lists)) |
+| `shl asr shr` | `op r` |
 | `nop hlt irt ret clc cle cli cln cls clz clf stc ste sti stn sts stz stf psf pof` | no operand |
 
 `op address` with `[r:r]` uses the pair as the address (for jumps: the address to jump to; for `inc`/`dec`: the memory byte to change).
+
+### Register lists
+
+`psh` and `pop` accept several registers. This is a shorthand of the
+assembler: each register becomes one `psh` or `pop` instruction.
+
+```
+copy16:
+    psh a, i, j, x, y       ; psh a, psh i, psh j, psh x, psh y
+    ...
+    pop a, i, j, x, y       ; pop y, pop x, pop j, pop i, pop a
+    ret
+```
+
+* `psh` pushes the registers in the order written.
+* `pop` pops them in **reverse** order, so the same list restores what `psh` saved.
+* A register can appear only once in a list. Register pairs are not allowed.
 
 ## Labels and code blocks
 
@@ -170,4 +188,4 @@ copies only `$0x0100-$0x04FF` and `$0xF000-$0xFFFF` into RAM, so:
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists |
