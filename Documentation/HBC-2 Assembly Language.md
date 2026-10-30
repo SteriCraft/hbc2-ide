@@ -42,7 +42,7 @@ Each line holds one of:
 
 * an instruction: `mnemonic operand, operand`
 * a label: `name:`, optionally followed by an address (`handler: $0xF000`) or by an instruction (`loop: inc a`)
-* a directive: `.data`, `.data16`, `.data32`, `.define` or `.include`
+* a directive: `.data`, `.data16`, `.data32`, `.bss`, `.define` or `.include`
 
 Comments start with `;` and run to the end of the line.
 
@@ -228,11 +228,59 @@ byte first**. A value is one of:
 
 Strings and `name.msb` / `name.lsb` are only allowed in `.data`.
 
+## `.bss`: zeroed variables
+
+```
+.bss buffer 64                     ; 64 bytes
+.bss count 2
+```
+
+`.bss name size` reserves `size` bytes (1 to 65535; a number or a define) that
+start at zero. Nothing is written in the program image for them: the program
+clears them itself when it starts. The C compiler uses `.bss` for variables
+with no initial value.
+
+All `.bss` variables are placed together, in source order, in one free area
+after the code and data. They cannot have an address. The assembler defines
+two names for the area:
+
+* `__bss_start`: the address of its first byte,
+* `__bss_end`: the address just after its last byte (equal to `__bss_start`
+  when there is no `.bss`).
+
+These names cannot be defined by the program. A startup loop clears the area:
+
+```
+    mov x, __bss_start.msb         ; [x:y] = first byte
+    mov y, __bss_start.lsb
+    mov a, 0
+clear:
+    cmp x, __bss_end.msb
+    jme clear_low
+    jmp clear_byte
+clear_low:
+    cmp y, __bss_end.lsb
+    jme clear_done
+clear_byte:
+    str [x:y], a
+    inc y
+    jmc clear_carry
+    jmp clear
+clear_carry:
+    inc x
+    jmp clear
+clear_done:
+```
+
+For the EEPROM target, the area may be anywhere in RAM: it is not copied
+from the EEPROM.
+
 ## Automatic placement
 
 Floating blocks and `.data` without an address are placed in source order, in
 the first free space large enough, starting at `$0x0000` and below the
-interrupt vector table (`$0xFE00`): first all code blocks, then all data.
+interrupt vector table (`$0xFE00`): first all code blocks, then all data,
+then the `.bss` area.
 Fixed blocks and data are never moved; the assembler reports any overlap.
 
 The stack grows down from `$0xFE00` and nothing stops it from reaching your
@@ -285,7 +333,7 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32` |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss` |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
 | | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

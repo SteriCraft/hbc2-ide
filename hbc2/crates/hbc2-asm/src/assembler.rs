@@ -8,6 +8,10 @@
 //!   Entering or leaving an included file closes the open block.
 //! * Blocks and `.data` without an address are placed automatically, in
 //!   source order, in the first free gap large enough (code first, then data).
+//! * `.bss` variables are placed together, in source order, in one free gap
+//!   (after code and data). Nothing is written for them in the image.
+//!   `__bss_start` and `__bss_end` (one past the last byte) are defined for
+//!   the startup code that clears the area.
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -53,6 +57,18 @@ impl Data {
     }
 }
 
+/// A `.bss` variable.
+struct Bss {
+    name: String,
+    size: u32,
+    address: u32,
+    loc: Loc,
+}
+
+/// Names defined by the assembler for the `.bss` area.
+const BSS_START: &str = "__bss_start";
+const BSS_END: &str = "__bss_end";
+
 pub(crate) struct Output {
     pub image: Vec<u8>,
     pub symbols: Vec<Symbol>,
@@ -61,15 +77,15 @@ pub(crate) struct Output {
 }
 
 pub(crate) fn assemble(items: Vec<Item>, target: Target, report: &mut Report) -> Option<Output> {
-    let (mut blocks, mut data) = group(items, report);
+    let (mut blocks, mut data, mut bss) = group(items, report);
     if report.has_errors() {
         return None;
     }
-    place(&mut blocks, &mut data, target, report);
+    let bss_area = place(&mut blocks, &mut data, &mut bss, target, report);
     if report.has_errors() {
         return None;
     }
-    let symbols = symbols(&blocks, &data);
+    let symbols = symbols(&blocks, &data, &bss, bss_area);
     let output = write(&blocks, &data, symbols, target, report);
     if report.has_errors() {
         None
@@ -80,13 +96,21 @@ pub(crate) fn assemble(items: Vec<Item>, target: Target, report: &mut Report) ->
 
 // ----- 1. Group statements into blocks and data
 
-fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>) {
+fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>, Vec<Bss>) {
     let mut blocks: Vec<Block> = Vec::new();
     let mut data: Vec<Data> = Vec::new();
+    let mut bss: Vec<Bss> = Vec::new();
     let mut names: HashMap<String, Loc> = HashMap::new();
     let mut open: Option<usize> = None;
 
     let mut claim = |name: &str, loc: Loc, report: &mut Report| -> bool {
+        if name == BSS_START || name == BSS_END {
+            report.error(
+                loc,
+                format!("'{name}' is defined by the assembler (bounds of the .bss area)"),
+            );
+            return false;
+        }
         if let Some(first) = names.get(name) {
             report.error(
                 loc,
@@ -159,13 +183,23 @@ fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>) {
                     });
                 }
             }
+            Stmt::Bss { name, size } => {
+                if claim(&name, loc, report) {
+                    bss.push(Bss {
+                        name,
+                        size,
+                        address: 0,
+                        loc,
+                    });
+                }
+            }
         }
     }
 
     if !names.contains_key("_start") {
         report.global_error("the program has no _start: label");
     }
-    (blocks, data)
+    (blocks, data, bss)
 }
 
 // ----- 2. Placement
@@ -182,7 +216,14 @@ fn auto_regions(target: Target) -> Vec<Range<u32>> {
     }
 }
 
-fn place(blocks: &mut [Block], data: &mut [Data], target: Target, report: &mut Report) {
+/// Places everything; returns the `.bss` area.
+fn place(
+    blocks: &mut [Block],
+    data: &mut [Data],
+    bss: &mut [Bss],
+    target: Target,
+    report: &mut Report,
+) -> Range<u32> {
     // Fixed ranges: (range, name, location)
     let mut fixed: Vec<(Range<u32>, String, Loc)> = Vec::new();
     for b in blocks.iter() {
@@ -225,7 +266,7 @@ fn place(blocks: &mut [Block], data: &mut [Data], target: Target, report: &mut R
         }
     }
     if report.has_errors() {
-        return;
+        return 0..0;
     }
 
     let mut free = auto_regions(target);
@@ -252,6 +293,40 @@ fn place(blocks: &mut [Block], data: &mut [Data], target: Target, report: &mut R
     for d in data.iter_mut().filter(|d| d.address.is_none()) {
         d.address = allocate(d.size(), &d.name, d.loc, report);
     }
+    if report.has_errors() {
+        return 0..0;
+    }
+
+    // .bss is RAM only (nothing is in the image), so it may go anywhere in
+    // RAM that is free, for the EEPROM target too.
+    #[allow(clippy::single_range_in_vec_init)] // a list of free ranges
+    let mut ram = vec![PROGRAM_START as u32..IVT_START as u32];
+    for b in blocks.iter() {
+        let a = b.address.expect("placed");
+        subtract(&mut ram, &(a..a + b.size()));
+    }
+    for d in data.iter() {
+        let a = d.address.expect("placed");
+        subtract(&mut ram, &(a..a + d.size()));
+    }
+    let total: u32 = bss.iter().map(|b| b.size).sum();
+    let Some(gap) = ram.iter().find(|g| g.end - g.start >= total) else {
+        if bss.is_empty() {
+            return 0..0; // memory full, but nothing to place
+        }
+        report.error(
+            bss[0].loc,
+            format!("not enough free memory to place the .bss variables ({total} bytes)"),
+        );
+        return 0..0;
+    };
+    let start = gap.start;
+    let mut a = start;
+    for b in bss.iter_mut() {
+        b.address = a;
+        a += b.size;
+    }
+    start..a
 }
 
 /// Removes `taken` from the list of free ranges (kept sorted).
@@ -277,7 +352,7 @@ fn subtract(free: &mut Vec<Range<u32>>, taken: &Range<u32>) {
 
 // ----- 3. Symbols
 
-fn symbols(blocks: &[Block], data: &[Data]) -> Vec<Symbol> {
+fn symbols(blocks: &[Block], data: &[Data], bss: &[Bss], bss_area: Range<u32>) -> Vec<Symbol> {
     let mut symbols = Vec::new();
     for b in blocks {
         let start = b.address.expect("placed");
@@ -303,7 +378,28 @@ fn symbols(blocks: &[Block], data: &[Data]) -> Vec<Symbol> {
             line: d.loc.line,
         });
     }
-    symbols.sort_by_key(|s| s.address);
+    for b in bss {
+        symbols.push(Symbol {
+            name: b.name.clone(),
+            address: b.address,
+            size: b.size,
+            kind: SymbolKind::Data,
+            file: b.loc.file,
+            line: b.loc.line,
+        });
+    }
+    // Last, so that a variable at the same address is found first by address.
+    for (name, address) in [(BSS_START, bss_area.start), (BSS_END, bss_area.end)] {
+        symbols.push(Symbol {
+            name: name.to_string(),
+            address,
+            size: 0,
+            kind: SymbolKind::Label,
+            file: 0,
+            line: 0,
+        });
+    }
+    symbols.sort_by_key(|s| s.address); // stable
     symbols
 }
 

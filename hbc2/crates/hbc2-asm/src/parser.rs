@@ -77,6 +77,11 @@ pub(crate) enum Stmt {
         address: Option<u32>,
         values: Vec<DataValue>,
     },
+    /// `.bss name size`: `size` zeroed bytes, reserved but not written.
+    Bss {
+        name: String,
+        size: u32,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -169,6 +174,11 @@ fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> 
                 loc,
                 stmt: data(c, width)?,
             });
+            Ok(())
+        }
+        Some(Tok::Directive(d)) if d == "bss" => {
+            c.next();
+            out.push(Located { loc, stmt: bss(c)? });
             Ok(())
         }
         Some(Tok::Directive(d)) => c.error(format!("unknown directive '.{d}'")),
@@ -541,6 +551,36 @@ fn data(c: &mut Cursor, width: u32) -> ParseResult<Stmt> {
         name,
         address,
         values,
+    })
+}
+
+/// `.bss name size`: reserves `size` bytes (1 to 65535) in the zeroed area.
+fn bss(c: &mut Cursor) -> ParseResult<Stmt> {
+    const USAGE: &str = ".bss expects a name and a size in bytes: .bss buffer 64";
+    let Some(Tok::Ident(name)) = c.peek() else {
+        return c.error(USAGE);
+    };
+    let name = definition_name(c, name)?;
+    if c.peek() == Some(&Tok::Dollar) {
+        return c.error(".bss takes no address: the assembler places all .bss variables together");
+    }
+    if c.at_end() {
+        return c.error(USAGE);
+    }
+    let col = c.col();
+    let size = number(c)?;
+    if !(1..=0xFFFF).contains(&size) {
+        return Err((
+            col,
+            format!(".bss size {size} is out of range (1 to 65535)"),
+        ));
+    }
+    if !c.at_end() {
+        return c.error(format!("unexpected {} after the size", c.found()));
+    }
+    Ok(Stmt::Bss {
+        name,
+        size: size as u32,
     })
 }
 

@@ -187,17 +187,32 @@ _start:
     m.run(100);
     assert_eq!(m.board.ram.read(0x1305), 0x5A);
 
-    assert!(errors("_start:
+    assert!(
+        errors(
+            "_start:
     lod a, [x:y + nowhere.lsb]
-")[0].contains("unknown label"));
-    assert!(errors("_start:
+"
+        )[0]
+        .contains("unknown label")
+    );
+    assert!(
+        errors(
+            "_start:
     lod a, [x:y + -1]
-")[0].contains("expected an offset"));
-    assert!(errors("_start:
+"
+        )[0]
+        .contains("expected an offset")
+    );
+    assert!(
+        errors(
+            "_start:
     jmp [x:y + next.lsb]
 next:
     nop
-")[0].contains("no offset"));
+"
+        )[0]
+        .contains("no offset")
+    );
 }
 
 #[test]
@@ -645,4 +660,94 @@ handler: $0x1234
     );
     assert_eq!(p.symbol("big").unwrap().size, 8);
     assert!(errors(".data16 v nowhere\n_start:\n    jmp _start\n")[0].contains("unknown"));
+}
+
+#[test]
+fn bss_is_placed_together_and_cleared_by_a_startup_loop() {
+    let p = asm("
+.define BUF_SIZE 300
+.bss counter 2
+.data before 7
+_start:
+    mov x, __bss_start.msb      ; fill the .bss area with 0xAA, like crt0 clears it
+    mov y, __bss_start.lsb
+    mov a, 0xAA
+fill:
+    cmp x, __bss_end.msb
+    jme high_same
+    jmp store
+high_same:
+    cmp y, __bss_end.lsb
+    jme done
+store:
+    str [x:y], a
+    inc y
+    jmc carry
+    jmp fill
+carry:
+    inc x
+    jmp fill
+done:
+    hlt
+.bss buffer BUF_SIZE
+.data after 9
+");
+    let (start, end) = (addr(&p, "__bss_start"), addr(&p, "__bss_end"));
+    assert_eq!(
+        addr(&p, "counter"),
+        start,
+        "first .bss variable at the start"
+    );
+    assert_eq!(addr(&p, "buffer"), start + 2, "in source order, together");
+    assert_eq!(end, start + 302);
+    assert_eq!(p.symbol("buffer").unwrap().size, 300);
+    assert_eq!(p.symbol("buffer").unwrap().kind, SymbolKind::Data);
+    assert!(start > addr(&p, "after"), "after code and data");
+    assert_eq!(p.symbol_at(start).unwrap().name, "counter");
+    assert!(
+        p.image[start as usize..end as usize]
+            .iter()
+            .all(|&b| b == 0)
+    );
+    let used = p.bytes_used;
+
+    let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.run(10_000);
+    let ram = |a: u32| m.board.ram.read(a as u16);
+    assert!((start..end).all(|a| ram(a) == 0xAA));
+    assert_eq!(ram(end), 0, "nothing after the area");
+    assert_eq!(ram(addr(&p, "after")), 9);
+
+    let without = asm("
+_start:
+    hlt
+.data v 1
+");
+    assert_eq!(
+        addr(&without, "__bss_start"),
+        addr(&without, "__bss_end"),
+        "empty area when there is no .bss"
+    );
+    assert_eq!(
+        used,
+        15 * 4 + 2,
+        "code + data only: .bss takes no image bytes"
+    );
+}
+
+#[test]
+fn bss_errors() {
+    let e = |src: &str| {
+        let all = errors(&format!("_start:\n    hlt\n{src}\n"));
+        all[0].clone()
+    };
+    assert!(e(".bss v 0").contains("out of range"));
+    assert!(e(".bss v 65536").contains("out of range"));
+    assert!(e(".bss v $0x9000 4").contains("no address"));
+    assert!(e(".bss v").contains("expects a name and a size"));
+    assert!(e(".bss v 4, 5").contains("after the size"));
+    assert!(e(".bss __bss_end 4").contains("defined by the assembler"));
+    assert!(e("__bss_start:\n    nop").contains("defined by the assembler"));
+    assert!(e(".data v 1\n.bss v 1").contains("already defined"));
+    assert!(e(".bss v 65500").contains("not enough free memory"));
 }
