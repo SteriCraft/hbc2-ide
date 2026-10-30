@@ -80,19 +80,31 @@ impl egui_dock::TabViewer for Viewer<'_> {
                     ui.close();
                 }
             };
-            clicked(ui, item("Close this tab", "Ctrl+W"), Action::CloseTab(path.clone()));
+            clicked(
+                ui,
+                item("Close this tab", "Ctrl+W"),
+                Action::CloseTab(path.clone()),
+            );
             clicked(
                 ui,
                 item("Close tabs to the right", ""),
                 Action::CloseGroup(TabGroup::ToTheRight(path.clone())),
             );
-            clicked(ui, item("Close saved files", ""), Action::CloseGroup(TabGroup::Saved));
+            clicked(
+                ui,
+                item("Close saved files", ""),
+                Action::CloseGroup(TabGroup::Saved),
+            );
             clicked(
                 ui,
                 item("Close other tabs", "Ctrl+W+R"),
                 Action::CloseGroup(TabGroup::Others(Some(path.clone()))),
             );
-            clicked(ui, item("Close all tabs", "Ctrl+W+K"), Action::CloseGroup(TabGroup::All));
+            clicked(
+                ui,
+                item("Close all tabs", "Ctrl+W+K"),
+                Action::CloseGroup(TabGroup::All),
+            );
         });
     }
 
@@ -160,7 +172,8 @@ impl egui_dock::TabViewer for Viewer<'_> {
                         FileAction::Rename(path) => Action::RenameFile(path),
                         FileAction::Delete(path) => Action::DeleteFile(path),
                         FileAction::Refresh => Action::RefreshFiles,
-                        FileAction::ShowFolder => Action::ShowFolder,
+                        FileAction::ShowFolder(path) => Action::ShowFolder(path),
+                        FileAction::Move { from, to_dir } => Action::MovePath(from, to_dir),
                     });
                 }
             }
@@ -197,10 +210,9 @@ impl egui_dock::TabViewer for Viewer<'_> {
             Tab::Disassembly => {
                 let program = state.emulator.program.clone();
                 let follow = state.follows_execution();
-                if let Some(address) =
-                    state
-                        .disasm_view
-                        .ui(ui, &snapshot, program.as_ref(), follow)
+                if let Some(address) = state
+                    .disasm_view
+                    .ui(ui, &snapshot, program.as_ref(), follow)
                 {
                     state.actions.push(Action::ToggleAddressBreakpoint(address));
                 }

@@ -57,7 +57,10 @@ pub enum Action {
     RenameFile(PathBuf),
     DeleteFile(PathBuf),
     RefreshFiles,
-    ShowFolder,
+    /// Opens the file manager on a folder, or on a file's folder.
+    ShowFolder(PathBuf),
+    /// Moves a file or folder into another folder.
+    MovePath(PathBuf, PathBuf),
     Save,
     SaveAll,
     /// Closes an editor tab, asking about unsaved changes.
@@ -438,7 +441,9 @@ impl Ide {
             });
             if others {
                 *chord = true;
-                self.state.actions.push(Action::CloseGroup(TabGroup::Others(None)));
+                self.state
+                    .actions
+                    .push(Action::CloseGroup(TabGroup::Others(None)));
             }
             if all {
                 *chord = true;
@@ -748,14 +753,8 @@ impl Ide {
                     project.rescan();
                 }
             }
-            Action::ShowFolder => {
-                if let Some(project) = &state.project {
-                    ctx.open_url(egui::OpenUrl::new_tab(format!(
-                        "file:///{}",
-                        project.root.display()
-                    )));
-                }
-            }
+            Action::ShowFolder(path) => show_in_file_manager(&path),
+            Action::MovePath(from, to_dir) => self.move_path(&from, &to_dir),
             Action::Save => {
                 if let Some(path) = self.current_editor() {
                     self.state.save(&[path]);
@@ -870,7 +869,7 @@ impl Ide {
             Action::Reset => {
                 state.emulator.reset();
                 state.followed = None;
-                state.console.info("Power cycle: the machine restarted.");
+                state.console.info("The machine restarted.");
             }
             Action::ExportImage => state.export_image(),
             Action::LoadImage => state.load_image(),
@@ -1007,6 +1006,71 @@ impl Ide {
             leaf.append_tab(Tab::Welcome);
         }
         self.dock.retain_tabs(|t| !editor(t));
+    }
+
+    /// Moves a file or folder into `dir`, on disk and in the open editors
+    /// and breakpoints.
+    fn move_path(&mut self, from: &Path, dir: &Path) {
+        let state = &mut self.state;
+        let Some(name) = from.file_name() else { return };
+        let to = dir.join(name);
+        let shown = |path: &Path| match &state.project {
+            Some(project) => project.include_path(path),
+            None => path.display().to_string(),
+        };
+        if to.exists() {
+            let error = format!(
+                "Cannot move {}: {} already exists.",
+                shown(from),
+                shown(&to)
+            );
+            return state.console.error(error);
+        }
+        if let Err(e) = std::fs::rename(from, &to) {
+            let error = format!("Cannot move {}: {e}", shown(from));
+            return state.console.error(error);
+        }
+        let info = format!(
+            "Moved {} to {}. .include lines that use the old path must be updated by hand.",
+            shown(from),
+            shown(&to)
+        );
+        state.console.info(info);
+
+        // A path inside what moved, at its new place.
+        let moved = |path: &Path| {
+            let rest = path.strip_prefix(from).ok()?;
+            Some(if rest.as_os_str().is_empty() {
+                to.clone()
+            } else {
+                to.join(rest)
+            })
+        };
+        for doc in &mut state.docs {
+            if let Some(new) = moved(&doc.path) {
+                doc.set_path(new);
+            }
+        }
+        for (_, tab) in self.dock.iter_all_tabs_mut() {
+            if let Tab::Editor(path) = tab
+                && let Some(new) = moved(path)
+            {
+                *path = new;
+            }
+        }
+        let breakpoints = &mut state.project_settings.breakpoints;
+        let old: Vec<PathBuf> = breakpoints
+            .keys()
+            .filter(|path| path.starts_with(from))
+            .cloned()
+            .collect();
+        for path in old {
+            if let (Some(lines), Some(new)) = (breakpoints.remove(&path), moved(&path)) {
+                breakpoints.insert(new, lines);
+            }
+        }
+        state.edits += 1;
+        state.actions.push(Action::RefreshFiles);
     }
 
     pub fn open_file(&mut self, path: &Path, line: Option<u32>) {
@@ -1514,4 +1578,32 @@ fn projects_dialog() -> rfd::FileDialog {
         Some(dir) if dir.is_dir() => dialog.set_directory(dir),
         _ => dialog,
     }
+}
+
+/// Opens the system's file manager on `path`: a folder is opened, a file is
+/// shown selected in its folder (on Windows; elsewhere its folder opens).
+fn show_in_file_manager(path: &Path) {
+    #[cfg(windows)]
+    if path.is_file() {
+        use std::os::windows::process::CommandExt;
+        // Explorer wants the quotes around the path only, not around "/select,".
+        let _ = std::process::Command::new("explorer")
+            .raw_arg(format!("/select,\"{}\"", path.display()))
+            .spawn();
+        return;
+    }
+    let dir = if path.is_dir() {
+        path
+    } else {
+        path.parent().unwrap_or(path)
+    };
+    // Launch the file manager directly: a file:// URL would open the browser.
+    let program = if cfg!(windows) {
+        "explorer"
+    } else if cfg!(target_os = "macos") {
+        "open"
+    } else {
+        "xdg-open"
+    };
+    let _ = std::process::Command::new(program).arg(dir).spawn();
 }

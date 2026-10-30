@@ -3,7 +3,7 @@
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 
-use eframe::egui::{self, RichText};
+use eframe::egui::{self, DragAndDrop, RichText, Sense, StrokeKind};
 
 use crate::project::Project;
 
@@ -14,7 +14,82 @@ pub enum FileAction {
     Rename(PathBuf),
     Delete(PathBuf),
     Refresh,
-    ShowFolder,
+    /// Opens the file manager on a folder, or on a file's folder.
+    ShowFolder(PathBuf),
+    /// Moves a file or folder into another folder.
+    Move {
+        from: PathBuf,
+        to_dir: PathBuf,
+    },
+}
+
+/// A file or folder being dragged in the tree.
+struct Dragged(PathBuf);
+
+/// Whether `from` can move into `dir`: not where it already is, and a folder
+/// not into itself.
+fn can_move(from: &Path, dir: &Path) -> bool {
+    from.parent() != Some(dir) && !dir.starts_with(from)
+}
+
+/// Makes `response` a drag source for `path`.
+fn drag_source(response: egui::Response, path: &Path) -> egui::Response {
+    let response = response.interact(Sense::drag());
+    response.dnd_set_drag_payload(Dragged(path.to_path_buf()));
+    response
+}
+
+/// Makes `response` a place to drop files and folders into `dir`.
+fn drop_target(
+    ui: &egui::Ui,
+    response: &egui::Response,
+    dir: &Path,
+    action: &mut Option<FileAction>,
+) {
+    if let Some(dragged) = response.dnd_hover_payload::<Dragged>()
+        && can_move(&dragged.0, dir)
+    {
+        let stroke = ui.visuals().selection.stroke;
+        ui.painter()
+            .rect_stroke(response.rect, 2.0, stroke, StrokeKind::Inside);
+    }
+    if let Some(dragged) = response.dnd_release_payload::<Dragged>()
+        && can_move(&dragged.0, dir)
+    {
+        *action = Some(FileAction::Move {
+            from: dragged.0.clone(),
+            to_dir: dir.to_path_buf(),
+        });
+    }
+}
+
+/// The name of what is being dragged, next to the pointer.
+fn drag_preview(ui: &egui::Ui) {
+    let Some(dragged) = DragAndDrop::payload::<Dragged>(ui.ctx()) else {
+        return;
+    };
+    let Some(pos) = ui.ctx().pointer_latest_pos() else {
+        return;
+    };
+    ui.ctx().set_cursor_icon(egui::CursorIcon::Grabbing);
+    let name = dragged.0.file_name().unwrap_or_default().to_string_lossy();
+    let painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Tooltip,
+        egui::Id::new("dragged_file"),
+    ));
+    let text = painter.layout_no_wrap(
+        name.into(),
+        egui::TextStyle::Body.resolve(ui.style()),
+        ui.visuals().strong_text_color(),
+    );
+    let rect = egui::Rect::from_min_size(pos + egui::vec2(14.0, 4.0), text.size()).expand(4.0);
+    painter.rect_filled(rect, 3.0, ui.visuals().window_fill);
+    painter.rect_stroke(rect, 3.0, ui.visuals().window_stroke, StrokeKind::Inside);
+    painter.galley(
+        rect.min + egui::vec2(4.0, 4.0),
+        text,
+        egui::Color32::PLACEHOLDER,
+    );
 }
 
 #[derive(Default)]
@@ -60,6 +135,13 @@ fn new_buttons(ui: &mut egui::Ui, dir: &Path, action: &mut Option<FileAction>) {
     }
 }
 
+/// "Show folder": opens the file manager on `path` (a folder, or a file's folder).
+fn show_folder_button(ui: &mut egui::Ui, path: &Path, action: &mut Option<FileAction>) {
+    if ui.button("Show folder").clicked() {
+        *action = Some(FileAction::ShowFolder(path.to_path_buf()));
+    }
+}
+
 pub fn files_ui(
     ui: &mut egui::Ui,
     project: Option<&Project>,
@@ -73,7 +155,8 @@ pub fn files_ui(
     };
     let mut action = None;
     ui.horizontal(|ui| {
-        ui.strong(project.name());
+        let name = ui.strong(project.name());
+        drop_target(ui, &name, &project.root, &mut action);
         if ui.small_button("+").on_hover_text("New file").clicked() {
             action = Some(FileAction::NewFile(project.root.clone()));
         }
@@ -101,13 +184,13 @@ pub fn files_ui(
             ui.available_size().max(egui::vec2(0.0, 20.0)),
             egui::Sense::click(),
         );
+        drop_target(ui, &rest, &project.root, &mut action);
         rest.context_menu(|ui| {
             new_buttons(ui, &project.root, &mut action);
-            if ui.button("Show folder").clicked() {
-                action = Some(FileAction::ShowFolder);
-            }
+            show_folder_button(ui, &project.root, &mut action);
         });
     });
+    drag_preview(ui);
     action
 }
 
@@ -128,8 +211,11 @@ fn folder_ui(
             .show(ui, |ui| {
                 folder_ui(ui, sub, &sub_dir, project, is_open, is_dirty, action)
             });
-        header.header_response.context_menu(|ui| {
+        let response = drag_source(header.header_response, &sub_dir);
+        drop_target(ui, &response, &sub_dir, action);
+        response.context_menu(|ui| {
             new_buttons(ui, &sub_dir, action);
+            show_folder_button(ui, &sub_dir, action);
         });
     }
     for path in &folder.files {
@@ -143,11 +229,13 @@ fn folder_ui(
             text = text.strong();
         }
         let response = ui.selectable_label(is_open(path), text);
+        // The entry file stays at the project's root.
         let response = if entry {
             response.on_hover_text("Entry file: the assembler starts here")
         } else {
-            response
+            drag_source(response, path)
         };
+        drop_target(ui, &response, path.parent().unwrap_or(dir), action);
         if response.clicked() {
             *action = Some(FileAction::Open(path.clone()));
         }
@@ -166,6 +254,7 @@ fn folder_ui(
             }
             ui.separator();
             new_buttons(ui, path.parent().unwrap_or(dir), action);
+            show_folder_button(ui, path, action);
         });
     }
 }

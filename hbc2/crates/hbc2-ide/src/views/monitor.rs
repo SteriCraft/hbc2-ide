@@ -25,6 +25,8 @@ pub struct MonitorView {
     shown: Option<Arc<Monitor>>,
     /// Keys held down on the HBC-2 keyboard: host key → scan code sent.
     held: HashMap<Key, u8>,
+    /// Shift is held on the HBC-2 keyboard because the host's Caps Lock is on.
+    caps_shift: bool,
     pub integer_scale: bool,
 }
 
@@ -170,6 +172,15 @@ impl MonitorView {
     }
 
     fn forward_keys(&mut self, ui: &egui::Ui, runner: &Runner) {
+        // Caps Lock holds Shift on the HBC-2 keyboard, the way capitals are typed there.
+        let caps_lock = keymap::caps_lock_on();
+        if caps_lock != self.caps_shift {
+            self.caps_shift = caps_lock;
+            if !self.held.values().any(|&scan| scan == keymap::SHIFT) {
+                runner.key(keymap::SHIFT, caps_lock);
+            }
+        }
+
         let events = ui.input(|i| i.events.clone());
         for (index, event) in events.iter().enumerate() {
             let Event::Key {
@@ -193,7 +204,10 @@ impl MonitorView {
                         _ => None,
                     })
                     .unwrap_or("");
-                let scan = keymap::keypad_scan_code(key, text, modifiers.shift)
+                // Caps Lock makes the AZERTY main row type digits, like Shift:
+                // those digits are not keypad keys.
+                let scan = keymap::keypad_scan_code(key, text, modifiers.shift || caps_lock)
+                    .or_else(|| keymap::accent_scan_code(key, text, modifiers.shift, caps_lock))
                     .or_else(|| self.held.get(&key).copied())
                     .or_else(|| keymap::scan_code(key));
                 if let Some(scan) = scan {
@@ -201,16 +215,26 @@ impl MonitorView {
                     runner.key(scan, true); // repeats are sent too, like a real keyboard
                 }
             } else if let Some(scan) = self.held.remove(&key).or_else(|| keymap::scan_code(key)) {
-                runner.key(scan, false);
+                let shift_still_held = scan == keymap::SHIFT
+                    && (self.caps_shift || self.held.values().any(|&s| s == keymap::SHIFT));
+                if !shift_still_held {
+                    runner.key(scan, false);
+                }
             }
         }
     }
 
     /// Releases every key still held (focus lost, monitor unplugged).
     fn release_all(&mut self, runner: &Runner) {
+        let mut shift_released = false;
         for (_, scan) in self.held.drain() {
+            shift_released |= scan == keymap::SHIFT;
             runner.key(scan, false);
         }
+        if self.caps_shift && !shift_released {
+            runner.key(keymap::SHIFT, false);
+        }
+        self.caps_shift = false;
     }
 }
 

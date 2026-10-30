@@ -283,12 +283,21 @@ fn tab_menu_closes_groups_of_tabs() {
     h.act(Action::OpenFile(handler.clone(), None));
     h.act(Action::OpenFile(other.clone(), None));
     let open = |ide: &Ide| -> Vec<bool> {
-        [&main, &handler, &other].iter().map(|p| editor_open(ide, p)).collect()
+        [&main, &handler, &other]
+            .iter()
+            .map(|p| editor_open(ide, p))
+            .collect()
     };
     assert_eq!(open(&h.ide), [true, true, true]);
 
     // Unsaved files stay open.
-    let doc = h.ide.state.docs.iter_mut().find(|d| d.path == handler).unwrap();
+    let doc = h
+        .ide
+        .state
+        .docs
+        .iter_mut()
+        .find(|d| d.path == handler)
+        .unwrap();
     doc.text.push('x');
     h.act(Action::CloseGroup(TabGroup::Saved));
     assert_eq!(open(&h.ide), [false, true, false]);
@@ -669,6 +678,76 @@ fn selecting_past_the_bottom_scrolls() {
     assert!(
         selected.end > first + 40 * line_length,
         "selection {selected:?}, first {first}"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn files_and_folders_move() {
+    let dir = temp_project("move");
+    let other = dir.join("other.has");
+    std::fs::write(&other, "; other\n").unwrap();
+    std::fs::create_dir_all(dir.join("lib")).unwrap();
+    std::fs::create_dir_all(dir.join("src")).unwrap();
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFile(other.clone(), None));
+    let doc = h
+        .ide
+        .state
+        .docs
+        .iter_mut()
+        .find(|d| d.path == other)
+        .unwrap();
+    doc.text.push('x');
+    h.ide
+        .state
+        .project_settings
+        .breakpoints
+        .insert(other.clone(), [1].into());
+
+    // A file into a folder: the open tab, its unsaved text and breakpoints follow.
+    let in_lib = dir.join("lib").join("other.has");
+    h.act(Action::MovePath(other.clone(), dir.join("lib")));
+    assert!(!other.exists() && in_lib.is_file());
+    assert!(editor_open(&h.ide, &in_lib) && !editor_open(&h.ide, &other));
+    assert!(doc_dirty(&h.ide, &in_lib));
+    assert!(
+        h.ide
+            .state
+            .project_settings
+            .breakpoints
+            .contains_key(&in_lib)
+    );
+    assert!(
+        h.ide
+            .state
+            .project
+            .as_ref()
+            .unwrap()
+            .files
+            .contains(&in_lib)
+    );
+
+    // A folder into another, with the file inside.
+    let in_src = dir.join("src").join("lib").join("other.has");
+    h.act(Action::MovePath(dir.join("lib"), dir.join("src")));
+    assert!(in_src.is_file());
+    assert!(editor_open(&h.ide, &in_src) && doc_dirty(&h.ide, &in_src));
+    assert!(
+        h.ide
+            .state
+            .project_settings
+            .breakpoints
+            .contains_key(&in_src)
+    );
+
+    // Nothing is overwritten.
+    std::fs::write(dir.join("other.has"), "").unwrap();
+    h.act(Action::MovePath(in_src.clone(), dir.clone()));
+    assert!(
+        in_src.is_file(),
+        "a file with the same name is already there"
     );
     std::fs::remove_dir_all(&dir).unwrap();
 }

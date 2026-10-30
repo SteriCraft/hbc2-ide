@@ -170,7 +170,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::Step);
                 }
                 ui.checkbox(&mut state.settings.monitor_window, "Monitor window");
-                if ui.add(shortcut_button("Power cycle", "Ctrl+F5")).clicked() {
+                if ui.add(shortcut_button("Restart", "Ctrl+F5")).clicked() {
                     actions.push(Action::Reset);
                 }
                 ui.separator();
@@ -272,7 +272,7 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                 actions.push(Action::Step);
             }
             if ui
-                .button("⟲ Power cycle")
+                .button("⟲ Restart")
                 .on_hover_text("Restart the machine from its image (Ctrl+F5)")
                 .clicked()
             {
@@ -410,7 +410,7 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
             ("F5", "Run / continue"),
             ("F6", "Pause"),
             ("F10", "Step one instruction"),
-            ("Ctrl+F5", "Power cycle"),
+            ("Ctrl+F5", "Restart"),
             ("Ctrl+S", "Save"),
             ("Ctrl+W", "Close the tab"),
             ("Ctrl+W+R", "Close the other tabs"),
@@ -712,6 +712,10 @@ fn keyboard_help(ui: &mut egui::Ui) {
          keyboard (unshifted, capital letters), whatever your own layout is. Shift, Ctrl and Alt are keys \
          of their own; the program decides what they do.",
     );
+    ui.label(
+        "Caps Lock holds Shift down on the HBC-2 keyboard. The é, è, à and ù keys send E, E, A and U, so \
+         French text still reads well without accents.",
+    );
     ui.add_space(6.0);
     egui::Grid::new("special_keys")
         .striped(true)
@@ -748,7 +752,12 @@ fn keyboard_help(ui: &mut egui::Ui) {
             }
         });
     ui.add_space(6.0);
-    ui.label(RichText::new("Not available: Pause, Caps Lock, keypad Enter, * and . (they look like other keys to the IDE).").weak());
+    ui.label(
+        RichText::new(
+            "Not available: Pause, keypad Enter, * and . (they look like other keys to the IDE).",
+        )
+        .weak(),
+    );
 }
 
 impl State {

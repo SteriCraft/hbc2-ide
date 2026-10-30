@@ -12,10 +12,17 @@
 //! main-row key that types a digit, `-` or `/` without Shift is taken as the
 //! keypad key (true on AZERTY, where those keys type `&é"'(` and `)` `!`).
 //!
+//! A key that types é, è, à or ù is sent as the E, A or U key instead, also
+//! with Caps Lock on. Caps Lock itself is sent as a held Shift (the HBC-2
+//! has no Caps Lock state); its main-row digits are not keypad keys.
+//!
 //! Not available through egui: Pause (0x06), Caps Lock (0x0F), keypad Enter
 //! (0x12), `*` (0x15) and `.` (0x17).
 
 use eframe::egui::Key;
+
+/// Scan code of the Shift keys.
+pub const SHIFT: u8 = 0x0E;
 
 /// Scan code of a physical key (US QWERTY name).
 pub fn scan_code(key: Key) -> Option<u8> {
@@ -33,7 +40,7 @@ pub fn scan_code(key: Key) -> Option<u8> {
         ArrowRight => 0x0B,
         ArrowDown => 0x0C,
         Enter => 0x0D,
-        ShiftLeft | ShiftRight => 0x0E,
+        ShiftLeft | ShiftRight => SHIFT,
         ControlLeft | ControlRight => 0x10,
         AltLeft | AltRight => 0x11,
         Plus => 0x13, // only the keypad has a "+" key
@@ -116,9 +123,66 @@ pub fn keypad_scan_code(key: Key, text: &str, shift: bool) -> Option<u8> {
     }
 }
 
+/// Scan code of the plain letter key for an accented letter: a key that
+/// types é, è, à or ù is sent as E, A or U, so French typed on the host
+/// still reads well without accents.
+///
+/// With Caps Lock on, the Windows French layout types 2, 7, 0 and % on
+/// those keys instead, so then the physical key is used.
+pub fn accent_scan_code(key: Key, text: &str, shift: bool, caps_lock: bool) -> Option<u8> {
+    match text {
+        "é" | "è" | "É" | "È" => return Some(b'E'),
+        "à" | "À" => return Some(b'A'),
+        "ù" | "Ù" => return Some(b'U'),
+        _ => {}
+    }
+    if !caps_lock || shift {
+        return None;
+    }
+    match key {
+        Key::Num2 | Key::Num7 => Some(b'E'),
+        Key::Num0 => Some(b'A'),
+        Key::Quote => Some(b'U'),
+        _ => None,
+    }
+}
+
+/// Whether the host's Caps Lock is on (egui does not report it).
+#[cfg(windows)]
+pub fn caps_lock_on() -> bool {
+    use windows_sys::Win32::UI::Input::KeyboardAndMouse::{GetKeyState, VK_CAPITAL};
+    // SAFETY: GetKeyState only reads the thread's keyboard state.
+    unsafe { GetKeyState(VK_CAPITAL as i32) & 1 != 0 }
+}
+
+/// Whether the host's Caps Lock is on. Elsewhere, Caps Lock gives the
+/// accented capitals, which `accent_scan_code` handles from the text.
+#[cfg(not(windows))]
+pub fn caps_lock_on() -> bool {
+    false
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn accents() {
+        let plain = |key, text| accent_scan_code(key, text, false, false);
+        assert_eq!(plain(Key::Num2, "é"), Some(b'E'));
+        assert_eq!(plain(Key::Num7, "è"), Some(b'E'));
+        assert_eq!(plain(Key::Num0, "à"), Some(b'A'));
+        assert_eq!(plain(Key::Quote, "ù"), Some(b'U'));
+        assert_eq!(plain(Key::Num2, "2"), None);
+        // Caps Lock: capitals on some layouts, digits on Windows French.
+        assert_eq!(accent_scan_code(Key::Num2, "É", false, true), Some(b'E'));
+        assert_eq!(accent_scan_code(Key::Num2, "2", false, true), Some(b'E'));
+        assert_eq!(accent_scan_code(Key::Num0, "0", false, true), Some(b'A'));
+        assert_eq!(accent_scan_code(Key::Quote, "%", false, true), Some(b'U'));
+        assert_eq!(accent_scan_code(Key::Num1, "1", false, true), None);
+        // Shift still types the digit.
+        assert_eq!(accent_scan_code(Key::Num2, "2", true, true), None);
+    }
 
     #[test]
     fn azerty_positions() {
