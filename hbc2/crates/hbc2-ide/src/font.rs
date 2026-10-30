@@ -1,4 +1,4 @@
-//! The monitor's character set, from `Documentation/Peripherals/Screen/charMap.png`.
+//! The monitor's character set, from `Documentation/Peripherals/Monitor/charMap.png`.
 //!
 //! One entry per displayable character (ASCII 0x20 to 0x7E), one byte per
 //! pixel row (8 rows), bit 5 = leftmost pixel of the 6-pixel-wide glyph.
