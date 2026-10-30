@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** step 1 done (kit builds natively with MSVC), `.bss` added to hbc2-asm.
-- **Next:** step 2, write `compiler/ABI.md` from the decisions + the "Design points found in step 1" below, then step 3.
+- **Phase:** step 2 done: `compiler/ABI.md` written (examples of sections 5, 9, 10 run on the emulator).
+- **Next:** step 3, `target-hbc2.c` + `backend-hbc2.c`, start from `backend-default.c` but with REAL push sizes (see notes), add cc1.hbc2/cc2.hbc2 to build.cmd. First decide the `.data` addition for `name + n` addresses (see design points).
 
 ## Decisions (agreed 2026-10-30)
 
@@ -67,7 +67,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 ## Steps
 
 - [x] 1. Get FCC, build it, compile tests for the 6809 target, read the backends. (No WSL/MSYS2/gcc on this machine: built with MSVC + compat layer instead. 6809 output checked on a loop + call test.)
-- [ ] 2. Write the ABI document (from the decisions above) — `compiler/ABI.md`.
+- [x] 2. Write the ABI document — `compiler/ABI.md`. Section 11 (helpers) is a draft to settle in steps 3-4.
 - [ ] 3. Minimal backend `backend-hbc2.c`: constants, load/store globals + locals, calls, prologue/epilogue, labels, jumps, branches; everything else → helpers.
 - [ ] 4. Runtime: `crt0.has` (at 0x0000, SP already 0xFE00, `cal _main`, `hlt`) + helpers (mul/div/mod/shifts/compares/long ops) from the math library.
 - [ ] 5. Test harness on hbc2-core (like the `rt` crates): compile → run → check result; run FCC's own test programs.
@@ -81,6 +81,11 @@ Later: linker (decision 1b), EEPROM, register variables, float.
 
 ## Notes
 
+- `backend-default.c` assumes every push is a word (`get_stack_size` 1 → 2): with real 1-byte char arguments (target_argsize = size) its sp check fails ("error: sp"). Our backend must count real sizes. FCC pushes a `char` argument as 1 byte with a `char` prototype, as an int in variadic calls (checked on 6809).
+- ABI test program (add3 / screen_putc wrapper / interrupt calling C): scratchpad `abi/abi.has`, run with `cargo run -p hbc2-cli -- run abi.has --ticks 200000` → a=00 b=01 c=00 d=5a i=27 j=34 x=11 y=22, sp=fe00. Rewrite it in the step 5 harness.
+- CPU facts used by the ABI: reset enables interrupts; interrupt entry pushes i then PC (no flags), i = data, I cleared; irt pops PC, i, sets I; hlt sets Halt AND enables interrupts (can't stop for good → `__exit` loops); mov/lod/str/psh/pop/cal/ret keep flags; cmp sets S/E/F only.
+- Fuzix names were cut at 15 chars: raised to 31 (NAMELEN 32) — the one upstream change, listed in fcc/UPSTREAM.md.
+
 - `[sp + n]`: n = 0..255; `[sp]` = last byte pushed. Track SP changes from `psh` in the backend (Fuzix backends already track an sp offset).
 - Address of local at offset n: `rsp [x:y]`, `add y, n`, `adc x, 0` (16-bit add).
   For n > 255 only to access: `rsp [x:y]`, `add x, n >> 8`, then `[x:y + (n & 255)]` (the CPU adds the offset on 16 bits, so no carry handling).
@@ -92,3 +97,4 @@ Later: linker (decision 1b), EEPROM, register variables, float.
 
 - 2026-10-30: plan + decisions with the user. This file created.
 - 2026-10-30 (same session): open questions settled (5, 6, 7, 10 above). `.bss` added to hbc2-asm (parser `Stmt::Bss`, assembler places it after code/data, `__bss_start`/`__bss_end`; tests `bss_*` in tests/assemble.rs; documented in the assembly manual). Step 1 done: kit copied to compiler/fcc, MSVC build works (all 5 tools), pipeline tested with the 6809 target (scratchpad) and with cc1.ref/cc2.ref (repo build). Label naming changed to `__L…` (told the user).
+- 2026-10-30 (same session): step 2. ABI.md written; NAMELEN raised to 31 chars; checked: no struct by value in FCC, char args 1 byte / int in varargs, CPU interrupt and flag facts. Rule added: asm names starting with `_` share the C namespace (the user's interruptHandler.has uses `_iod_…`, `_loop` etc. → C can't use `iod_…`, `loop`; the assembler reports clashes).

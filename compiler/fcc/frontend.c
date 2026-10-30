@@ -459,10 +459,10 @@ static void keywords(void)
 	symbase = nextsym;
 }
 
-/* Read up to 14 more bytes into the symbol name, plus a terminator */
+/* Read up to NAMELEN - 2 more bytes into the symbol name, plus a terminator */
 static void get_symbol_tail(char *p)
 {
-	unsigned n = 14;
+	unsigned n = NAMELEN - 2;
 	unsigned c;
 	while ((c = get()) != 0) {
 		if (!iscsymbol(c))
@@ -479,7 +479,7 @@ static void get_symbol_tail(char *p)
 /* Also does keywords */
 static unsigned tokenize_symbol(unsigned c)
 {
-	char symstr[16];
+	char symstr[NAMELEN];
 	unsigned h;
 	struct name *s;
 	*symstr = c;
