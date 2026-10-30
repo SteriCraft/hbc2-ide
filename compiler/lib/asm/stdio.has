@@ -1,0 +1,24 @@
+; stdio.h functions written in assembly: output on the terminal
+; (asm/terminal.has). The first output clears the screen (lib_term_start,
+; asm/hbc2.has).
+
+; int putchar(int c)
+_putchar:
+    cal lib_term_start
+    lod a, [sp + 3]             ; c: its low byte
+    cal term_putc
+    lod b, [sp + 3]             ; returns c as an unsigned char
+    mov a, 0
+    ret
+
+; int puts(const char *s)
+_puts:
+    cal lib_term_start
+    lod i, [sp + 2]             ; [i:j] = s
+    lod j, [sp + 3]
+    cal term_print
+    mov a, '\n'
+    cal term_putc
+    mov a, 0
+    mov b, 0
+    ret

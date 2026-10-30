@@ -1,0 +1,91 @@
+; Device detection for C programs (included by crt0.has).
+; A copy of the port-0 handler of the project template
+; (interruptHandler.has), with the port variables under C names:
+;     extern unsigned char monitor_port, rtc_port, keyboard_port, eeprom_port;
+; (declared in hbc2.h). 0 = the device is not plugged.
+;
+; When a device is plugged (at power-on in the emulator), the IOD sends two
+; interrupts on port 0: the device's first port, then its ID. The RTC and
+; keyboard vectors are pointed to a handler that does nothing, so their
+; interrupts don't restart the program (a vector never set holds $0x0000).
+
+.define DEVICES_MONITOR_ID 0x4A
+.define DEVICES_KEYBOARD_ID 0xAA
+.define DEVICES_RTC_ID 0x95
+.define DEVICES_EEPROM_ID 0xE1
+
+.data devices_port0_vector $0xFE00 devices_handler.msb, devices_handler.lsb
+.data devices_second 0          ; 1 when the next interrupt is the ID
+.data devices_pending 0         ; first port, kept between the 2 interrupts
+; .data, not .bss: the handler may run before crt0 clears the .bss area
+.data _monitor_port 0
+.data _keyboard_port 0
+.data _rtc_port 0
+.data _eeprom_port 0
+
+; The handler saves what it changes: an interrupt can happen anywhere.
+devices_handler:
+    psf
+    psh a
+    lod a, devices_second
+    cmp a, 1
+    jme devices_id
+    str devices_pending, i      ; first interrupt: i = the device's first port
+    mov a, 1
+    str devices_second, a
+    jmp devices_end
+devices_id:
+    lod a, devices_pending      ; a = first port, i = ID
+    cmp i, DEVICES_MONITOR_ID
+    jme devices_monitor
+    cmp i, DEVICES_KEYBOARD_ID
+    jme devices_keyboard
+    cmp i, DEVICES_RTC_ID
+    jme devices_rtc
+    cmp i, DEVICES_EEPROM_ID
+    jme devices_eeprom
+    jmp devices_done            ; unknown device: ignored
+devices_monitor:
+    str _monitor_port, a
+    jmp devices_done
+devices_keyboard:
+    str _keyboard_port, a
+    psh x, y
+    mov x, 0xFE
+    mov y, a
+    shl y                       ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                    ; [x:y] = vector of the first port = $0xFE00 + 2 * port
+    mov a, devices_ignore.msb
+    str [x:y], a                ; key pressed
+    str [x:y + 2], a            ; key released: the next vector
+    mov a, devices_ignore.lsb
+    str [x:y + 1], a
+    str [x:y + 3], a
+    pop x, y
+    jmp devices_done
+devices_rtc:
+    str _rtc_port, a
+    psh x, y
+    mov x, 0xFE
+    mov y, a
+    shl y
+    adc x, 0                    ; [x:y] = vector of the port
+    mov a, devices_ignore.msb
+    str [x:y], a
+    mov a, devices_ignore.lsb
+    str [x:y + 1], a
+    pop x, y
+    jmp devices_done
+devices_eeprom:
+    str _eeprom_port, a
+devices_done:
+    mov a, 0
+    str devices_second, a
+devices_end:
+    pop a
+    pof
+    irt
+
+; RTC and keyboard interrupts before the program installs its own handlers
+devices_ignore:
+    irt

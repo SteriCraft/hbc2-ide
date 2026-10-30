@@ -358,6 +358,32 @@ after_handler:   ; continues at 0xF004
 }
 
 #[test]
+fn defined_in_another_file() {
+    let files = MemoryFiles::new()
+        .with(
+            "main.has",
+            ".include \"lib.has\"
+_start:
+    nop
+shared:
+    ret
+",
+        )
+        .with(
+            "lib.has",
+            "
+shared:
+    ret
+",
+        );
+    let e = build(files, Target::Ram).expect_err("should fail");
+    assert!(
+        e[0].contains("'shared' is already defined (lib.has, line 2)"),
+        "{e:?}"
+    );
+}
+
+#[test]
 fn include_once_and_relative_paths() {
     let files = MemoryFiles::new()
         .with(

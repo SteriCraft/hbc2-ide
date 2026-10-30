@@ -1,0 +1,403 @@
+; ============================================================
+; Monitor driver, basic routines
+; ============================================================
+;
+; Copy for the C library (compiler/lib). Changes from the original in
+; design_projects/test_project/lib/monitor:
+; - the port variables have their C names (_monitor_port, _rtc_port,
+;   _keyboard_port: compiler/runtime/devices.has);
+
+.define SCREEN_HEIGHT 192
+
+.define SCREEN_COLUMNS 42
+.define SCREEN_ROWS 24
+
+.define SCREEN_CMD_WRITE 1
+.define SCREEN_CMD_READ 2
+.define SCREEN_CMD_PIXEL_MODE 3
+.define SCREEN_CMD_TEXT_MODE 4
+
+; ============================================================
+; Pixel mode
+; ============================================================
+; 256 by 192 pixels: x = 0..255 (every value), y = 0..191.
+; Colors: 0..15 (see the palette in the monitor manual).
+; The pixel routines only work while the monitor is in pixel mode
+; (screen_pixel_mode); the text routines need text mode
+; (screen_text_mode). Each mode keeps its own picture.
+
+; ------------------------------------------------------------
+; screen_pixel_mode: switches the monitor to pixel mode
+; screen_text_mode: switches the monitor to text mode
+; ------------------------------------------------------------
+; C = 1 when there is no monitor.
+
+screen_pixel_mode:
+    psh a
+    mov a, SCREEN_CMD_PIXEL_MODE
+    jmp screen_mode_send
+screen_text_mode:
+    psh a
+    mov a, SCREEN_CMD_TEXT_MODE
+screen_mode_send:
+    psh d
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_mode_none    ; no monitor
+    add d, 4
+    out d, a                ; CMD = switch mode
+    pop a, d
+    clc
+    ret
+screen_mode_none:
+    pop a, d
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_put_pixel: draws a pixel of color b at x, y
+; ------------------------------------------------------------
+; C = 1 and nothing is drawn when b > 15, y > 191, or there is no
+; monitor.
+
+screen_put_pixel:
+    cmp b, 0x0F
+    jms screen_put_pixel_err    ; not a color
+    cmp y, SCREEN_HEIGHT
+    jmf screen_put_pixel_draw   ; y < 192
+    jmp screen_put_pixel_err
+screen_put_pixel_draw:
+    psh a, d
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_put_pixel_none   ; no monitor
+    out d, b                ; DATA_0 = color
+    add d, 2
+    out d, x                ; POS_X = x
+    inc d
+    out d, y                ; POS_Y = y
+    inc d
+    mov a, SCREEN_CMD_WRITE
+    out d, a                ; CMD = WRITE: the monitor draws the pixel
+    pop a, d
+    clc
+    ret
+screen_put_pixel_none:
+    pop a, d
+screen_put_pixel_err:
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_get_pixel: b = color of the pixel at x, y
+; ------------------------------------------------------------
+; C = 1 and b unchanged when y > 191 or there is no monitor.
+
+screen_get_pixel:
+    cmp y, SCREEN_HEIGHT
+    jmf screen_get_pixel_read   ; y < 192
+    jmp screen_get_pixel_err
+screen_get_pixel_read:
+    psh a, d
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_get_pixel_none   ; no monitor
+    add d, 2
+    out d, x                ; POS_X = x
+    inc d
+    out d, y                ; POS_Y = y
+    inc d
+    mov a, SCREEN_CMD_READ
+    out d, a                ; CMD = READ: the monitor puts the color on DATA_0
+    sub d, 4
+    in b, d                 ; b = color (DATA_0)
+    pop a, d
+    clc
+    ret
+screen_get_pixel_none:
+    pop a, d
+screen_get_pixel_err:
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_fill: fills the whole screen with color b
+; ------------------------------------------------------------
+; C = 1 and nothing changes when b > 15 or there is no monitor.
+; DATA_0 is set once: each pixel then only needs its position and
+; the WRITE command. A row is drawn 4 pixels at a time (256 is a
+; multiple of 4): x wraps to 0 after the last one, which ends the row.
+
+screen_fill:
+    cmp b, 0x0F
+    jms screen_fill_err     ; not a color
+    psh a, d, i, j, x, y
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_fill_none    ; no monitor
+    out d, b                ; DATA_0 = color
+    mov i, d
+    add i, 2                ; i = POS_X port
+    mov d, i
+    inc d                   ; d = POS_Y port
+    mov j, d
+    inc j                   ; j = CMD port
+    mov a, SCREEN_CMD_WRITE
+    mov y, 0
+screen_fill_row:
+    out d, y                ; POS_Y = row
+    mov x, 0
+screen_fill_pixels:
+    out i, x                ; POS_X = x
+    out j, a                ; CMD = WRITE
+    inc x
+    out i, x
+    out j, a
+    inc x
+    out i, x
+    out j, a
+    inc x
+    out i, x
+    out j, a
+    inc x
+    jmz screen_fill_next    ; x back to 0: row done
+    jmp screen_fill_pixels
+screen_fill_next:
+    inc y
+    cmp y, SCREEN_HEIGHT
+    jmf screen_fill_row     ; y < 192: next row
+    pop a, d, i, j, x, y
+    clc
+    ret
+screen_fill_none:
+    pop a, d, i, j, x, y
+screen_fill_err:
+    stc
+    ret
+
+; ============================================================
+; Text mode
+; ============================================================
+; Text mode: 42 columns (x = 0..41) by 24 rows (y = 0..23).
+; Displayable characters: ASCII 0x20 (space) to 0x7E ('~').
+; Uses _monitor_port, set by interruptHandler.has when the monitor is
+; plugged (0 = no monitor: port 0 is never given to a peripheral).
+; Every register is restored. Flags are changed.
+
+; ------------------------------------------------------------
+; screen_putc: draws character a at column x, row y, in colors b
+; ------------------------------------------------------------
+; C = 1 and nothing is drawn when a is not displayable, (x, y) is
+; outside the screen, or there is no monitor.
+
+screen_putc:
+    cmp a, ' '
+    jmf screen_putc_err     ; a < 0x20: control character
+    cmp a, '~'
+    jms screen_putc_err     ; a > 0x7E: DEL, or not ASCII
+    cmp x, SCREEN_COLUMNS
+    jmf screen_putc_y       ; x < 42
+    jmp screen_putc_err
+screen_putc_y:
+    cmp y, SCREEN_ROWS
+    jmf screen_putc_draw    ; y < 24
+    jmp screen_putc_err
+screen_putc_draw:
+    psh b, d
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_putc_none    ; no monitor
+    out d, b                ; DATA_0 = colors
+    inc d
+    out d, a                ; DATA_1 = character
+    inc d
+    out d, x                ; POS_X = column
+    inc d
+    out d, y                ; POS_Y = row
+    inc d
+    mov b, SCREEN_CMD_WRITE
+    out d, b                ; CMD = WRITE: the monitor draws the cell
+    pop b, d
+    clc
+    ret
+screen_putc_none:
+    pop b, d
+screen_putc_err:
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_getc: a = character, b = colors of the cell at column x, row y
+; ------------------------------------------------------------
+; C = 1 and a, b unchanged when (x, y) is outside the screen or there
+; is no monitor.
+
+screen_getc:
+    cmp x, SCREEN_COLUMNS
+    jmf screen_getc_y       ; x < 42
+    jmp screen_getc_err
+screen_getc_y:
+    cmp y, SCREEN_ROWS
+    jmf screen_getc_read    ; y < 24
+    jmp screen_getc_err
+screen_getc_read:
+    psh d
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_getc_none    ; no monitor
+    add d, 2
+    out d, x                ; POS_X = column
+    inc d
+    out d, y                ; POS_Y = row
+    inc d
+    mov a, SCREEN_CMD_READ
+    out d, a                ; CMD = READ: the monitor puts the cell on DATA_0/1
+    sub d, 4
+    in b, d                 ; b = colors (DATA_0)
+    inc d
+    in a, d                 ; a = character (DATA_1)
+    pop d
+    clc
+    ret
+screen_getc_none:
+    pop d
+screen_getc_err:
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_write: draws [c:d] characters read at [i:j], from column x,
+; row y, in colors b
+; ------------------------------------------------------------
+; At the end of a row, writing goes on at the start of the next row.
+; [i:j], [c:d], x and y ADVANCE: they end after the last character drawn,
+; so the next write can follow straight after. After the very last cell
+; of the screen, x = 0 and y = 24 (one row below the screen).
+; C = 1 when a character cannot be drawn (not displayable, below the
+; screen, or no monitor): writing stops there, [i:j] points at that
+; character and [c:d] counts it with the ones left.
+
+screen_write:
+    psh a
+screen_write_next:
+    mov a, c
+    or a, d
+    jmz screen_write_done   ; [c:d] = 0: all written
+    lod a, [i:j]            ; a = next character
+    cal screen_putc
+    jmc screen_write_err
+    add j, 1                ; [i:j] = next character
+    adc i, 0
+    sub d, 1                ; [c:d] = one less to write
+    sbb c, 0
+    inc x                   ; next column
+    cmp x, SCREEN_COLUMNS
+    jme screen_write_row
+    jmp screen_write_next
+screen_write_row:
+    mov x, 0                ; end of the row: start of the next one
+    inc y
+    jmp screen_write_next
+screen_write_done:
+    pop a
+    clc
+    ret
+screen_write_err:
+    pop a
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_clear: fills the screen with spaces in colors b
+; ------------------------------------------------------------
+; C = 1 when there is no monitor.
+; DATA_0 and DATA_1 are set once: each cell then only needs its
+; position and the WRITE command.
+
+screen_clear:
+    psh a, d, i, j, x, y
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_clear_none   ; no monitor
+    out d, b                ; DATA_0 = colors
+    inc d
+    mov a, ' '
+    out d, a                ; DATA_1 = space
+    inc d
+    mov i, d                ; i = POS_X port
+    inc d                   ; d = POS_Y port
+    mov j, d
+    inc j                   ; j = CMD port
+    mov a, SCREEN_CMD_WRITE
+    mov y, 0
+screen_clear_row:
+    out d, y                ; POS_Y = row
+    mov x, 0
+screen_clear_cell:
+    out i, x                ; POS_X = column
+    out j, a                ; CMD = WRITE
+    inc x
+    cmp x, SCREEN_COLUMNS
+    jmf screen_clear_cell   ; x < 42: same row
+    inc y
+    cmp y, SCREEN_ROWS
+    jmf screen_clear_row    ; y < 24: next row
+    pop a, d, i, j, x, y
+    clc
+    ret
+screen_clear_none:
+    pop a, d, i, j, x, y
+    stc
+    ret
+
+; ------------------------------------------------------------
+; screen_set_bg: sets the background color of every cell to a (0..15)
+; ------------------------------------------------------------
+; Characters and their colors are kept.
+; C = 1 and nothing changes when a > 15 or there is no monitor.
+
+screen_set_bg:
+    cmp a, 0x0F
+    jms screen_set_bg_err   ; not a color
+    psh a, b, c, d, i, j, x, y
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_set_bg_none  ; no monitor
+    shl a                   ; a = background in the high nibble
+    shl a
+    shl a
+    shl a
+    mov i, d
+    add i, 2                ; i = POS_X port
+    mov c, i
+    inc c                   ; c = POS_Y port
+    mov j, c
+    inc j                   ; j = CMD port
+    mov y, 0
+screen_set_bg_row:
+    out c, y                ; POS_Y = row
+    mov x, 0
+screen_set_bg_cell:
+    out i, x                ; POS_X = column
+    mov b, SCREEN_CMD_READ
+    out j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
+    in b, d
+    and b, 0x0F             ; keep the character color
+    or b, a                 ; new background
+    out d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    mov b, SCREEN_CMD_WRITE
+    out j, b                ; CMD = WRITE
+    inc x
+    cmp x, SCREEN_COLUMNS
+    jmf screen_set_bg_cell  ; x < 42: same row
+    inc y
+    cmp y, SCREEN_ROWS
+    jmf screen_set_bg_row   ; y < 24: next row
+    pop a, b, c, d, i, j, x, y
+    clc
+    ret
+screen_set_bg_none:
+    pop a, b, c, d, i, j, x, y
+screen_set_bg_err:
+    stc
+    ret

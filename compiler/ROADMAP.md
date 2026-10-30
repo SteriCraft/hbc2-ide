@@ -6,17 +6,17 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** step 7 done (copt rules). 52 C programs pass (`tests/*.c` + 48 generated `tests/ops/*.c`, ≈12 000 checks). bench.c: 4464 → 4308 bytes, 253 253 → 244 971 ticks with copt (all tests: −9.2 % code, −3.2 % ticks). Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Steps 1-6 committed (8d64b27); step 7 not committed yet.
-- **Next:** step 8 (library). Possible later backend work (bigger gains than copt, need knowledge copt lacks): keep track of what [a:b] / [x:y] hold to drop reloads across statements; `x << 1` assignment forms inline (`crc <<= 1` calls `__shleq`); `x & 0x8000` tests the top byte only.
+- **Phase:** step 9 done (multi-file builds, not committed yet, nor step 8). 57 C programs pass (56 single files + `tests/multi/files`), plus `tests/build.rs` (builds that must fail). Step 8: 4 library tests. Library ≈ 9.3 KB in every program (lib/README.md "Size"): string.c 2.7 KB + printf.c 2.5 KB compiled; rewriting string.h in asm would save ≈ 1.8 KB (offered to the user). Before step 8: 52 C programs pass (`tests/*.c` + 48 generated `tests/ops/*.c`, ≈12 000 checks). bench.c: 4464 → 4308 bytes, 253 253 → 244 971 ticks with copt (all tests: −9.2 % code, −3.2 % ticks). Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Steps 1-7 committed (step 7: 3c39796).
+- **Next:** step 10 (IDE integration), then 11 linker (user, 2026-10-31: IDE first). The IDE builds through `hbc2_cc::build_program`; keep that the one entry point so the linker fits behind it later without IDE changes. No interim size filter (user: keep it simple until the linker). Possible later backend work (bigger gains than copt, need knowledge copt lacks): keep track of what [a:b] / [x:y] hold to drop reloads across statements; `x << 1` assignment forms inline (`crc <<= 1` calls `__shleq`); `x & 0x8000` tests the top byte only.
 
 ## Decisions (agreed 2026-10-30)
 
 1. **Linking:** (a) the driver joins every generated `.has` + the runtime into one program.
-   Later (b): object files + linker in hbc2-asm, to drop unused code (memory usage).
+   (b): object files + linker in hbc2-asm, to drop unused code (memory usage): step 11, decision 15.
 2. **Names:**
    - C `foo` → `_foo` (so asm `screen_putc` and C wrapper `_screen_putc` coexist).
    - Runtime helpers: `__name` (Fuzix's names where they exist: `__mul`, `__cceq`…).
-   - `static` names: per-file prefix `_S<n>_name` (n = file number in the build).
+   - `static` names: per-file prefix `__S<n>_name` (n = file number in the build; was `_S<n>_` until step 9: `__` can't clash with a C name, like `__L`).
    - Compiler labels: `__L<n>_…` with the file number (changed from `_L<n>` in step 1: a C name `L1` would give `_L1`; C reserves `__` names, so `__L` can't clash).
 3. **Registers:**
    - `[a:b]` = working value (16-bit, a = MSB); `char` in `b`.
@@ -28,7 +28,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
    - Arguments pushed right to left, each value low byte first (big-endian in memory, like `cal`).
    - Caller removes them (`asp n`) → variadic functions work.
    - Return in `[a:b]`, `long` in `[c:d]:[a:b]`.
-   - Every register except SP may be changed by a function (caller-saved). Register variables: maybe later.
+   - Every register except SP may be changed by a function (caller-saved). No register variables: dropped (user, 2026-10-31); `register` stays accepted and ignored.
 5. **Asm library from C:** compiler helpers get their own entry points matching what the backend emits (built from the math library code); user-facing drivers (screen, terminal, keyboard) keep their register interface and get thin C wrappers.
 6. **Types:** `char` unsigned by default (already FCC's default: `__castuc_`). `int`/`short` 16, `long` 32, pointers 16. No `float` for now: the compiler must STOP with a clear error at the C line (plan: `error()` in `target_sizeof` of `target-hbc2.c` for FLOAT/DOUBLE).
 7. **Frames > 255 bytes:** compute the address with `rsp` (see notes), no compile error.
@@ -36,6 +36,10 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 9. **Interrupt handlers:** hand-written asm only (they may call C functions). No compiler support.
 10. **Zeroed variables (BSS):** `.bss name size` in hbc2-asm (DONE 2026-10-30): all `.bss` placed together after code and data, nothing in the image, `__bss_start` / `__bss_end` defined; `crt0` clears the area (loop example in the assembly manual).
 11. **Licence/packaging:** not a concern (single user). Repo is GPLv3 like the kit.
+12. **Library location (step 8):** `compiler/lib/` holds COPIES of the user's drivers (monitor driver, terminal) + the C library (`include/` headers, sources). The user's originals in design_projects stay untouched.
+13. **Device detection (step 8):** `crt0` handles it: installs the port-0 interrupt handler (copy of the user's interruptHandler.has logic) and waits for the devices before calling `main`, so C code can print straight away.
+14. **printf (step 8):** minimal set: `%d %u %x %c %s %%`, `l` for long, width + `0` padding. No float.
+15. **Linker (later, user asked 2026-10-31):** object files + linker in hbc2-asm, the C library precompiled once into an archive; only the functions a program reaches are kept (function-level: each function its own section). Applies to the runtime helpers too (≈3.9 KB in every program today). Memory is tight: this matters.
 
 ## Open questions (waiting for the user)
 
@@ -60,7 +64,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 - **Data:** FCC emits a data label then one value at a time (`gen_value` per byte/word/long, `gen_name` = address `name+off`, `gen_text_data` = string literal address, `gen_space` = zeros). hbc2-asm needs ONE `.data` line per object (floating `.data` lines are not guaranteed contiguous). → backend buffers values and prints `.data _name v, v, …` when the object ends. Words → two bytes; `name+off` addresses need a byte form: `.data` only takes `name.msb/.lsb` WITHOUT offset → small assembler addition needed (e.g. allow `name + n` addresses inside `.data` as 2 bytes, or `(name + n).msb`). Decide in step 3 (assembler convenience, not ISA).
 - **BSS segment** → `.bss _name size` (gen_space in A_BSS).
 - **Labels:** FCC labels `L<n><tail>` (tails `_r` return, `_l` loop, `_b` break, `_c` continue, `_n` …), literals `T<n>`, switch tables `Sw<n>`; numbers restart in every file → print `__L<unit>_<n><tail>`, `__T<unit>_<n>`, `__W<unit>_<n>`; unit number given to cc2 as an extra argument (argv[5], the "codeseg" slot, is free for our backend).
-- **Statics:** cc2 prints `_s` for statics, just without `.export` (references don't say static/global). → backend prints a marker for exported names (e.g. `; export _g`) and the DRIVER renames non-exported `_name` symbols of that file to `_S<unit>_name`.
+- **Statics:** cc2 prints `_s` for statics, just without `.export` (references don't say static/global). → backend prints a marker for exported names (e.g. `; export _g`) and the DRIVER renames non-exported `_name` symbols of that file to `__S<unit>_name` (done, step 9).
 - **Arguments:** FCC's T_ARGUMENT offsets start at 0 for the first argument; `target_argsize` = real size (chars passed as 1 byte — fits `psh`).
 - **Helpers:** default backend emits `call __enter`, `__loadl`, `__deref`, `__plus`, `__castuc_`, `__cleanup`… → names `__<op><type suffix>`. Our gen_helpcall prints `cal __`.
 
@@ -73,11 +77,16 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 - [x] 5. Test harness: crate `hbc2/crates/hbc2-cc` (lib: `compile()` = Rust version of the driver; tests/helpers.rs: each helper called directly on the emulator vs a Rust model, breakpoint on a return label; tests/programs.rs: every `compiler/tests/*.c`, "Expected: main returns N" on line 1). Both checked by mutation (a broken helper makes them fail). FCC's own test programs: not run yet (upstream `test/` not copied).
 - [x] 6. Inline code (see "Inline code (step 6)" below).
 - [x] 7. `copt` peephole rules (see "Peephole rules (step 7)" below).
-- [ ] 8. Library: `hbc2.h` (monitor/keyboard/RTC wrappers, in/out), `putchar`/`puts` on `term_putc`, `string.h`, small `printf`.
-- [ ] 9. Multi-file builds (joined `.has`, static name prefixes).
+- [x] 8. Library: `hbc2.h` (monitor/keyboard/RTC wrappers, in/out), `putchar`/`puts` on `term_putc`, `string.h`, small `printf`.
+  - [x] 8a. `hbc2.h` + `asm/hbc2.has` wrappers, driver copies in `lib/asm`, device detection in crt0 (`runtime/devices.has`), `exit` (stdlib.h), `-I lib/include` in both drivers, `build_library()`, tests/hardware.c (+ `.screen` / `.keys` support in programs.rs, all tests now run with monitor + RTC + keyboard).
+  - [x] 8b. stdio.h: `putchar`/`puts` in asm (`asm/stdio.has`, first output clears the screen: `lib_term_start`), `getchar`/`gets` in C (`src/stdio.c`, line-buffered on term_readline). tests/stdio.c.
+  - [x] 8c. string.h (14 functions, in C: `src/string.c`) + stddef.h. tests/strings.c (mutation-checked). Possible later: memcpy/memset in asm if they show up as slow.
+  - [x] 8d. printf (decision 14, `src/printf.c`) + stdarg.h. tests/printf.c (mutation-checked).
+- [x] 9. Multi-file builds: `hbc2_cc::build_program(sources, library, dir)` (`.c` + `.has`), static renaming in `compile()` (both drivers), `-I` source folder, C-level error messages, library statics (`next`, `field`). Tests: `tests/multi/files`, `tests/build.rs` (mutation-checked).
 - [ ] 10. IDE: `hbc2 cc` in hbc2-cli runs all stages; `.c` in projects; error lines; later asm→C line map for the debugger.
+- [ ] 11. Linker (decision 15).
 
-Later: linker (decision 1b), EEPROM, register variables, float.
+Later: EEPROM, float.
 
 ## Backend (step 3) — how it works
 
@@ -85,7 +94,7 @@ Later: linker (decision 1b), EEPROM, register variables, float.
 - `sp` = bytes pushed since the frame; stack offsets = node value + sp. `work_size` = size of the last value, used by jfalse/jtrue (`or b, 0` / `mov i, a; or i, b` …; jtrue needs a jump over a jmp: no "jump if not zero" instruction).
 - Labels: `__L<unit>_<n><tail>` (FCC's), `__X<unit>_<n>` (backend's own), `__T<unit>_<n>` literals and local statics, `__W<unit>_<n>` switch tables, `__W<unit>_<tag>_<entry>` case labels. Unit = cc2 argv[5] (default 1).
 - Data: one pending object per area (A_DATA, A_LITERAL, A_BSS): FCC can start a string literal in the middle of another object (`char *s = "hi"`). Flushed when the code area comes back, when a new object starts in the same area, at the end. char values: printable runs as "…"; wider values as 0xNN bytes.
-- `; export _name` comment lines: for the future static renaming by the driver (step 9).
+- `; export _name` comment lines: used by the static renaming (see "Multi-file builds").
 - Helper calls: gen_helpcall pops the left operand (pop_left, rules in ABI.md 11), then `cal __`.
 - Temporary driver: `compiler/tools/hbc2cc.py file.c -o file.has [--unit N] [--no-copt]` (cpp → cc0 → cc1.hbc2 → cc2.hbc2 → copt; cc2 opt level 0: our backend ignores it).
 - Known: cc1 reports the float error at the wrong line (end of the declarations, e.g. line 3 for line 1).
@@ -114,6 +123,23 @@ All in `gen_shortcut` of backend-hbc2.c (the node is not generated yet: the code
 - Coverage: each rule was removed in turn and the 52 outputs compared; every rule changes at least one (except the `mov r, r` guard). Mutation check: 6 broken rules, each fails ≥ 1 program (peephole.c's `longs` was extended for this).
 - programs.rs now counts `psh`/`pop` lists as one instruction per register (the numbers above use this count).
 - Tried and left out (never fired in 52 programs): jump to a label after other labels, `jm? L / jmp L`, dead code after `ret`, `cal f / ret` without a label.
+
+## Library (step 8) — how it works
+
+- `compiler/lib`: `include/` (cpp gets `-I` in both drivers), `lib.has` (asm part), `src/*.c` compiled by `hbc2_cc::build_library(dir)` with units 100+ → `dir/library.has` (includes lib.has + compiled files). Programs: crt0, runtime, library.has, own files. See lib/README.md.
+- `asm/screen.has`, `asm/terminal.has`: copies of the user's drivers, only the port names changed (`_monitor_port`…, header lists changes). Re-copy if the user changes the originals.
+- Device detection: `runtime/devices.has` (copy of the template's port-0 handler, vector `.data` at $0xFE00, variables in `.data` not `.bss` because interrupts come before the .bss clear), crt0 waits 32 loop turns (1 was enough: power-on interrupts are taken before crt0's first instructions finish).
+- Terminal from C: `lib_term_start` (hbc2.has) = the first output switches to text mode and clears (no prompt, unlike term_init; no wait for the monitor: without one output does nothing). putchar/puts in asm, getchar/gets in C (static `next`), printf in C (static `field`).
+- Tests: programs.rs runs every program with monitor + RTC + keyboard (`MachineConfig::default()`), `name.screen` = expected text screen, `name.keys` = typed once `term_kbd_ready` = 1, one key per 20 000 ticks.
+
+## Multi-file builds (step 9) — how it works
+
+- `build_program(sources, &Library, dir) -> Build { program, compiled }`: `.c` compiled to `dir/<stem>_<unit>.has` (units 1, 2, … in list order), `.has` included as is; `dir/main.has` = crt0, runtime, library.has, sources; assembled (Target::Ram). `build_library` now returns `Library { path, files: (compiled, source) }`.
+- Static renaming at the end of `compile()` (`rename_statics`; same code in hbc2cc.py): names defined (`_x:` label, `.data _x`, `.bss _x`, single `_`) without a `; export _x` line → `__S<unit>_x` on every identifier token, not in quotes/comments. Local statics are already `__T<unit>_n`.
+- cpp gets `-I<source folder>` first (cpp finds the folder itself by the last `/`, which fails on the Rust driver's mixed `\`/`/` paths).
+- Errors: hbc2-asm "already defined" now names the other file when it differs (`(file, line n)`); `c_message` swaps compiled paths for C files (drops the meaningless line), `'_x'`/`'__S2_x'` → `'x'`, "unknown label or variable" → "not defined:".
+- Known: a program defining a library name (`puts`) is a duplicate until the linker; tentative `int n;` in two files is a duplicate (no common symbols); a `static` declared, never defined, but used would bind to another file's global (not checked).
+- programs.rs: every folder in `tests/multi` is one program (sorted `.c`/`.has`, `main.c` holds "Expected", `main.screen`/`main.keys`).
 
 ## Helpers (step 4)
 
@@ -144,6 +170,9 @@ From a program using every operator (scratchpad th.c): `__mul __div __divu __rem
 
 - 2026-10-30: plan + decisions with the user. This file created.
 - 2026-10-30 (same session): open questions settled (5, 6, 7, 10 above). `.bss` added to hbc2-asm (parser `Stmt::Bss`, assembler places it after code/data, `__bss_start`/`__bss_end`; tests `bss_*` in tests/assemble.rs; documented in the assembly manual). Step 1 done: kit copied to compiler/fcc, MSVC build works (all 5 tools), pipeline tested with the 6809 target (scratchpad) and with cc1.ref/cc2.ref (repo build). Label naming changed to `__L…` (told the user).
+- 2026-10-31 (after step 9): register variables dropped (user). Step order changed: 10 IDE integration, 11 linker. Duplicate "Later: linker" removed.
+- 2026-10-31 (step 9): multi-file builds (plan told to the user first; static prefix changed to `__S`, told). `cargo fmt --all` also reformatted 3 unrelated files (hbc2-ide build.rs/project.rs, hbc2-runner worker.rs, import order only); restoring them was blocked: left for the user.
+- 2026-10-31 (step 8): library in 4 parts (hbc2.h + device detection in crt0, stdio putchar/puts/getchar/gets, string.h, printf), told the user after each. Decisions 12-15 recorded; step order now 9 multi-file, 10 linker, 11 IDE.
 - 2026-10-31 (step 7): rules.hbc2, copt in both drivers, tests/peephole.c, coverage + mutation checks, psh/pop size count fixed.
 - 2026-10-31 (later): step 6. Inline code + conditions on flags; gen_ops.py rewritten (class Program; groups ops/cond/const/assign × globals/locals → tests/ops/, because of the 64 KB limit); bench.c; programs.rs prints sizes/ticks and also reads tests/ops; step 3 cast/sign bug fixed. Step 7 explained to the user.
 - 2026-10-31: steps 4 + 5. Runtime helpers written and tested; crate hbc2-cc (compile + tests); gen_ops.py → tests/ops_*.c; FCC file name bug fixed. Told the user: runtime ≈3.9 KB in every program until the linker (decision 1b).

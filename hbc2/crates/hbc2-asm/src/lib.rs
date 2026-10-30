@@ -140,7 +140,7 @@ pub fn assemble(
     let output = if report.has_errors() {
         None
     } else {
-        assembler::assemble(items, target, &mut report)
+        assembler::assemble(items, &loaded.files, target, &mut report)
     };
     let diagnostics = report.into_diagnostics(&loaded.files);
     match output {

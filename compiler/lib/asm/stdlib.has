@@ -1,0 +1,9 @@
+; stdlib.h functions written in assembly.
+
+; void exit(int status): ends the program with status in [a:b], as if
+; main had returned it (crt0.has).
+_exit:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    wsp $0xFE00                 ; the stack as main left it
+    jmp __exit

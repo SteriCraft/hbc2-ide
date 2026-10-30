@@ -15,6 +15,7 @@
 
 use std::collections::HashMap;
 use std::ops::Range;
+use std::path::PathBuf;
 
 use hbc2_core::Opcode;
 use hbc2_core::isa::{IVT_START, PROGRAM_START};
@@ -76,8 +77,14 @@ pub(crate) struct Output {
     pub bytes_used: usize,
 }
 
-pub(crate) fn assemble(items: Vec<Item>, target: Target, report: &mut Report) -> Option<Output> {
-    let (mut blocks, mut data, mut bss) = group(items, report);
+/// `files`: the source files, for messages that name another file.
+pub(crate) fn assemble(
+    items: Vec<Item>,
+    files: &[PathBuf],
+    target: Target,
+    report: &mut Report,
+) -> Option<Output> {
+    let (mut blocks, mut data, mut bss) = group(items, files, report);
     if report.has_errors() {
         return None;
     }
@@ -96,7 +103,11 @@ pub(crate) fn assemble(items: Vec<Item>, target: Target, report: &mut Report) ->
 
 // ----- 1. Group statements into blocks and data
 
-fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>, Vec<Bss>) {
+fn group(
+    items: Vec<Item>,
+    files: &[PathBuf],
+    report: &mut Report,
+) -> (Vec<Block>, Vec<Data>, Vec<Bss>) {
     let mut blocks: Vec<Block> = Vec::new();
     let mut data: Vec<Data> = Vec::new();
     let mut bss: Vec<Bss> = Vec::new();
@@ -112,10 +123,15 @@ fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>, Vec<B
             return false;
         }
         if let Some(first) = names.get(name) {
-            report.error(
-                loc,
-                format!("'{name}' is already defined (line {})", first.line),
-            );
+            let message = match files.get(first.file) {
+                Some(file) if first.file != loc.file => format!(
+                    "'{name}' is already defined ({}, line {})",
+                    file.display(),
+                    first.line
+                ),
+                _ => format!("'{name}' is already defined (line {})", first.line),
+            };
+            report.error(loc, message);
             return false;
         }
         names.insert(name.to_string(), loc);

@@ -1,0 +1,277 @@
+; C wrappers of the HBC-2 hardware and drivers: the functions of hbc2.h.
+; Each one reads its C arguments from the stack (ABI.md, section 9: the
+; first one at [sp + 2] since they have no locals), calls the routine
+; with its registers, and returns a C value. They may change every
+; register. Their inner labels start with "lib_" (no "_": not C names).
+
+; --- Results -------------------------------------------------------------
+
+; [a:b] = 1 when C = 1, else 0 (jump here after a driver call)
+lib_carry:
+    mov a, 0                    ; mov keeps the flags
+    mov b, 0
+    jmc lib_carry_set
+    ret
+lib_carry_set:
+    mov b, 1
+    ret
+
+lib_minus_one:
+    mov a, 0xFF
+    mov b, 0xFF
+    ret
+
+; --- I/O ports and interrupts --------------------------------------------
+
+; unsigned char in(unsigned char port)
+_in:
+    lod d, [sp + 2]
+    in b, d
+    ret
+
+; void out(unsigned char port, unsigned char value)
+_out:
+    lod d, [sp + 2]
+    lod a, [sp + 3]
+    out d, a
+    ret
+
+_interrupts_off:
+    cli
+    ret
+
+_interrupts_on:
+    sti
+    ret
+
+_wait_interrupt:
+    hlt
+    ret
+
+; --- Monitor -------------------------------------------------------------
+
+_screen_text_mode:
+    cal screen_text_mode
+    jmp lib_carry
+
+_screen_pixel_mode:
+    cal screen_pixel_mode
+    jmp lib_carry
+
+; int screen_putc(char c, unsigned char x, unsigned char y, unsigned char colors)
+_screen_putc:
+    lod a, [sp + 2]
+    lod x, [sp + 3]
+    lod y, [sp + 4]
+    lod b, [sp + 5]
+    cal screen_putc
+    jmp lib_carry
+
+; int screen_getc(unsigned char x, unsigned char y): colors * 256 + character
+_screen_getc:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal screen_getc             ; a = character, b = colors
+    jmc lib_minus_one
+    mov c, a
+    mov a, b
+    mov b, c
+    ret
+
+; unsigned screen_write(const char *text, unsigned length,
+;                       unsigned char x, unsigned char y, unsigned char colors)
+; Returns the characters left ([c:d]: 0 when all were drawn).
+_screen_write:
+    lod i, [sp + 2]
+    lod j, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    lod x, [sp + 6]
+    lod y, [sp + 7]
+    lod b, [sp + 8]
+    cal screen_write
+    mov a, c
+    mov b, d
+    ret
+
+; int screen_clear(unsigned char colors)
+_screen_clear:
+    lod b, [sp + 2]
+    cal screen_clear
+    jmp lib_carry
+
+; int screen_set_bg(unsigned char color)
+_screen_set_bg:
+    lod a, [sp + 2]
+    cal screen_set_bg
+    jmp lib_carry
+
+; int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color)
+_screen_put_pixel:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod b, [sp + 4]
+    cal screen_put_pixel
+    jmp lib_carry
+
+; int screen_get_pixel(unsigned char x, unsigned char y)
+_screen_get_pixel:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal screen_get_pixel        ; b = color
+    jmc lib_minus_one
+    mov a, 0
+    ret
+
+; int screen_fill(unsigned char color)
+_screen_fill:
+    lod b, [sp + 2]
+    cal screen_fill
+    jmp lib_carry
+
+; --- Terminal ------------------------------------------------------------
+
+.data lib_term_ready 0          ; 1 once the terminal has been cleared
+
+; lib_term_start: the first time, switches to text mode and clears the
+; screen (nothing without a monitor: tried again next time).
+; Changes a, b.
+lib_term_start:
+    lod a, lib_term_ready
+    cmp a, 0
+    jme _term_clear
+    ret
+
+; void term_clear(void)
+_term_clear:
+    lod a, _monitor_port
+    cmp a, 0
+    jme lib_term_clear_end      ; no monitor
+    mov a, 1
+    str lib_term_ready, a
+    cal screen_text_mode
+    lod b, term_color
+    cal screen_clear
+    mov a, 0
+    str term_row, a
+    str term_col, a
+    cal term_kbd_install        ; keys are kept from now on
+    cal term_cursor_show
+lib_term_clear_end:
+    ret
+
+; void term_set_colors(unsigned char colors)
+_term_set_colors:
+    lod a, [sp + 2]
+    str term_color, a
+    ret
+
+; void term_prompt(void)
+_term_prompt:
+    cal lib_term_start
+    cal term_prompt
+    ret
+
+; char *term_readline(void)
+_term_readline:
+    cal lib_term_start
+    cal term_readline
+    mov a, term_line.msb
+    mov b, term_line.lsb
+    ret
+
+; void term_update(void)
+_term_update:
+    cal term_update
+    ret
+
+; --- Real-time clock -----------------------------------------------------
+; struct rtc_time: year, month, day, hour, minute, second (one byte each),
+; in the order of the RTC ports 0-5.
+
+; int rtc_get(struct rtc_time *time)
+_rtc_get:
+    lod d, _rtc_port
+    cmp d, 0
+    jme lib_rtc_none
+    lod x, [sp + 2]             ; [x:y] = time
+    lod y, [sp + 3]
+    add d, 6                    ; CMD
+    mov a, 1
+    out d, a                    ; GET_TIME: the date and time on ports 0-5
+    sub d, 6
+    in a, d
+    str [x:y], a                ; year
+    inc d
+    in a, d
+    str [x:y + 1], a            ; month
+    inc d
+    in a, d
+    str [x:y + 2], a            ; day
+    inc d
+    in a, d
+    str [x:y + 3], a            ; hour
+    inc d
+    in a, d
+    str [x:y + 4], a            ; minute
+    inc d
+    in a, d
+    str [x:y + 5], a            ; second
+    mov a, 0
+    mov b, 0
+    ret
+lib_rtc_none:
+    mov a, 0
+    mov b, 1
+    ret
+
+; int rtc_set(const struct rtc_time *time)
+_rtc_set:
+    lod d, _rtc_port
+    cmp d, 0
+    jme lib_rtc_none
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod a, [x:y]
+    out d, a                    ; year
+    inc d
+    lod a, [x:y + 1]
+    out d, a                    ; month
+    inc d
+    lod a, [x:y + 2]
+    out d, a                    ; day
+    inc d
+    lod a, [x:y + 3]
+    out d, a                    ; hour
+    inc d
+    lod a, [x:y + 4]
+    out d, a                    ; minute
+    inc d
+    lod a, [x:y + 5]
+    out d, a                    ; second
+    inc d
+    mov a, 2
+    out d, a                    ; CMD = SET_TIME
+    sub d, 6
+    in b, d                     ; YEAR = 1 when set, 0 when refused
+    xor b, 1                    ; C result: 0 when set, 1 when refused
+    mov a, 0
+    ret
+
+; --- Keyboard ------------------------------------------------------------
+
+; int key_event(void): the oldest event in the terminal's key queue
+_key_event:
+    cal term_kbd_install
+    lod b, term_kbd_tail
+    lod a, term_kbd_head
+    cmp a, b
+    jme lib_minus_one           ; queue empty
+    mov x, term_kbd_queue.msb
+    lod a, [x:b + term_kbd_queue.lsb]
+    inc b
+    and b, 0x0F
+    str term_kbd_tail, b
+    mov b, a
+    mov a, 0
+    ret

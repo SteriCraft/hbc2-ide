@@ -61,7 +61,7 @@ Nothing stops the stack from growing into the `.bss` area.
 | Thing | Name in assembly | Example |
 |---|---|---|
 | C function or global variable | `_` + C name | `main` → `_main` |
-| `static` function or variable | `_S<unit>_` + C name | `static int count;` in the 2nd file → `_S2_count` |
+| `static` function or variable | `__S<unit>_` + C name | `static int count;` in the 2nd file → `__S2_count` |
 | compiler label | `__L<unit>_<n><tail>` | `__L1_12_r` |
 | string literal | `__T<unit>_<n>` | `__T1_3` |
 | switch table | `__W<unit>_<n>` | `__W1_1` |
@@ -190,32 +190,64 @@ Constants (`const`) are ordinary variables: everything is in RAM.
 
 ## 7. Building several files
 
-Each C file is compiled to its own `.has` file. The build then assembles them
-together with the startup code, the runtime and the project's assembly files,
-as one program. Unused functions are kept: a linker that removes them may come
-later.
+A program is a list of C files (`.c`) and assembly files (`.has`)
+(`hbc2_cc::build_program`). Each C file is compiled to its own `.has` file,
+with its unit number (1, 2, … in the order of the list). One `main.has`
+then includes, in this order: the startup code, the runtime, the C library
+(`compiler/lib`, section 13) and the files of the list (the assembly files
+as they are), and is assembled as one program. Unused functions are kept:
+a linker that removes them comes later.
+
+* **`static` names.** The compiler writes a `; export _name` line before
+  each name that is not `static`. After compiling a file, the driver
+  renames every `_name` the file defines (label, `.data`, `.bss`) without
+  that line to `__S<unit>_name`, everywhere in the file (not in strings or
+  comments). So each file keeps its own `static` names, and a `static`
+  name can't be reached from another file. `static` variables inside a
+  function are `__T<unit>_<n>` labels already.
+* **`#include "x.h"`** looks in the folder of the C file first, then in the
+  library headers.
+* **Errors.** A name defined twice (two files, or a file and the library)
+  and a name used but defined nowhere are reported by the assembler; the
+  driver gives the C file instead of its compiled file, and the C name:
+  `b.c: error: 'n' is already defined (a.c)`,
+  `main.c: error: not defined: 'f'`. Two `int n;` without a value in two
+  files are a duplicate too (no "common" variables).
+* Defining a library function in the program (`puts`) is a duplicate for
+  now (the linker could let the program's function replace the library's).
 
 ## 8. Startup and exit
 
-The startup code is at `$0x0000`:
+The startup code is at `$0x0000` (`compiler/runtime/crt0.has`):
 
 ```
 _start:
     wsp $0xFE00                 ; stack (the reset value, set again for a restart)
     ...                         ; clears the .bss area (__bss_start to __bss_end)
+    ...                         ; waits for the devices to be detected
     cal _main
 __exit:                         ; [a:b] = main's return value, or exit's argument
     hlt
     jmp __exit
 ```
 
-* Interrupts stay as the reset leaves them: enabled. The interrupt vector
-  table entries come from the project's assembly files (fixed `.data16` at
-  `$0xFE00 + 2n`), as in assembly-only projects.
+* Interrupts stay as the reset leaves them: enabled.
+* **Device detection:** `crt0.has` includes `devices.has`, a copy of the
+  port-0 handler of the project template, with its vector at `$0xFE00`. It
+  stores each device's first port in `monitor_port`, `rtc_port`,
+  `keyboard_port`, `eeprom_port` (`hbc2.h`; 0 = not plugged), and points the
+  RTC and keyboard vectors to a handler that does nothing. The interrupts of
+  the devices plugged at power-on are already waiting in the IOD queue: the
+  CPU takes them between the first instructions, so `crt0` only waits a few
+  loop turns (one was enough in tests; it waits 32) before calling `main`.
+  A C program therefore must not set the port-0 vector itself (no
+  `interruptHandler.has` of the project template).
+* Other interrupt vectors come from the project's assembly files (fixed
+  `.data16` at `$0xFE00 + 2n`, or written at run time).
 * `hlt` waits for an interrupt (it enables them), so `__exit` loops: once
   the program has finished, only the interrupt handlers run.
-* `exit(n)` puts `n` in `[a:b]` and jumps to `__exit`. Tests read the result
-  there.
+* `exit(n)` (`stdlib.h`) puts `n` in `[a:b]`, resets SP and jumps to
+  `__exit`. Tests read the result there.
 
 ## 9. Assembly functions for C (wrappers)
 
@@ -328,3 +360,12 @@ Other limits:
   makes it a `long`): `x / 40000` is an unsigned division. Write `40000L`
   for a `long`.
 * A cast to `(void)` to drop a result is refused.
+
+## 13. The C library
+
+`compiler/lib`: headers in `include` (always on the include path), the
+assembly in `lib.has`, C functions in `src`. See `compiler/lib/README.md`.
+Library names follow section 4: C functions are `_name`; the inner labels
+of the assembly start with `lib_`, `screen_`, `term_` or `devices_`:
+they don't start with `_`, so they are not C names and can't clash with
+the program's names.

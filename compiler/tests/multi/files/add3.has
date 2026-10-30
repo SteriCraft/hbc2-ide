@@ -1,0 +1,12 @@
+; add3.has - a C function written in assembly (see shared.h):
+;     int add3(int a, int b, int c);
+; Arguments: a at [sp + 2] (high byte) and [sp + 3], b at [sp + 4], c at [sp + 6].
+
+_add3:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    add b, [sp + 5]
+    adc a, [sp + 4]
+    add b, [sp + 7]
+    adc a, [sp + 6]
+    ret
