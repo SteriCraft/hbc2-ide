@@ -1,0 +1,18 @@
+; The key-pressed handler of main.c: i = the scan code. It saves every
+; register, since C code changes them all (compiler/ABI.md, section 10).
+_key_pressed:
+    psf
+    psh a, b, c, d, j, x, y     ; i is restored by irt
+    psh i                       ; argument: the scan code
+    cal _on_key                 ; void on_key(unsigned char code)
+    asp 1
+    pop a, b, c, d, j, x, y
+    pof
+    irt
+
+; void start_typing(void): the test harness types the keys once
+; term_kbd_ready is 1 (it is set by the terminal, not used here).
+_start_typing:
+    mov a, 1
+    str term_kbd_ready, a
+    ret

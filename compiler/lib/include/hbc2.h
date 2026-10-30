@@ -25,6 +25,18 @@ void interrupts_off(void);                      /* cli */
 void interrupts_on(void);                       /* sti */
 void wait_interrupt(void);  /* hlt: sleeps until the next interrupt (enables them) */
 
+/* Points the interrupt vector of port to handler, with interrupts off
+   while it is written. Returns 0, or 1 for port 0 (device detection, kept
+   by the startup code). The handler is an assembly routine that ends with
+   irt, declared in C as "void name(void);" (label _name): see
+   compiler/ABI.md, section 10. Not a C function: those end with ret.
+   Call it from main, once the device is detected (rtc_port etc. not 0):
+   until then the startup code points the RTC and keyboard vectors to a
+   handler that does nothing. The keyboard has 2 ports: keyboard_port for
+   keys pressed, keyboard_port + 1 for keys released. The terminal and
+   key_event install their own keyboard handlers. */
+int set_vector(unsigned char port, void (*handler)(void));
+
 /* --- Monitor ---------------------------------------------------------
    Text mode: 42 columns x 24 rows, characters 0x20 (space) to 0x7E (~).
    Pixel mode: 256 x 192 pixels. Each mode has its own picture; the

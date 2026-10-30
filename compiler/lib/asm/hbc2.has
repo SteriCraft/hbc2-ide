@@ -48,6 +48,30 @@ _wait_interrupt:
     hlt
     ret
 
+; int set_vector(unsigned char port, void (*handler)(void))
+_set_vector:
+    lod a, [sp + 2]             ; port
+    cmp a, 0
+    jme lib_vector_refused      ; port 0: device detection (devices.has)
+    mov x, 0xFE
+    mov y, a
+    shl y                       ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                    ; [x:y] = vector of the port = $0xFE00 + 2 * port
+    lod a, [sp + 3]             ; handler, big-endian
+    lod b, [sp + 4]
+    psf
+    cli                         ; no interrupt while the vector is half written
+    str [x:y], a
+    str [x:y + 1], b
+    pof                         ; interrupts back as they were
+    mov a, 0
+    mov b, 0
+    ret
+lib_vector_refused:
+    mov a, 0
+    mov b, 1
+    ret
+
 ; --- Monitor -------------------------------------------------------------
 
 _screen_text_mode:

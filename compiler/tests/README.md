@@ -22,7 +22,8 @@ of each program's code and the number of instructions it ran.
   that the other programs reach rarely.
 * `multi/<name>/`: a program of several files: its `.c` and `.has` files,
   built together in name order (`main.c` says what `main` returns, and
-  `main.screen` / `main.keys` go next to it). `multi/files`: names shared
+  `main.screen` / `main.keys` go next to it). `multi/vector`: `set_vector`
+  with a key handler in assembly that calls C. `multi/files`: names shared
   through a header, the same `static` names in two files, a static
   function called through a pointer from the other file, a function
   written in assembly. Builds that must fail (a name defined twice, a name

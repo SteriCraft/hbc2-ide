@@ -242,8 +242,11 @@ __exit:                         ; [a:b] = main's return value, or exit's argumen
   loop turns (one was enough in tests; it waits 32) before calling `main`.
   A C program therefore must not set the port-0 vector itself (no
   `interruptHandler.has` of the project template).
-* Other interrupt vectors come from the project's assembly files (fixed
-  `.data16` at `$0xFE00 + 2n`, or written at run time).
+* **Other interrupt vectors** are set by the program while it runs, with
+  `set_vector(port, handler)` (`hbc2.h`), from `main`. The RTC and keyboard
+  vectors can't be fixed in an assembly file (`.data` at `$0xFE00 + 2n`):
+  their ports are given by the IOD at power-on, and detection points them
+  to the handler that does nothing. See section 10.
 * `hlt` waits for an interrupt (it enables them), so `__exit` loops: once
   the program has finished, only the interrupt handlers run.
 * `exit(n)` (`stdlib.h`) puts `n` in `[a:b]`, resets SP and jumps to
@@ -295,6 +298,22 @@ tick:
     pof
     irt
 ```
+
+The handler is installed from C, once the device is detected:
+
+```c
+void tick(void);                /* the handler above, label _tick */
+
+int main(void)
+{
+    set_vector(rtc_port, tick); /* 0, or 1 for port 0 */
+    ...
+}
+```
+
+`set_vector` writes the vector at `$0xFE00 + 2 * port` with interrupts off.
+Port 0 (device detection) is refused. A C function can't be a handler: it
+ends with `ret`, not `irt`. Test: `tests/multi/vector`.
 
 The runtime helpers keep no state in global variables, so compiled code can
 be interrupted anywhere. C variables shared with a handler should be
