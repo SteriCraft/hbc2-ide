@@ -1,9 +1,9 @@
 # HBC-2 (Rust rewrite)
 
 New implementation of the HBC-2 emulator and IDE. The reference for its
-behaviour is the HBC-2 Instruction Manual and the peripheral manuals in
-`../Documentation/`. The old Qt IDE in `../old_code_archive/` stays as a reference
-until this one does everything it did.
+behaviour is the HBC-2 Instruction Manual and the peripheral references in
+`../Documentation/` (`Peripherals/README.md` for the devices). The old Qt IDE
+is in the git history.
 
 ## Crates
 

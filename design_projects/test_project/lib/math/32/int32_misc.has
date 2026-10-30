@@ -1,0 +1,114 @@
+; ------------------------------------------------------------
+; neg32: 32-bit value at [x:y] = -value (two's complement)
+; flags: C = overflow (the input was -2147483648, which stays the same),
+;        Z = result is 0
+; ------------------------------------------------------------
+neg32:
+    psh a, b, c, d, i
+    cal load32
+    mov i, 0                ; [a:b:c:d] = 0 - [a:b:c:d]
+    sub i, d
+    mov d, i
+    mov i, 0
+    sbb i, c
+    mov c, i
+    mov i, 0
+    sbb i, b
+    mov b, i
+    mov i, 0
+    sbb i, a
+    mov a, i
+    cal store32
+    clc                     ; overflow only for 0x80000000
+    cmp a, 0x80
+    jme neg32_low
+    jmp neg32_z
+neg32_low:
+    mov i, b
+    or i, c
+    or i, d
+    jmz neg32_ovf
+    jmp neg32_z
+neg32_ovf:
+    stc
+neg32_z:
+    mov i, a                ; Z = all bytes are 0, C untouched
+    or i, b
+    or i, c
+    or i, d
+    pop a, b, c, d, i
+    ret
+
+; ------------------------------------------------------------
+; abs32: 32-bit value at [x:y] = |value| (the value is signed)
+; flags: C = overflow (the input was -2147483648, which stays 0x80000000),
+;        Z = result is 0
+; ------------------------------------------------------------
+abs32:
+    psh a, b, c, d
+    lod a, [x:y]
+    and a, 0x80             ; sign bit (in the MSB)
+    jmz abs32_pos
+    pop a, b, c, d
+    jmp neg32               ; negative: neg32 returns to our caller
+abs32_pos:
+    cal load32
+    or a, b                 ; Z
+    or a, c
+    or a, d
+    clc
+    pop a, b, c, d
+    ret
+
+; ------------------------------------------------------------
+; min32s: value at [x:y] = the smaller of the values at [x:y] and [i:j]
+; max32s: value at [x:y] = the larger of the values at [x:y] and [i:j]
+; (signed)
+; ------------------------------------------------------------
+; Same idea as min16s, but only the MSBs are compared with flipped sign
+; bits, in registers, so neither value in memory is modified. If the MSBs
+; are equal, the signs are equal and the unsigned routine decides.
+min32s:
+    psh a, b
+    lod a, [x:y]
+    xor a, 0x80
+    lod b, [i:j]
+    xor b, 0x80
+    cmp a, b
+    pop a, b                ; pop leaves S, E and F alone
+    jme min32               ; same MSB: min32 returns to our caller
+    jmf min32s_keep
+    cal copy32
+min32s_keep:
+    ret
+
+max32s:
+    psh a, b
+    lod a, [x:y]
+    xor a, 0x80
+    lod b, [i:j]
+    xor b, 0x80
+    cmp a, b
+    pop a, b
+    jme max32               ; same MSB: max32 returns to our caller
+    jms max32s_keep
+    cal copy32
+max32s_keep:
+    ret
+
+; ------------------------------------------------------------
+; sext16: 32-bit value at [x:y] = [a:b] sign-extended
+;         (0x8000 -> 0xFFFF8000)
+; ------------------------------------------------------------
+sext16:
+    psh a, b, c, d
+    mov c, a                ; low half = [a:b]
+    mov d, b
+    and a, 0x80
+    jmz sext16_store        ; positive: high half = 0
+    mov a, 0xFF
+sext16_store:
+    mov b, a
+    cal store32
+    pop a, b, c, d
+    ret

@@ -1,0 +1,186 @@
+; ============================================================
+; Bit counting
+; ============================================================
+; popcnt: number of 1 bits
+; lzcnt:  number of 0 bits above the highest 1 (leading zeros)
+; tzcnt:  number of 0 bits below the lowest 1 (trailing zeros)
+; 8-bit value in a, 16-bit value in [a:b], 32-bit value at [x:y].
+; The result goes in a (a value of 0 gives the width for lzcnt / tzcnt).
+; flags: Z = result is 0. Every other register is restored.
+
+; ------------------------------------------------------------
+; popcnt8 / popcnt16 / popcnt32
+; ------------------------------------------------------------
+; Each bit is shifted out into C and added to the count.
+popcnt8:
+    psh d
+    mov d, a
+    mov a, 0
+    cal popcnt_byte
+    pop d
+    or a, 0
+    ret
+
+popcnt16:
+    psh d
+    mov d, a
+    mov a, 0
+    cal popcnt_byte
+    mov d, b
+    cal popcnt_byte
+    pop d
+    or a, 0
+    ret
+
+popcnt32:
+    psh b, d, x, y
+    mov a, 0
+    mov b, 4                ; 4 bytes
+popcnt32_loop:
+    lod d, [x:y]
+    cal popcnt_byte
+    inc y
+    adc x, 0
+    dec b
+    jmz bitcnt32_end
+    jmp popcnt32_loop
+
+; a += number of 1 bits in d. Changes d.
+popcnt_byte:
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    add d, d
+    adc a, 0
+    ret
+
+; ------------------------------------------------------------
+; lzcnt8 / lzcnt16 / lzcnt32
+; ------------------------------------------------------------
+; Whole 0 bytes count 8 each, from the top. In the first byte that is not
+; 0, bits are shifted out to the left until a 1 comes out.
+lzcnt8:
+    psh d
+    mov d, a
+    mov a, 8
+    or d, 0
+    jmz lzcnt8_end          ; 0: 8 leading zeros
+    mov a, 0
+    cal lzcnt_byte
+lzcnt8_end:
+    pop d
+    or a, 0
+    ret
+
+lzcnt16:
+    or a, 0
+    jmz lzcnt16_lsb
+    jmp lzcnt8              ; the MSB decides
+lzcnt16_lsb:
+    mov a, b                ; MSB = 0: 8 + leading zeros of the LSB
+    cal lzcnt8
+    add a, 8                ; Z = 0, right since the result is not 0
+    ret
+
+lzcnt32:
+    psh b, d, x, y
+    mov a, 0
+    mov b, 4
+lzcnt32_loop:               ; from the MSB
+    lod d, [x:y]
+    or d, 0
+    jmz lzcnt32_zero
+    cal lzcnt_byte
+    jmp bitcnt32_end
+lzcnt32_zero:
+    add a, 8
+    inc y
+    adc x, 0
+    dec b
+    jmz bitcnt32_end        ; value 0: a = 32
+    jmp lzcnt32_loop
+
+; a += number of 0 bits above the highest 1 of d (d must not be 0).
+; Changes d.
+lzcnt_byte:
+    add d, d                ; C = top bit
+    jmc lzcnt_byte_end
+    inc a
+    jmp lzcnt_byte
+lzcnt_byte_end:
+    ret
+
+; ------------------------------------------------------------
+; tzcnt8 / tzcnt16 / tzcnt32
+; ------------------------------------------------------------
+; Same from the bottom: bits are shifted out to the right until a 1 comes
+; out.
+tzcnt8:
+    psh d
+    mov d, a
+    mov a, 8
+    or d, 0
+    jmz tzcnt8_end          ; 0: 8 trailing zeros
+    mov a, 0
+    cal tzcnt_byte
+tzcnt8_end:
+    pop d
+    or a, 0
+    ret
+
+tzcnt16:
+    or b, 0
+    jmz tzcnt16_msb
+    mov a, b                ; the LSB decides
+    jmp tzcnt8
+tzcnt16_msb:
+    cal tzcnt8              ; LSB = 0: 8 + trailing zeros of the MSB
+    add a, 8
+    ret
+
+tzcnt32:
+    psh b, d, x, y
+    add y, 3                ; from the LSB
+    adc x, 0
+    mov a, 0
+    mov b, 4
+tzcnt32_loop:
+    lod d, [x:y]
+    or d, 0
+    jmz tzcnt32_zero
+    cal tzcnt_byte
+    jmp bitcnt32_end
+tzcnt32_zero:
+    add a, 8
+    dec y
+    sbb x, 0
+    dec b
+    jmz bitcnt32_end        ; value 0: a = 32
+    jmp tzcnt32_loop
+
+; a += number of 0 bits below the lowest 1 of d (d must not be 0).
+; Changes d. asr copies the top bit down, which is fine: a 1 comes out
+; once the lowest 1 has been reached, never before.
+tzcnt_byte:
+    asr d                   ; C = bit 0
+    jmc tzcnt_byte_end
+    inc a
+    jmp tzcnt_byte
+tzcnt_byte_end:
+    ret
+
+bitcnt32_end:
+    or a, 0                 ; Z = result is 0
+    pop b, d, x, y
+    ret

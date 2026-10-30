@@ -1,0 +1,305 @@
+; ------------------------------------------------------------
+; and32: 32-bit value at [x:y] = [x:y] AND [i:j]
+; or32:  32-bit value at [x:y] = [x:y] OR  [i:j]
+; xor32: 32-bit value at [x:y] = [x:y] XOR [i:j]
+; not32: 32-bit value at [x:y] = NOT [x:y]
+; flags: Z = result is 0, N = bit 31 of the result (C is changed)
+; ------------------------------------------------------------
+; Byte by byte from the LSB, so the MSB comes last: a = MSB of the
+; result and b = all result bytes ORed together, for the flags.
+
+and32:
+    psh a, b, c, d, i, j, x, y
+    cal logic32_start
+and32_loop:
+    lod a, [x:y]
+    lod c, [i:j]
+    and a, c
+    cal logic32_next
+    jmz logic32_end
+    jmp and32_loop
+
+or32:
+    psh a, b, c, d, i, j, x, y
+    cal logic32_start
+or32_loop:
+    lod a, [x:y]
+    lod c, [i:j]
+    or a, c
+    cal logic32_next
+    jmz logic32_end
+    jmp or32_loop
+
+xor32:
+    psh a, b, c, d, i, j, x, y
+    cal logic32_start
+xor32_loop:
+    lod a, [x:y]
+    lod c, [i:j]
+    xor a, c
+    cal logic32_next
+    jmz logic32_end
+    jmp xor32_loop
+
+not32:
+    psh a, b, c, d, i, j, x, y
+    cal logic32_start
+not32_loop:
+    lod a, [x:y]
+    not a
+    cal logic32_next
+    jmz logic32_end
+    jmp not32_loop
+
+; [x:y] and [i:j] = their LSB, b = 0, d = 4 bytes to do.
+logic32_start:
+    add y, 3
+    adc x, 0
+    add j, 3
+    adc i, 0
+    mov b, 0
+    mov d, 4
+    ret
+
+; Stores result byte a, adds it to b, moves both pointers to the byte
+; before. Z = all 4 bytes done.
+logic32_next:
+    str [x:y], a
+    or b, a
+    dec y
+    sbb x, 0
+    dec j
+    sbb i, 0
+    dec d
+    ret
+
+logic32_end:                ; a = MSB of the result, b = all bytes ORed
+    or b, 0
+    jmz logic32_flags       ; result 0: Z = 1, N = 0
+    or a, 0                 ; N = bit 31
+    clz                     ; result is not 0 (even if its MSB is)
+logic32_flags:
+    pop a, b, c, d, i, j, x, y   ; pop leaves the flags alone
+    ret
+
+; ------------------------------------------------------------
+; shl32: 32-bit value at [x:y] = value << 1
+; flags: C = bit shifted out
+; ------------------------------------------------------------
+shl32:
+    psh a, x, y
+    add y, 3                ; [x:y] = LSB
+    adc x, 0
+    lod a, [x:y]            ; byte 3 (LSB)
+    add a, a
+    str [x:y], a
+    psf                     ; keep the carry while moving the pointer
+    dec y
+    sbb x, 0
+    pof
+    lod a, [x:y]            ; byte 2
+    adc a, a
+    str [x:y], a
+    psf
+    dec y
+    sbb x, 0
+    pof
+    lod a, [x:y]            ; byte 1
+    adc a, a
+    str [x:y], a
+    psf
+    dec y
+    sbb x, 0
+    pof
+    lod a, [x:y]            ; byte 0 (MSB)
+    adc a, a                ; C = bit shifted out
+    str [x:y], a
+    pop a, x, y
+    ret
+
+; ------------------------------------------------------------
+; shr32: 32-bit value at [x:y] = value >> 1 (unsigned)
+; asr32: 32-bit value at [x:y] = value >> 1 (signed)
+; flags: C = bit shifted out
+; ------------------------------------------------------------
+shr32:
+    psh a, b, c, d, x, y
+    cal shr32_load
+    asr a
+    and a, 0x7F
+    jmp shr32_b
+asr32:
+    psh a, b, c, d, x, y
+    cal shr32_load
+    asr a
+shr32_b:
+    jmc shr32_b1
+    asr b
+    and b, 0x7F
+    jmp shr32_c
+shr32_b1:
+    asr b
+    or b, 0x80
+shr32_c:
+    jmc shr32_c1
+    asr c
+    and c, 0x7F
+    jmp shr32_d
+shr32_c1:
+    asr c
+    or c, 0x80
+shr32_d:
+    jmc shr32_d1
+    asr d
+    and d, 0x7F
+    jmp shr32_store
+shr32_d1:
+    asr d
+    or d, 0x80
+shr32_store:                ; [x:y] is on the LSB
+    psf                     ; keep C while moving the pointer
+    str [x:y], d
+    dec y
+    sbb x, 0
+    str [x:y], c
+    dec y
+    sbb x, 0
+    str [x:y], b
+    dec y
+    sbb x, 0
+    str [x:y], a
+    pof
+    pop a, b, c, d, x, y    ; pop leaves the flags alone
+    ret
+
+; [a:b:c:d] = the 4 bytes at [x:y], [x:y] = address of the LSB.
+shr32_load:
+    lod a, [x:y]
+    inc y
+    adc x, 0
+    lod b, [x:y]
+    inc y
+    adc x, 0
+    lod c, [x:y]
+    inc y
+    adc x, 0
+    lod d, [x:y]
+    ret
+
+; ------------------------------------------------------------
+; shl32n: 32-bit value at [x:y] = value << c
+; shr32n: 32-bit value at [x:y] = value >> c (unsigned)
+; asr32n: 32-bit value at [x:y] = value >> c (signed)
+; flags: C = last bit shifted out (0 when c = 0)
+; ------------------------------------------------------------
+; Same method on [a:b:c:d], with the count in i.
+shl32n:
+    psh a, b, c, d, i, j, x, y
+    cal shift32n_start
+shl32n_bytes:
+    cmp i, 8
+    jmf shl32n_bits
+    sub i, 8
+    asr a                   ; C = bit 0 of a
+    mov a, b
+    mov b, c
+    mov c, d
+    mov d, 0
+    jmp shl32n_bytes
+shl32n_bits:
+    or i, 0
+    jmz shift32n_end
+    dec i
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    jmp shl32n_bits
+
+asr32n:
+    psh a, b, c, d, i, j, x, y
+    cal shift32n_start
+    mov j, 0                ; j = byte coming in at the top
+    or a, 0
+    jmn asr32n_neg
+    jmp shr32n_go
+asr32n_neg:
+    mov j, 0xFF
+    jmp shr32n_go
+shr32n:
+    psh a, b, c, d, i, j, x, y
+    cal shift32n_start
+    mov j, 0
+shr32n_go:                  ; C = 0 from shift32n_start
+shr32n_bytes:
+    cmp i, 8
+    jmf shr32n_bits
+    sub i, 8
+    shl d                   ; C = bit 7 of d
+    mov d, c
+    mov c, b
+    mov b, a
+    mov a, j
+    jmp shr32n_bytes
+shr32n_bits:
+    or i, 0
+    jmz shift32n_end
+    dec i
+    asr a                   ; C = bit 0 of a, sign bit kept
+    or j, 0
+    jmz shr32n_zero
+    jmp shr32n_rest
+shr32n_zero:
+    and a, 0x7F             ; unsigned: 0 comes in at the top
+shr32n_rest:                ; carries C down through b, c, d
+    jmc shr32n_b1
+    asr b
+    and b, 0x7F
+    jmp shr32n_c
+shr32n_b1:
+    asr b
+    or b, 0x80
+shr32n_c:
+    jmc shr32n_c1
+    asr c
+    and c, 0x7F
+    jmp shr32n_d
+shr32n_c1:
+    asr c
+    or c, 0x80
+shr32n_d:
+    jmc shr32n_d1
+    asr d
+    and d, 0x7F
+    jmp shr32n_bits
+shr32n_d1:
+    asr d
+    or d, 0x80
+    jmp shr32n_bits
+
+; i = min(c, 33), [a:b:c:d] = value, [x:y] = its LSB, C = 0.
+shift32n_start:
+    mov i, c
+    cmp i, 34
+    jmf shift32n_start_ok
+    mov i, 33               ; past 33 the result and C no longer change
+shift32n_start_ok:
+    cal shr32_load
+    clc
+    ret
+
+shift32n_end:               ; [x:y] is on the LSB
+    psf                     ; keep C while moving the pointer
+    str [x:y], d
+    dec y
+    sbb x, 0
+    str [x:y], c
+    dec y
+    sbb x, 0
+    str [x:y], b
+    dec y
+    sbb x, 0
+    str [x:y], a
+    pof
+    pop a, b, c, d, i, j, x, y
+    ret

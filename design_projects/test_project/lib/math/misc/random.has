@@ -1,0 +1,181 @@
+; ============================================================
+; Pseudo-random numbers: xorshift32 (George Marsaglia, 2003)
+;
+; The state is a 32-bit number, never 0. Each step mixes it with three
+; shift-and-xor operations:
+;   s ^= s << 13
+;   s ^= s >> 17
+;   s ^= s << 5
+; It goes through all 4294967295 non-zero values before repeating.
+; Good for games and simulations, not for cryptography.
+;
+; The state is shared by rand8, rand16 and rand32. Not reentrant: an
+; interrupt handler must not use them while the main program does.
+; ============================================================
+.data32 rand_s 2463534242       ; state (any non-zero start value)
+
+; ------------------------------------------------------------
+; srand: state = 32-bit value at [x:y] (0 is replaced by 1)
+; ------------------------------------------------------------
+; The same seed always gives the same sequence of numbers.
+srand:
+    psh a, b, c, d
+    cal load32
+    psh a
+    or a, b
+    or a, c
+    or a, d
+    pop a                   ; pop leaves Z alone
+    jmz srand_zero
+    jmp srand_store
+srand_zero:
+    mov d, 1
+srand_store:
+    str rand_s, a
+    str rand_s + 1, b
+    str rand_s + 2, c
+    str rand_s + 3, d
+    pop a, b, c, d
+    ret
+
+; ------------------------------------------------------------
+; srand_rtc: seeds from the real-time clock (d = its first port)
+; ------------------------------------------------------------
+; State = DAY : HOUR : MINUTE : SECOND (never 0: DAY >= 1), mixed by
+; 8 steps so that seeds one second apart give unrelated numbers.
+; Different every second.
+srand_rtc:
+    psh a, b, c, d, i
+    mov i, d
+    add i, 6                ; CMD port
+    mov a, 1                ; GET_TIME
+    out i, a
+    mov i, d
+    add i, 2
+    in a, i                 ; DAY
+    inc i
+    in b, i                 ; HOUR
+    inc i
+    in c, i                 ; MINUTE
+    inc i
+    in d, i                 ; SECOND
+    str rand_s, a
+    str rand_s + 1, b
+    str rand_s + 2, c
+    str rand_s + 3, d
+    mov i, 8
+srand_rtc_mix:
+    cal rand_step
+    dec i
+    jmz srand_rtc_end
+    jmp srand_rtc_mix
+srand_rtc_end:
+    pop a, b, c, d, i
+    ret
+
+; ------------------------------------------------------------
+; rand8: a = random 8-bit number (0 to 255)
+; rand16: [a:b] = random 16-bit number (0 to 65535)
+; rand32: 32-bit value at [x:y] = random 32-bit number
+; ------------------------------------------------------------
+; Each one takes one step and returns the top bits of the new state.
+rand8:
+    psh b, c, d
+    cal rand_step
+    pop b, c, d
+    ret
+
+rand16:
+    psh c, d
+    cal rand_step
+    pop c, d
+    ret
+
+rand32:
+    psh a, b, c, d
+    cal rand_step
+    cal store32
+    pop a, b, c, d
+    ret
+
+; ------------------------------------------------------------
+; rand_step: one xorshift32 step; [a:b:c:d] = new state
+; (used by the routines above; keeps i, j, x, y)
+; ------------------------------------------------------------
+rand_step:
+    psh i, j, x, y
+    lod a, rand_s
+    lod b, rand_s + 1
+    lod c, rand_s + 2
+    lod d, rand_s + 3
+    ; s ^= s << 13: s << 8 is [b:c:d:0], then 5 more shifts. Its low
+    ; byte stays 0, so only [i:j:x] = [b:c:d] << 5 is needed.
+    mov i, b
+    mov j, c
+    mov x, d
+    add x, x
+    adc j, j
+    adc i, i
+    add x, x
+    adc j, j
+    adc i, i
+    add x, x
+    adc j, j
+    adc i, i
+    add x, x
+    adc j, j
+    adc i, i
+    add x, x
+    adc j, j
+    adc i, i
+    xor a, i
+    xor b, j
+    xor c, x
+    ; s ^= s >> 17: s >> 16 is [0:0:a:b], then 1 more shift: c gets a >> 1,
+    ; d gets b >> 1 with bit 0 of a on top.
+    mov i, a
+    shr i
+    xor c, i
+    mov j, b
+    shr j
+    mov x, a
+    and x, 1
+    jmz rand_step_17
+    or j, 0x80
+rand_step_17:
+    xor d, j
+    ; s ^= s << 5
+    mov i, a
+    mov j, b
+    mov x, c
+    mov y, d
+    add y, y
+    adc x, x
+    adc j, j
+    adc i, i
+    add y, y
+    adc x, x
+    adc j, j
+    adc i, i
+    add y, y
+    adc x, x
+    adc j, j
+    adc i, i
+    add y, y
+    adc x, x
+    adc j, j
+    adc i, i
+    add y, y
+    adc x, x
+    adc j, j
+    adc i, i
+    xor a, i
+    xor b, j
+    xor c, x
+    xor d, y
+    str rand_s, a
+    str rand_s + 1, b
+    str rand_s + 2, c
+    str rand_s + 3, d
+    pop i, j, x, y
+    ret

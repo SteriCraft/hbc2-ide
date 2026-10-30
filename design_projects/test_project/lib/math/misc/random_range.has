@@ -1,0 +1,172 @@
+; ============================================================
+; Random numbers in a range
+; ============================================================
+; Uses rand8, rand16 and rand_step from rand.has, and copy32, sub32,
+; load32, add32 from math32.has.
+
+; Method: span = hi - lo, mask = the smallest 0b0..01..1 >= span. Take a
+; random number, keep the bits of the mask, and try again while it is
+; above span (fewer than 2 tries on average). Then add lo.
+; Every value of the range is equally likely: no "% n" bias, no division.
+; Not reentrant, like rand8 / rand16 / rand32.
+
+.data32 randr_span 0            ; randr32's work space
+.data32 randr_mask 0
+
+; ------------------------------------------------------------
+; randr8: a = random number from a to b (included), unsigned
+; flags: C = b < a (then nothing changes)
+; ------------------------------------------------------------
+randr8:
+    psh b, c, d, i, j, x
+    cmp b, a
+    jmf randr8_error
+    sub b, a                ; b = span
+    mov c, a                ; c = lo
+    mov i, 0
+    mov j, b
+    cal randr_mask8
+    mov d, j                ; d = mask
+randr8_loop:
+    cal rand8               ; a = random (keeps the other registers)
+    and a, d
+    cmp a, b
+    jms randr8_loop         ; above span: again
+    add a, c
+    pop b, c, d, i, j, x
+    clc
+    ret
+randr8_error:
+    pop b, c, d, i, j, x
+    stc
+    ret
+
+; ------------------------------------------------------------
+; randr16: [a:b] = random number from [a:b] to [c:d] (included), unsigned
+; flags: C = [c:d] < [a:b] (then nothing changes)
+; ------------------------------------------------------------
+randr16:
+    psh c, d, i, j, x, y
+    sub d, b                ; [c:d] = span
+    sbb c, a
+    jmc randr16_error
+    psh a, b                ; lo
+    mov i, 0
+    mov j, c
+    cal randr_mask8
+    mov y, j                ; mask MSB (randr_mask8 changes x)
+    mov j, d
+    cal randr_mask8
+    mov x, y
+    mov y, j                ; [x:y] = mask
+randr16_loop:
+    cal rand16              ; [a:b] = random (keeps the other registers)
+    and a, x
+    and b, y
+    cmp a, c                ; above span: again
+    jms randr16_loop
+    jmf randr16_ok
+    cmp b, d
+    jms randr16_loop
+randr16_ok:
+    pop i, j                ; [i:j] = lo
+    add b, j
+    adc a, i
+    pop c, d, i, j, x, y
+    clc
+    ret
+randr16_error:
+    pop c, d, i, j, x, y
+    stc
+    ret
+
+; ------------------------------------------------------------
+; randr32: 32-bit value at [x:y] = random number from the value at [x:y]
+;          to the value at [i:j] (included), unsigned
+; flags: C = [i:j] < [x:y] (then nothing changes)
+; ------------------------------------------------------------
+randr32:
+    psh a, b, c, d, i, j, x, y
+    psh x, y                ; lo
+    mov x, randr_span.msb
+    mov y, randr_span.lsb
+    cal copy32              ; span = hi
+    pop i, j
+    psh i, j                ; [i:j] -> lo
+    cal sub32               ; span = hi - lo, C = hi < lo
+    jmc randr32_error
+    cal load32              ; [a:b:c:d] = span
+    mov i, 0
+    mov j, a
+    cal randr_mask8
+    str randr_mask, j
+    mov j, b
+    cal randr_mask8
+    str randr_mask + 1, j
+    mov j, c
+    cal randr_mask8
+    str randr_mask + 2, j
+    mov j, d
+    cal randr_mask8
+    str randr_mask + 3, j
+    mov i, a                ; [i:j:x:y] = span
+    mov j, b
+    mov x, c
+    mov y, d
+randr32_loop:
+    cal rand_step           ; [a:b:c:d] = random (keeps i, j, x, y)
+    and a, randr_mask
+    and b, randr_mask + 1
+    and c, randr_mask + 2
+    and d, randr_mask + 3
+    cmp a, i                ; above span: again
+    jms randr32_loop
+    jmf randr32_ok
+    cmp b, j
+    jms randr32_loop
+    jmf randr32_ok
+    cmp c, x
+    jms randr32_loop
+    jmf randr32_ok
+    cmp d, y
+    jms randr32_loop
+randr32_ok:
+    str randr_span, a       ; reuses randr_span for the random number
+    str randr_span + 1, b
+    str randr_span + 2, c
+    str randr_span + 3, d
+    pop x, y                ; [x:y] -> lo
+    mov i, randr_span.msb
+    mov j, randr_span.lsb
+    cal add32               ; value = lo + random
+    pop a, b, c, d, i, j, x, y
+    clc
+    ret
+randr32_error:
+    pop x, y
+    pop a, b, c, d, i, j, x, y
+    stc
+    ret
+
+; One byte of the mask, from the MSB down: j = byte of span, i = 0 until
+; a byte that is not 0 has been seen (then 0xFF). Returns the mask byte
+; in j: 0xFF once i = 0xFF, else the smallest 0b0..01..1 >= j.
+; Changes x.
+randr_mask8:
+    or i, 0
+    jmz randr_mask8_first
+    mov j, 0xFF             ; below the highest 1: all bits
+    ret
+randr_mask8_first:
+    mov x, 0
+randr_mask8_loop:
+    cmp x, j
+    jme randr_mask8_end
+    jms randr_mask8_end
+    add x, x                ; x = x * 2 + 1
+    inc x
+    mov i, 0xFF
+    jmp randr_mask8_loop
+randr_mask8_end:
+    mov j, x
+    ret

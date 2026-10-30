@@ -1,0 +1,34 @@
+; === DEFINES ===
+
+
+; === VARIABLES ===
+.data you_typed "You typed: ", 0
+
+
+; === LIBRARIES ===
+.include "interruptHandler.has"
+.include "lib/monitor/terminal.has"
+
+.include "lib/math/math.has"
+
+
+; === PROGRAM ===
+; Keyboard test: each line typed is printed back.
+_start:
+    cal term_init               ; clears the screen, '>' and '_' on the top row
+
+_loop:
+    cal term_readline           ; waits for Enter: a = length, text in term_line
+    cmp a, 0
+    jme _next                   ; empty line: just a new prompt
+    mov i, you_typed.msb
+    mov j, you_typed.lsb
+    cal term_print
+    mov i, term_line.msb
+    mov j, term_line.lsb
+    cal term_print
+    mov a, '\n'
+    cal term_putc
+_next:
+    cal term_prompt
+    jmp _loop

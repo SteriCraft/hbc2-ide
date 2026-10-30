@@ -1,0 +1,165 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1420 1010" width="1420" height="1010" font-family="Liberation Serif, Times New Roman, serif"><defs><marker id="aE8241C" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#E8241C"/></marker><marker id="a2F6BFF" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#2F6BFF"/></marker><marker id="a16D916" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#16D916"/></marker><marker id="a000000" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="4" markerHeight="4" orient="auto"><path d="M0,0 L10,5 L0,10 z" fill="#000000"/></marker></defs><rect width="1420" height="1010" fill="white"/><rect x="50" y="80" width="1000" height="800" fill="white" stroke="black" stroke-width="4"/>
+<text x="70" y="862" font-size="19" text-anchor="start" fill="black">HBC-2 Central Processing Unit</text>
+<text x="270" y="112" font-size="17" text-anchor="middle" fill="black">Instruction Register (32b)</text>
+<rect x="90" y="120" width="67.5" height="46" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="123.75" y="149.0" font-size="15" text-anchor="middle" fill="black">OP</text>
+<rect x="157.5" y="120" width="45.0" height="46" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="180.0" y="149.0" font-size="15" text-anchor="middle" fill="black">AM</text>
+<rect x="202.5" y="120" width="33.75" height="46" fill="white" stroke="black" stroke-width="2"/>
+<text x="219.375" y="149.0" font-size="15" text-anchor="middle" fill="black">R1</text>
+<rect x="236.25" y="120" width="33.75" height="46" fill="white" stroke="black" stroke-width="2"/>
+<text x="253.125" y="149.0" font-size="15" text-anchor="middle" fill="black">R2</text>
+<rect x="270.0" y="120" width="90.0" height="46" fill="white" stroke="black" stroke-width="2"/>
+<text x="315.0" y="149.0" font-size="15" text-anchor="middle" fill="black">V1</text>
+<rect x="360.0" y="120" width="90.0" height="46" fill="white" stroke="black" stroke-width="2"/>
+<text x="405.0" y="149.0" font-size="15" text-anchor="middle" fill="black">V2</text>
+<rect x="90" y="240" width="120" height="550" fill="white" stroke="black" stroke-width="2"/>
+<text x="150" y="505" font-size="19" text-anchor="middle" fill="black">Decoder</text>
+<text x="150" y="528" font-size="14" text-anchor="middle" fill="black">(control</text>
+<text x="150" y="546" font-size="14" text-anchor="middle" fill="black">unit)</text>
+<path d="M124,166 L124,236" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<rect x="250" y="240" width="200" height="110" fill="white" stroke="black" stroke-width="2"/>
+<text x="350" y="262" font-size="15" text-anchor="middle" fill="black">Registers (8 × 8b)</text>
+<rect x="262" y="274" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="284.0" y="295.0" font-size="15" text-anchor="middle" fill="black">A</text>
+<rect x="306" y="274" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="328.0" y="295.0" font-size="15" text-anchor="middle" fill="black">B</text>
+<rect x="350" y="274" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="372.0" y="295.0" font-size="15" text-anchor="middle" fill="black">C</text>
+<rect x="394" y="274" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="416.0" y="295.0" font-size="15" text-anchor="middle" fill="black">D</text>
+<rect x="262" y="308" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="284.0" y="329.0" font-size="15" text-anchor="middle" fill="black">I</text>
+<rect x="306" y="308" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="328.0" y="329.0" font-size="15" text-anchor="middle" fill="black">J</text>
+<rect x="350" y="308" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="372.0" y="329.0" font-size="15" text-anchor="middle" fill="black">X</text>
+<rect x="394" y="308" width="44" height="30" fill="#F4F4F4" stroke="black" stroke-width="2"/>
+<text x="416.0" y="329.0" font-size="15" text-anchor="middle" fill="black">Y</text>
+<rect x="250" y="700" width="300" height="50" fill="white" stroke="black" stroke-width="2"/>
+<text x="400.0" y="731.0" font-size="15" text-anchor="middle" fill="black">Flag Register  (C E I N S Z F H)</text>
+<rect x="880" y="230" width="140" height="50" fill="white" stroke="black" stroke-width="2"/>
+<text x="950.0" y="261.0" font-size="15" text-anchor="middle" fill="black">Program Counter</text>
+<text x="950" y="296" font-size="13" text-anchor="middle" fill="black">(16b)</text>
+<rect x="880" y="310" width="140" height="50" fill="white" stroke="black" stroke-width="2"/>
+<text x="950.0" y="341.0" font-size="15" text-anchor="middle" fill="black">Stack Pointer</text>
+<text x="950" y="376" font-size="13" text-anchor="middle" fill="black">(16b)</text>
+<path d="M390,430 L550,430 L525,480 L415,480 Z" fill="white" stroke="black" stroke-width="2"/>
+<text x="470.0" y="461.0" font-size="17" text-anchor="middle" fill="black">MUX</text>
+<path d="M250,530 L560,530 L520,610 L310,610 Z" fill="none"/>
+<path d="M250,530 L380,530 L405,560 L430,530 L560,530 L500,612 L310,612 Z" fill="white" stroke="black" stroke-width="2"/>
+<text x="405" y="595" font-size="18" text-anchor="middle" fill="black">ALU (8b)</text>
+<path d="M290,350 L290,526" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<text x="296" y="398" font-size="13" text-anchor="start" fill="#2F6BFF">R1/R3</text>
+<path d="M415,350 L415,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<text x="421" y="398" font-size="13" text-anchor="start" fill="#2F6BFF">R2</text>
+<path d="M470,480 L470,526" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<path d="M405,612 L405,650 L232,650 L232,300 L246,300" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<text x="318" y="643" font-size="13" text-anchor="middle" fill="#2F6BFF">result</text>
+<path d="M540,575 L585,575 L585,725 L554,725" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<text x="590" y="690" font-size="13" text-anchor="start" fill="#E8241C">flags</text>
+<path d="M250,725 L214,725" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M405,166 L405,200 L870,200" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round"/>
+<text x="765" y="193" font-size="14" text-anchor="middle" fill="#2F6BFF">V1 · V2 · Vx</text>
+<path d="M475,200 L475,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="475" cy="200" r="4.5" fill="#2F6BFF"/>
+<path d="M1210,130 L1210,50 L124,50 L124,116" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<path d="M1370,760 L1370,50 L1210,50" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round"/>
+<circle cx="1210" cy="50" r="4.5" fill="#2F6BFF"/>
+<text x="1110" y="40" font-size="18" text-anchor="middle" fill="black" font-weight="bold">Data In</text>
+<path d="M530,50 L530,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="530" cy="50" r="4.5" fill="#2F6BFF"/>
+<text x="536" y="398" font-size="13" text-anchor="start" fill="#2F6BFF">$(…)</text>
+<path d="M620,430 L800,430 L775,480 L645,480 Z" fill="white" stroke="black" stroke-width="2"/>
+<text x="710.0" y="461.0" font-size="17" text-anchor="middle" fill="black">MUX</text>
+<path d="M830,430 L1000,430 L975,480 L855,480 Z" fill="white" stroke="black" stroke-width="2"/>
+<text x="915.0" y="461.0" font-size="17" text-anchor="middle" fill="black">MUX</text>
+<path d="M450,300 L640,300 L640,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<text x="600" y="293" font-size="13" text-anchor="middle" fill="#2F6BFF">R1:R2</text>
+<path d="M680,200 L680,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="680" cy="200" r="4.5" fill="#2F6BFF"/>
+<path d="M880,255 L735,255 L735,426" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<path d="M880,335 L780,335 L780,426" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<path d="M850,200 L850,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="850" cy="200" r="4.5" fill="#2F6BFF"/>
+<path d="M870,200 L870,426" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="870" cy="200" r="4.5" fill="#2F6BFF"/>
+<text x="965" y="410" font-size="14" text-anchor="middle" fill="black">0 · ±1 · +4</text>
+<path d="M965,416 L965,426" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<rect x="680" y="530" width="260" height="60" fill="white" stroke="black" stroke-width="2"/>
+<text x="810.0" y="566.0" font-size="17" text-anchor="middle" fill="black">Address Adder (16b)</text>
+<path d="M710,480 L710,526" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<path d="M915,480 L915,526" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<path d="M940,560 L1086,560" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<text x="990" y="552" font-size="15" text-anchor="middle" fill="#0A8A0A" font-weight="bold">Address</text>
+<path d="M810,590 L810,625 L1032,625 L1032,255 L1024,255" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<path d="M1032,335 L1024,335" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<circle cx="1032" cy="335" r="4.5" fill="#16D916"/>
+<circle cx="1032" cy="255" r="4.5" fill="#16D916"/>
+<path d="M210,270 L246,270" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M210,455 L398,455" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M210,570 L277,570" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M210,505 L630,505 L630,470" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round"/>
+<path d="M630,505 L632,462" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M630,505 L845,505 L845,466" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<text x="552" y="498" font-size="13" text-anchor="middle" fill="#E8241C">selects / ALU op</text>
+<path d="M405,650 L1240,650 L1240,604" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="405" cy="650" r="4.5" fill="#2F6BFF"/>
+<text x="700" y="643" font-size="18" text-anchor="middle" fill="black" font-weight="bold">Data Out</text>
+<path d="M1300,650 L1300,686" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<circle cx="1300" cy="650" r="4.5" fill="#2F6BFF"/>
+<path d="M1300,650 L1300,686" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round" marker-end="url(#a2F6BFF)"/>
+<rect x="1090" y="130" width="250" height="470" fill="white" stroke="black" stroke-width="2"/>
+<rect x="1090" y="130" width="250" height="40" fill="white" stroke="black" stroke-width="2"/>
+<text x="1215.0" y="156.0" font-size="18" text-anchor="middle" fill="black">RAM (64 KiB)</text>
+<rect x="1090" y="170.0" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="210.83333333333334" font-size="14" text-anchor="middle" fill="black">0x0000</text>
+<rect x="1090" y="241.66666666666669" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="282.5" font-size="14" text-anchor="middle" fill="black">---</text>
+<rect x="1090" y="313.33333333333337" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="354.1666666666667" font-size="14" text-anchor="middle" fill="black">---</text>
+<rect x="1090" y="385.0" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="425.8333333333333" font-size="14" text-anchor="middle" fill="black">0xFDFF</text>
+<rect x="1090" y="456.6666666666667" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="497.5" font-size="14" text-anchor="middle" fill="black">0xFE00</text>
+<rect x="1090" y="528.3333333333334" width="80" height="71.66666666666667" fill="#E3E3E3" stroke="black" stroke-width="2"/>
+<text x="1130" y="569.1666666666667" font-size="14" text-anchor="middle" fill="black">0xFFFF</text>
+<rect x="1170" y="170.0" width="170" height="143.33333333333334" fill="#CFFFFF" stroke="black" stroke-width="2"/>
+<text x="1255" y="241.66666666666669" font-size="16" text-anchor="middle" fill="black" font-weight="bold">Program & data</text>
+<text x="1255" y="261.6666666666667" font-size="13" text-anchor="middle" fill="black">heap ↓</text>
+<rect x="1170" y="313.33333333333337" width="170" height="71.66666666666667" fill="white" stroke="black" stroke-width="2"/>
+<text x="1255" y="355.1666666666667" font-size="16" text-anchor="middle" fill="black" font-weight="bold">free</text>
+<rect x="1170" y="385.0" width="170" height="71.66666666666667" fill="#FFE58A" stroke="black" stroke-width="2"/>
+<text x="1255" y="420.8333333333333" font-size="16" text-anchor="middle" fill="black" font-weight="bold">stack ↑</text>
+<text x="1255" y="440.8333333333333" font-size="13" text-anchor="middle" fill="black">first push 0xFDFF</text>
+<rect x="1170" y="456.6666666666667" width="170" height="143.33333333333334" fill="#B8F5B0" stroke="black" stroke-width="2"/>
+<text x="1255" y="528.3333333333334" font-size="16" text-anchor="middle" fill="black" font-weight="bold">IVT</text>
+<text x="1255" y="548.3333333333334" font-size="13" text-anchor="middle" fill="black">(512 bytes)</text>
+<rect x="1090" y="690" width="250" height="140" fill="white" stroke="black" stroke-width="2"/>
+<text x="1215" y="750" font-size="20" text-anchor="middle" fill="black">IOD</text>
+<text x="1215" y="772" font-size="13" text-anchor="middle" fill="black">(I/O Driver, 256 ports)</text>
+<path d="M1056,560 L1056,712 L1086,712" fill="none" stroke="#16D916" stroke-width="4" stroke-linejoin="round" marker-end="url(#a16D916)"/>
+<circle cx="1056" cy="560" r="4.5" fill="#16D916"/>
+<text x="1062" y="702" font-size="12" text-anchor="start" fill="#0A8A0A">port</text>
+<path d="M1340,760 L1370,760" fill="none" stroke="#2F6BFF" stroke-width="4" stroke-linejoin="round"/>
+<path d="M1130,830 L1130,862" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<path d="M1172,830 L1172,862" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<path d="M1214,830 L1214,862" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<path d="M1256,830 L1256,862" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<path d="M1298,830 L1298,862" fill="none" stroke="#000000" stroke-width="2" stroke-linejoin="round" marker-end="url(#a000000)"/>
+<text x="1215" y="882" font-size="15" text-anchor="middle" fill="black">Devices</text>
+<path d="M210,772 L1086,772" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<path d="M1072,772 L1072,625 L1110,625 L1110,604" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<circle cx="1072" cy="772" r="4.5" fill="#E8241C"/>
+<text x="1116" y="624" font-size="13" text-anchor="start" fill="#E8241C">RW · RE</text>
+<text x="1000" y="766" font-size="13" text-anchor="end" fill="#E8241C">RW · IE</text>
+<path d="M1090,815 L150,815 L150,794" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<text x="620" y="809" font-size="13" text-anchor="middle" fill="#E8241C">INT</text>
+<path d="M130,790 L130,835 L1086,835" fill="none" stroke="#E8241C" stroke-width="3" stroke-linejoin="round" marker-end="url(#aE8241C)"/>
+<text x="620" y="851" font-size="13" text-anchor="middle" fill="#E8241C">INR</text>
+<rect x="250" y="940" width="34" height="30" fill="#E8241C" stroke="black"/>
+<text x="300" y="963" font-size="20" text-anchor="start" fill="black">Control Bus</text>
+<rect x="550" y="940" width="34" height="30" fill="#2F6BFF" stroke="black"/>
+<text x="600" y="963" font-size="20" text-anchor="start" fill="black">Data Bus (8b)</text>
+<rect x="850" y="940" width="34" height="30" fill="#16D916" stroke="black"/>
+<text x="900" y="963" font-size="20" text-anchor="start" fill="black">Address Bus (16b)</text></svg>

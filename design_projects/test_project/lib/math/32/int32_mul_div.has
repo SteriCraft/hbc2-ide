@@ -1,0 +1,120 @@
+; ------------------------------------------------------------
+; mul32s: 32-bit value at [x:y] *= 32-bit value at [i:j] (signed)
+; flags: C = overflow (the product is outside -2^31..2^31-1; its low
+;        32 bits are stored)
+; ------------------------------------------------------------
+; Multiplies the absolute values, then negates the product if the signs
+; differ. A product of 2^31 or more only fits when it is exactly 2^31 and
+; negative; neg32 detects exactly that case (it sets C for 0x80000000).
+; Not reentrant (uses mul32_p and mul32s_t).
+.data32 mul32s_t 0              ; |op2|
+
+mul32s:
+    psh a, b, c, i, j
+    lod a, [x:y]
+    lod b, [i:j]
+    xor a, b                    ; bit 7 = sign of the product
+    psh x, y
+    mov x, mul32s_t.msb
+    mov y, mul32s_t.lsb
+    cal copy32
+    cal abs32                   ; mul32s_t = |op2|
+    pop x, y
+    cal abs32                   ; [x:y] = |op1|
+    mov i, mul32s_t.msb
+    mov j, mul32s_t.lsb
+    cal mul32                   ; C = more than 32 bits
+    mov b, 1                    ; b = overflow (mov leaves C alone)
+    jmc mul32s_sign
+    mov b, 0
+    lod c, [x:y]
+    and c, 0x80
+    jmz mul32s_sign             ; below 2^31: fits
+    mov b, 1
+    mov c, a
+    and c, 0x80
+    jmz mul32s_sign             ; 2^31 or more and positive: overflow
+    cal neg32                   ; negative: fits only if exactly 2^31
+    jmc mul32s_fits
+    jmp mul32s_flag
+mul32s_fits:
+    mov b, 0
+    jmp mul32s_flag
+mul32s_sign:
+    and a, 0x80
+    jmz mul32s_flag
+    cal neg32
+mul32s_flag:
+    clc
+    cmp b, 0
+    jme mul32s_end
+    stc
+mul32s_end:
+    pop a, b, c, i, j
+    ret
+
+; ------------------------------------------------------------
+; div32s: 32-bit value at [x:y] /= 32-bit value at [i:j] (signed),
+;         and the value at [i:j] = remainder
+; flags: C = division by zero, or -2^31 / -1; then nothing changes
+; ------------------------------------------------------------
+; Same rules as div16s. Not reentrant (uses div32_rq).
+.data32 div32s_min 0x80000000
+.data32 div32s_m1 0xFFFFFFFF
+
+div32s:
+    psh a, b
+    psh x, y
+    mov x, i
+    mov y, j
+    cal tst32
+    pop x, y
+    jmz div32s_err              ; division by zero
+    psh i, j
+    mov i, div32s_min.msb
+    mov j, div32s_min.lsb
+    cal cmp32
+    pop i, j
+    jme div32s_min_check        ; -2^31 / -1?
+div32s_ok:
+    lod a, [x:y]                ; bit 7 = sign of the remainder
+    lod b, [i:j]
+    xor b, a                    ; bit 7 = sign of the quotient
+    cal abs32
+    psh x, y
+    mov x, i
+    mov y, j
+    cal abs32
+    pop x, y
+    cal div32
+    and b, 0x80
+    jmz div32s_rem
+    cal neg32
+div32s_rem:
+    and a, 0x80
+    jmz div32s_end
+    psh x, y
+    mov x, i
+    mov y, j
+    cal neg32
+    pop x, y
+div32s_end:
+    pop a, b
+    clc
+    ret
+div32s_min_check:
+    psh x, y
+    mov x, i
+    mov y, j
+    psh i, j
+    mov i, div32s_m1.msb
+    mov j, div32s_m1.lsb
+    cal cmp32
+    pop i, j
+    pop x, y
+    jme div32s_err
+    jmp div32s_ok
+div32s_err:
+    pop a, b
+    stc
+    ret

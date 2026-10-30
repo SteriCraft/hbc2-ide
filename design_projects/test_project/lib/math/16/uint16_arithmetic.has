@@ -1,0 +1,156 @@
+; ------------------------------------------------------------
+; add16: [a:b] = [a:b] + [c:d]
+; flags: C = unsigned overflow, Z = result is 0
+; ------------------------------------------------------------
+add16:
+    psh i
+    add b, d                ; LSB first
+    adc a, c                ; MSB + carry, C = carry out
+    mov i, a
+    or i, b                 ; Z = (a | b) == 0, C untouched
+    pop i
+    ret
+
+; ------------------------------------------------------------
+; sub16: [a:b] = [a:b] - [c:d]
+; flags: C = borrow ([a:b] < [c:d] unsigned), Z = result is 0
+; ------------------------------------------------------------
+sub16:
+    psh i
+    sub b, d
+    sbb a, c
+    mov i, a
+    or i, b
+    pop i
+    ret
+
+; ------------------------------------------------------------
+; cmp16: compares [a:b] with [c:d] (unsigned), like cmp
+; flags: S = [a:b] > [c:d], E = equal, F = [a:b] < [c:d]
+; ------------------------------------------------------------
+cmp16:
+    cmp a, c                ; MSBs decide, unless they are equal
+    jme cmp16_lsb
+    ret
+cmp16_lsb:
+    cmp b, d
+    ret
+
+; ------------------------------------------------------------
+; inc16: [a:b] = [a:b] + 1
+; dec16: [a:b] = [a:b] - 1
+; flags: C = wrap-around (0xFFFF + 1 = 0, 0 - 1 = 0xFFFF),
+;        Z = result is 0, N = bit 15 of the result
+; ------------------------------------------------------------
+inc16:
+    inc b
+    adc a, 0                ; C = wrap-around, N = bit 15
+    jmc inc16_end           ; wrapped: the result is 0 and Z = 1
+    clz                     ; else the result is not 0 (even if a is)
+inc16_end:
+    ret
+
+dec16:
+    dec b
+    sbb a, 0                ; C = wrap-around
+    jmz dec16_msb0
+    ret                     ; a is not 0: Z = 0 and N = bit 15 are right
+dec16_msb0:
+    or b, 0                 ; a = 0: Z = (b = 0), or leaves C alone
+    cln                     ; bit 15 is 0
+    ret
+
+; ------------------------------------------------------------
+; min16: [a:b] = the smaller of [a:b] and [c:d] (unsigned)
+; max16: [a:b] = the larger of [a:b] and [c:d] (unsigned)
+; ------------------------------------------------------------
+min16:
+    cal cmp16
+    jmf min16_keep          ; [a:b] < [c:d]: keep [a:b]
+    mov a, c
+    mov b, d
+min16_keep:
+    ret
+
+max16:
+    cal cmp16
+    jms max16_keep          ; [a:b] > [c:d]: keep [a:b]
+    mov a, c
+    mov b, d
+max16_keep:
+    ret
+
+; ------------------------------------------------------------
+; gcd16: [a:b] = greatest common divisor of [a:b] and [c:d] (unsigned)
+; ------------------------------------------------------------
+; Euclid: gcd(a, b) = gcd(b, a mod b), until b = 0; then a is the answer.
+; gcd(n, 0) = gcd(0, n) = n, and gcd(0, 0) = 0.
+gcd16:
+    psh c, d, i, j
+gcd16_loop:
+    mov i, c
+    or i, d
+    jmz gcd16_done          ; [c:d] = 0: the answer is [a:b]
+    mov i, c                ; [i:j] = old [c:d]
+    mov j, d
+    cal div16               ; [c:d] = [a:b] mod [c:d]
+    mov a, i                ; [a:b] = old [c:d]
+    mov b, j
+    jmp gcd16_loop
+gcd16_done:
+    pop c, d, i, j
+    ret
+
+; ------------------------------------------------------------
+; isqrt16: [a:b] = square root of [a:b], rounded down (0 to 255),
+;          [c:d] = remainder ([a:b] - root * root, 0 to 510)
+; flags: Z = the input was a perfect square (remainder 0)
+; ------------------------------------------------------------
+; Bit by bit, like a long division. The input is read two bits at a time
+; from the top, and each round finds one more bit of the root:
+;   remainder = remainder * 4 + next two bits of the input
+;   root = root * 2
+;   if remainder >= root * 2 + 1:
+;       remainder -= root * 2 + 1, root = root + 1
+; (root * 2 + 1 is what the remainder must hold for the new bit to be 1:
+; (r + 1)^2 - r^2 = 2r + 1.)
+isqrt16:
+    psh i, j, x, y
+    mov c, 0                ; [c:d] = remainder
+    mov d, 0
+    mov i, 0                ; i = root
+    mov j, 8                ; one round per root bit
+isqrt16_loop:
+    add b, b                ; [c:d:a:b] <<= 2: the next two input bits
+    adc a, a                ; move into the remainder
+    adc d, d
+    adc c, c
+    add b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    add i, i                ; root *= 2
+    mov x, 0                ; [x:y] = root * 2 + 1
+    mov y, i
+    add y, y
+    adc x, 0
+    or y, 1
+    sub d, y                ; remainder -= root * 2 + 1
+    sbb c, x
+    jmc isqrt16_undo        ; it was smaller: undo
+    or i, 1                 ; root bit = 1
+    jmp isqrt16_next
+isqrt16_undo:
+    add d, y
+    adc c, x
+isqrt16_next:
+    dec j
+    jmz isqrt16_done
+    jmp isqrt16_loop
+isqrt16_done:
+    mov a, 0
+    mov b, i
+    mov x, c                ; Z = remainder is 0
+    or x, d
+    pop i, j, x, y          ; pop leaves Z alone
+    ret

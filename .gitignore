@@ -14,12 +14,8 @@ Logisim/
 # ignore code line counter script
 codeLinesNumbers.sh
 
-# ignore files from "old_code_archive"
-old_code_archive/mainwindow.ui
+# LibreOffice lock files
+.~lock.*#
 
-# ignore build directories from "old_code_archive"
-old_code_archive/build-HBC-2_IDE-Desktop-Debug
-old_code_archive/build-HBC-2_IDE-Desktop-MinSizeRel
-old_code_archive/build-HBC-2_IDE-Desktop-Profile
-old_code_archive/build-HBC-2_IDE-Desktop-Release
-old_code_archive/build-HBC-2_IDE-Desktop-RelWithDebInfo
+# assembled images of the design projects
+design_projects/**/*.bin
