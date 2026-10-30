@@ -1,0 +1,17 @@
+# Session log
+
+(Moved out of ROADMAP.md 2026-10-31. Read only when working on this part.)
+
+- 2026-10-31 (after step 10): linker planned with the user (decision 15 replaced: removal pass in hbc2-asm, no object files; asm projects off; library names give way). `LINKER.md` written; ROADMAP.md split into `notes/*.md`.
+- 2026-10-31: step 10 (plan + choices told to the user first, decision 16). 10a-10e done, then C line stepping and background C builds (user's request). All workspace tests pass, clippy clean. Committed and pushed (093ec55).
+- 2026-10-30: plan + decisions with the user. This file created.
+- 2026-10-30 (same session): open questions settled (5, 6, 7, 10 above). `.bss` added to hbc2-asm (parser `Stmt::Bss`, assembler places it after code/data, `__bss_start`/`__bss_end`; tests `bss_*` in tests/assemble.rs; documented in the assembly manual). Step 1 done: kit copied to compiler/fcc, MSVC build works (all 5 tools), pipeline tested with the 6809 target (scratchpad) and with cc1.ref/cc2.ref (repo build). Label naming changed to `__L…` (told the user).
+- 2026-10-31 (after step 9): `set_vector(port, handler)` added to hbc2.h (asm/hbc2.has; refuses port 0), test multi/vector (key handler in asm calling C; mutation-checked). ABI.md 8 no longer suggests fixed `.data` vectors (ports are dynamic, detection overwrites RTC/keyboard vectors); ABI.md 10 shows the install.
+- 2026-10-31 (after step 9): register variables dropped (user). Step order changed: 10 IDE integration, 11 linker. Duplicate "Later: linker" removed.
+- 2026-10-31 (step 9): multi-file builds (plan told to the user first; static prefix changed to `__S`, told). `cargo fmt --all` also reformatted 3 unrelated files (hbc2-ide build.rs/project.rs, hbc2-runner worker.rs, import order only); restoring them was blocked: left for the user.
+- 2026-10-31 (step 8): library in 4 parts (hbc2.h + device detection in crt0, stdio putchar/puts/getchar/gets, string.h, printf), told the user after each. Decisions 12-15 recorded; step order now 9 multi-file, 10 linker, 11 IDE.
+- 2026-10-31 (step 7): rules.hbc2, copt in both drivers, tests/peephole.c, coverage + mutation checks, psh/pop size count fixed.
+- 2026-10-31 (later): step 6. Inline code + conditions on flags; gen_ops.py rewritten (class Program; groups ops/cond/const/assign × globals/locals → tests/ops/, because of the 64 KB limit); bench.c; programs.rs prints sizes/ticks and also reads tests/ops; step 3 cast/sign bug fixed. Step 7 explained to the user.
+- 2026-10-31: steps 4 + 5. Runtime helpers written and tested; crate hbc2-cc (compile + tests); gen_ops.py → tests/ops_*.c; FCC file name bug fixed. Told the user: runtime ≈3.9 KB in every program until the linker (decision 1b).
+- 2026-10-30 (same session): step 3. hbc2-asm: a name in `.data` = 2-byte address (`.data p table + 4`), test `data_addresses_mixed_with_bytes`, documented. target-hbc2.c, backend-hbc2.c, build.cmd builds cc1.hbc2/cc2.hbc2, runtime/crt0.has, tools/hbc2cc.py, tests/basics.c + frames.c (run OK: 0x04AC, 0x025C). ABI.md 11 updated (pop rules, switch table).
+- 2026-10-30 (same session): step 2. ABI.md written; NAMELEN raised to 31 chars; checked: no struct by value in FCC, char args 1 byte / int in varargs, CPU interrupt and flag facts. Rule added: asm names starting with `_` share the C namespace (the user's interruptHandler.has uses `_iod_…`, `_loop` etc. → C can't use `iod_…`, `loop`; the assembler reports clashes).
