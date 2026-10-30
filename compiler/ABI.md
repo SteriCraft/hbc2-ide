@@ -272,19 +272,30 @@ be interrupted anywhere. C variables shared with a handler should be
 ## 11. Runtime helpers (draft)
 
 Operations that are not compiled inline become calls to helpers named
-`__<operation><type>` (`__mul`, `__div`, `__cclt`, …). Before a call, the
-caller pops the left operand into registers:
+`__<operation><type>`: the type suffix is none for `int`, `u` for
+`unsigned`, `c`/`uc` for `char`, `l`/`ul` for `long` (`__mul`, `__divu`,
+`__cclt`, `__pluseql`, …). Before the call, the caller pops the left operand
+into registers. The right operand is in the working register.
 
-| Operand size | Left operand | Right operand | Result |
-|---|---|---|---|
-| 8 bits | `d` | `b` | `b` |
-| 16 bits | `[c:d]` | `[a:b]` | `[a:b]` |
-| 32 bits | `[x:y]:[i:j]` | `[c:d]:[a:b]` | `[c:d]:[a:b]` |
+| Left size | Right size | Left operand in |
+|---|---|---|
+| 1 | any | `d` |
+| 2 | 1 or 2 | `[c:d]` |
+| 2 | 4 | `[x:y]` |
+| 4 | any | `[x:y]:[i:j]` |
 
+* For assignment operators (`+=`, `++`, `<<=`, …) the left operand is the
+  address of the variable: `[c:d]`, or `[x:y]` when the value is a `long`.
+* The result is in the working register: `b`, `[a:b]` or `[c:d]:[a:b]`.
 * Comparisons give 0 or 1 in `[a:b]`.
 * Helpers may change every register; they keep SP, and they use only
   registers and the stack (no global variables).
 * Helpers are built from the math library's routines.
+
+`switch` jumps to `__switch<type>` with the value in the working register and
+`[x:y]` = the address of the table: the number of cases (2 bytes), then for
+each case its value (the size of the type) and the address of its code, then
+the address of the `default` code (or of the end of the switch).
 
 ## 12. C supported by the compiler
 

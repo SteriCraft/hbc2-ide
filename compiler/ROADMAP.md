@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** step 2 done: `compiler/ABI.md` written (examples of sections 5, 9, 10 run on the emulator).
-- **Next:** step 3, `target-hbc2.c` + `backend-hbc2.c`, start from `backend-default.c` but with REAL push sizes (see notes), add cc1.hbc2/cc2.hbc2 to build.cmd. First decide the `.data` addition for `name + n` addresses (see design points).
+- **Phase:** step 3 done: `target-hbc2.c` + `backend-hbc2.c` work; `tests/basics.c` and `tests/frames.c` compile, assemble and give the right result on the emulator (no helper needed). `runtime/crt0.has` written (start of step 4).
+- **Next:** step 4, the helpers (list below, "Helpers needed"), in `compiler/runtime/`, following ABI.md section 11. Then step 5 (harness) — maybe do 5 together with 4 to test each helper as it is written.
 
 ## Decisions (agreed 2026-10-30)
 
@@ -68,7 +68,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 - [x] 1. Get FCC, build it, compile tests for the 6809 target, read the backends. (No WSL/MSYS2/gcc on this machine: built with MSVC + compat layer instead. 6809 output checked on a loop + call test.)
 - [x] 2. Write the ABI document — `compiler/ABI.md`. Section 11 (helpers) is a draft to settle in steps 3-4.
-- [ ] 3. Minimal backend `backend-hbc2.c`: constants, load/store globals + locals, calls, prologue/epilogue, labels, jumps, branches; everything else → helpers.
+- [x] 3. Minimal backend `backend-hbc2.c`: constants, load/store globals + locals, calls, prologue/epilogue, labels, jumps, branches; everything else → helpers. Also inline already: + - & | ^ ~ unary- (8/16), == != (8/16), ! and bool, casts (incl. sign extension), deref / assign through pointers, frames > 255.
 - [ ] 4. Runtime: `crt0.has` (at 0x0000, SP already 0xFE00, `cal _main`, `hlt`) + helpers (mul/div/mod/shifts/compares/long ops) from the math library.
 - [ ] 5. Test harness on hbc2-core (like the `rt` crates): compile → run → check result; run FCC's own test programs.
 - [ ] 6. Inline code: 8-bit char ops, add/sub small constants, compare+branch with constants, `[x:y + n]` derefs, `+=`/`++` on locals.
@@ -78,6 +78,21 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 - [ ] 10. IDE: `hbc2 cc` in hbc2-cli runs all stages; `.c` in projects; error lines; later asm→C line map for the debugger.
 
 Later: linker (decision 1b), EEPROM, register variables, float.
+
+## Backend (step 3) — how it works
+
+- Rewrites (gen_rewrite_node): casts that change nothing removed; FUNCCALL(NAME) → T_CALLNAME; NAME/LOCAL/ARGUMENT/LABEL + constant merged; DEREF/EQ of LOCAL/ARGUMENT → T_LREF/T_LSTORE (argument offsets += argbase 2 + frame_len), of NAME → T_NREF/T_NSTORE, of LABEL → T_LBREF/T_LBSTORE (sizes 1, 2, 4).
+- `sp` = bytes pushed since the frame; stack offsets = node value + sp. `work_size` = size of the last value, used by jfalse/jtrue (`or b, 0` / `mov i, a; or i, b` …; jtrue needs a jump over a jmp: no "jump if not zero" instruction).
+- Labels: `__L<unit>_<n><tail>` (FCC's), `__X<unit>_<n>` (backend's own), `__T<unit>_<n>` literals and local statics, `__W<unit>_<n>` switch tables, `__W<unit>_<tag>_<entry>` case labels. Unit = cc2 argv[5] (default 1).
+- Data: one pending object per area (A_DATA, A_LITERAL, A_BSS): FCC can start a string literal in the middle of another object (`char *s = "hi"`). Flushed when the code area comes back, when a new object starts in the same area, at the end. char values: printable runs as "…"; wider values as 0xNN bytes.
+- `; export _name` comment lines: for the future static renaming by the driver (step 9).
+- Helper calls: gen_helpcall pops the left operand (pop_left, rules in ABI.md 11), then `cal __`.
+- Temporary driver: `compiler/tools/hbc2cc.py file.c -o file.has [--unit N]` (cpp → cc0 → cc1.hbc2 → cc2.hbc2; opt 0, no copt yet).
+- Known: cc1 reports the float error at the wrong line (end of the declarations, e.g. line 3 for line 1).
+
+## Helpers needed (step 4)
+
+From a program using every operator (scratchpad th.c): `__mul __div __divu __rem __remu __shl __shr __shru __cclt __ccltu __ccgt __ccgtu __cclteq __ccltequ __ccgteq __ccgtequ __pluseq __pluseqc __minuseq __muleq __divequ __remeq __shleq __shreq __andeq __oreq __xoreq __switch` and the long forms `__plusl __minusl __mull __divl __divul __reml __bandl __orl __xorl __negatel __cpll __shll __shrl __shrul __cceql __ccnel __ccltl __ccgtul __pluseql __minuseql __switchl` (+ the missing combinations: other compare/assign-op variants for c/uc/l/ul — generate the list systematically from backend.c make_node + helper_type). Also postinc/postdec variants when the result is used.
 
 ## Notes
 
@@ -97,4 +112,5 @@ Later: linker (decision 1b), EEPROM, register variables, float.
 
 - 2026-10-30: plan + decisions with the user. This file created.
 - 2026-10-30 (same session): open questions settled (5, 6, 7, 10 above). `.bss` added to hbc2-asm (parser `Stmt::Bss`, assembler places it after code/data, `__bss_start`/`__bss_end`; tests `bss_*` in tests/assemble.rs; documented in the assembly manual). Step 1 done: kit copied to compiler/fcc, MSVC build works (all 5 tools), pipeline tested with the 6809 target (scratchpad) and with cc1.ref/cc2.ref (repo build). Label naming changed to `__L…` (told the user).
+- 2026-10-30 (same session): step 3. hbc2-asm: a name in `.data` = 2-byte address (`.data p table + 4`), test `data_addresses_mixed_with_bytes`, documented. target-hbc2.c, backend-hbc2.c, build.cmd builds cc1.hbc2/cc2.hbc2, runtime/crt0.has, tools/hbc2cc.py, tests/basics.c + frames.c (run OK: 0x04AC, 0x025C). ABI.md 11 updated (pop rules, switch table).
 - 2026-10-30 (same session): step 2. ABI.md written; NAMELEN raised to 31 chars; checked: no struct by value in FCC, char args 1 byte / int in varargs, CPU interrupt and flag facts. Rule added: asm names starting with `_` share the C namespace (the user's interruptHandler.has uses `_iod_…`, `_loop` etc. → C can't use `iod_…`, `loop`; the assembler reports clashes).

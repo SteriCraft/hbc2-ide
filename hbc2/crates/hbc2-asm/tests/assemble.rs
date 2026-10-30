@@ -751,3 +751,22 @@ fn bss_errors() {
     assert!(e(".data v 1\n.bss v 1").contains("already defined"));
     assert!(e(".bss v 65500").contains("not enough free memory"));
 }
+
+#[test]
+fn data_addresses_mixed_with_bytes() {
+    let p = asm("
+.data table $0x1200 1, 2, 3, 4
+.data ptrs $0x2000 table, table + 2, 'A', table.lsb, \"hi\", table - 1
+_start:
+    jmp _start
+");
+    assert_eq!(
+        p.image[0x2000..0x200B],
+        [
+            0x12, 0x00, 0x12, 0x02, b'A', 0x00, b'h', b'i', 0x11, 0xFF, 0
+        ]
+    );
+    assert_eq!(p.symbol("ptrs").unwrap().size, 10);
+    assert!(errors(".data v nowhere\n_start:\n    jmp _start\n")[0].contains("unknown"));
+    assert!(errors(".data v 1, mov\n_start:\n    jmp _start\n")[0].contains("instruction"));
+}

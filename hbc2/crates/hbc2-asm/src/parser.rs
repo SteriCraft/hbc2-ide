@@ -539,6 +539,10 @@ fn data(c: &mut Cursor, width: u32) -> ParseResult<Stmt> {
                 c.next();
                 values.push(DataValue::Bytes(bytes.clone()));
             }
+            // A name (not .msb / .lsb) is its 2-byte address, as in .data16.
+            Some(Tok::Ident(name)) if width == 1 && byte_of(name).is_none() => {
+                values.push(wide_value(c, 2)?)
+            }
             _ if width == 1 => values.push(DataValue::Byte(value8(c)?, col)),
             _ => values.push(wide_value(c, width)?),
         }

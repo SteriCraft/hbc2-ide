@@ -210,6 +210,15 @@ handler: $0xF000     ; starts a block at $0xF000
 
 A variable's name stands for its address: `lod a, counter`, `str table + 3, a`.
 
+A name in `.data` (not `name.msb` / `name.lsb`) is its address on 2 bytes,
+most significant first, as in `.data16`; `name + n` and `name - n` are allowed.
+Addresses can be mixed with bytes and strings:
+
+```
+.data names first, second           ; 4 bytes: a table of two addresses
+.data item 'A', 0x00, 0x05, names + 2   ; 1 + 2 + 2 bytes
+```
+
 ### `.data16` and `.data32`: 16- and 32-bit values
 
 ```

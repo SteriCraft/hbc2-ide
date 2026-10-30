@@ -1,8 +1,8 @@
 @echo off
 rem Builds the compiler tools with MSVC (Visual Studio 2022) into compiler\bin.
 rem   cc0, cpp, copt : shared by every target
-rem   cc1.ref, cc2.ref : Fuzix's reference parser target and default backend,
-rem                      only to test the pipeline until the HBC-2 ones exist
+rem   cc1.hbc2, cc2.hbc2 : the HBC-2 parser target and backend
+rem   cc1.ref, cc2.ref : Fuzix's reference parser target and default backend
 setlocal
 set VCVARS=C:\Program Files\Microsoft Visual Studio\2022\Community\VC\Auxiliary\Build\vcvars64.bat
 call "%VCVARS%" >nul 2>nul || (echo cannot run "%VCVARS%" & exit /b 1)
@@ -19,6 +19,8 @@ call :tool cpp Preprocessor/cpp.c Preprocessor/hash.c Preprocessor/main.c Prepro
 call :tool copt copt.c || exit /b 1
 call :tool cc1.ref %CC1% target-6800.c || exit /b 1
 call :tool cc2.ref backend.c backend-default.c || exit /b 1
+call :tool cc1.hbc2 %CC1% target-hbc2.c || exit /b 1
+call :tool cc2.hbc2 backend.c backend-hbc2.c || exit /b 1
 echo build OK
 exit /b 0
 
