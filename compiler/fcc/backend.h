@@ -28,6 +28,7 @@ extern void gen_frame(unsigned size, unsigned asize);
 extern void gen_epilogue(unsigned size, unsigned argsize);
 extern unsigned gen_exit(const char *t, unsigned n);
 extern void gen_label(const char *t, unsigned n);
+extern void gen_line(unsigned line);
 extern void gen_jump(const char *t, unsigned n);
 extern void gen_jfalse(const char *t, unsigned n);
 extern void gen_jtrue(const char *t, unsigned n);

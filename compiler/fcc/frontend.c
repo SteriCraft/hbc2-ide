@@ -214,10 +214,13 @@ void required(unsigned cr)
 	}
 }
 
+static void write_line(void);
+
 /* # directive from cpp # line file - # line "file" */
 /* TODO file name saving */
 static void directive(void)
 {
+	static unsigned first = 1;
 	unsigned char *p = filename;
 	unsigned c;
 
@@ -249,6 +252,12 @@ static void directive(void)
 		filechange = 1;
 	}
 	*p = 0;
+	/* HBC-2: the C file's name goes out at once, even when a header comes
+	   before its first token: cc1 takes the first name for the C file */
+	if (filechange && first) {
+		first = 0;
+		write_line();
+	}
 	while ((c = bgetc()) != EOF) {
 		if (c == '\n')
 			return;
@@ -374,25 +383,31 @@ static void encode_byte(unsigned c)
 	*tokptr++ = c;
 }
 
-static void write_token(unsigned c)
+/* The line (and the file name when it changed) */
+static void write_line(void)
 {
 	unsigned char *tp;
 	unsigned n = 0;
-	if (oldline != line || filechange) {
-		oldline = line;
-		outbyte(T_LINE & 0xFF);
-		outbyte(T_LINE >> 8);
-		outbyte(line);
-		if (filechange) {
-			outbyte(0x80 | (line >> 8));
-			tp = filename;
-			while (*tp && n++ < 32)
-				outbyte(*tp++);
-			outbyte(0);
-		} else
-			outbyte(line >> 8);
-		filechange = 0;
-	}
+	oldline = line;
+	outbyte(T_LINE & 0xFF);
+	outbyte(T_LINE >> 8);
+	outbyte(line);
+	if (filechange) {
+		outbyte(0x80 | (line >> 8));
+		tp = filename;
+		while (*tp && n++ < 32)
+			outbyte(*tp++);
+		outbyte(0);
+	} else
+		outbyte(line >> 8);
+	filechange = 0;
+}
+
+static void write_token(unsigned c)
+{
+	unsigned char *tp;
+	if (oldline != line || filechange)
+		write_line();
 	/* Write the token, then any data for it */
 	outbyte(c);
 	outbyte(c >> 8);

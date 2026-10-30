@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include "compiler.h"
 
 void statement_block(unsigned brack);
@@ -13,6 +14,16 @@ static unsigned switch_count;
 static unsigned switch_type;
 static unsigned switch_default;
 static unsigned func_type;
+
+/*
+ *	HBC-2: tells the backend the source line of the code that follows,
+ *	for the debugger. 0 when the code is in another file than the C file
+ *	compiled (a header).
+ */
+void line_header(void)
+{
+	header(H_LINE, 0, strcmp(filename, main_filename) ? 0 : line_num);
+}
 
 unsigned func_flags;
 unsigned arg_flags;
@@ -229,6 +240,8 @@ static void statement(void)
 	if (token == T_RCURLY)
 		return;
 
+	line_header();
+
 #if 0	/* C99 for later if we want it */
 	declaration_block();
 #endif
@@ -288,6 +301,7 @@ static void declaration_block(void)
 {
 	while (is_modifier() || is_storage_word() || is_type_word() ||
 			is_typedef()) {
+		line_header();
 		declaration(S_AUTO);
 	}
 }
@@ -335,6 +349,9 @@ void statement_block(unsigned need_brack)
 		statement_block(0);
 	}
 	pop_local_symbols(ltop);
+	/* HBC-2: the end of the function (its return) is on the line of } */
+	if (need_brack)
+		line_header();
 	next_token();
 }
 

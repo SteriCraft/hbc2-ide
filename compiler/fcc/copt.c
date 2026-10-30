@@ -339,10 +339,22 @@ struct lnode* rep(
     for (i = 0; i < LASTLAB - FIRSTLAB + 1; ++i)
         labnum[i] = 0;
 
+    struct lnode *markers = 0, *last_marker = 0;
+
     for (p = p1->l_next; p != p2; p = psav) {
         psav = p->l_next;
         if (debug)
             fputs(p->l_text, stderr);
+        /* HBC-2: markers stay, after the new lines */
+        if (strncmp(p->l_text, ";#line", 6) == 0) {
+            p->l_next = 0;
+            if (last_marker)
+                last_marker->l_next = p;
+            else
+                markers = p;
+            last_marker = p;
+            continue;
+        }
         free(p);
     }
     connect(p1, p2);
@@ -352,6 +364,11 @@ struct lnode* rep(
         insert(subst(new->l_text, vars), p2);
         if (debug)
             fputs(p2->l_prev->l_text, stderr);
+    }
+    for (p = markers; p; p = psav) {
+        psav = p->l_next;
+        connect(p2->l_prev, p);
+        connect(p, p2);
     }
     if (debug)
         putc('\n', stderr);
@@ -401,6 +418,13 @@ struct lnode* copylist(
 }
 
 /* opt - replace instructions ending at r if possible */
+/* HBC-2: ";#line n" lines (source lines for the debugger) are not code:
+   rules skip them, and keep those inside the lines they replace */
+static int is_marker(struct lnode* p)
+{
+    return p && strncmp(p->l_text, ";#line", 6) == 0;
+}
+
 struct lnode* opt(struct lnode* r)
 {
     char* vars[10];
@@ -409,6 +433,8 @@ struct lnode* opt(struct lnode* r)
     struct onode* o;
     static char* activated = "%activated ";
 
+    if (is_marker(r))
+        return r->l_next;
     for (o = opts; o; o = o->o_next) {
         activerule = o;
         if (o->firecount < 1)
@@ -434,7 +460,9 @@ struct lnode* opt(struct lnode* r)
             } else {
 //                fprintf(stderr, "Matching '%s', '%s'.\n",
 //                    c->l_text, p->l_text);
-                if (!match(c->l_text, p->l_text, vars))
+                while (is_marker(c))
+                    c = c->l_prev;
+                if (c == 0 || !match(c->l_text, p->l_text, vars))
                     break;
                 c = c->l_prev;
                 ++lines;

@@ -1416,6 +1416,7 @@ name = "hbc2-cli"
 version = "0.1.0"
 dependencies = [
  "hbc2-asm",
+ "hbc2-cc",
  "hbc2-core",
  "hbc2-runner",
 ]
@@ -1432,6 +1433,7 @@ dependencies = [
  "eframe",
  "egui_dock",
  "hbc2-asm",
+ "hbc2-cc",
  "hbc2-core",
  "hbc2-runner",
  "rfd",

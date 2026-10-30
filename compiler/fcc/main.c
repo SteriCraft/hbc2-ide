@@ -30,6 +30,8 @@ static void toplevel(void)
 		funcbody = 0;
 		voltrack = 0;
 		target_reginit();
+		/* HBC-2: the line of a variable or a function (its label) */
+		line_header();
 		declaration(S_EXTDEF);
 	}
 }
@@ -62,6 +64,9 @@ int main(int argc, char *argv[])
 #endif
 	while (token != T_EOF)
 		toplevel();
+	/* HBC-2: what follows (variables declared without a value) has no
+	   line of its own */
+	header(H_LINE, 0, 0);
 	/* No write out any uninitialized variables */
 	write_bss();
 	out_write();

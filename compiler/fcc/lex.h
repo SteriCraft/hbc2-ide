@@ -2,6 +2,7 @@ extern unsigned token;
 extern unsigned line_num;
 extern unsigned long token_value;
 extern char filename[33];
+extern char main_filename[33];
 
 extern unsigned label_tag;
 

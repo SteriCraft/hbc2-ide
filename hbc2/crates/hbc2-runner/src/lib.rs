@@ -97,6 +97,9 @@ enum Command {
     Pause,
     /// Executes this many instructions, then pauses.
     Step(u32),
+    /// Executes one instruction, then runs while the PC is one of these
+    /// addresses (sorted), then pauses.
+    StepWithin(Vec<u16>),
     PowerCycle,
     Load(Box<Machine>),
     SetSpeed(Speed),
@@ -214,6 +217,16 @@ impl Runner {
     }
 
     /// Power cycle (see [`Machine::power_on`]). Keeps running if it was.
+    /// Runs one instruction, then goes on while the PC stays on one of
+    /// `addresses` (the instructions of one source line, for example), at
+    /// the current speed, then pauses. The state is Running meanwhile:
+    /// `pause` stops it like a run. Breakpoints are not checked.
+    pub fn step_within(&self, mut addresses: Vec<u16>) {
+        addresses.sort_unstable();
+        addresses.dedup();
+        self.send(Command::StepWithin(addresses));
+    }
+
     pub fn power_cycle(&self) {
         self.send(Command::PowerCycle);
     }

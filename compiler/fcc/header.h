@@ -39,6 +39,7 @@ struct header {
 #define H_BSS		0x0017	/* uninitialized data */
 #define H_SWITCHTAB	0x0018	/* switch jump table */
 #define H_ARGFRAME	0x0019	/* argument frame size info */
+#define H_LINE		0x001A	/* HBC-2: source line (data) of what follows */
 
 extern void header(unsigned htype, unsigned name, unsigned data);
 extern void footer(unsigned htype, unsigned name, unsigned data);

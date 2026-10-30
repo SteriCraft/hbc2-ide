@@ -21,3 +21,19 @@ through `../msvc/compat.h`, a forced include):
   lines keep what follows the last `\` as well as the last `/` (Windows
   paths), and cc1 now reads the end marker of a 32-character name (it used
   to lose its place in the token stream: "useless declaration" errors).
+* Source lines for the debugger (`;#line n` lines in the HBC-2 output):
+  * `frontend.c` (cc0): the name of the C file goes out with the first `cpp`
+    line (`write_line`, split out of `write_token`), even when a header
+    comes before the file's first token.
+  * `lex.c`, `lex.h`: `main_filename`, the first file name cc1 reads (the
+    C file compiled).
+  * `header.h`: `H_LINE` (data = the line, 0 = in another file than the C
+    file). `body.c`, `body.h`, `main.c` (cc1): `line_header()` writes it
+    before each statement, each local declaration, each top-level
+    declaration, at the `}` of a function, and (line 0) before the
+    variables declared without a value, which come at the end.
+  * `backend.c`, `backend.h`: `H_LINE` calls the new backend hook
+    `gen_line`; `backend-default.c` has an empty one.
+  * `copt.c`: `;#line` lines are skipped when rules match, and the ones
+    inside replaced lines are kept, after the new lines. The code is the
+    same as without them.

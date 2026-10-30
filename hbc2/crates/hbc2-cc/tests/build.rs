@@ -1,7 +1,7 @@
 //! Programs of several files that must not build: the error messages name
 //! the C files and the C names. Needs the compiler tools (compiler/build.cmd).
 
-use hbc2_cc::{Library, build_library, build_program};
+use hbc2_cc::{Library, build_library, build_program, report};
 
 /// Writes `files` (name, text) into a folder of its own, and builds them.
 fn build(test: &str, files: &[(&str, &str)], library: &Library) -> Result<(), String> {
@@ -13,12 +13,18 @@ fn build(test: &str, files: &[(&str, &str)], library: &Library) -> Result<(), St
         std::fs::write(&path, text).unwrap();
         sources.push(path);
     }
-    build_program(&sources, library, &dir.join("out")).map(|_| ())
+    build_program(&sources, library, &dir.join("out"))
+        .map(|_| ())
+        .map_err(|e| report(&e))
 }
 
-fn library() -> Library {
-    build_library(&std::env::temp_dir().join("hbc2-cc-build-library"))
-        .unwrap_or_else(|e| panic!("library: {e}"))
+/// Built once for all the tests (they run at the same time).
+fn library() -> &'static Library {
+    static LIBRARY: std::sync::OnceLock<Library> = std::sync::OnceLock::new();
+    LIBRARY.get_or_init(|| {
+        build_library(&std::env::temp_dir().join("hbc2-cc-build-library"))
+            .unwrap_or_else(|e| panic!("library: {}", report(&e)))
+    })
 }
 
 #[test]
@@ -34,11 +40,14 @@ fn errors() {
             ("a.c", "int f(void) { return 1; }\n"),
             ("b.c", "int f(void) { return 2; }\n"),
         ],
-        &library,
+        library,
     )
     .unwrap_err();
-    assert!(e.contains("b.c: error: 'f' is already defined ("), "{e}");
-    assert!(e.contains("a.c)"), "{e}");
+    assert!(
+        e.contains("b.c:1:1: error: 'f' is already defined ("),
+        "{e}"
+    );
+    assert!(e.contains("a.c, line 1)"), "{e}");
 
     // a global variable too, and a library name
     let e = build(
@@ -51,15 +60,16 @@ fn errors() {
             ),
             ("b.c", "int n;\n"),
         ],
-        &library,
+        library,
     )
     .unwrap_err();
     assert!(e.contains("b.c: error: 'n' is already defined ("), "{e}");
+    assert!(e.contains("a.c, line 2)"), "{e}");
     assert!(e.contains("error: 'puts' is already defined ("), "{e}");
 
     // used, defined nowhere
-    let e = build("missing", &[main], &library).unwrap_err();
-    assert!(e.contains("main.c: error: not defined: 'f'"), "{e}");
+    let e = build("missing", &[main], library).unwrap_err();
+    assert!(e.contains("main.c:2:1: error: not defined: 'f'"), "{e}");
 
     // a static function is not seen from another file
     let e = build(
@@ -71,10 +81,10 @@ fn errors() {
                 "static int f(void) { return 1; }\nint g(void) { return f(); }\n",
             ),
         ],
-        &library,
+        library,
     )
     .unwrap_err();
-    assert!(e.contains("main.c: error: not defined: 'f'"), "{e}");
+    assert!(e.contains("main.c:2:1: error: not defined: 'f'"), "{e}");
 
     // the same static name in two files, the names of the library's statics
     // (printf.c, stdio.c), and a .has file: builds
@@ -90,11 +100,126 @@ fn errors() {
             ("c.has", "; nothing\nc_label:\n    ret\n"),
             ("d.c", "int field;\nchar *next(void) { return 0; }\n"),
         ],
-        &library,
+        library,
     )
     .unwrap();
 
     // neither .c nor .has
-    let e = build("kind", &[("notes.txt", "")], &library).unwrap_err();
+    let e = build("kind", &[("notes.txt", "")], library).unwrap_err();
     assert!(e.contains("not a .c or .has file"), "{e}");
+}
+
+/// Compiler errors point at the C line, in every file of the build (a
+/// failing file does not stop the others), headers included.
+#[test]
+fn error_lines() {
+    use hbc2_cc::{Diagnostic, Severity};
+    let library = library();
+    let dir = std::env::temp_dir().join("hbc2-cc-build").join("lines");
+    std::fs::create_dir_all(&dir).unwrap();
+    let files = [
+        (
+            "main.c",
+            "#include \"defs.h\"\nint main(void)\n{\n  int x = 1\n  return x;\n}\n",
+        ),
+        ("defs.h", "int f(void);\nint g(void) { return ; }\n"),
+        ("a.c", "int f(void)\n{\n  float q;\n  return 0;\n}\n"),
+        ("b.c", "int h(void) { return 0; }\n#include \"nothere.h\"\n"),
+        ("c.c", "int k(void) { return 0; }\n\n#error stop here\n"),
+    ];
+    let mut sources = Vec::new();
+    for (name, text) in files {
+        std::fs::write(dir.join(name), text).unwrap();
+        if name.ends_with(".c") {
+            sources.push(dir.join(name));
+        }
+    }
+    let errors = match build_program(&sources, library, &dir.join("out")) {
+        Ok(_) => panic!("built"),
+        Err(e) => e,
+    };
+    let at = |name: &str, line: u32| -> Vec<&Diagnostic> {
+        errors
+            .iter()
+            .filter(|d| d.file.as_deref() == Some(&*dir.join(name)) && d.line == line)
+            .filter(|d| d.severity == Severity::Error)
+            .collect()
+    };
+    let all = report(&errors);
+    // the missing ';' is seen at the next token
+    assert!(
+        at("main.c", 5)
+            .iter()
+            .any(|d| d.message.contains("semicolon")),
+        "{all}"
+    );
+    assert!(!at("defs.h", 2).is_empty(), "{all}");
+    assert!(
+        at("a.c", 3).iter().any(|d| d.message.contains("float")),
+        "{all}"
+    );
+    assert!(
+        at("b.c", 2)
+            .iter()
+            .any(|d| d.message.contains("'nothere.h'")),
+        "{all}"
+    );
+    assert!(
+        at("c.c", 3).iter().any(|d| d.message.contains("stop here")),
+        "{all}"
+    );
+}
+
+/// The program's instructions point at their C lines: the function's
+/// label at its declaration, each statement, the return at the `}`.
+/// `return g;` has no code of its own (copt drops the load of what was
+/// just stored), and f has no prologue: lines 5 and 2 hold no instruction.
+#[test]
+fn c_lines() {
+    let dir = std::env::temp_dir().join("hbc2-cc-build").join("c_lines");
+    std::fs::create_dir_all(&dir).unwrap();
+    let main = dir.join("main.c");
+    std::fs::write(
+        &main,
+        "int g;\n\
+         int f(int x)\n\
+         {\n\
+         \x20   g = x + 1;\n\
+         \x20   return g;\n\
+         }\n\
+         \n\
+         int main(void)\n\
+         {\n\
+         \x20   return f(41) - 42;\n\
+         }\n",
+    )
+    .unwrap();
+    let build = build_program(std::slice::from_ref(&main), library(), &dir.join("out"))
+        .unwrap_or_else(|e| panic!("{}", report(&e)));
+    let program = &build.program;
+    let file = program
+        .files
+        .iter()
+        .position(|f| *f == main)
+        .expect("main.c is a file of the program");
+    let lines: std::collections::BTreeSet<u32> = program
+        .lines
+        .iter()
+        .filter(|l| l.file == file)
+        .map(|l| l.line)
+        .collect();
+    assert_eq!(lines.into_iter().collect::<Vec<_>>(), [4, 6, 10, 11]);
+    let f = program.symbol("_f").unwrap();
+    assert_eq!((f.file, f.line), (file, 2));
+    let main_label = program.symbol("_main").unwrap();
+    assert_eq!((main_label.file, main_label.line), (file, 8));
+    // int g; is written at the end of the file, without a line
+    let g = program.symbol("_g").unwrap();
+    assert_ne!(g.file, file);
+    // a breakpoint on a line stops at its first instruction
+    let address = program.address_of(file, 10).unwrap();
+    assert!(address > f.address);
+    // the startup code keeps its own file
+    let start = program.symbol("_start").unwrap();
+    assert!(program.files[start.file].ends_with("crt0.has"));
 }

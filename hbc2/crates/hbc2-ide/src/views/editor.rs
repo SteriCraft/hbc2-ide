@@ -57,6 +57,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
     let digits = line_total.to_string().len().max(3) as f32;
     let gutter_width = (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0);
     let editor_id = editor_id(&doc.path);
+    let syntax = highlight::Syntax::of(&doc.path);
 
     let Document {
         text,
@@ -83,7 +84,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 let job = match layout_cache {
                     Some((k, job)) if *k == key => job.clone(),
                     _ => {
-                        let mut job = highlight::layout_job(source, font.clone(), dark);
+                        let mut job = highlight::layout_job(source, syntax, font.clone(), dark);
                         job.wrap.max_width = f32::INFINITY;
                         *layout_cache = Some((key, job.clone()));
                         job

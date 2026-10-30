@@ -238,3 +238,51 @@ fn dropping_a_running_runner_stops_its_thread() {
     std::thread::sleep(Duration::from_millis(20));
     drop(runner); // joins the thread: the test would hang if it did not stop
 }
+
+/// Runs a short loop 5 times, then sits in an endless one.
+const LINES: &str = "
+_start:
+    cli
+    mov b, 5
+again:
+    add a, 1
+    sub b, 1
+    jmz done
+    jmp again
+done:
+    nop
+forever:
+    jmp forever
+";
+
+#[test]
+fn step_within_runs_until_the_pc_leaves_the_addresses() {
+    let p = program(LINES);
+    let at = |name: &str| p.symbol(name).unwrap().address as u16;
+    let runner = Runner::new(machine(LINES, no_peripherals()));
+    runner.set_speed(Speed::Fastest);
+    runner.step(2); // cli, mov b, 5
+
+    // The four instructions of the loop: it goes round 5 times.
+    let lop: Vec<u16> = (0..4).map(|i| at("again") + 4 * i).collect();
+    runner.step_within(lop);
+    let s = wait_until(&runner, |s| s.state == RunState::Paused && s.ticks > 2);
+    assert_eq!(s.cpu.pc, at("done"));
+    assert_eq!(s.cpu.reg(Register::A), 5);
+    assert_eq!(s.stop, None);
+
+    // Already out after one instruction: a plain step.
+    runner.step_within(vec![at("again")]);
+    let s = runner.sync();
+    assert_eq!((s.state, s.cpu.pc), (RunState::Paused, at("forever")));
+
+    // A line that never ends: running until paused.
+    runner.step_within(vec![at("forever")]);
+    let s = wait_until(&runner, |s| s.ticks > 10_000);
+    assert_eq!(s.state, RunState::Running);
+    runner.pause();
+    assert_eq!(runner.sync().state, RunState::Paused);
+    // Run afterwards is a plain run.
+    runner.run();
+    assert_eq!(runner.sync().state, RunState::Running);
+}

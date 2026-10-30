@@ -375,6 +375,22 @@ void gen_epilogue(unsigned size, unsigned argsize)
 	puts("\tret");
 }
 
+/*
+ *	The source line of the code that follows (0: not in the C file), for
+ *	the debugger: a ";#line n" line, read by the driver. copt skips these
+ *	lines when it matches its rules.
+ */
+void gen_line(unsigned line)
+{
+	static unsigned last = ~0U;
+	/* the data of the line before goes before the line (no object is
+	   pending between two declarations or statements) */
+	flush_all();
+	if (line != last)
+		printf(";#line %u\n", line);
+	last = line;
+}
+
 void gen_label(const char *tail, unsigned n)
 {
 	printf("__L%u_%u%s:\n", unit, n, tail);

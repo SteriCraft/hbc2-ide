@@ -444,6 +444,9 @@ static void process_header(void)
 	case H_ARGFRAME:
 		argframe_len = h.h_name;
 		break;
+	case H_LINE:
+		gen_line(h.h_data);
+		break;
 	case H_FUNCTION | H_FOOTER:
 		if (func_ret_used)
 			gen_label("_r", h.h_name);

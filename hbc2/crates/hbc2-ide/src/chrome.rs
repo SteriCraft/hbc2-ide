@@ -1,19 +1,39 @@
 //! Menu bar, toolbar, status bar, start page and dialogs.
 
 use eframe::egui::{self, Align, Button, Color32, Layout, RichText};
+use hbc2_asm::Target;
 use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
 use crate::app::{Action, Dialog, State, can_undo};
 use crate::find::FindMode;
-use crate::project::{NEW_FILE_TEMPLATE, folder_name, project_folder_name, source_file_name};
+use crate::project::{
+    Language, folder_name, new_file_content, project_folder_name, source_file_name,
+};
 use crate::settings::{SPEEDS, TargetSetting, frequency_label, speed_label};
 
 fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
     Button::new(text.to_string()).shortcut_text(shortcut.to_string())
 }
 
+/// Why a C project has no EEPROM target.
+const C_RAM_ONLY: &str = "C programs are loaded into RAM";
+
+fn build_label(c_project: bool) -> &'static str {
+    if c_project { "Build" } else { "Assemble" }
+}
+
+fn is_c_project(state: &State) -> bool {
+    state
+        .project
+        .as_ref()
+        .is_some_and(|p| p.language == Language::C)
+}
+
 pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
+    let c_project = is_c_project(state);
+    let building = state.is_building();
+    let eeprom_target = state.target() == Target::Eeprom;
     let actions = &mut state.actions;
     let has_project = state.project.is_some();
     egui::Panel::top("menu_bar").show(ui, |ui| {
@@ -116,7 +136,10 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
 
             ui.menu_button("Assembler", |ui| {
                 if ui
-                    .add_enabled(has_project, shortcut_button("Assemble", "F7"))
+                    .add_enabled(
+                        has_project && !building,
+                        shortcut_button(build_label(c_project), "F7"),
+                    )
                     .clicked()
                 {
                     actions.push(Action::Assemble);
@@ -124,21 +147,27 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 ui.separator();
                 ui.label(RichText::new("Memory target").weak());
                 let target = state.project_settings.target;
-                if ui
-                    .radio(target == TargetSetting::Ram, "RAM (64 KiB image)")
-                    .clicked()
-                {
-                    actions.push(Action::SetTarget(TargetSetting::Ram));
-                }
-                if ui
-                    .radio(
-                        target == TargetSetting::Eeprom,
-                        "EEPROM (1 MiB image, boots into RAM)",
-                    )
-                    .clicked()
-                {
-                    actions.push(Action::SetTarget(TargetSetting::Eeprom));
-                }
+                ui.add_enabled_ui(!c_project, |ui| {
+                    if ui
+                        .radio(
+                            target == TargetSetting::Ram || c_project,
+                            "RAM (64 KiB image)",
+                        )
+                        .clicked()
+                    {
+                        actions.push(Action::SetTarget(TargetSetting::Ram));
+                    }
+                    if ui
+                        .radio(
+                            target == TargetSetting::Eeprom && !c_project,
+                            "EEPROM (1 MiB image, boots into RAM)",
+                        )
+                        .on_disabled_hover_text(C_RAM_ONLY)
+                        .clicked()
+                    {
+                        actions.push(Action::SetTarget(TargetSetting::Eeprom));
+                    }
+                });
                 ui.separator();
                 let loaded = state.emulator.image().is_some();
                 if ui
@@ -190,12 +219,12 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     ui.add_enabled(
                         false,
                         egui::Checkbox::new(
-                            &mut (state.project_settings.target == TargetSetting::Eeprom),
+                            &mut eeprom_target.clone(),
                             "EEPROM",
                         ),
                     )
                     .on_disabled_hover_text(
-                        "Plugged in when the program is assembled for the EEPROM target",
+                        "Plugged in when the program is assembled for the EEPROM target (assembly projects)",
                     );
                     ui.label(RichText::new("Changing them restarts the machine.").weak());
                     if changed {
@@ -246,12 +275,21 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
     let s = state.snapshot.clone();
     let running = s.state == RunState::Running;
     let has_project = state.project.is_some();
+    let c_project = is_c_project(state);
+    let building = state.is_building();
     egui::Panel::top("toolbar").show(ui, |ui| {
         ui.horizontal(|ui| {
             let actions = &mut state.actions;
             if ui
-                .add_enabled(has_project, Button::new("🔨 Assemble"))
-                .on_hover_text("Assemble and load (F7)")
+                .add_enabled(
+                    has_project && !building,
+                    Button::new(format!("🔨 {}", build_label(c_project))),
+                )
+                .on_hover_text(if c_project {
+                    "Save, compile, assemble and load (F7)"
+                } else {
+                    "Assemble and load (F7)"
+                })
                 .clicked()
             {
                 actions.push(Action::Assemble);
@@ -296,25 +334,36 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                 });
             ui.label("Target");
             let target = state.project_settings.target;
-            egui::ComboBox::from_id_salt("target")
-                .selected_text(match target {
-                    TargetSetting::Ram => "RAM",
-                    TargetSetting::Eeprom => "EEPROM",
-                })
-                .width(80.0)
-                .show_ui(ui, |ui| {
-                    if ui.selectable_label(target == TargetSetting::Ram, "RAM").clicked() {
-                        actions.push(Action::SetTarget(TargetSetting::Ram));
-                    }
-                    if ui.selectable_label(target == TargetSetting::Eeprom, "EEPROM").clicked() {
-                        actions.push(Action::SetTarget(TargetSetting::Eeprom));
-                    }
-                });
+            let target = if c_project { TargetSetting::Ram } else { target };
+            ui.add_enabled_ui(!c_project, |ui| {
+                egui::ComboBox::from_id_salt("target")
+                    .selected_text(match target {
+                        TargetSetting::Ram => "RAM",
+                        TargetSetting::Eeprom => "EEPROM",
+                    })
+                    .width(80.0)
+                    .show_ui(ui, |ui| {
+                        if ui.selectable_label(target == TargetSetting::Ram, "RAM").clicked() {
+                            actions.push(Action::SetTarget(TargetSetting::Ram));
+                        }
+                        if ui.selectable_label(target == TargetSetting::Eeprom, "EEPROM").clicked() {
+                            actions.push(Action::SetTarget(TargetSetting::Eeprom));
+                        }
+                    });
+            })
+            .response
+            .on_disabled_hover_text(C_RAM_ONLY);
             ui.separator();
+            if building {
+                ui.spinner();
+                ui.label(RichText::new("Building…").strong())
+                    .on_hover_text("The C build runs in the background. Run or Step pressed now start once it is loaded.");
+                ui.separator();
+            }
             let (text, color) = run_status(state);
             ui.label(RichText::new(text).color(color).strong());
             if state.is_stale() {
-                ui.label(RichText::new("⚠ sources changed since the last assembly").color(ui.visuals().warn_fg_color))
+                ui.label(RichText::new("⚠ sources changed since the last build").color(ui.visuals().warn_fg_color))
                     .on_hover_text("Assemble (F7) to load the new version. Run assembles by itself if the program has not started yet.");
             }
         });
@@ -382,7 +431,7 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
     ui.add_space(16.0);
     ui.vertical_centered(|ui| {
         ui.heading(RichText::new("HBC-2 IDE").size(28.0));
-        ui.label("Write HBC-2 assembly, assemble it, and watch the computer run it.");
+        ui.label("Write HBC-2 assembly or C, build it, and watch the computer run it.");
     });
     ui.add_space(16.0);
     ui.horizontal(|ui| {
@@ -406,7 +455,7 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
     ui.strong("Keys");
     egui::Grid::new("keys").num_columns(2).show(ui, |ui| {
         for (key, what) in [
-            ("F7", "Assemble and load"),
+            ("F7", "Assemble (or build a C project) and load"),
             ("F5", "Run / continue"),
             ("F6", "Pause"),
             ("F10", "Step one instruction"),
@@ -433,6 +482,10 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
         return;
     };
     let mut keep = true;
+    let language = match &state.project {
+        Some(p) => p.language,
+        None => Language::Assembly,
+    };
     let modal = egui::Modal::new(egui::Id::new("dialog")).show(ctx, |ui| {
         ui.set_max_width(460.0);
         match &mut dialog {
@@ -463,6 +516,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
             Dialog::NewProject {
                 parent,
                 name,
+                language,
                 interrupt_handler,
                 error,
             } => {
@@ -495,7 +549,24 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     });
                     ui.add_space(10.0);
 
-                    ui.checkbox(interrupt_handler, "Include a default interrupt handler");
+                    ui.label("Language");
+                    ui.horizontal(|ui| {
+                        ui.radio_value(language, Language::Assembly, "Assembly (main.has)");
+                        ui.radio_value(language, Language::C, "C (main.c)");
+                    });
+                    ui.add_space(10.0);
+
+                    if *language == Language::Assembly {
+                        ui.checkbox(interrupt_handler, "Include a default interrupt handler");
+                    } else {
+                        ui.label(
+                            RichText::new(
+                                "Every .c and .has file of the folder is built. The startup \
+                                 code finds the devices before main runs.",
+                            )
+                            .weak(),
+                        );
+                    }
                     ui.add_space(10.0);
 
                     if let Ok(folder) = project_folder_name(name) {
@@ -525,7 +596,11 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                                         keep = false;
                                         state
                                             .actions
-                                            .push(Action::CreateProject(root, *interrupt_handler));
+                                            .push(Action::CreateProject(
+                                                root,
+                                                *language,
+                                                *interrupt_handler,
+                                            ));
                                     }
                                 }
                             }
@@ -547,14 +622,14 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
                     if ui.button("Create").clicked() || enter {
-                        match source_file_name(name) {
+                        match source_file_name(name, language) {
                             Err(e) => *error = Some(e.into()),
                             Ok(file) => {
-                                let path = dir.join(file);
+                                let path = dir.join(&file);
                                 if path.exists() {
                                     *error = Some("A file with this name already exists.".into());
                                 } else {
-                                    match std::fs::write(&path, NEW_FILE_TEMPLATE) {
+                                    match std::fs::write(&path, new_file_content(&file)) {
                                         Ok(()) => {
                                             keep = false;
                                             state.actions.push(Action::RefreshFiles);
@@ -570,15 +645,18 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                         keep = false;
                     }
                 });
-                let file = source_file_name(name).unwrap_or_else(|_| name.trim().to_string());
+                let file =
+                    source_file_name(name, language).unwrap_or_else(|_| name.trim().to_string());
                 let include = match &state.project {
                     Some(project) => project.include_path(&dir.join(&file)),
                     None => file,
                 };
-                ui.label(
-                    RichText::new(format!("Include it from main.has with .include \"{include}\"."))
-                        .weak(),
-                );
+                let hint = if language == Language::C {
+                    "Every .c and .has file of the project is built.".to_string()
+                } else {
+                    format!("Include it from main.has with .include \"{include}\".")
+                };
+                ui.label(RichText::new(hint).weak());
             }
             Dialog::NewFolder { dir, name, error } => {
                 ui.heading("New folder");
@@ -624,7 +702,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.horizontal(|ui| {
                     if ui.button("Rename").clicked() || enter {
-                        match source_file_name(name) {
+                        match source_file_name(name, language) {
                             Err(e) => *error = Some(e.into()),
                             Ok(file) => {
                                 let new_path = path.with_file_name(file);

@@ -23,7 +23,7 @@ use crate::console::{Console, Level};
 use crate::document::{Document, shift_breakpoints};
 use crate::emulator::{Emulator, Image, Peripherals, ram_address};
 use crate::find::{Find, FindMode};
-use crate::project::{self, Project};
+use crate::project::{self, Language, Project};
 use crate::settings::{ProjectSettings, Settings, TargetSetting};
 use crate::tabs::Tab;
 use crate::views::disasm::DisasmView;
@@ -45,8 +45,8 @@ pub struct Saved {
 pub enum Action {
     NewProject,
     /// Creates a project in this folder and opens it. The flag adds the
-    /// default interrupt handler.
-    CreateProject(PathBuf, bool),
+    /// default interrupt handler (assembly only).
+    CreateProject(PathBuf, Language, bool),
     OpenProjectDialog,
     OpenProject(PathBuf),
     CloseProject,
@@ -126,6 +126,7 @@ pub enum Dialog {
         /// The project goes in `parent/name`.
         parent: PathBuf,
         name: String,
+        language: Language,
         interrupt_handler: bool,
         error: Option<String>,
     },
@@ -155,6 +156,19 @@ pub enum Dialog {
     Keyboard,
 }
 
+/// A program and its warnings, or the errors (with the warnings).
+type BuildResult = Result<(Program, Vec<Diagnostic>), Vec<Diagnostic>>;
+
+/// A C build running in the background.
+pub struct PendingBuild {
+    result: std::sync::mpsc::Receiver<BuildResult>,
+    started: Instant,
+    /// `State::edits` when the build started (the files were saved then).
+    edits: u64,
+    /// What to do once the build is loaded (Run or Step pressed meanwhile).
+    then: Option<Action>,
+}
+
 /// Result of the last assembly.
 pub struct Build {
     pub ok: bool,
@@ -171,6 +185,8 @@ pub struct State {
     pub console: Console,
     pub emulator: Emulator,
     pub build: Option<Build>,
+    /// The C build in progress, if any.
+    pub building: Option<PendingBuild>,
     /// Counts edits to the sources (to know when the loaded build is out of date).
     pub edits: u64,
     /// Value of `edits` when the loaded image was assembled (`None`: not assembled here).
@@ -288,6 +304,7 @@ impl Ide {
                 console: Console::default(),
                 emulator,
                 build: None,
+                building: None,
                 edits: 0,
                 loaded_edits: None,
                 snapshot,
@@ -358,6 +375,7 @@ impl Ide {
     pub fn ui(&mut self, ui: &mut egui::Ui) {
         let ctx = ui.ctx().clone();
         self.state.snapshot = self.state.emulator.runner.snapshot();
+        self.state.poll_build(&ctx);
         self.shortcuts(&ctx);
         self.watch_emulator();
         self.check_disk(&ctx);
@@ -669,12 +687,13 @@ impl Ide {
                 state.dialog = Some(Dialog::NewProject {
                     parent: project::default_projects_parent(),
                     name: "newProject".into(),
+                    language: Language::Assembly,
                     interrupt_handler: true,
                     error: None,
                 });
             }
-            Action::CreateProject(dir, interrupt_handler) => {
-                match Project::create(&dir, interrupt_handler) {
+            Action::CreateProject(dir, language, interrupt_handler) => {
+                match Project::create(&dir, language, interrupt_handler) {
                     Ok(project) => {
                         let root = project.root.clone();
                         self.open_project(&root, true);
@@ -712,7 +731,8 @@ impl Ide {
                 self.state.settings.last_project = None;
             }
             Action::OpenFileDialog => {
-                let mut dialog = rfd::FileDialog::new().add_filter("HBC-2 source", &["has"]);
+                let mut dialog =
+                    rfd::FileDialog::new().add_filter("HBC-2 source", &["has", "c", "h"]);
                 if let Some(project) = &state.project {
                     dialog = dialog.set_directory(&project.root);
                 }
@@ -722,9 +742,13 @@ impl Ide {
             }
             Action::OpenFile(path, line) => self.open_file(&path, line),
             Action::NewFile(dir) => {
+                let c = state
+                    .project
+                    .as_ref()
+                    .is_some_and(|p| p.language == Language::C);
                 state.dialog = Some(Dialog::NewFile {
                     dir,
-                    name: "newFile.has".into(),
+                    name: if c { "newFile.c" } else { "newFile.has" }.into(),
                     error: None,
                 })
             }
@@ -856,14 +880,18 @@ impl Ide {
                 state.assemble();
             }
             Action::Run => {
-                if state.prepare_to_run() {
+                if state.prepare_to_run(Action::Run) {
                     state.emulator.run();
                 }
             }
             Action::Pause => state.emulator.pause(),
             Action::Step => {
-                if state.prepare_to_run() {
-                    state.emulator.step(1);
+                if state.prepare_to_run(Action::Step) {
+                    let pc = state.emulator.runner.sync().cpu.pc;
+                    match state.c_line_addresses(pc) {
+                        Some(addresses) => state.emulator.step_within(addresses),
+                        None => state.emulator.step(1),
+                    }
                 }
             }
             Action::Reset => {
@@ -982,6 +1010,7 @@ impl Ide {
         }
         state.docs.clear();
         state.build = None;
+        state.building = None; // its result is not wanted any more
         state.loaded_edits = None;
         state.project_settings = ProjectSettings::default();
         state.emulator.peripherals = Peripherals::default();
@@ -1311,14 +1340,22 @@ impl State {
         self.loaded_edits.is_some_and(|e| e != self.edits)
     }
 
-    /// Before Run or Step: assembles first if nothing is loaded, or if the
-    /// sources changed and the program has not started yet. Returns false
-    /// if there is nothing (valid) to run.
-    fn prepare_to_run(&mut self) -> bool {
+    /// Before Run or Step (`then`): assembles first if nothing is loaded, or
+    /// if the sources changed and the program has not started yet. Returns
+    /// false if there is nothing (valid) to run now. A C project builds in
+    /// the background: `then` runs once its build is loaded.
+    fn prepare_to_run(&mut self, then: Action) -> bool {
+        if let Some(pending) = &mut self.building {
+            pending.then = Some(then);
+            return false;
+        }
         let fresh_machine = self.snapshot.ticks == 0;
         let needs_build = self.project.is_some()
             && (self.emulator.image().is_none() || (self.is_stale() && fresh_machine));
         if needs_build && !self.assemble() {
+            if let Some(pending) = &mut self.building {
+                pending.then = Some(then);
+            }
             return false;
         }
         if self.emulator.image().is_none() {
@@ -1330,14 +1367,66 @@ impl State {
         true
     }
 
-    /// Assembles the project and loads it, paused at power-on.
+    /// The program's target: always RAM for a C project (its startup code
+    /// runs from RAM).
+    pub fn target(&self) -> Target {
+        match &self.project {
+            Some(p) if p.language == Language::C => Target::Ram,
+            _ => self.project_settings.target.into(),
+        }
+    }
+
+    /// Whether `path` is shown but not edited: the compiled files of a C
+    /// project and the compiler's own files (startup code, runtime,
+    /// library), which the debugger opens.
+    pub fn is_generated(&self, path: &Path) -> bool {
+        let compiler = normalize(&hbc2_cc::compiler_dir());
+        self.project
+            .as_ref()
+            .is_some_and(|p| path.starts_with(p.build_dir()))
+            || path.starts_with(compiler)
+    }
+
+    /// A C build runs in the background.
+    pub fn is_building(&self) -> bool {
+        self.building.is_some()
+    }
+
+    /// Assembles the project and loads it, paused at power-on. A C project
+    /// is saved, then compiled and assembled in the background (see
+    /// [`State::poll_build`]): returns false, as nothing is loaded yet.
     pub fn assemble(&mut self) -> bool {
         let Some(project) = &self.project else {
             self.console
                 .error("Open or create a project first (File menu).");
             return false;
         };
-        let target: Target = self.project_settings.target.into();
+        if self.building.is_some() {
+            self.console.info("A build is already in progress.");
+            return false;
+        }
+        let name = project.name();
+        if project.language == Language::C {
+            let (sources, dir) = (project.c_sources(), project.build_dir());
+            if !self.save(&self.dirty_paths()) {
+                return false;
+            }
+            self.console.info(format!(
+                "Building {name}… (in progress, the IDE stays usable)"
+            ));
+            let (send, result) = std::sync::mpsc::channel();
+            std::thread::spawn(move || {
+                let _ = send.send(build_c(&sources, &dir));
+            });
+            self.building = Some(PendingBuild {
+                result,
+                started: Instant::now(),
+                edits: self.edits,
+                then: None,
+            });
+            return false;
+        }
+        let target = self.target();
         let entry = project.entry();
         let sources = Sources(
             self.docs
@@ -1350,23 +1439,57 @@ impl State {
             Target::Eeprom => "EEPROM",
         };
         self.console
-            .info(format!("Assembling {} for {target_name}…", project.name()));
+            .info(format!("Assembling {name} for {target_name}…"));
         let started = Instant::now();
-        let result = hbc2_asm::assemble(&entry, &sources, target);
-        let elapsed = started.elapsed();
+        let result = hbc2_asm::assemble(&entry, &sources, target).map(|p| {
+            let warnings = p.warnings.clone();
+            (p, warnings)
+        });
+        self.finish_build(result, false, started, self.edits)
+    }
 
+    /// Once a frame: takes the result of a background build when it is
+    /// ready, loads it, then runs what was waiting for it (Run, Step).
+    pub fn poll_build(&mut self, ctx: &egui::Context) {
+        let Some(pending) = &self.building else {
+            return;
+        };
+        match pending.result.try_recv() {
+            Ok(result) => {
+                let pending = self.building.take().expect("a build is pending");
+                let ok = self.finish_build(result, true, pending.started, pending.edits);
+                if ok && let Some(then) = pending.then {
+                    self.actions.push(then);
+                }
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => {
+                ctx.request_repaint_after(std::time::Duration::from_millis(50));
+            }
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.building = None;
+                self.console.error("The build stopped unexpectedly.");
+            }
+        }
+    }
+
+    /// Shows the result of an assembly or a C build (`c`), and loads the
+    /// program. `edits` is the edit count of the sources it was made from.
+    fn finish_build(&mut self, result: BuildResult, c: bool, started: Instant, edits: u64) -> bool {
+        let elapsed = started.elapsed();
+        let target = self.target();
         match result {
-            Ok(program) => {
-                for warning in &program.warnings {
+            Ok((program, warnings)) => {
+                for warning in &warnings {
                     self.push_diagnostic(warning);
                 }
                 self.console.push(
                     Level::Success,
                     format!(
-                        "Assembled in {:.0} ms: {} bytes used, {} warning(s). Loaded, paused at power-on.",
+                        "{} in {:.0} ms: {} bytes used, {} warning(s). Loaded, paused at power-on.",
+                        if c { "Built" } else { "Assembled" },
                         elapsed.as_secs_f64() * 1000.0,
                         program.bytes_used,
-                        program.warnings.len()
+                        warnings.len()
                     ),
                     None,
                 );
@@ -1386,7 +1509,7 @@ impl State {
                 };
                 self.build = Some(Build {
                     ok: true,
-                    diagnostics: program.warnings.clone(),
+                    diagnostics: warnings,
                     code_lines,
                 });
                 if let Err(e) = self
@@ -1396,7 +1519,7 @@ impl State {
                     self.console.error(e);
                     return false;
                 }
-                self.loaded_edits = Some(self.edits);
+                self.loaded_edits = Some(edits);
                 self.followed = None;
                 true
             }
@@ -1408,8 +1531,9 @@ impl State {
                     .iter()
                     .filter(|e| e.severity == Severity::Error)
                     .count();
+                let what = if c { "Build" } else { "Assembly" };
                 self.console
-                    .error(format!("Assembly failed: {count} error(s)."));
+                    .error(format!("{what} failed: {count} error(s)."));
                 self.build = Some(Build {
                     ok: false,
                     diagnostics: errors,
@@ -1418,6 +1542,28 @@ impl State {
                 false
             }
         }
+    }
+
+    /// F10: in a C file, the addresses of the instructions of the line the
+    /// CPU is on (at `pc`), so that the whole line runs; `None` elsewhere
+    /// (one instruction). The line stops at the first instruction of
+    /// another line or of an assembly file (a runtime routine, an
+    /// interrupt handler).
+    fn c_line_addresses(&self, pc: u16) -> Option<Vec<u16>> {
+        let program = self.emulator.program.as_ref()?;
+        let (path, line) = self.source_location(pc)?;
+        if crate::highlight::Syntax::of(&path) != crate::highlight::Syntax::C {
+            return None;
+        }
+        let file = program.files.iter().position(|f| *f == path)?;
+        Some(
+            program
+                .lines
+                .iter()
+                .filter(|l| l.file == file && l.line == line)
+                .filter_map(|l| ram_address(program.target, l.address))
+                .collect(),
+        )
     }
 
     fn push_diagnostic(&mut self, d: &Diagnostic) {
@@ -1552,6 +1698,15 @@ fn history_step(
         }
         current = state;
     }
+}
+
+/// Compiles and assembles a C project: the program and its warnings, or the
+/// errors (with the warnings). The library is compiled into `dir/lib` when
+/// it changed.
+fn build_c(sources: &[PathBuf], dir: &Path) -> BuildResult {
+    let library = hbc2_cc::build_library(&dir.join("lib"))?;
+    let build = hbc2_cc::build_program(sources, &library, dir)?;
+    Ok((build.program, build.warnings))
 }
 
 fn breakpoint_addresses(program: &Program, settings: &ProjectSettings) -> Vec<u16> {

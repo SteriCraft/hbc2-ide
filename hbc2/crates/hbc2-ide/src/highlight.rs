@@ -1,7 +1,8 @@
-//! Syntax highlighting of `.has` source code.
+//! Syntax highlighting of `.has` and C source code.
 //!
-//! This is a lenient, line-based scanner meant for display only: it never
-//! fails, and the assembler stays the judge of what is valid.
+//! These are lenient, line-based scanners meant for display only: they
+//! never fail, and the assembler and the compiler stay the judges of what
+//! is valid.
 
 use std::ops::Range;
 
@@ -25,6 +26,31 @@ pub enum Kind {
     LabelDef,
     /// A name used as an operand (label, variable, define).
     Name,
+    /// C: `if`, `return`, …
+    Keyword,
+    /// C: `int`, `char`, `struct`, …
+    Type,
+    /// C: a `#` line.
+    Preprocessor,
+    /// C: a name followed by `(`.
+    Function,
+}
+
+/// Which highlighter a file gets, by its extension.
+#[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
+pub enum Syntax {
+    Assembly,
+    C,
+}
+
+impl Syntax {
+    pub fn of(path: &std::path::Path) -> Syntax {
+        if crate::project::has_extension(path, &["c", "h"]) {
+            Syntax::C
+        } else {
+            Syntax::Assembly
+        }
+    }
 }
 
 /// Splits one line (without its newline) into highlighted spans, covering the whole line.
@@ -136,16 +162,115 @@ pub fn color(kind: Kind, dark: bool) -> Color32 {
         Kind::Text => rgb(0xCE9178, 0xA31515),
         Kind::LabelDef => rgb(0xDCDCAA, 0x795E26),
         Kind::Name => rgb(0x4EC9B0, 0x267F99),
+        Kind::Keyword | Kind::Preprocessor => color(Kind::Directive, dark),
+        Kind::Type => color(Kind::Mnemonic, dark),
+        Kind::Function => color(Kind::LabelDef, dark),
     }
 }
 
+const C_KEYWORDS: &[&str] = &[
+    "break", "case", "continue", "default", "do", "else", "for", "goto", "if", "return", "sizeof",
+    "switch", "while",
+];
+
+const C_TYPES: &[&str] = &[
+    "auto", "char", "const", "double", "enum", "extern", "float", "int", "long", "register",
+    "short", "signed", "static", "struct", "typedef", "union", "unsigned", "void", "volatile",
+];
+
+/// Splits one line of C into highlighted spans, covering the whole line.
+/// `in_comment` says whether the line starts inside a `/* */` comment, and
+/// is updated for the next line.
+pub fn c_spans(line: &str, in_comment: &mut bool) -> Vec<(Range<usize>, Kind)> {
+    let bytes = line.as_bytes();
+    let mut out: Vec<(Range<usize>, Kind)> = Vec::new();
+    let mut push = |range: Range<usize>, kind: Kind| match out.last_mut() {
+        Some((last, k)) if *k == kind && last.end == range.start => last.end = range.end,
+        _ => out.push((range, kind)),
+    };
+    let mut i = 0;
+    // A `#` line is one span, but its comments and strings keep their colors.
+    let preprocessor = line.trim_start().starts_with('#') && !*in_comment;
+    let other = if preprocessor {
+        Kind::Preprocessor
+    } else {
+        Kind::Plain
+    };
+    while i < bytes.len() {
+        let start = i;
+        if *in_comment {
+            match line[i..].find("*/") {
+                Some(end) => {
+                    i += end + 2;
+                    *in_comment = false;
+                }
+                None => i = bytes.len(),
+            }
+            push(start..i, Kind::Comment);
+            continue;
+        }
+        let c = bytes[i];
+        match c {
+            b'/' if bytes.get(i + 1) == Some(&b'/') => {
+                push(i..bytes.len(), Kind::Comment);
+                break;
+            }
+            b'/' if bytes.get(i + 1) == Some(&b'*') => {
+                i += 2;
+                *in_comment = true;
+                push(start..i, Kind::Comment);
+            }
+            b'"' | b'\'' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != c {
+                    i += if bytes[i] == b'\\' { 2 } else { 1 };
+                }
+                i = (i + 1).min(bytes.len());
+                push(start..i, Kind::Text);
+            }
+            b'<' if preprocessor && line[..i].contains("include") => {
+                i = line[i..].find('>').map_or(bytes.len(), |n| i + n + 1);
+                push(start..i, Kind::Text);
+            }
+            b'0'..=b'9' if !preprocessor => {
+                i = word_end(bytes, i);
+                push(start..i, Kind::Number);
+            }
+            _ if is_name_start(Some(&c)) && !preprocessor => {
+                i = word_end(bytes, i);
+                let word = &line[start..i];
+                let kind = if C_KEYWORDS.contains(&word) {
+                    Kind::Keyword
+                } else if C_TYPES.contains(&word) {
+                    Kind::Type
+                } else if line[i..].trim_start().starts_with('(') {
+                    Kind::Function
+                } else {
+                    Kind::Plain
+                };
+                push(start..i, kind);
+            }
+            _ => {
+                i += line[i..].chars().next().map_or(1, char::len_utf8);
+                push(start..i, other);
+            }
+        }
+    }
+    out
+}
+
 /// Lays out a whole file with highlighting.
-pub fn layout_job(text: &str, font: FontId, dark: bool) -> LayoutJob {
+pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> LayoutJob {
     let mut job = LayoutJob::default();
     let mut offset = 0;
+    let mut in_comment = false;
     for line in text.split_inclusive('\n') {
         let content = line.trim_end_matches(['\n', '\r']);
-        for (range, kind) in spans(content) {
+        let spans = match syntax {
+            Syntax::Assembly => spans(content),
+            Syntax::C => c_spans(content, &mut in_comment),
+        };
+        for (range, kind) in spans {
             job.append(
                 &content[range],
                 0.0,
@@ -236,6 +361,50 @@ mod tests {
             ("sp", Kind::Name),
             "only inside brackets"
         );
+    }
+
+    fn c_kinds<'a>(line: &'a str, in_comment: &mut bool) -> Vec<(&'a str, Kind)> {
+        c_spans(line, in_comment)
+            .into_iter()
+            .filter(|(_, k)| *k != Kind::Plain)
+            .map(|(r, k)| (&line[r], k))
+            .collect()
+    }
+
+    #[test]
+    fn c_lines() {
+        let mut comment = false;
+        assert_eq!(
+            c_kinds(
+                "static int f(char c) { return 'x' + 12; } // end",
+                &mut comment
+            ),
+            [
+                ("static", Kind::Type),
+                ("int", Kind::Type),
+                ("f", Kind::Function),
+                ("char", Kind::Type),
+                ("return", Kind::Keyword),
+                ("'x'", Kind::Text),
+                ("12", Kind::Number),
+                ("// end", Kind::Comment),
+            ]
+        );
+        assert_eq!(
+            c_kinds("#include <stdio.h> /* a", &mut comment),
+            [
+                ("#include ", Kind::Preprocessor),
+                ("<stdio.h>", Kind::Text),
+                (" ", Kind::Preprocessor),
+                ("/* a", Kind::Comment),
+            ]
+        );
+        assert!(comment, "the comment goes on");
+        assert_eq!(
+            c_kinds("b */ x = \"/*\";", &mut comment),
+            [("b */", Kind::Comment), ("\"/*\"", Kind::Text)]
+        );
+        assert!(!comment);
     }
 
     #[test]

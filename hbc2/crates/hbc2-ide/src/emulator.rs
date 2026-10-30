@@ -176,6 +176,13 @@ impl Emulator {
         self.runner.step(instructions);
     }
 
+    /// Runs one instruction, then on while the PC stays on `addresses`
+    /// (one source line).
+    pub fn step_within(&mut self, addresses: Vec<u16>) {
+        self.baseline = Some(self.runner.sync());
+        self.runner.step_within(addresses);
+    }
+
     pub fn reset(&mut self) {
         self.runner.power_cycle();
         self.baseline = None;

@@ -118,6 +118,8 @@ void out_block(void *pv, unsigned len)
 }
 
 char filename[33];
+/* HBC-2: the first file named, the C file compiled (not a header) */
+char main_filename[33];
 
 unsigned line_num;
 
@@ -178,6 +180,8 @@ void next_token(void)
 			if (c == 32)
 				tokbyte();
 			*p = 0;
+			if (*main_filename == 0)
+				strcpy(main_filename, filename);
 		}
 		next_token();
 		return;

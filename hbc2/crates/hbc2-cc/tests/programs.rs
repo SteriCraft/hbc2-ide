@@ -14,7 +14,7 @@
 
 use std::path::{Path, PathBuf};
 
-use hbc2_cc::{Library, build_library, build_program, compiler_dir};
+use hbc2_cc::{Library, build_library, build_program, compiler_dir, report};
 use hbc2_core::peripherals::monitor::{TEXT_COLUMNS, TEXT_ROWS};
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
 
@@ -104,7 +104,7 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
     let dir = std::env::temp_dir()
         .join("hbc2-cc-programs")
         .join(format!("{parent}_{stem}"));
-    let build = build_program(sources, library, &dir)?;
+    let build = build_program(sources, library, &dir).map_err(|e| report(&e))?;
     let program = &build.program;
     let exit = program.symbol("__exit").expect("__exit").address as u16;
     let kbd_ready = program
@@ -191,7 +191,7 @@ fn programs() {
     }
     assert!(!programs.is_empty(), "no C test in {}", dir.display());
     let library = build_library(&std::env::temp_dir().join("hbc2-cc-library"))
-        .unwrap_or_else(|e| panic!("library: {e}"));
+        .unwrap_or_else(|e| panic!("library: {}", report(&e)));
     let mut failures = Vec::new();
     for (sources, file) in &programs {
         let source = std::fs::read_to_string(file).unwrap();

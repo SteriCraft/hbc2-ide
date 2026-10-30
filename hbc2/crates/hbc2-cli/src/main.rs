@@ -13,8 +13,12 @@ const USAGE: &str = "\
 usage:
   hbc2 asm <main.has> [-o out.bin] [--eeprom] [--symbols]
         assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom)
-  hbc2 run <main.has | ram.bin> [--ticks N] [--eeprom <file.has | eeprom.bin>]
-        run headless, then print the CPU state
+  hbc2 cc <file.c | file.has>... [-o out.bin] [--dir build] [--symbols]
+        compile C files (with the startup code, runtime and C library) and
+        assemble them with the .has files; compiled files go to --dir
+        (default: .build next to the first file)
+  hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom <file.has | eeprom.bin>]
+        run headless, then print the CPU state (C files: built as with cc)
   hbc2 bench [--seconds N] [--hz N]
         measure emulation speed (flat out, or paced on the emulator thread)";
 
@@ -23,6 +27,7 @@ fn main() -> ExitCode {
     let result = match args.first().map(String::as_str) {
         Some("asm") => asm(&args[1..]),
         Some("bench") => bench(&args[1..]),
+        Some("cc") => cc(&args[1..]),
         Some("run") => run(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
@@ -171,6 +176,54 @@ fn is_source(path: &str) -> bool {
         .is_some_and(|e| e.eq_ignore_ascii_case("has"))
 }
 
+fn is_c(path: &str) -> bool {
+    Path::new(path)
+        .extension()
+        .is_some_and(|e| e.eq_ignore_ascii_case("c"))
+}
+
+/// Builds the C program of the files at the start of `args` (up to the
+/// first option), printing warnings; errors are returned as one message.
+fn build_c(args: &[String]) -> Result<Program, String> {
+    let sources: Vec<PathBuf> = args
+        .iter()
+        .take_while(|a| !a.starts_with('-'))
+        .map(PathBuf::from)
+        .collect();
+    let first = sources.first().ok_or_else(|| USAGE.to_string())?;
+    let dir = option(args, "--dir").map(PathBuf::from).unwrap_or_else(|| {
+        first
+            .parent()
+            .unwrap_or(Path::new("."))
+            .join(hbc2_cc::BUILD_DIR)
+    });
+    let library = hbc2_cc::build_library(&dir.join("lib")).map_err(|e| failed(&e))?;
+    let build = hbc2_cc::build_program(&sources, &library, &dir).map_err(|e| failed(&e))?;
+    for warning in &build.warnings {
+        eprintln!("{warning}");
+    }
+    Ok(build.program)
+}
+
+/// The messages of a failed build, and how many errors.
+fn failed(diagnostics: &[hbc2_cc::Diagnostic]) -> String {
+    let errors = diagnostics
+        .iter()
+        .filter(|d| d.severity == hbc2_cc::Severity::Error)
+        .count();
+    format!(
+        "{}
+build failed ({errors} error(s))",
+        hbc2_cc::report(diagnostics)
+    )
+}
+
+fn cc(args: &[String]) -> Result<(), String> {
+    let first = input(args)?;
+    let program = build_c(args)?;
+    write_image(&program, first, args)
+}
+
 fn asm(args: &[String]) -> Result<(), String> {
     let path = input(args)?;
     let target = if has(args, "--eeprom") {
@@ -179,14 +232,19 @@ fn asm(args: &[String]) -> Result<(), String> {
         Target::Ram
     };
     let program = assemble(path, target)?;
+    write_image(&program, path, args)
+}
 
+/// Writes the image (`-o`, or `source` with the extension `.bin`), and the
+/// symbols with `--symbols`.
+fn write_image(program: &Program, source: &str, args: &[String]) -> Result<(), String> {
     let output = option(args, "-o")
         .map(PathBuf::from)
-        .unwrap_or_else(|| Path::new(path).with_extension("bin"));
+        .unwrap_or_else(|| Path::new(source).with_extension("bin"));
     std::fs::write(&output, &program.image).map_err(|e| format!("{}: {e}", output.display()))?;
     println!(
         "{} -> {} ({} bytes used, {} files)",
-        path,
+        source,
         output.display(),
         program.bytes_used,
         program.files.len()
@@ -220,7 +278,10 @@ fn run(args: &[String]) -> Result<(), String> {
         };
         config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
     }
-    let (ram, program) = if is_source(path) {
+    let (ram, program) = if is_c(path) {
+        let program = build_c(args)?;
+        (program.image.clone(), Some(program))
+    } else if is_source(path) {
         let program = assemble(path, Target::Ram)?;
         (program.image.clone(), Some(program))
     } else {

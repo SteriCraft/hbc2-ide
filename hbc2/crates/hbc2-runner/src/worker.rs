@@ -36,6 +36,8 @@ pub(crate) struct Worker {
     state: RunState,
     stop: Option<hbc2_core::StopReason>,
     speed: Speed,
+    /// While running a `StepWithin`: the addresses it stays on.
+    within: Option<Vec<u16>>,
 
     /// Pace keeping: cycles run since `epoch`.
     epoch: Instant,
@@ -73,6 +75,7 @@ impl Worker {
             state: RunState::Paused,
             stop: None,
             speed: Speed::default(),
+            within: None,
             epoch: now,
             paced_ticks: 0,
             rtc_synced: now,
@@ -142,6 +145,7 @@ impl Worker {
         match command {
             Command::Run => {
                 self.stop = None;
+                self.within = None;
                 self.resume();
             }
             Command::Pause => self.pause(),
@@ -152,7 +156,17 @@ impl Worker {
                     self.machine.step();
                 }
             }
+            Command::StepWithin(addresses) => {
+                self.pause();
+                self.stop = None;
+                self.machine.step();
+                if addresses.binary_search(&self.machine.cpu.pc).is_ok() {
+                    self.within = Some(addresses);
+                    self.resume();
+                }
+            }
             Command::PowerCycle => {
+                self.within = None;
                 self.machine.power_on();
                 self.sync_rtc(false);
                 self.forget_copies();
@@ -201,6 +215,7 @@ impl Worker {
     }
 
     fn pause(&mut self) {
+        self.within = None;
         if self.state == RunState::Running {
             self.report_host_time();
             self.state = RunState::Paused;
@@ -257,7 +272,14 @@ impl Worker {
             }
         };
 
-        let result = self.machine.run(budget);
+        let result = match &self.within {
+            Some(addresses) => run_within(&mut self.machine, budget, addresses),
+            None => self.machine.run(budget),
+        };
+        let left = self
+            .within
+            .as_ref()
+            .is_some_and(|a| a.binary_search(&self.machine.cpu.pc).is_err());
         self.paced_ticks += result.ticks;
         self.meter_ticks += result.ticks;
         self.report_host_time();
@@ -265,6 +287,9 @@ impl Worker {
         if let Some(stop) = result.stop {
             self.pause();
             self.stop = Some(stop);
+            self.dirty = true;
+        } else if left {
+            self.pause();
             self.dirty = true;
         }
     }
@@ -324,6 +349,16 @@ impl Worker {
             eeprom,
         })
     }
+}
+
+/// Runs about `budget` cycles, one instruction at a time, stopping as soon
+/// as the PC is not one of `addresses` (sorted).
+fn run_within(machine: &mut Machine, budget: u64, addresses: &[u16]) -> hbc2_core::RunResult {
+    let mut ticks = 0;
+    while ticks < budget && addresses.binary_search(&machine.cpu.pc).is_ok() {
+        ticks += machine.step();
+    }
+    hbc2_core::RunResult { ticks, stop: None }
 }
 
 /// The host's local date and time (its time zone, daylight saving included).

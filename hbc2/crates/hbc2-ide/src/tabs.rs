@@ -251,6 +251,7 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
         });
     }
 
+    let generated = state.is_generated(path);
     let code_lines = state
         .build
         .as_ref()
@@ -281,7 +282,7 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
                 .filter(|(p, _)| p == path)
                 .map(|(_, m)| m.clone()),
             font_size: state.settings.editor_font_size,
-            read_only: state.snapshot.state == RunState::Running,
+            read_only: state.snapshot.state == RunState::Running || generated,
         },
     );
     if response.changed {

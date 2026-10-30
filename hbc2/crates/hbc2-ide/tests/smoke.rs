@@ -97,7 +97,7 @@ fn check_accessibility(output: &egui::PlatformOutput) {
 fn temp_project(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("hbc2-ide-smoke-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
-    hbc2_ide::project::Project::create(&dir, true).unwrap();
+    hbc2_ide::project::Project::create(&dir, hbc2_ide::project::Language::Assembly, true).unwrap();
     std::fs::write(dir.join("main.has"), PROGRAM).unwrap();
     hbc2_ide::project::absolute(&dir).unwrap()
 }
@@ -748,6 +748,152 @@ fn files_and_folders_move() {
     assert!(
         in_src.is_file(),
         "a file with the same name is already there"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+/// A C project: Build saves the files first and runs in the background,
+/// compile errors land on their C line, F10 steps whole C lines (into C
+/// functions, one instruction in assembly files), and the program prints
+/// on the monitor.
+#[test]
+fn c_project_builds_and_runs() {
+    use hbc2_ide::project::{Language, Project};
+    let dir = std::env::temp_dir().join(format!("hbc2-ide-smoke-c-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    Project::create(&dir, Language::C, false).unwrap();
+    let dir = hbc2_ide::project::absolute(&dir).unwrap();
+    let main = dir.join("main.c");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    assert!(editor_open(&h.ide, &main), "main.c opens with the project");
+
+    let set_text = |h: &mut Harness, text: &str| {
+        let doc = h
+            .ide
+            .state
+            .docs
+            .iter_mut()
+            .find(|d| d.path == main)
+            .unwrap();
+        doc.text = text.to_string();
+        h.ide.state.edits += 1;
+    };
+    set_text(&mut h, "int main(void)\n{\n    return x;\n}\n");
+    h.act(Action::Assemble);
+    assert!(
+        h.ide.state.is_building(),
+        "the build runs in the background"
+    );
+    h.wait("the build", |ide| !ide.state.is_building());
+    let build = h.ide.state.build.as_ref().unwrap();
+    assert!(!build.ok);
+    let errors = h.ide.state.diagnostics_for(&main);
+    assert!(
+        errors.iter().any(|e| e.0 == 3 && e.1),
+        "error on line 3: {errors:?}"
+    );
+    assert!(!doc_dirty(&h.ide, &main), "saved before the build");
+    assert!(
+        std::fs::read_to_string(&main)
+            .unwrap()
+            .contains("return x;")
+    );
+
+    set_text(
+        &mut h,
+        "#include <stdio.h>\n\
+         int add(int a, int b) { return a + b; }\n\
+         int main(void)\n\
+         {\n\
+         \x20   int x = 1;\n\
+         \x20   x = x + 2;\n\
+         \x20   x = add(x, 4);\n\
+         \x20   puts(\"Hi\");\n\
+         \x20   return x;\n\
+         }\n",
+    );
+    // No RTC: its interrupt would take a step into the interrupt handler.
+    h.act(Action::SetPeripherals(hbc2_ide::emulator::Peripherals {
+        monitor: true,
+        rtc: false,
+        keyboard: false,
+    }));
+    // A breakpoint on a C line: Run builds, then stops there, and the
+    // editor shows the C line.
+    h.ide
+        .state
+        .project_settings
+        .breakpoints
+        .entry(main.clone())
+        .or_default()
+        .insert(6);
+    h.act(Action::SetSpeed(Speed::Fastest));
+    h.act(Action::Run);
+    h.wait("the breakpoint on the C line", |ide| {
+        let s = &ide.state.snapshot;
+        !ide.state.is_building() && s.state == RunState::Paused && s.ticks > 0
+    });
+    assert!(
+        h.ide.state.build.as_ref().is_some_and(|b| b.ok),
+        "{:?}",
+        h.ide.state.console.messages
+    );
+    assert_eq!(h.ide.state.pc_line(&main), Some(6));
+    let code_lines = &h.ide.state.build.as_ref().unwrap().code_lines;
+    assert!(code_lines.get(&main).is_some_and(|l| l.contains(&6)));
+
+    // F10: the whole line, into a C function, out of it, then into puts,
+    // which is assembly: one instruction at a time there.
+    let step = |h: &mut Harness| {
+        let ticks = h.ide.state.snapshot.ticks;
+        h.act(Action::Step);
+        h.wait("the step", |ide| {
+            let s = &ide.state.snapshot;
+            s.state == RunState::Paused && s.ticks > ticks
+        });
+        h.ide.state.snapshot.ticks - ticks
+    };
+    step(&mut h);
+    assert_eq!(h.ide.state.pc_line(&main), Some(7), "line 6 in one step");
+    step(&mut h);
+    assert_eq!(h.ide.state.pc_line(&main), Some(2), "into add");
+    step(&mut h);
+    assert_eq!(h.ide.state.pc_line(&main), Some(7), "back in main");
+    step(&mut h);
+    assert_eq!(h.ide.state.pc_line(&main), Some(8));
+    step(&mut h);
+    let pc = h.ide.state.snapshot.cpu.pc;
+    let (file, _) = h.ide.state.source_location(pc).unwrap();
+    assert!(file.ends_with("stdio.has"), "in puts: {}", file.display());
+    let ticks = step(&mut h);
+    assert!(ticks <= 4, "one instruction in assembly ({ticks} cycles)");
+
+    h.act(Action::Run);
+    h.wait("the text on the monitor", |ide| {
+        ide.state.snapshot.monitor.as_ref().is_some_and(|m| {
+            let text = m.text_buffer();
+            text[0].ascii == b'H' && text[1].ascii == b'i'
+        })
+    });
+    h.act(Action::Pause);
+
+    let compiled = dir.join(".build").join("main_1.has");
+    assert!(compiled.is_file());
+    assert!(
+        h.ide.state.is_generated(&compiled),
+        "compiled files are read-only"
+    );
+    assert!(!h.ide.state.is_generated(&main));
+    assert!(
+        !h.ide
+            .state
+            .project
+            .as_ref()
+            .unwrap()
+            .files
+            .contains(&compiled),
+        "the build folder is not in the project view"
     );
     std::fs::remove_dir_all(&dir).unwrap();
 }

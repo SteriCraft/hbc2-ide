@@ -205,6 +205,11 @@ void gen_start(void)
 	printf("\t.code\n");
 }
 
+/* HBC-2: source lines are not used by this backend */
+void gen_line(unsigned line)
+{
+}
+
 void gen_end(void)
 {
 }

@@ -231,7 +231,11 @@ fn folder_ui(
         let response = ui.selectable_label(is_open(path), text);
         // The entry file stays at the project's root.
         let response = if entry {
-            response.on_hover_text("Entry file: the assembler starts here")
+            response.on_hover_text(if project.language == crate::project::Language::C {
+                "Entry file: holds main (every .c and .has file is built)"
+            } else {
+                "Entry file: the assembler starts here"
+            })
         } else {
             drag_source(response, path)
         };

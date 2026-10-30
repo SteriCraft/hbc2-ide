@@ -12,10 +12,11 @@ is in the git history.
 | `hbc2-core` | CPU, RAM, IOD, peripherals (monitor, keyboard, RTC, EEPROM) and `Machine`. No GUI, no threads, no dependencies. |
 | `hbc2-asm` | Assembler and disassembler for `.has` files. The language is described in `../Documentation/HBC-2 Assembly Language.md`. |
 | `hbc2-runner` | Runs a machine on its own thread at a chosen clock speed (1 Hz to "as fast as possible"). Commands in, state snapshots out. |
-| `hbc2-cli` | `hbc2` command: assemble, headless run, speed benchmark. |
+| `hbc2-cc` | C compiler driver: runs the Fuzix Compiler Kit stages of `../compiler` (built by `../compiler/build.cmd`) and assembles the result with the C runtime and library. |
+| `hbc2-cli` | `hbc2` command: assemble, compile C, headless run, speed benchmark. |
 | `hbc2-ide` | `hbc2-ide`: the IDE (egui). Editor, assembler, emulator controls, and views of the CPU, memory, disassembly, IOD and peripherals. |
 
-`templates/` holds the files of a new project (`main.has`, `interruptHandler.has`).
+`templates/` holds the files of a new project (`main.has`, `interruptHandler.has`, `main.c`).
 
 ## Commands
 
@@ -25,6 +26,8 @@ cargo run --release --bin hbc2-ide                       # the IDE
 cargo run --release --bin hbc2-ide -- my/project --run   # open a project folder, assemble and run it
 cargo run --release --bin hbc2 -- asm templates/main.has --symbols
 cargo run --release --bin hbc2 -- run templates/main.has --ticks 10000
+cargo run --release --bin hbc2 -- cc main.c other.c -o program.bin   # C program (needs ../compiler/build.cmd first)
+cargo run --release --bin hbc2 -- run main.c --ticks 1000000
 cargo run --release --bin hbc2 -- bench                  # emulation speed in MHz
 cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on the emulator thread
 ```
@@ -33,6 +36,18 @@ cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on t
 
 - A project is a folder with a `main.has`, where assembly starts. File ▸ New
   project creates one from the templates.
+- A C project is a folder with a `main.c` instead. Build (F7) saves the open
+  files, then compiles every `.c` file and assembles them with every `.has`
+  file of the folder, the startup code, the runtime and the C library, in
+  the background (the toolbar shows "Building…"; Run or Step pressed
+  meanwhile start once it is loaded). Compiled files go to `.build/` (hidden
+  in the project view). Errors point at the C lines; breakpoints and the
+  current line work on the C source. In a C file, F10 runs the whole line:
+  it stops at the next line, inside a called C function, or at the first
+  instruction of an assembly file (runtime, library, interrupt handler),
+  where F10 steps one instruction again. A line that never ends runs until
+  Pause. The startup code, runtime and library open read-only. C programs
+  run from RAM: no EEPROM target.
 - **F7** assembles and loads the program (paused at power-on). **F5** runs,
   **F6** pauses, **F10** runs one instruction, **Ctrl+F5** power-cycles. Run
   assembles by itself when nothing is loaded yet, or when the sources changed
