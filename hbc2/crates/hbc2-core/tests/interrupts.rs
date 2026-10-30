@@ -4,7 +4,7 @@
 mod common;
 
 use common::*;
-use hbc2_core::isa::encode::*;
+use hbc2_core::isa::{STACK_RESET, encode::*};
 use hbc2_core::{Flag, MachineConfig, StopReason};
 
 /// Interrupt handler that logs I into 0x9010 + n, where n is counted at 0x9000.
@@ -44,7 +44,7 @@ fn plugging_a_peripheral_sends_port_then_id_on_port_0() {
     assert_eq!(ram(&m, 0x9010), 1, "first: monitor's first port");
     assert_eq!(ram(&m, 0x9011), 0x4A, "second: monitor's ID");
     assert_eq!(m.cpu.reg(I), 0x77, "IRT restores I");
-    assert_eq!(m.cpu.sp, 0);
+    assert_eq!(m.cpu.sp, STACK_RESET);
     assert!(m.cpu.flag(Flag::Interrupt));
 }
 
@@ -63,10 +63,11 @@ fn interrupt_entry_pushes_i_then_pc() {
     m.breakpoints.set(0xF000, true);
     let result = m.run(100);
     assert_eq!(result.stop, Some(StopReason::Breakpoint(0xF000)));
-    assert_eq!(m.cpu.sp, 3);
-    assert_eq!(ram(&m, 0x0001), 0x77, "I");
-    let return_pc = u16::from_be_bytes([ram(&m, 0x0003), ram(&m, 0x0002)]);
-    assert_eq!(return_pc, at(3), "PC, MSB on top");
+    // push I, push PC_LSB, push PC_MSB
+    assert_eq!(m.cpu.sp, 0xFDFD);
+    assert_eq!(ram(&m, 0xFDFF), 0x77, "I");
+    assert_eq!(ram(&m, 0xFDFE), at(3) as u8, "PC_LSB");
+    assert_eq!(ram(&m, 0xFDFD), (at(3) >> 8) as u8, "PC_MSB on top");
     assert_eq!(m.cpu.reg(I), 1, "I holds the interrupt data");
     assert!(
         !m.cpu.flag(Flag::Interrupt),
@@ -118,6 +119,57 @@ fn software_interrupt() {
     assert_eq!(m.cpu.reg(A), 0x42, "handler sees I as data");
     assert_eq!(m.cpu.reg(B), 1, "execution resumes after INT");
     assert!(m.cpu.is_halted());
+}
+
+#[test]
+fn int_and_irt_round_trip() {
+    // Port 0xFF: the last IVT entry, 0xFFFE-0xFFFF.
+    let mut m = Image::new()
+        .program(&[
+            reg_imm8(O::Mov, I, 0x42),
+            none(O::Stc),
+            imm8(O::Int, 0xFF),
+            reg_imm8(O::Mov, B, 1),
+            none(O::Hlt),
+        ])
+        .vector(0xFF, 0xF000)
+        .code(
+            0xF000,
+            &[
+                stack_offset(O::Lod, C, 0), // PC_MSB
+                stack_offset(O::Lod, D, 1), // PC_LSB
+                stack_offset(O::Lod, X, 2), // saved I
+                reg_imm8(O::Mov, I, 0),
+                none(O::Irt),
+            ],
+        )
+        .build(bare());
+    assert_eq!((ram(&m, 0xFFFE), ram(&m, 0xFFFF)), (0xF0, 0x00));
+    steps(&mut m, 4); // MOV, STC, INT, then the interrupt is entered
+    assert_eq!(m.cpu.pc, 0xF000);
+    assert!(!m.cpu.flag(Flag::Interrupt));
+    assert_eq!(m.cpu.sp, 0xFDFD);
+    m.run(100);
+    assert_eq!(u16::from_be_bytes([m.cpu.reg(C), m.cpu.reg(D)]), at(3));
+    assert_eq!(m.cpu.reg(X), 0x42);
+    assert_eq!(m.cpu.reg(I), 0x42, "IRT restores I");
+    assert_eq!(m.cpu.reg(B), 1, "execution resumes after INT");
+    assert!(m.cpu.flag(Flag::Interrupt) && m.cpu.flag(Flag::Carry));
+    assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
+}
+
+#[test]
+fn vectors_are_read_from_0xfe00() {
+    // Port n: MSB at 0xFE00 + 2n, LSB at 0xFE00 + 2n + 1.
+    let mut m = Image::new()
+        .program(&[imm8(O::Int, 0x10), none(O::Hlt)])
+        .byte(0xFE20, 0x12)
+        .byte(0xFE21, 0x34)
+        .byte(0x0120, 0xF0) // the old IVT location is ordinary memory now
+        .code(0x1234, &[reg_imm8(O::Mov, A, 1), none(O::Irt)])
+        .build(bare());
+    m.run(100);
+    assert_eq!(m.cpu.reg(A), 1);
 }
 
 #[test]
@@ -225,12 +277,16 @@ fn idle_cycles_are_counted_without_being_simulated() {
 
 #[test]
 fn power_on_restores_initial_state() {
-    let mut m = machine(&[reg_imm8(O::Mov, A, 1), reg_ram(O::Str, A, 0x0300)]);
+    let mut m = machine(&[reg_imm8(O::Mov, A, 0x77), reg_ram(O::Str, A, at(0))]);
     m.breakpoints.set(0x1234, true);
     steps(&mut m, 2);
     m.power_on();
     assert_eq!(m.cpu.reg(A), 0);
     assert_eq!(m.ticks(), 0);
-    assert_ne!(ram(&m, 0x0300), 1, "program reloaded from the image");
+    assert_eq!(
+        ram(&m, at(0)),
+        O::Mov as u8 * 4,
+        "program reloaded from the image"
+    );
     assert!(m.breakpoints.contains(0x1234), "breakpoints kept");
 }

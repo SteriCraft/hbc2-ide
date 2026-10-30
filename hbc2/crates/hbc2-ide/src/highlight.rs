@@ -82,7 +82,10 @@ pub fn spans(line: &str) -> Vec<(Range<usize>, Kind)> {
                 let lower = word.to_ascii_lowercase();
                 let kind = if expect_mnemonic && Opcode::from_mnemonic(&lower).is_some() {
                     Kind::Mnemonic
-                } else if Register::ALL.iter().any(|r| r.name() == lower) {
+                } else if Register::ALL.iter().any(|r| r.name() == lower)
+                    // the stack pointer in `[sp + n]`
+                    || (lower == "sp" && line[..start].trim_end().ends_with('['))
+                {
                     Kind::Register
                 } else {
                     Kind::Name
@@ -213,6 +216,26 @@ mod tests {
         );
         // A mnemonic used as an operand is not highlighted as one.
         assert_eq!(kinds("jmp add")[1], ("add", Kind::Name));
+    }
+
+    #[test]
+    fn stack_and_offsets() {
+        assert_eq!(
+            kinds("lod a, [sp + 2]"),
+            [
+                ("lod", Kind::Mnemonic),
+                ("a", Kind::Register),
+                ("sp", Kind::Register),
+                ("2", Kind::Number),
+            ]
+        );
+        assert_eq!(kinds("str [x:y + 4], b")[3], ("4", Kind::Number));
+        assert_eq!(kinds("ssp 3")[0], ("ssp", Kind::Mnemonic));
+        assert_eq!(
+            kinds("jmp sp")[1],
+            ("sp", Kind::Name),
+            "only inside brackets"
+        );
     }
 
     #[test]

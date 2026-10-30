@@ -8,7 +8,7 @@
 
 ; === VARIABLES ===
 ; - IOD interrupt handler -
-.data IOD_INT_HANDLER_ADDR $0x0100 _iod_interrupt_handler.msb, _iod_interrupt_handler.lsb  ; Interrupt vector of port 0
+.data IOD_INT_HANDLER_ADDR $0xFE00 _iod_interrupt_handler.msb, _iod_interrupt_handler.lsb  ; Interrupt vector of port 0
 .data firstInterrupt 0x00   ; IOD sends 2 interrupts when a peripheral is plugged, 1: First connected port, 2: ID
 .data pendingPort 0x00      ; First connected port, kept between the 2 interrupts
 .data monitorPort 0x00      ; First connected port for each peripheral
@@ -65,19 +65,18 @@ _iod_interrupt_handler_rtc_plugged:
     str rtcPort, a
     psh x                           ; The RTC interrupts every second: point its vector
     psh y                           ; to a default handler, so it is ignored until the
-    mov x, 0x01                     ; program installs its own.
-    mov y, a                        ; [x:y] = IVT entry of the port = $0x0100 + 2 * port
+    mov x, 0xFE                     ; program installs its own.
+    mov y, a                        ; [x:y] = IVT entry of the port = $0xFE00 + 2 * port
     shl y
     jmc _iod_interrupt_handler_rtc_high_port
     jmp _iod_interrupt_handler_rtc_vector
 _iod_interrupt_handler_rtc_high_port:
-    inc x                           ; Port 128 or more: entry in $0x02xx
+    inc x                           ; Port 128 or more: entry in $0xFFxx
 _iod_interrupt_handler_rtc_vector:
     mov a, _rtc_default_handler.msb
     str [x:y], a
-    inc y
     mov a, _rtc_default_handler.lsb
-    str [x:y], a
+    str [x:y + 1], a
     pop y
     pop x
     jmp _iod_interrupt_handler_id_done

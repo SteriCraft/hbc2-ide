@@ -7,7 +7,7 @@
 //! | Opcode (6b) | A.M. (4b) | R1 (3b) | R2 (3b) | V1 (8b) | V2 (8b) |
 //! ```
 //!
-//! R3 (RamReg / ImmReg mode) lives in the low 3 bits of V1, and Vx is V1:V2.
+//! R3 (RamReg / ImmReg / Offset mode) lives in the low 3 bits of V1, and Vx is V1:V2.
 //!
 //! [`INSTRUCTION_TABLE`] is the single source of truth for mnemonics, allowed
 //! addressing modes and affected flags. The CPU, the assembler, the
@@ -17,13 +17,14 @@
 pub const INSTRUCTION_SIZE: u16 = 4;
 /// RAM size in bytes (16-bit address bus).
 pub const RAM_SIZE: usize = 0x1_0000;
-/// The stack occupies 0x0000-0x00FF (the stack pointer is 8 bits).
-pub const STACK_START: u16 = 0x0000;
-/// Interrupt vector table: 0x0100-0x02FF, one 16-bit address (MSB first) per I/O port.
-pub const IVT_START: u16 = 0x0100;
+/// Stack pointer value at reset. The stack grows downward: the first push
+/// writes at 0xFDFF, just below the interrupt vector table.
+pub const STACK_RESET: u16 = 0xFE00;
+/// Interrupt vector table: 0xFE00-0xFFFF, one 16-bit address (MSB first) per I/O port.
+pub const IVT_START: u16 = 0xFE00;
 pub const IVT_SIZE: u16 = 0x0200;
 /// Execution starts here after power-on.
-pub const PROGRAM_START: u16 = 0x0300;
+pub const PROGRAM_START: u16 = 0x0000;
 
 /// The 8 general purpose registers.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -119,32 +120,35 @@ pub enum AddrMode {
     RegImm8 = 0x2,
     /// R1 and the 16-bit address Vx.
     RegRam = 0x3,
-    /// R1:R2 form a 16-bit address (R1 = MSB); R3 is used directly.
+    /// R1:R2 form a 16-bit address (R1 = MSB) plus the offset V2; R3 is used directly.
     RamRegImmReg = 0x4,
+    /// The byte at STK + V1; R1 holds the data.
+    StackOffset = 0x5,
     /// R1:R2 form a 16-bit value (R1 = MSB).
-    Reg16 = 0x5,
+    Reg16 = 0x6,
     /// The 16-bit immediate Vx.
-    Imm16 = 0x6,
+    Imm16 = 0x7,
     /// The 8-bit immediate V1.
-    Imm8 = 0x7,
+    Imm8 = 0x8,
 }
 
 impl AddrMode {
-    pub const ALL: [AddrMode; 8] = [
+    pub const ALL: [AddrMode; 9] = [
         AddrMode::None,
         AddrMode::Reg,
         AddrMode::RegImm8,
         AddrMode::RegRam,
         AddrMode::RamRegImmReg,
+        AddrMode::StackOffset,
         AddrMode::Reg16,
         AddrMode::Imm16,
         AddrMode::Imm8,
     ];
 
-    /// Decodes the 4-bit addressing mode field. Values 0x8-0xF are not implemented.
+    /// Decodes the 4-bit addressing mode field. Values 0x9-0xF are not implemented.
     pub const fn from_bits(bits: u8) -> Option<AddrMode> {
         let bits = bits & 0xF;
-        if bits < 8 {
+        if (bits as usize) < AddrMode::ALL.len() {
             Some(AddrMode::ALL[bits as usize])
         } else {
             None
@@ -158,7 +162,8 @@ impl AddrMode {
             "Reg",
             "Reg / Imm8",
             "Reg / Ram",
-            "RamReg / ImmReg",
+            "RamReg / ImmReg / Offset",
+            "Stack / Offset",
             "Reg16",
             "Imm16",
             "Imm8",
@@ -166,7 +171,7 @@ impl AddrMode {
     }
 }
 
-/// The 50 implemented opcodes (6-bit field).
+/// The 54 implemented opcodes (6-bit field).
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 #[repr(u8)]
 pub enum Opcode {
@@ -220,13 +225,17 @@ pub enum Opcode {
     Sub = 0x2F,
     Sbb = 0x30,
     Xor = 0x31,
+    Asp = 0x32,
+    Ssp = 0x33,
+    Rsp = 0x34,
+    Wsp = 0x35,
 }
 
 /// Number of implemented opcodes.
-pub const OPCODE_COUNT: usize = 50;
+pub const OPCODE_COUNT: usize = 54;
 
 impl Opcode {
-    /// Decodes the 6-bit opcode field. Values 0x32-0x3F are not implemented.
+    /// Decodes the 6-bit opcode field. Values 0x36-0x3F are not implemented.
     pub const fn from_bits(bits: u8) -> Option<Opcode> {
         let bits = (bits & 0x3F) as usize;
         if bits < OPCODE_COUNT {
@@ -271,10 +280,17 @@ use AddrMode as M;
 use Flag as F;
 
 const NONE: &[AddrMode] = &[M::None];
-const ALU: &[AddrMode] = &[M::Reg, M::RegImm8, M::RegRam];
+const ALU: &[AddrMode] = &[
+    M::Reg,
+    M::RegImm8,
+    M::RegRam,
+    M::RamRegImmReg,
+    M::StackOffset,
+];
 const JUMP: &[AddrMode] = &[M::Reg16, M::Imm16];
-const MEM: &[AddrMode] = &[M::RamRegImmReg, M::RegRam];
-const INC_DEC: &[AddrMode] = &[M::Reg, M::Reg16, M::Imm16];
+const MEM: &[AddrMode] = &[M::RamRegImmReg, M::RegRam, M::StackOffset];
+const INC_DEC: &[AddrMode] = &[M::Reg, M::Imm16, M::RamRegImmReg];
+const STACK_MOVE: &[AddrMode] = &[M::Imm8, M::Imm16];
 const REG: &[AddrMode] = &[M::Reg];
 const CNZ: &[Flag] = &[F::Carry, F::Negative, F::Zero];
 const ZN: &[Flag] = &[F::Zero, F::Negative];
@@ -311,7 +327,7 @@ pub static INSTRUCTION_TABLE: [OpcodeInfo; OPCODE_COUNT] = [
     op(
         Opcode::Cmp,
         "cmp",
-        &[M::Reg, M::RegImm8, M::RamRegImmReg],
+        &[M::Reg, M::RegImm8, M::RamRegImmReg, M::StackOffset],
         &[F::Superior, F::Equal, F::Inferior],
     ),
     op(Opcode::Dec, "dec", INC_DEC, CNZ),
@@ -351,6 +367,10 @@ pub static INSTRUCTION_TABLE: [OpcodeInfo; OPCODE_COUNT] = [
     op(Opcode::Sub, "sub", ALU, CNZ),
     op(Opcode::Sbb, "sbb", ALU, CNZ),
     op(Opcode::Xor, "xor", ALU, ZN),
+    op(Opcode::Asp, "asp", STACK_MOVE, &[]),
+    op(Opcode::Ssp, "ssp", STACK_MOVE, &[]),
+    op(Opcode::Rsp, "rsp", &[M::Reg16], &[]),
+    op(Opcode::Wsp, "wsp", &[M::Reg16, M::Imm16], &[]),
 ];
 
 /// Field accessors for a raw 32-bit instruction word.
@@ -443,13 +463,35 @@ pub mod encode {
             address as u8,
         )
     }
+    /// R3 = data register, (R1:R2) = address, no offset.
     pub const fn ramreg_immreg(
         op: Opcode,
         r1: Register,
         r2: Register,
         r3: Register,
     ) -> Instruction {
-        raw(op, AddrMode::RamRegImmReg, r1 as u8, r2 as u8, r3 as u8, 0)
+        ramreg_offset(op, r1, r2, r3, 0)
+    }
+    /// R3 = data register, (R1:R2) + offset = address.
+    pub const fn ramreg_offset(
+        op: Opcode,
+        r1: Register,
+        r2: Register,
+        r3: Register,
+        offset: u8,
+    ) -> Instruction {
+        raw(
+            op,
+            AddrMode::RamRegImmReg,
+            r1 as u8,
+            r2 as u8,
+            r3 as u8,
+            offset,
+        )
+    }
+    /// R1 = data register, STK + offset = address.
+    pub const fn stack_offset(op: Opcode, r1: Register, offset: u8) -> Instruction {
+        raw(op, AddrMode::StackOffset, r1 as u8, 0, offset, 0)
     }
     pub const fn reg16(op: Opcode, r1: Register, r2: Register) -> Instruction {
         raw(op, AddrMode::Reg16, r1 as u8, r2 as u8, 0, 0)
@@ -475,8 +517,10 @@ mod tests {
 
     #[test]
     fn unimplemented_values_decode_to_none() {
-        assert_eq!(Opcode::from_bits(0x32), None);
-        assert_eq!(AddrMode::from_bits(0x8), None);
+        assert_eq!(Opcode::from_bits(0x35), Some(Opcode::Wsp));
+        assert_eq!(Opcode::from_bits(0x36), None);
+        assert_eq!(AddrMode::from_bits(0x8), Some(AddrMode::Imm8));
+        assert_eq!(AddrMode::from_bits(0x9), None);
     }
 
     #[test]

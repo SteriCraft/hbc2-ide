@@ -2,7 +2,7 @@
 //!
 //! Placement rules:
 //! * Code is grouped in blocks. A label with an address (or `_start:`, always
-//!   at $0x0300) starts a block at that address.
+//!   at $0x0000) starts a block at that address.
 //! * A label without an address continues the block above it (fall-through),
 //!   unless no block is open: then it starts a block placed automatically.
 //!   Entering or leaving an included file closes the open block.
@@ -13,7 +13,8 @@ use std::collections::HashMap;
 use std::ops::Range;
 
 use hbc2_core::Opcode;
-use hbc2_core::isa::PROGRAM_START;
+use hbc2_core::isa::{IVT_START, PROGRAM_START};
+use hbc2_core::peripherals::eeprom::BOOT_RANGES;
 
 use crate::diagnostic::{Loc, Report};
 use crate::encode::{Resolved, encode_instruction, usage};
@@ -112,7 +113,12 @@ fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>) {
                 }
                 if name == "_start" {
                     if address.is_some_and(|a| a != PROGRAM_START as u32) {
-                        report.error(loc, "_start is always at $0x0300; remove its address");
+                        report.error(
+                            loc,
+                            format!(
+                                "_start is always at ${PROGRAM_START:#06x}; remove its address"
+                            ),
+                        );
                     }
                     address = Some(PROGRAM_START as u32);
                 }
@@ -166,11 +172,13 @@ fn group(items: Vec<Item>, report: &mut Report) -> (Vec<Block>, Vec<Data>) {
 
 /// Where automatic placement may put things.
 #[allow(clippy::single_range_in_vec_init)] // a list of regions, one of them for RAM
+/// Never in the interrupt vector table (from $0xFE00).
 fn auto_regions(target: Target) -> Vec<Range<u32>> {
+    let ivt = IVT_START as u32;
     match target {
-        Target::Ram => vec![PROGRAM_START as u32..0x1_0000],
+        Target::Ram => vec![PROGRAM_START as u32..ivt],
         // Only these ranges are copied from the EEPROM to RAM at power-on.
-        Target::Eeprom => vec![PROGRAM_START as u32..0x0500, 0xF000..0x1_0000],
+        Target::Eeprom => vec![PROGRAM_START as u32..BOOT_RANGES[0].end as u32],
     }
 }
 
@@ -343,8 +351,10 @@ fn write(
                 };
                 let value = match &op.operand {
                     Operand::Reg(r) => Some(Resolved::Reg(*r)),
-                    Operand::Pair(h, l) => Some(Resolved::Pair(*h, *l)),
+                    Operand::Pair(h, l, offset) => Some(Resolved::Pair(*h, *l, *offset)),
+                    Operand::Stack(offset) => Some(Resolved::Stack(*offset)),
                     Operand::Imm(v) => value8(v, op_loc, report).map(Resolved::Imm),
+                    Operand::Wide(n) => Some(Resolved::Wide(*n)),
                     Operand::Mem(Address::Absolute(a)) => address16(*a as i64, op_loc, report),
                     Operand::Mem(Address::Symbol { name, offset }) => lookup(name, op_loc, report)
                         .and_then(|a| address16(a as i64 + offset, op_loc, report)),
@@ -364,10 +374,28 @@ fn write(
                         line: loc.line,
                     });
                 }
-                None => report.error(
-                    *loc,
-                    format!("invalid operands; expected: {}", usage(*opcode)),
-                ),
+                None => {
+                    let offset = operands
+                        .iter()
+                        .find(|op| matches!(op.operand, Operand::Pair(_, _, n) if n != 0));
+                    match offset {
+                        Some(op) => report.error(
+                            Loc {
+                                col: op.col,
+                                ..*loc
+                            },
+                            format!(
+                                "{} takes no offset here; expected: {}",
+                                opcode.mnemonic(),
+                                usage(*opcode)
+                            ),
+                        ),
+                        None => report.error(
+                            *loc,
+                            format!("invalid operands; expected: {}", usage(*opcode)),
+                        ),
+                    }
+                }
             }
         }
         bytes_used += block.size() as usize;
@@ -410,10 +438,9 @@ fn write(
                             let bytes = (v as u64).to_be_bytes();
                             image[a..a + size].copy_from_slice(&bytes[8 - size..]);
                         }
-                        Some(v) => report.error(
-                            loc,
-                            format!("address {v:#x} does not fit in {bits} bits"),
-                        ),
+                        Some(v) => {
+                            report.error(loc, format!("address {v:#x} does not fit in {bits} bits"))
+                        }
                         None => {}
                     }
                     a += size;
@@ -452,25 +479,18 @@ fn warn_location(target: Target, range: Range<u32>, name: &str, loc: Loc, report
         return;
     }
     match target {
-        Target::Ram if range.start < 0x0100 => {
-            report.warning(
-                loc,
-                format!("'{name}' is in the stack area ($0x0000-$0x00FF)"),
-            );
-        }
+        Target::Ram => {}
         Target::Eeprom => {
-            let boot = [0x0100..0x0500, 0xF000..0x1_0000];
-            if !boot
+            if !BOOT_RANGES
                 .iter()
-                .any(|b| b.start <= range.start && range.end <= b.end)
+                .any(|b| b.start as u32 <= range.start && range.end <= b.end as u32)
             {
                 report.warning(
                     loc,
-                    format!("'{name}' is not in a range copied to RAM at power-on ($0x0100-$0x04FF, $0xF000-$0xFFFF)"),
+                    format!("'{name}' is not in a range copied to RAM at power-on ($0x0000-$0x01FF, $0xFE00-$0xFFFF)"),
                 );
             }
         }
-        _ => {}
     }
 }
 

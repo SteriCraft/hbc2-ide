@@ -1,14 +1,14 @@
 //! Hex view of the RAM or the EEPROM. RAM bytes can be edited while paused.
 
 use eframe::egui::{self, Color32, Event, Key, RichText, Sense, TextStyle};
-use hbc2_core::isa::{INSTRUCTION_SIZE, IVT_SIZE, IVT_START, PROGRAM_START};
+use hbc2_core::isa::{INSTRUCTION_SIZE, IVT_START, PROGRAM_START};
 use hbc2_runner::{RunState, Runner, Snapshot};
 
 use crate::views::cpu::changed_color;
 
 const BYTES_PER_ROW: usize = 16;
 /// Stack items shown under the hex view.
-const STACK_ITEMS: u8 = 8;
+const STACK_ITEMS: u16 = 8;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Source {
@@ -89,7 +89,7 @@ impl MemoryView {
             }
             for (label, address) in [
                 ("PC", s.cpu.pc as usize),
-                ("Stack", 0),
+                ("Stack", s.cpu.sp as usize),
                 ("IVT", IVT_START as usize),
                 ("Program", PROGRAM_START as usize),
             ] {
@@ -183,7 +183,7 @@ impl MemoryView {
                                 ui.memory_mut(|m| m.surrender_focus(id));
                             }
                         }
-                        response.on_hover_text(describe(address, self.source));
+                        response.on_hover_text(describe(address, self.source, sp));
                         if i == 7 {
                             ui.add_space(4.0);
                         }
@@ -246,7 +246,8 @@ fn sp_color() -> Color32 {
     Color32::from_rgba_unmultiplied(80, 160, 255, 60)
 }
 
-/// The top of the stack, left to right, at the bottom of the tab.
+/// The top of the stack, left to right, at the bottom of the tab. The stack
+/// grows downward: the item below the top is at SP + 1.
 fn stack_strip(ui: &mut egui::Ui, s: &Snapshot, baseline: Option<&Snapshot>) {
     let dark = ui.visuals().dark_mode;
     let sp = s.cpu.sp;
@@ -257,20 +258,20 @@ fn stack_strip(ui: &mut egui::Ui, s: &Snapshot, baseline: Option<&Snapshot>) {
             ui.horizontal(|ui| {
                 ui.strong("Stack")
                     .on_hover_text("Top of the stack first. SP points at the top item.");
-                ui.label(RichText::new(format!("SP {sp:02X}, top item first")).weak());
+                ui.label(RichText::new(format!("SP {sp:04X}, top item first")).weak());
             });
             egui::Grid::new("stack_strip")
                 .spacing([12.0, 2.0])
                 .show(ui, |ui| {
                     ui.label(RichText::new("Address").weak());
                     for depth in 0..STACK_ITEMS {
-                        let address = sp.wrapping_sub(depth) as u16;
+                        let address = sp.wrapping_add(depth);
                         ui.label(RichText::new(format!("{address:04X}")).monospace().weak());
                     }
                     ui.end_row();
                     ui.label(RichText::new("Value").weak());
                     for depth in 0..STACK_ITEMS {
-                        let address = sp.wrapping_sub(depth) as u16;
+                        let address = sp.wrapping_add(depth);
                         let value = s.board.ram.read(address);
                         let mut text = RichText::new(format!("{value:02X}")).monospace();
                         if baseline.is_some_and(|b| b.board.ram.read(address) != value) {
@@ -287,14 +288,17 @@ fn stack_strip(ui: &mut egui::Ui, s: &Snapshot, baseline: Option<&Snapshot>) {
         });
 }
 
-fn describe(address: usize, source: Source) -> String {
+fn describe(address: usize, source: Source, sp: usize) -> String {
     if source == Source::Eeprom {
         return format!("EEPROM {address:05X}");
     }
-    let region = match address as u16 {
-        a if a < IVT_START => "stack",
-        a if a < IVT_START + IVT_SIZE => "interrupt vector table",
-        _ => "program and data",
+    let region = if address >= IVT_START as usize {
+        "interrupt vector table"
+    } else if address >= sp {
+        // From SP up to the IVT: what has been pushed, if SP is at its usual place.
+        "stack"
+    } else {
+        "program and data"
     };
     format!("{address:04X} ({region})")
 }

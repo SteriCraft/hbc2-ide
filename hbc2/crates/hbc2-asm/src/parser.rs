@@ -26,9 +26,13 @@ pub(crate) enum Address {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Operand {
     Reg(Register),
-    /// `[x:y]`: x = most significant byte.
-    Pair(Register, Register),
+    /// `[x:y]` or `[x:y + n]`: x = most significant byte, n = offset (0-255).
+    Pair(Register, Register, u8),
+    /// `[sp]` or `[sp + n]`: the byte at the stack pointer + n (0-255).
+    Stack(u8),
     Imm(Value8),
+    /// A number from 256 to 65535 (`asp` / `ssp` only).
+    Wide(u16),
     Mem(Address),
 }
 
@@ -187,12 +191,20 @@ fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> 
                 )
             } else {
                 let loc = Loc::new(file, line, c.col());
-                out.extend(instruction(c)?.into_iter().map(|stmt| Located { loc, stmt }));
+                out.extend(
+                    instruction(c)?
+                        .into_iter()
+                        .map(|stmt| Located { loc, stmt }),
+                );
                 Ok(())
             }
         }
         Some(Tok::Ident(_)) => {
-            out.extend(instruction(c)?.into_iter().map(|stmt| Located { loc, stmt }));
+            out.extend(
+                instruction(c)?
+                    .into_iter()
+                    .map(|stmt| Located { loc, stmt }),
+            );
             Ok(())
         }
         _ => c.error(format!(
@@ -223,11 +235,12 @@ fn instruction(c: &mut Cursor) -> ParseResult<Vec<Stmt>> {
         return c.error(format!("unknown instruction '{mnemonic}'"));
     };
     c.next();
+    let wide = matches!(opcode, Opcode::Asp | Opcode::Ssp);
     let mut operands = Vec::new();
     while !c.at_end() {
         let col = c.col();
         operands.push(Op {
-            operand: operand(c)?,
+            operand: operand(c, wide)?,
             col,
         });
         if !c.at_end() {
@@ -273,10 +286,18 @@ fn register_list(opcode: Opcode, operands: Vec<Op>) -> ParseResult<Vec<Stmt>> {
     Ok(stmts)
 }
 
-fn operand(c: &mut Cursor) -> ParseResult<Operand> {
+/// `wide`: numbers up to 65535 are allowed (`asp` / `ssp`).
+fn operand(c: &mut Cursor, wide: bool) -> ParseResult<Operand> {
     match c.peek() {
         Some(Tok::LBracket) => {
             c.next();
+            if let Some(Tok::Ident(name)) = c.peek()
+                && name.eq_ignore_ascii_case("sp")
+            {
+                c.next();
+                let offset = bracket_offset(c, "[sp + 2]")?;
+                return Ok(Operand::Stack(offset));
+            }
             if let Some(Tok::Ident(name)) = c.peek()
                 && name.len() == 2
                 && name.chars().all(|ch| register(&ch.to_string()).is_some())
@@ -287,8 +308,26 @@ fn operand(c: &mut Cursor) -> ParseResult<Operand> {
             let high = expect_register(c)?;
             c.expect(Tok::Colon, "':' between the two registers, as in [x:y]")?;
             let low = expect_register(c)?;
-            c.expect(Tok::RBracket, "']'")?;
-            Ok(Operand::Pair(high, low))
+            let offset = bracket_offset(c, "[x:y + 2]")?;
+            Ok(Operand::Pair(high, low, offset))
+        }
+        Some(Tok::Number(_) | Tok::Minus) if wide => {
+            let col = c.col();
+            let n = if c.peek() == Some(&Tok::Minus) {
+                c.next();
+                -number(c)?
+            } else {
+                number(c)?
+            };
+            match n {
+                0..=255 => Ok(Operand::Imm(Value8::Number(n))),
+                256..=0xFFFF => Ok(Operand::Wide(n as u16)),
+                _ if n < 0 => Err((
+                    col,
+                    "the amount is 0 to 65535 (asp moves the stack pointer up, ssp down)".into(),
+                )),
+                _ => Err((col, format!("{n} does not fit in 16 bits (0 to 65535)"))),
+            }
         }
         Some(Tok::Dollar) => Ok(Operand::Mem(Address::Absolute(absolute(c)?))),
         Some(Tok::Ident(name)) => {
@@ -318,6 +357,27 @@ fn operand(c: &mut Cursor) -> ParseResult<Operand> {
         Some(Tok::Str(_)) => c.error("strings are only allowed in .data"),
         _ => c.error(format!("expected an operand, found {}", c.found())),
     }
+}
+
+/// The end of a bracket operand: `]`, or `+ n]` with n from 0 to 255.
+fn bracket_offset(c: &mut Cursor, example: &str) -> ParseResult<u8> {
+    let offset = match c.peek() {
+        Some(Tok::Plus) => {
+            c.next();
+            let col = c.col();
+            let n = number(c)?;
+            if !(0..=255).contains(&n) {
+                return Err((col, format!("offset {n} is out of range (0 to 255)")));
+            }
+            n as u8
+        }
+        Some(Tok::Minus) => {
+            return c.error(format!("offsets are added, from 0 to 255: {example}"));
+        }
+        _ => 0,
+    };
+    c.expect(Tok::RBracket, "']'")?;
+    Ok(offset)
 }
 
 /// `name.msb` / `name.lsb`
@@ -432,7 +492,9 @@ fn data(c: &mut Cursor, width: u32) -> ParseResult<Stmt> {
     let usage = match width {
         1 => ".data expects a name, an optional $address, then values: .data name 1, 2, \"text\"",
         2 => ".data16 expects a name, an optional $address, then values: .data16 name 1000, label",
-        _ => ".data32 expects a name, an optional $address, then values: .data32 name 100000, label",
+        _ => {
+            ".data32 expects a name, an optional $address, then values: .data32 name 100000, label"
+        }
     };
     let Some(Tok::Ident(name)) = c.peek() else {
         return c.error(usage);
@@ -558,8 +620,22 @@ mod tests {
         );
         assert_eq!(
             operands("str [x:y], b"),
-            [Operand::Pair(X, Y), Operand::Reg(B)]
+            [Operand::Pair(X, Y, 0), Operand::Reg(B)]
         );
+        assert_eq!(
+            operands("lod a, [x:y + 0x10]"),
+            [Operand::Reg(A), Operand::Pair(X, Y, 0x10)]
+        );
+        assert_eq!(
+            operands("add a, [SP + 3]"),
+            [Operand::Reg(A), Operand::Stack(3)]
+        );
+        assert_eq!(
+            operands("str [sp], a"),
+            [Operand::Stack(0), Operand::Reg(A)]
+        );
+        assert_eq!(operands("ssp 300"), [Operand::Wide(300)]);
+        assert_eq!(operands("asp 2"), [Operand::Imm(Value8::Number(2))]);
         assert_eq!(
             operands("lod a, $0x9000"),
             [Operand::Reg(A), Operand::Mem(Address::Absolute(0x9000))]
@@ -629,10 +705,12 @@ mod tests {
             .into_iter()
             .map(|s| match s {
                 Stmt::Instr { opcode, operands } => match operands[..] {
-                    [Op {
-                        operand: Operand::Reg(r),
-                        ..
-                    }] => (opcode.mnemonic(), r),
+                    [
+                        Op {
+                            operand: Operand::Reg(r),
+                            ..
+                        },
+                    ] => (opcode.mnemonic(), r),
                     _ => panic!("{operands:?}"),
                 },
                 other => panic!("{other:?}"),
@@ -654,8 +732,16 @@ mod tests {
         assert_eq!(expanded("pop b"), [("pop", B)]);
         assert_eq!(parse("loop: psh a, b").unwrap().len(), 3); // label + 2
         assert!(parse("psh a, a").unwrap_err().contains("twice"));
-        assert!(parse("pop a, [x:y]").unwrap_err().contains("only take registers"));
-        assert!(parse("psh a, 5").unwrap_err().contains("only take registers"));
+        assert!(
+            parse("pop a, [x:y]")
+                .unwrap_err()
+                .contains("only take registers")
+        );
+        assert!(
+            parse("psh a, 5")
+                .unwrap_err()
+                .contains("only take registers")
+        );
         assert!(parse("psh a,").unwrap_err().contains("after ','"));
     }
 
@@ -678,7 +764,10 @@ mod tests {
         assert_eq!(data_bytes(".data16 v 0x1234, 1"), [0x12, 0x34, 0, 1]);
         assert_eq!(data_bytes(".DATA32 v 100000"), [0x00, 0x01, 0x86, 0xA0]);
         assert_eq!(data_bytes(".data32 v -1"), [0xFF; 4]);
-        assert_eq!(data_bytes(".data16 v -32768, 'A'"), [0x80, 0x00, 0x00, 0x41]);
+        assert_eq!(
+            data_bytes(".data16 v -32768, 'A'"),
+            [0x80, 0x00, 0x00, 0x41]
+        );
         assert_eq!(data_bytes(".data16 v $0x0100 $0x9000"), [0x90, 0x00]);
         let Stmt::Data { values, .. } = parse(".data16 v handler + 4").unwrap().remove(0) else {
             panic!()
@@ -689,7 +778,11 @@ mod tests {
         ));
         assert!(parse(".data16 v 65536").unwrap_err().contains("16 bits"));
         assert!(parse(".data16 v -32769").unwrap_err().contains("16 bits"));
-        assert!(parse(".data32 v 0x1_0000_0000").unwrap_err().contains("32 bits"));
+        assert!(
+            parse(".data32 v 0x1_0000_0000")
+                .unwrap_err()
+                .contains("32 bits")
+        );
         assert!(parse(".data16 v \"hi\"").unwrap_err().contains("strings"));
         assert!(parse(".data16 v h.msb").unwrap_err().contains("one byte"));
         assert!(parse(".data16 v").is_err());
@@ -701,6 +794,17 @@ mod tests {
         assert!(parse("mov a b").unwrap_err().contains("','"));
         assert!(parse("mov a, 300").unwrap_err().contains("8 bits"));
         assert!(parse("str [xy], b").unwrap_err().contains("[x:y]"));
+        assert!(
+            parse("lod a, [x:y + 256]")
+                .unwrap_err()
+                .contains("0 to 255")
+        );
+        assert!(parse("lod a, [x:y - 1]").unwrap_err().contains("added"));
+        assert!(parse("lod a, [sp - 1]").unwrap_err().contains("[sp + 2]"));
+        assert!(parse("lod a, [sp + 1").unwrap_err().contains("']'"));
+        assert!(parse("ssp -1").unwrap_err().contains("asp"));
+        assert!(parse("asp 65536").unwrap_err().contains("16 bits"));
+        assert!(parse("mov a, 300").unwrap_err().contains("8 bits"));
         assert!(parse(".org 5").unwrap_err().contains("unknown directive"));
     }
 }

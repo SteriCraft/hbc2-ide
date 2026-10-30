@@ -32,7 +32,7 @@ use diagnostic::Report;
 pub enum Target {
     /// A 64 KiB RAM image, loaded directly into the emulator's RAM.
     Ram,
-    /// A 1 MiB EEPROM image. Only $0x0100-$0x04FF and $0xF000-$0xFFFF are
+    /// A 1 MiB EEPROM image. Only $0x0000-$0x01FF and $0xFE00-$0xFFFF are
     /// copied to RAM at power-on.
     Eeprom,
 }

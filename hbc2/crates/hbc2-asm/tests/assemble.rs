@@ -2,7 +2,7 @@ use std::path::Path;
 
 use hbc2_asm::encode::{Kind, forms};
 use hbc2_asm::{MemoryFiles, Program, SymbolKind, Target, assemble, disassemble};
-use hbc2_core::isa::{Instruction, encode};
+use hbc2_core::isa::{Instruction, STACK_RESET, encode};
 use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
 fn build(files: MemoryFiles, target: Target) -> Result<Program, Vec<String>> {
@@ -33,14 +33,24 @@ fn addr(p: &Program, name: &str) -> u32 {
 use Opcode as O;
 use Register::*;
 
+/// No peripherals, so no plug-in interrupts.
+fn bare() -> MachineConfig {
+    MachineConfig {
+        monitor: false,
+        rtc: false,
+        keyboard: false,
+        eeprom: None,
+    }
+}
+
 #[test]
 fn minimal_program() {
     let p = asm("_start:\n    mov a, 0x2A\n    jmp _start\n");
-    assert_eq!(word(&p, 0x0300), encode::reg_imm8(O::Mov, A, 0x2A));
-    assert_eq!(word(&p, 0x0304), encode::imm16(O::Jmp, 0x0300));
+    assert_eq!(word(&p, 0x0000), encode::reg_imm8(O::Mov, A, 0x2A));
+    assert_eq!(word(&p, 0x0004), encode::imm16(O::Jmp, 0x0000));
     assert_eq!(p.bytes_used, 8);
-    assert_eq!(p.source_of(0x0304).unwrap().line, 3);
-    assert_eq!(p.address_of(0, 2), Some(0x0300));
+    assert_eq!(p.source_of(0x0004).unwrap().line, 3);
+    assert_eq!(p.address_of(0, 2), Some(0x0000));
 }
 
 #[test]
@@ -74,7 +84,7 @@ _start:
         encode::ramreg_immreg(O::Lod, X, Y, D),
         encode::ramreg_immreg(O::Str, X, Y, D),
         encode::reg_ram(O::Str, A, var),
-        encode::reg16(O::Inc, C, D),
+        encode::ramreg_offset(O::Inc, C, D, A, 0),
         encode::imm16(O::Dec, var),
         encode::reg(O::Not, A, A),
         encode::reg16(O::Jmp, X, Y),
@@ -85,8 +95,120 @@ _start:
         encode::none(O::Ret),
     ];
     for (n, e) in expected.iter().enumerate() {
-        assert_eq!(word(&p, 0x0300 + n as u32 * 4), *e, "instruction {n}");
+        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
     }
+}
+
+#[test]
+fn offset_and_stack_forms() {
+    let p = asm("
+.define FIELD 4
+_start:
+    lod a, [x:y + 3]
+    str [x:y + FIELD], b
+    cmp c, [x:y + 0x10]
+    sub d, [i:j + 255]
+    inc [c:d + 1]
+    dec [c:d]
+    lod a, [sp + 2]
+    str [sp], b
+    add c, [SP + 1]
+    cmp d, [sp + 0]
+    asp 2
+    ssp 300
+    rsp [x:y]
+    wsp [c:d]
+    wsp $0xFE00
+");
+    let expected = [
+        encode::ramreg_offset(O::Lod, X, Y, A, 3),
+        encode::ramreg_offset(O::Str, X, Y, B, 4),
+        encode::ramreg_offset(O::Cmp, X, Y, C, 0x10),
+        encode::ramreg_offset(O::Sub, I, J, D, 255),
+        encode::ramreg_offset(O::Inc, C, D, A, 1),
+        encode::ramreg_offset(O::Dec, C, D, A, 0),
+        encode::stack_offset(O::Lod, A, 2),
+        encode::stack_offset(O::Str, B, 0),
+        encode::stack_offset(O::Add, C, 1),
+        encode::stack_offset(O::Cmp, D, 0),
+        encode::imm8(O::Asp, 2),
+        encode::imm16(O::Ssp, 300),
+        encode::reg16(O::Rsp, X, Y),
+        encode::reg16(O::Wsp, C, D),
+        encode::imm16(O::Wsp, 0xFE00),
+    ];
+    for (n, e) in expected.iter().enumerate() {
+        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
+    }
+
+    let e = errors("_start:\n    jmp [x:y + 2]\n");
+    assert!(
+        e[0].starts_with("main.has:2:9:") && e[0].contains("no offset"),
+        "{e:?}"
+    );
+    assert!(errors("_start:\n    rsp [x:y + 1]\n")[0].contains("no offset"));
+    assert!(errors("_start:\n    mov a, [sp + 1]\n")[0].contains("invalid operands"));
+    assert!(errors("_start:\n    asp 70000\n")[0].contains("16 bits"));
+}
+
+#[test]
+fn a_function_with_arguments_and_locals_runs() {
+    // sum3(a, b, c) on the stack, result in a; one local; restores b.
+    let p = asm("
+_start:
+    cli
+    mov a, 10
+    psh a
+    mov a, 20
+    psh a
+    mov a, 30
+    psh a
+    cal sum3
+    asp 3
+    hlt
+
+; Stack inside sum3, after psh b and ssp 1:
+;   [sp] local, [sp + 1] saved b, [sp + 2] return MSB, [sp + 3] return LSB,
+;   [sp + 4] = 30 (last pushed), [sp + 5] = 20, [sp + 6] = 10
+sum3:
+    psh b
+    ssp 1
+    lod a, [sp + 6]
+    add a, [sp + 5]
+    str [sp], a
+    lod b, [sp + 4]
+    lod a, [sp]
+    add a, b
+    asp 1
+    pop b
+    ret
+");
+    let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.run(100);
+    assert!(m.cpu.is_halted());
+    assert_eq!(m.cpu.reg(A), 60);
+    assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
+}
+
+#[test]
+fn old_pointer_syntax_still_assembles() {
+    // inc [x:y] was Reg16 (mode 0x5); it is now mode 0x4 with offset 0.
+    let p = asm("
+_start:
+    mov x, 0x90
+    mov y, 0x00
+    inc [x:y]
+    dec [x:y]
+    dec [x:y]
+    hlt
+");
+    assert_eq!(
+        word(&p, 0x0008).mode(),
+        Some(hbc2_core::AddrMode::RamRegImmReg)
+    );
+    let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.run(100);
+    assert_eq!(m.board.ram.read(0x9000), 0xFF);
 }
 
 #[test]
@@ -103,19 +225,19 @@ end:
 .data msg \"Hi!\\n\", 0
 ");
     let msg = addr(&p, "msg");
-    assert_eq!(word(&p, 0x0300).v1(), 0xFF);
-    assert_eq!(word(&p, 0x0304).v1(), 0xA5);
-    assert_eq!(word(&p, 0x0308).v1(), (msg >> 8) as u8);
-    assert_eq!(word(&p, 0x030C).v1(), msg as u8);
-    assert_eq!(word(&p, 0x0310).vx() as u32, msg + 2);
-    assert_eq!(word(&p, 0x0314).vx(), 0x0314, "end - 4");
+    assert_eq!(word(&p, 0x0000).v1(), 0xFF);
+    assert_eq!(word(&p, 0x0004).v1(), 0xA5);
+    assert_eq!(word(&p, 0x0008).v1(), (msg >> 8) as u8);
+    assert_eq!(word(&p, 0x000C).v1(), msg as u8);
+    assert_eq!(word(&p, 0x0010).vx() as u32, msg + 2);
+    assert_eq!(word(&p, 0x0014).vx(), 0x0014, "end - 4");
     assert_eq!(&p.image[msg as usize..msg as usize + 5], b"Hi!\n\0");
 }
 
 #[test]
 fn case_insensitive_mnemonics_and_registers() {
     let p = asm("_start:\n    MOV A, B\n    Jmp _start\n");
-    assert_eq!(word(&p, 0x0300), encode::reg(O::Mov, A, B));
+    assert_eq!(word(&p, 0x0000), encode::reg(O::Mov, A, B));
     // Names stay case-sensitive.
     assert!(errors("_start:\n    jmp _START\n")[0].contains("unknown label"));
 }
@@ -133,10 +255,10 @@ _start:
     assert_eq!(addr(&p, "vector"), 0x0100);
     assert_eq!(
         addr(&p, "first"),
-        0x0308,
+        0x0008,
         "first free byte after _start's 8 bytes"
     );
-    assert_eq!(addr(&p, "second"), 0x030B);
+    assert_eq!(addr(&p, "second"), 0x000B);
     assert_eq!(&p.image[0x0100..0x0102], [0xF0, 0x00]);
     assert_eq!(p.symbol("first").unwrap().kind, SymbolKind::Data);
 }
@@ -159,13 +281,13 @@ after_handler:   ; continues at 0xF004
         )
         .with("lib/math.has", "double:\n    add a, a\n    ret\n");
     let p = build(files, Target::Ram).unwrap();
-    assert_eq!(addr(&p, "_start"), 0x0300);
-    assert_eq!(addr(&p, "next"), 0x0304);
+    assert_eq!(addr(&p, "_start"), 0x0000);
+    assert_eq!(addr(&p, "next"), 0x0004);
     assert_eq!(addr(&p, "handler"), 0xF000);
     assert_eq!(addr(&p, "after_handler"), 0xF004);
     assert_eq!(
         addr(&p, "double"),
-        0x0308,
+        0x0008,
         "floating block placed after _start"
     );
     assert_eq!(p.files.len(), 2);
@@ -201,10 +323,20 @@ _start:
     jmp _start
 ",
         )
-        .with("lib/b.has", ".data b_var 0
-");
-    let p = build(files, Target::Ram).unwrap_or_else(|e| panic!("{}", e.join("
-")));
+        .with(
+            "lib/b.has",
+            ".data b_var 0
+",
+        );
+    let p = build(files, Target::Ram).unwrap_or_else(|e| {
+        panic!(
+            "{}",
+            e.join(
+                "
+"
+            )
+        )
+    });
     assert_eq!(p.files.len(), 2);
 }
 
@@ -218,8 +350,8 @@ _start:
     mov a, PORT
     str VECTOR, a
 ");
-    assert_eq!(word(&p, 0x0300), encode::reg_imm8(O::Mov, A, 5));
-    assert_eq!(word(&p, 0x0304), encode::reg_ram(O::Str, A, 0x0100));
+    assert_eq!(word(&p, 0x0000), encode::reg_imm8(O::Mov, A, 5));
+    assert_eq!(word(&p, 0x0004), encode::reg_ram(O::Str, A, 0x0100));
     assert!(errors(".define A_ 1\n.define A_ 2\n_start:\n nop")[0].contains("already defined"));
     assert!(errors(".define X1 X2\n.define X2 X1\n_start:\n mov a, X1")[0].contains("loop"));
     assert!(errors(".define mov 1\n_start:\n nop")[0].contains("reserved"));
@@ -242,9 +374,9 @@ fn error_messages_have_locations() {
     assert!(errors("    nop\n_start:\n")[0].contains("no label above it"));
     assert!(errors("loop:\n    nop\n")[0].contains("no _start"));
     assert!(errors("_start:\n_start:\n")[0].contains("already defined"));
-    assert!(errors("_start: $0x0400\n")[0].contains("always at $0x0300"));
+    assert!(errors("_start: $0x0400\n")[0].contains("always at $0x0000"));
     assert!(errors(".include \"missing.has\"\n_start:\n")[0].contains("cannot read"));
-    assert!(errors("_start:\n    nop\n.data v $0x0300 1\n")[0].contains("overlaps"));
+    assert!(errors("_start:\n    nop\n.data v $0x0000 1\n")[0].contains("overlaps"));
     assert!(errors("_start:\n    lod a, $0x10000\n")[0].contains("16 bits"));
 }
 
@@ -256,21 +388,28 @@ fn several_errors_are_reported_at_once() {
 
 #[test]
 fn every_form_round_trips_through_the_disassembler() {
-    let sample = |kind: Kind| match kind {
+    let sample = |kind: Kind, offset: bool| match kind {
         Kind::R => "c",
+        Kind::P if offset => "[x:y + 7]",
         Kind::P => "[x:y]",
+        Kind::S => "[sp + 3]",
         Kind::I => "0x5a",
+        Kind::W => "300",
         Kind::M => "$0x1234",
     };
     for info in hbc2_core::isa::INSTRUCTION_TABLE.iter() {
         for form in forms(info.opcode) {
-            let operands: Vec<&str> = form.kinds.iter().map(|&k| sample(k)).collect();
+            let operands: Vec<&str> = form
+                .kinds
+                .iter()
+                .map(|&k| sample(k, form.takes_offset()))
+                .collect();
             let text = format!("{} {}", info.mnemonic, operands.join(", "));
             let p = asm(&format!("_start:\n    {text}\n"));
-            let w = word(&p, 0x0300);
+            let w = word(&p, 0x0000);
             assert_eq!(w.mode(), Some(form.mode), "{text}");
             let again = asm(&format!("_start:\n    {}\n", disassemble(w.0)));
-            assert_eq!(word(&again, 0x0300), w, "{text} -> {}", disassemble(w.0));
+            assert_eq!(word(&again, 0x0000), w, "{text} -> {}", disassemble(w.0));
         }
     }
 }
@@ -290,7 +429,7 @@ far: $0x20000
     assert_eq!(&p.image[0x12345..0x12348], [1, 2, 3]);
     assert_eq!(
         addr(&p, "auto"),
-        0x0304,
+        0x0004,
         "automatic placement stays in boot ranges"
     );
     let warnings: Vec<String> = p.warnings.iter().map(ToString::to_string).collect();
@@ -314,7 +453,7 @@ fn templates_assemble_and_detect_peripherals() {
     });
     assert_eq!(addr(&p, "_iod_interrupt_handler"), 0xF000);
     assert_eq!(
-        &p.image[0x0100..0x0102],
+        &p.image[0xFE00..0xFE02],
         [0xF0, 0x00],
         "vector built from .msb/.lsb"
     );
@@ -366,18 +505,18 @@ loop:
     );
     assert!(m.cpu.flag(Flag::Carry) && m.cpu.flag(Flag::Equal));
     assert!(m.cpu.flag(Flag::Interrupt));
-    assert_eq!(m.cpu.sp, 0, "stack balanced");
+    assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
 
     // The RTC (ports 6-12) gets the default handler, so its ticks change nothing.
     assert_eq!(m.board.ram.read(addr(&p, "rtcPort") as u16), 6);
-    let entry = 0x0100 + 2 * 6;
+    let entry = 0xFE00 + 2 * 6;
     let handler = addr(&p, "_rtc_default_handler") as u16;
     assert_eq!(m.board.ram.read_u16(entry), handler);
     for _ in 0..3 {
         m.advance_time(1_000_000_000);
         m.run(1_000);
     }
-    assert_eq!(m.cpu.sp, 0, "RTC ticks leave the stack balanced");
+    assert_eq!(m.cpu.sp, STACK_RESET, "RTC ticks leave the stack balanced");
     assert_eq!(
         (m.cpu.reg(Register::A), m.cpu.reg(Register::B)),
         (0x55, 0x66)
@@ -420,17 +559,21 @@ done:
     jmp done
 ");
     // One instruction per register, all on the same source line.
-    assert_eq!(word(&p, 0x0310), encode::reg(O::Psh, A, A));
-    assert_eq!(word(&p, 0x0318), encode::reg(O::Psh, Y, A));
-    assert_eq!(word(&p, 0x0328), encode::reg(O::Pop, Y, A));
-    assert_eq!(word(&p, 0x0330), encode::reg(O::Pop, A, A));
-    assert_eq!(p.source_of(0x0318).unwrap().line, 7);
-    assert_eq!(p.address_of(0, 11), Some(0x0328), "breakpoints stop at the first one");
+    assert_eq!(word(&p, 0x0010), encode::reg(O::Psh, A, A));
+    assert_eq!(word(&p, 0x0018), encode::reg(O::Psh, Y, A));
+    assert_eq!(word(&p, 0x0028), encode::reg(O::Pop, Y, A));
+    assert_eq!(word(&p, 0x0030), encode::reg(O::Pop, A, A));
+    assert_eq!(p.source_of(0x0018).unwrap().line, 7);
+    assert_eq!(
+        p.address_of(0, 11),
+        Some(0x0028),
+        "breakpoints stop at the first one"
+    );
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
     m.run(20);
     assert_eq!((m.cpu.reg(A), m.cpu.reg(I), m.cpu.reg(Y)), (1, 2, 3));
-    assert_eq!(m.cpu.sp, 0, "stack balanced");
+    assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
 
     assert!(errors("_start:\n    psh a, b, a\n")[0].contains("2:15"));
 }

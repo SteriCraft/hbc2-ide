@@ -195,7 +195,7 @@ const EE: u8 = 1;
 
 fn eeprom_image() -> Vec<u8> {
     let mut image = vec![0u8; eeprom::MEMORY_SIZE];
-    // Program at 0x0300: read EEPROM[0x12345] into A, then write 0x55 to EEPROM[0x00010].
+    // Program at 0x0000: read EEPROM[0x12345] into A, then write 0x55 to EEPROM[0x01010].
     let code = program(&[
         &out(EE + eeprom::port::ADDR_0, 0x01),
         &out(EE + eeprom::port::ADDR_1, 0x23),
@@ -203,17 +203,18 @@ fn eeprom_image() -> Vec<u8> {
         &out(EE + eeprom::port::CMD, eeprom::command::READ),
         &input(A, EE + eeprom::port::DATA),
         &out(EE + eeprom::port::ADDR_0, 0x00),
-        &out(EE + eeprom::port::ADDR_1, 0x00),
+        &out(EE + eeprom::port::ADDR_1, 0x10),
         &out(EE + eeprom::port::ADDR_2, 0x10),
         &out(EE + eeprom::port::DATA, 0x55),
         &out(EE + eeprom::port::CMD, eeprom::command::WRITE),
     ]);
     for (n, i) in code.iter().enumerate() {
-        image[0x0300 + n * 4..0x0300 + n * 4 + 4].copy_from_slice(&i.to_bytes());
+        image[n * 4..n * 4 + 4].copy_from_slice(&i.to_bytes());
     }
-    image[0x0100] = 0xF0; // IVT: port 0 -> 0xF000
-    image[0xF000..0xF004].copy_from_slice(&none(O::Irt).to_bytes()); // handlers area
-    image[0x0600] = 0xEE; // outside the boot ranges
+    image[0xFE00..0xFE02].copy_from_slice(&[0x01, 0xF0]); // IVT: port 0 -> 0x01F0
+    image[0x01F0..0x01F4].copy_from_slice(&none(O::Irt).to_bytes()); // handler, first 512 bytes
+    image[0xF000] = 0xEE; // the old handlers area: not copied any more
+    image[0x0200] = 0xEE; // just after the first 512 bytes
     image[0x12345] = 0x99;
     image
 }
@@ -230,9 +231,14 @@ fn eeprom_machine() -> Machine {
 #[test]
 fn eeprom_copies_boot_ranges_into_ram() {
     let m = eeprom_machine();
-    assert_eq!(ram(&m, 0x0100), 0xF0);
-    assert_eq!(ram(&m, 0xF000), none(O::Irt).to_bytes()[0]);
-    assert_eq!(ram(&m, 0x0600), 0x00, "not copied");
+    assert_eq!(ram(&m, 0xFE01), 0xF0, "IVT copied");
+    assert_eq!(
+        ram(&m, 0x01F0),
+        none(O::Irt).to_bytes()[0],
+        "first 512 bytes copied"
+    );
+    assert_eq!(ram(&m, 0x0200), 0x00, "not copied");
+    assert_eq!(ram(&m, 0xF000), 0x00, "handlers are not copied");
     assert_eq!(ram(&m, 0x8000), 0x00, "RAM image ignored");
 }
 
@@ -242,11 +248,14 @@ fn eeprom_read_and_write_from_a_program() {
     m.run(10_000);
     assert!(m.cpu.is_halted());
     assert_eq!(m.cpu.reg(A), 0x99);
-    assert_eq!(m.peripherals.eeprom.as_ref().unwrap().memory()[0x10], 0x55);
+    assert_eq!(
+        m.peripherals.eeprom.as_ref().unwrap().memory()[0x1010],
+        0x55
+    );
 
     m.power_on();
     assert_eq!(
-        m.peripherals.eeprom.as_ref().unwrap().memory()[0x10],
+        m.peripherals.eeprom.as_ref().unwrap().memory()[0x1010],
         0x55,
         "non-volatile"
     );

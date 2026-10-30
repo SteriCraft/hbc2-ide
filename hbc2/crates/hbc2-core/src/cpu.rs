@@ -10,7 +10,7 @@
 use crate::board::Board;
 use crate::isa::{
     AddrMode, Flag, INSTRUCTION_SIZE, IVT_START, Instruction, Opcode, PROGRAM_START, Register,
-    STACK_START,
+    STACK_RESET,
 };
 
 /// The 8-bit flag register.
@@ -48,8 +48,9 @@ pub struct Cpu {
     pub flags: Flags,
     /// Address of the next instruction to execute.
     pub pc: u16,
-    /// Stack pointer: address of the item on top of the stack (inside 0x0000-0x00FF).
-    pub sp: u8,
+    /// Stack pointer (STK): address of the last byte pushed. The stack grows
+    /// downward from 0xFE00 (first push at 0xFDFF) and wraps around.
+    pub sp: u16,
     /// Last fetched instruction.
     pub ir: Instruction,
     /// Address of the last executed instruction.
@@ -71,7 +72,7 @@ impl Cpu {
             registers: [0; 8],
             flags: Flags::default(),
             pc: PROGRAM_START,
-            sp: 0,
+            sp: STACK_RESET,
             ir: Instruction(0),
             last_pc: PROGRAM_START,
             state: CpuState::Executing,
@@ -87,7 +88,7 @@ impl Cpu {
         self.flags = Flags::default();
         self.flags.set(Flag::Interrupt, true);
         self.pc = PROGRAM_START;
-        self.sp = 0;
+        self.sp = STACK_RESET;
         self.ir = Instruction(0);
         self.last_pc = PROGRAM_START;
         self.state = CpuState::Executing;
@@ -170,18 +171,18 @@ impl Cpu {
         self.state = CpuState::Executing;
     }
 
-    // ----- Stack (0x0000-0x00FF). PSH: STK = STK + 1, $(STK) = R1. POP: R1 = $(STK), STK = STK - 1.
+    // ----- Stack (grows downward). PSH: STK = STK - 1, $(STK) = R1. POP: R1 = $(STK), STK = STK + 1.
 
     #[inline(always)]
     fn push(&mut self, board: &mut Board, value: u8) {
-        self.sp = self.sp.wrapping_add(1);
-        board.ram.write(STACK_START + self.sp as u16, value);
+        self.sp = self.sp.wrapping_sub(1);
+        board.ram.write(self.sp, value);
     }
 
     #[inline(always)]
     fn pop(&mut self, board: &mut Board) -> u8 {
-        let value = board.ram.read(STACK_START + self.sp as u16);
-        self.sp = self.sp.wrapping_sub(1);
+        let value = board.ram.read(self.sp);
+        self.sp = self.sp.wrapping_add(1);
         value
     }
 
@@ -229,13 +230,29 @@ impl Cpu {
         u16::from_be_bytes([self.r(i.r1()), self.r(i.r2())])
     }
 
-    /// Second operand of the ALU instructions (Reg, Reg / Imm8, Reg / Ram).
+    /// RamReg / ImmReg / Offset address: (R1:R2) + V2, wrapping in 16 bits.
     #[inline(always)]
-    fn alu_operand(&self, board: &Board, mode: AddrMode, i: Instruction) -> Option<u8> {
+    fn pointer_address(&self, i: Instruction) -> u16 {
+        self.r1r2(i).wrapping_add(i.v2() as u16)
+    }
+
+    /// Stack / Offset address: STK + V1, wrapping in 16 bits.
+    #[inline(always)]
+    fn stack_address(&self, i: Instruction) -> u16 {
+        self.sp.wrapping_add(i.v1() as u16)
+    }
+
+    /// Operands of the ALU instructions and CMP: (index of the data register,
+    /// second operand). The data register is R3 in RamReg / ImmReg / Offset,
+    /// R1 otherwise.
+    #[inline(always)]
+    fn alu_operands(&self, board: &Board, mode: AddrMode, i: Instruction) -> Option<(u8, u8)> {
         match mode {
-            AddrMode::Reg => Some(self.r(i.r2())),
-            AddrMode::RegImm8 => Some(i.v1()),
-            AddrMode::RegRam => Some(board.ram.read(i.vx())),
+            AddrMode::Reg => Some((i.r1(), self.r(i.r2()))),
+            AddrMode::RegImm8 => Some((i.r1(), i.v1())),
+            AddrMode::RegRam => Some((i.r1(), board.ram.read(i.vx()))),
+            AddrMode::RamRegImmReg => Some((i.r3(), board.ram.read(self.pointer_address(i)))),
+            AddrMode::StackOffset => Some((i.r1(), board.ram.read(self.stack_address(i)))),
             _ => None,
         }
     }
@@ -275,41 +292,42 @@ impl Cpu {
 
             // ----- Arithmetic and logic: R1 = R1 <op> operand
             O::Adc | O::Add => {
-                if let Some(b) = self.alu_operand(board, mode, i) {
+                if let Some((dest, b)) = self.alu_operands(board, mode, i) {
                     let carry_in = (op == O::Adc && self.flags.get(Flag::Carry)) as u16;
-                    let sum = self.r(i.r1()) as u16 + b as u16 + carry_in;
+                    let sum = self.r(dest) as u16 + b as u16 + carry_in;
                     let result = sum as u8;
                     self.set_czn(sum > 0xFF, result);
-                    self.set_r(i.r1(), result);
+                    self.set_r(dest, result);
                 }
             }
             O::Sub | O::Sbb => {
-                if let Some(b) = self.alu_operand(board, mode, i) {
+                if let Some((dest, b)) = self.alu_operands(board, mode, i) {
                     let borrow_in = (op == O::Sbb && self.flags.get(Flag::Carry)) as i16;
-                    let diff = self.r(i.r1()) as i16 - b as i16 - borrow_in;
+                    let diff = self.r(dest) as i16 - b as i16 - borrow_in;
                     let result = diff as u8;
                     self.set_czn(diff < 0, result);
-                    self.set_r(i.r1(), result);
+                    self.set_r(dest, result);
                 }
             }
             O::And | O::Or | O::Xor => {
-                if let Some(b) = self.alu_operand(board, mode, i) {
-                    let a = self.r(i.r1());
+                if let Some((dest, b)) = self.alu_operands(board, mode, i) {
+                    let a = self.r(dest);
                     let result = match op {
                         O::And => a & b,
                         O::Or => a | b,
                         _ => a ^ b,
                     };
                     self.set_zn(result);
-                    self.set_r(i.r1(), result);
+                    self.set_r(dest, result);
                 }
             }
             O::Cmp => {
+                // CMP has no Reg / Ram mode.
                 let pair = match mode {
-                    M::Reg => Some((self.r(i.r1()), self.r(i.r2()))),
-                    M::RegImm8 => Some((self.r(i.r1()), i.v1())),
-                    M::RamRegImmReg => Some((self.r(i.r3()), board.ram.read(self.r1r2(i)))),
-                    _ => None,
+                    M::RegRam => None,
+                    _ => self
+                        .alu_operands(board, mode, i)
+                        .map(|(dest, b)| (self.r(dest), b)),
                 };
                 if let Some((a, b)) = pair {
                     self.flags.set(Flag::Superior, a > b);
@@ -334,11 +352,11 @@ impl Cpu {
                         let result = apply(self, value);
                         self.set_r(i.r1(), result);
                     }
-                    M::Reg16 | M::Imm16 => {
-                        let address = if mode == M::Reg16 {
-                            self.r1r2(i)
-                        } else {
+                    M::Imm16 | M::RamRegImmReg => {
+                        let address = if mode == M::Imm16 {
                             i.vx()
+                        } else {
+                            self.pointer_address(i)
                         };
                         let value = board.ram.read(address);
                         let result = apply(self, value);
@@ -388,12 +406,14 @@ impl Cpu {
             },
             O::Lod => match mode {
                 M::RegRam => self.set_r(i.r1(), board.ram.read(i.vx())),
-                M::RamRegImmReg => self.set_r(i.r3(), board.ram.read(self.r1r2(i))),
+                M::RamRegImmReg => self.set_r(i.r3(), board.ram.read(self.pointer_address(i))),
+                M::StackOffset => self.set_r(i.r1(), board.ram.read(self.stack_address(i))),
                 _ => {}
             },
             O::Str => match mode {
                 M::RegRam => board.ram.write(i.vx(), self.r(i.r1())),
-                M::RamRegImmReg => board.ram.write(self.r1r2(i), self.r(i.r3())),
+                M::RamRegImmReg => board.ram.write(self.pointer_address(i), self.r(i.r3())),
+                M::StackOffset => board.ram.write(self.stack_address(i), self.r(i.r1())),
                 _ => {}
             },
             O::Psh => {
@@ -418,6 +438,34 @@ impl Cpu {
                     self.flags = Flags(self.pop(board));
                 }
             }
+
+            // ----- Stack pointer (no flags affected)
+            O::Asp | O::Ssp => {
+                let amount = match mode {
+                    M::Imm8 => Some(i.v1() as u16),
+                    M::Imm16 => Some(i.vx()),
+                    _ => None,
+                };
+                if let Some(amount) = amount {
+                    self.sp = if op == O::Asp {
+                        self.sp.wrapping_add(amount)
+                    } else {
+                        self.sp.wrapping_sub(amount)
+                    };
+                }
+            }
+            O::Rsp => {
+                if mode == M::Reg16 {
+                    let [msb, lsb] = self.sp.to_be_bytes();
+                    self.set_r(i.r1(), msb);
+                    self.set_r(i.r2(), lsb);
+                }
+            }
+            O::Wsp => match mode {
+                M::Reg16 => self.sp = self.r1r2(i),
+                M::Imm16 => self.sp = i.vx(),
+                _ => {}
+            },
 
             // ----- Control flow
             O::Jmp | O::Jmc | O::Jme | O::Jmn | O::Jms | O::Jmz | O::Jmf => {

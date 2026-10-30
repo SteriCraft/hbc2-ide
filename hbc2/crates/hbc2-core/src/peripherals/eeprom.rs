@@ -1,8 +1,9 @@
 //! The HBC-2 EEPROM: 1 MiB of non-volatile memory (20-bit addresses).
 //!
-//! At power-on it copies the interrupt vector table and the start of the
-//! program (0x0100-0x04FF) and the interrupt handlers (0xF000-0xFFFF) from
-//! its memory into RAM.
+//! At power-on it copies the first 512 bytes of the program (0x0000-0x01FF)
+//! and the interrupt vector table (0xFE00-0xFFFF) from its memory into RAM.
+//! Anything else (interrupt handlers included) has to be copied by that
+//! program, through the ports.
 //!
 //! Ports: CMD, DATA, ADDR_0 (bits 19-16), ADDR_1 (bits 15-8), ADDR_2 (bits 7-0).
 //! Writing CMD executes READ (DATA = memory[address]) or WRITE
@@ -28,7 +29,7 @@ pub mod command {
 }
 
 /// RAM ranges copied from the EEPROM at power-on.
-pub const BOOT_RANGES: [std::ops::Range<usize>; 2] = [0x0100..0x0500, 0xF000..0x1_0000];
+pub const BOOT_RANGES: [std::ops::Range<usize>; 2] = [0x0000..0x0200, 0xFE00..0x1_0000];
 
 #[derive(Clone)]
 pub struct Eeprom {

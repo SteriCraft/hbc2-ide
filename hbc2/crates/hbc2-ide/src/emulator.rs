@@ -202,9 +202,10 @@ mod tests {
     #[test]
     fn eeprom_breakpoints_only_in_boot_ranges() {
         assert_eq!(ram_address(Target::Ram, 0x0300), Some(0x0300));
-        assert_eq!(ram_address(Target::Eeprom, 0x0300), Some(0x0300));
-        assert_eq!(ram_address(Target::Eeprom, 0xF004), Some(0xF004));
-        assert_eq!(ram_address(Target::Eeprom, 0x0600), None);
-        assert_eq!(ram_address(Target::Eeprom, 0x1_0300), None);
+        assert_eq!(ram_address(Target::Eeprom, 0x01FC), Some(0x01FC));
+        assert_eq!(ram_address(Target::Eeprom, 0xFE04), Some(0xFE04));
+        assert_eq!(ram_address(Target::Eeprom, 0x0200), None);
+        assert_eq!(ram_address(Target::Eeprom, 0xF004), None);
+        assert_eq!(ram_address(Target::Eeprom, 0x1_0000), None);
     }
 }

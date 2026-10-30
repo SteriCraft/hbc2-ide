@@ -22,8 +22,8 @@ loop:
 /// Sleeps with HLT; the keyboard (alone, so on port 1) handler copies the
 /// scan code into A.
 const KEYBOARD: &str = "
-.data vector0 $0x0100 ignore.msb, ignore.lsb
-.data vector1 $0x0102 pressed.msb, pressed.lsb
+.data vector0 $0xFE00 ignore.msb, ignore.lsb
+.data vector1 $0xFE02 pressed.msb, pressed.lsb
 _start:
     hlt
     jmp _start

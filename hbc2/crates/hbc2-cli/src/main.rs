@@ -242,7 +242,7 @@ fn run(args: &[String]) -> Result<(), String> {
     };
     println!("cycles: {}", result.ticks);
     println!(
-        "pc: {:#06x}   sp: {:#04x}   last instruction: {:#06x}  {}",
+        "pc: {:#06x}   sp: {:#06x}   last instruction: {:#06x}  {}",
         cpu.pc,
         cpu.sp,
         cpu.last_pc,

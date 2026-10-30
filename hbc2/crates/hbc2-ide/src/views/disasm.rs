@@ -7,7 +7,7 @@ use eframe::egui::{
 };
 use hbc2_asm::Program;
 use hbc2_asm::disasm::disassemble_with;
-use hbc2_core::isa::{INSTRUCTION_SIZE, PROGRAM_START};
+use hbc2_core::isa::INSTRUCTION_SIZE;
 use hbc2_runner::Snapshot;
 
 use crate::emulator::ram_address;
@@ -61,13 +61,7 @@ fn program_rows(program: &Program) -> Vec<Row> {
 
 /// Without debug information: instructions around the PC, every 4 bytes.
 fn raw_rows(pc: u16) -> Vec<Row> {
-    let start = pc
-        .saturating_sub(32 * INSTRUCTION_SIZE)
-        .max(if pc >= PROGRAM_START {
-            PROGRAM_START
-        } else {
-            0
-        });
+    let start = pc.saturating_sub(32 * INSTRUCTION_SIZE);
     (0..128u16)
         .map(|n| start.wrapping_add(n * INSTRUCTION_SIZE))
         .take_while(|&a| a >= start)
@@ -221,8 +215,8 @@ mod tests {
 
     #[test]
     fn raw_rows_around_the_pc() {
-        let rows = raw_rows(0x0300);
-        assert_eq!(rows[0].address, 0x0300);
+        let rows = raw_rows(0x0000);
+        assert_eq!(rows[0].address, 0x0000);
         let rows = raw_rows(0x0400);
         assert_eq!(rows[0].address, 0x0380);
         assert!(rows.iter().any(|r| r.address == 0x0400));

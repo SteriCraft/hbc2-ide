@@ -7,6 +7,7 @@ use eframe::egui::{
 };
 use hbc2_asm::Program;
 use hbc2_asm::disasm::disassemble_with;
+use hbc2_core::isa::STACK_RESET;
 use hbc2_core::{CpuState, Flag, Register};
 use hbc2_runner::Snapshot;
 
@@ -115,13 +116,18 @@ pub fn cpu_sections<'a>(
 
                         ui.label("SP");
                         ui.label(mono(
-                            format!("{:02X}", cpu.sp),
+                            format!("{:04X}", cpu.sp),
                             before.is_some_and(|b| b.sp != cpu.sp),
                         ));
-                        note(
-                            ui,
-                            RichText::new(format!("top item at {:04X}", cpu.sp)).weak(),
-                        );
+                        let stack = if cpu.sp == STACK_RESET {
+                            "empty".to_string()
+                        } else if cpu.sp < STACK_RESET {
+                            let used = STACK_RESET - cpu.sp;
+                            format!("{used} byte{} pushed", if used == 1 { "" } else { "s" })
+                        } else {
+                            "last byte pushed".to_string()
+                        };
+                        note(ui, RichText::new(stack).weak());
                         ui.end_row();
 
                         ui.label("IR");
