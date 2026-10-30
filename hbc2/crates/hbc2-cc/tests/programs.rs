@@ -31,11 +31,20 @@ struct Run {
 }
 
 /// Instructions in a compiled file (4 bytes each): indented lines that are
-/// not directives or comments.
+/// not directives or comments. `psh`/`pop` with a register list is one
+/// instruction per register.
 fn code_bytes(asm: &str) -> usize {
     asm.lines()
         .filter(|l| l.starts_with('\t') && !l.trim_start().starts_with(['.', ';']))
-        .count()
+        .map(|l| {
+            let l = l.trim_start();
+            if l.starts_with("psh ") || l.starts_with("pop ") {
+                l.matches(',').count() + 1
+            } else {
+                1
+            }
+        })
+        .sum::<usize>()
         * 4
 }
 

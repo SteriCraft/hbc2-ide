@@ -2,9 +2,10 @@
 //!
 //! The compiler is the Fuzix Compiler Kit with an HBC-2 backend, built by
 //! `compiler/build.cmd` into `compiler/bin`. [`compile`] runs its stages on
-//! one C file and writes the assembly; the program is then assembled with
-//! `compiler/runtime/crt0.has` and `compiler/runtime/runtime.has`
-//! (see `compiler/ABI.md`).
+//! one C file (cpp, cc0, cc1, cc2, then copt with the peephole rules of
+//! `compiler/fcc/rules.hbc2`) and writes the assembly; the program is then
+//! assembled with `compiler/runtime/crt0.has` and
+//! `compiler/runtime/runtime.has` (see `compiler/ABI.md`).
 
 use std::fs::{self, File, OpenOptions};
 use std::path::{Path, PathBuf};
@@ -70,7 +71,13 @@ fn stage(program: &Path, args: &[&str], input: &Path, output: &Path) -> Result<(
 /// of the file in the build (1, 2, …): it goes into the file's labels.
 pub fn compile(source: &Path, output: &Path, unit: u32) -> Result<(), String> {
     let temp = |ext: &str| output.with_extension(ext);
-    let (pre, tokens, trees, symbols) = (temp("i"), temp("tok"), temp("tree"), temp("sym"));
+    let (pre, tokens, trees, symbols, raw) = (
+        temp("i"),
+        temp("tok"),
+        temp("tree"),
+        temp("sym"),
+        temp("cc2"),
+    );
     let result = (|| {
         let cpp = Command::new(tool("cpp")?)
             .args(["-E", "-D__hbc2__"])
@@ -90,10 +97,12 @@ pub fn compile(source: &Path, output: &Path, unit: u32) -> Result<(), String> {
             &tool("cc2.hbc2")?,
             &[&sym, "0", "0", "0", &unit],
             &trees,
-            output,
-        )
+            &raw,
+        )?;
+        let rules = compiler_dir().join("fcc").join("rules.hbc2");
+        stage(&tool("copt")?, &[&rules.to_string_lossy()], &raw, output)
     })();
-    for f in [pre, tokens, trees, symbols] {
+    for f in [pre, tokens, trees, symbols, raw] {
         let _ = fs::remove_file(f);
     }
     result

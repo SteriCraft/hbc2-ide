@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** step 6 done (inline code). 51 C programs pass (`tests/*.c` + 48 generated `tests/ops/*.c`, ≈12 000 checks). bench.c: 6200 → 4256 bytes of code, 1 294 102 → 253 253 ticks (5.1× faster). Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Nothing committed since step 3 (steps 4-6 wait for the user's go).
-- **Next:** step 7 (copt rules), explained to the user 2026-10-31; or step 8 (library) if the user prefers: ask.
+- **Phase:** step 7 done (copt rules). 52 C programs pass (`tests/*.c` + 48 generated `tests/ops/*.c`, ≈12 000 checks). bench.c: 4464 → 4308 bytes, 253 253 → 244 971 ticks with copt (all tests: −9.2 % code, −3.2 % ticks). Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Steps 1-6 committed (8d64b27); step 7 not committed yet.
+- **Next:** step 8 (library). Possible later backend work (bigger gains than copt, need knowledge copt lacks): keep track of what [a:b] / [x:y] hold to drop reloads across statements; `x << 1` assignment forms inline (`crc <<= 1` calls `__shleq`); `x & 0x8000` tests the top byte only.
 
 ## Decisions (agreed 2026-10-30)
 
@@ -72,7 +72,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 - [x] 4. Runtime: `crt0.has` + 89 helpers (`runtime.has` includes compare, long, mul, div, shift, assign, switch; ≈3.9 KB). Written for the C convention, NOT wrappers of the user's math library (it saves all registers; runtime must be self-contained).
 - [x] 5. Test harness: crate `hbc2/crates/hbc2-cc` (lib: `compile()` = Rust version of the driver; tests/helpers.rs: each helper called directly on the emulator vs a Rust model, breakpoint on a return label; tests/programs.rs: every `compiler/tests/*.c`, "Expected: main returns N" on line 1). Both checked by mutation (a broken helper makes them fail). FCC's own test programs: not run yet (upstream `test/` not copied).
 - [x] 6. Inline code (see "Inline code (step 6)" below).
-- [ ] 7. `copt` peephole rules.
+- [x] 7. `copt` peephole rules (see "Peephole rules (step 7)" below).
 - [ ] 8. Library: `hbc2.h` (monitor/keyboard/RTC wrappers, in/out), `putchar`/`puts` on `term_putc`, `string.h`, small `printf`.
 - [ ] 9. Multi-file builds (joined `.has`, static name prefixes).
 - [ ] 10. IDE: `hbc2 cc` in hbc2-cli runs all stages; `.c` in projects; error lines; later asm→C line map for the debugger.
@@ -87,7 +87,7 @@ Later: linker (decision 1b), EEPROM, register variables, float.
 - Data: one pending object per area (A_DATA, A_LITERAL, A_BSS): FCC can start a string literal in the middle of another object (`char *s = "hi"`). Flushed when the code area comes back, when a new object starts in the same area, at the end. char values: printable runs as "…"; wider values as 0xNN bytes.
 - `; export _name` comment lines: for the future static renaming by the driver (step 9).
 - Helper calls: gen_helpcall pops the left operand (pop_left, rules in ABI.md 11), then `cal __`.
-- Temporary driver: `compiler/tools/hbc2cc.py file.c -o file.has [--unit N]` (cpp → cc0 → cc1.hbc2 → cc2.hbc2; opt 0, no copt yet).
+- Temporary driver: `compiler/tools/hbc2cc.py file.c -o file.has [--unit N] [--no-copt]` (cpp → cc0 → cc1.hbc2 → cc2.hbc2 → copt; cc2 opt level 0: our backend ignores it).
 - Known: cc1 reports the float error at the wrong line (end of the declarations, e.g. line 3 for line 1).
 
 ## Inline code (step 6) — how it works
@@ -104,7 +104,16 @@ All in `gen_shortcut` of backend-hbc2.c (the node is not generated yet: the code
 - **FCC quirk (documented in ABI.md 12):** decimal 32768..65535 is `unsigned int` (C says `long`). gen_ops.py writes such constants with literal().
 - Measured with `programs.rs` (prints code bytes = instruction lines × 4, and ticks). Before → after: basics 1564 → 924 bytes, 11816 → 6025 ticks; bench 6200 → 4256 bytes, 1 294 102 → 253 253 ticks.
 - Mutation check done (7 mutations of the new code, each fails ≥ 1 program).
-- Left for step 7 (copt): `jmc X / jmp L / X: jmp M` (FCC's for-loop layout), `jmp L` + `L:` (every function's return), jump to a jump, `str` then `lod` of the same place, the same constant loaded twice (`mov a, 0 / mov b, 0`).
+- Left for step 7 (copt): `jmc X / jmp L / X: jmp M` (FCC's for-loop layout), `jmp L` + `L:` (every function's return), jump to a jump, `str` then `lod` of the same place, the same constant loaded twice (`mov a, 0 / mov b, 0`). All done in step 7 except the last (`mov b, a` costs the same).
+
+## Peephole rules (step 7) — how it works
+
+- `compiler/fcc/rules.hbc2`, run by `copt` (bin/copt.exe, Fraser's, from Z88DK) after cc2, in both drivers (`hbc2_cc::compile`, hbc2cc.py). The file's header explains the format and what the rules rely on.
+- copt matches backwards from each line, in rule order; `%n` = text up to the next pattern char; `%eval R = rpn` / `%check lo <= %n <= hi` are conditions (put them first: checked after the lines match); `%eval(rpn)` in a replacement; `%activate` makes rules at run time (used for jump threading: `L: jmp M` → every `jm? L` becomes `jm? M`; `L: ret` → `jmp L` becomes `ret`). Only `%activate` starts another pass (max 16); a rule fires at most 65535 times, which also ends jump cycles (`a: goto b; b: goto a;` checked: fast, code right).
+- Rules: for-loop `jm? __X / jmp B / __X: jmp N` → `jm? N / jmp B`; jump to the next line; threading; tail call `cal f / L_r: / ret` → `jmp f`; dead code after jmp; store then load of the same place (long / int / byte; the int and long forms check that the places differ); `psh b, a / 2 loads / pop d, c` → `mov c, a / mov d, b / loads` (stack offsets −2); redundant movs.
+- Coverage: each rule was removed in turn and the 52 outputs compared; every rule changes at least one (except the `mov r, r` guard). Mutation check: 6 broken rules, each fails ≥ 1 program (peephole.c's `longs` was extended for this).
+- programs.rs now counts `psh`/`pop` lists as one instruction per register (the numbers above use this count).
+- Tried and left out (never fired in 52 programs): jump to a label after other labels, `jm? L / jmp L`, dead code after `ret`, `cal f / ret` without a label.
 
 ## Helpers (step 4)
 
@@ -135,6 +144,7 @@ From a program using every operator (scratchpad th.c): `__mul __div __divu __rem
 
 - 2026-10-30: plan + decisions with the user. This file created.
 - 2026-10-30 (same session): open questions settled (5, 6, 7, 10 above). `.bss` added to hbc2-asm (parser `Stmt::Bss`, assembler places it after code/data, `__bss_start`/`__bss_end`; tests `bss_*` in tests/assemble.rs; documented in the assembly manual). Step 1 done: kit copied to compiler/fcc, MSVC build works (all 5 tools), pipeline tested with the 6809 target (scratchpad) and with cc1.ref/cc2.ref (repo build). Label naming changed to `__L…` (told the user).
+- 2026-10-31 (step 7): rules.hbc2, copt in both drivers, tests/peephole.c, coverage + mutation checks, psh/pop size count fixed.
 - 2026-10-31 (later): step 6. Inline code + conditions on flags; gen_ops.py rewritten (class Program; groups ops/cond/const/assign × globals/locals → tests/ops/, because of the 64 KB limit); bench.c; programs.rs prints sizes/ticks and also reads tests/ops; step 3 cast/sign bug fixed. Step 7 explained to the user.
 - 2026-10-31: steps 4 + 5. Runtime helpers written and tested; crate hbc2-cc (compile + tests); gen_ops.py → tests/ops_*.c; FCC file name bug fixed. Told the user: runtime ≈3.9 KB in every program until the linker (decision 1b).
 - 2026-10-30 (same session): step 3. hbc2-asm: a name in `.data` = 2-byte address (`.data p table + 4`), test `data_addresses_mixed_with_bytes`, documented. target-hbc2.c, backend-hbc2.c, build.cmd builds cc1.hbc2/cc2.hbc2, runtime/crt0.has, tools/hbc2cc.py, tests/basics.c + frames.c (run OK: 0x04AC, 0x025C). ABI.md 11 updated (pop rules, switch table).

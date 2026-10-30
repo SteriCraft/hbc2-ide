@@ -1,0 +1,257 @@
+# Peephole rules for the HBC-2 (copt, run on the output of cc2).
+#
+# Format: the lines to find, "=", the lines to put instead, a blank line.
+# %1 .. %9 match any text up to the next character of the pattern; the
+# same number must match the same text. copt tries the rules in this
+# order at every line, so a specific rule must come before a general one.
+# "%eval R = expr" (RPN) is a condition; "%activate" makes new rules
+# from the matched text (see copt.c).
+#
+# What the rules may rely on (backend-hbc2.c):
+# - instructions are indented with a tab, labels are at column 0;
+# - a __X label is jumped to once, by the jump that comes just before it
+#   or by the jump of cc_value two lines before;
+# - mov, lod, str, psh, pop and the jumps keep the flags.
+#
+# Every rule changes the code of at least one program of compiler/tests
+# (checked by removing it), except "mov r, r", which protects the rule
+# after it.
+
+# --- Jumps ---------------------------------------------------------------
+
+# A jump on a clear flag is "jump over the jump"; when the code after
+# it is a jump, jump there directly (FCC's for loops). The __X label
+# was used only by this jump: the jmp after it can go.
+	jm%3 __X%1
+	jmp %2
+__X%1:
+	jmp %4
+=
+	jm%3 %4
+	jmp %2
+
+# Jump (or conditional jump) to the next line
+	jm%3 %1
+%1:
+=
+%1:
+
+# A label followed by a jump: every jump to the label goes to the
+# target instead
+%1:
+	jmp %2
+=
+%activate
+	jm%%3 %1
+=
+	jm%%3 %2
+
+# A jump to a ret is a ret
+%1:
+	ret
+=
+%activate
+	jmp %1
+=
+	ret
+
+# A call just before the return label and its ret: the routine returns
+# to our caller (a tail call). Safe because a call with arguments on the
+# stack is followed by an asp, and the helpers take their operands in
+# registers.
+	cal %1
+%2:
+	ret
+=
+	jmp %1
+%2:
+	ret
+
+# --- Dead code -----------------------------------------------------------
+
+# Nothing after a jmp runs until the next label
+	jmp %1
+	%2
+=
+	jmp %1
+
+# --- Stores and loads ----------------------------------------------------
+
+# A load of what was just stored: the register already holds it. The
+# places of the stores must differ: they are the bytes of one value
+# (offsets n, n+1, ...), so only these forms are taken.
+
+# A long: [c:d:a:b]
+%eval 1 = %3 %1 -
+%eval 2 = %6 %1 -
+%eval 3 = %7 %1 -
+	str [%5 + %1], c
+	str [%5 + %3], d
+	str [%5 + %6], a
+	str [%5 + %7], b
+	lod c, [%5 + %1]
+	lod d, [%5 + %3]
+	lod a, [%5 + %6]
+	lod b, [%5 + %7]
+=
+	str [%5 + %1], c
+	str [%5 + %3], d
+	str [%5 + %6], a
+	str [%5 + %7], b
+
+	str %1, c
+	str %1 + 1, d
+	str %1 + 2, a
+	str %1 + 3, b
+	lod c, %1
+	lod d, %1 + 1
+	lod a, %1 + 2
+	lod b, %1 + 3
+=
+	str %1, c
+	str %1 + 1, d
+	str %1 + 2, a
+	str %1 + 3, b
+
+# An int: [a:b] (then the rule for one byte takes the second load)
+%eval 1 = %3 %1 -
+	str [%5 + %1], %2
+	str [%5 + %3], %4
+	lod %2, [%5 + %1]
+=
+	str [%5 + %1], %2
+	str [%5 + %3], %4
+
+	str %1, %2
+	str %1 + 1, %4
+	lod %2, %1
+=
+	str %1, %2
+	str %1 + 1, %4
+
+%eval 1 = %3 %6 -
+	str _%1 + %6, %2
+	str _%1 + %3, %4
+	lod %2, _%1 + %6
+=
+	str _%1 + %6, %2
+	str _%1 + %3, %4
+
+# One byte
+	str %1, %2
+	lod %2, %1
+=
+	str %1, %2
+
+# --- The left operand of a helper -----------------------------------------
+
+# psh b, a and pop d, c are two instructions each: [a:b] is saved,
+# loaded with the right operand, and the saved value goes to [c:d].
+# When the loads do not read c, d or the stack, two movs do the same.
+# (A load from the stack was 2 bytes further before the push.)
+%check 0 <= %1 <= 255
+%check 0 <= %2 <= 255
+	psh b, a
+	mov a, %1
+	mov b, %2
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	mov a, %1
+	mov b, %2
+
+	psh b, a
+	mov a, _%1
+	mov b, _%2
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	mov a, _%1
+	mov b, _%2
+
+	psh b, a
+	lod a, _%1
+	lod b, _%2
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	lod a, _%1
+	lod b, _%2
+
+%check 0 <= %2 <= 255
+	psh b, a
+	lod b, _%1
+	mov a, %2
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	lod b, _%1
+	mov a, %2
+
+%check 2 <= %1 <= 257
+%check 2 <= %2 <= 257
+	psh b, a
+	lod a, [sp + %1]
+	lod b, [sp + %2]
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	lod a, [sp + %eval(%1 2 -)]
+	lod b, [sp + %eval(%2 2 -)]
+
+%check 2 <= %1 <= 257
+%check 0 <= %2 <= 255
+	psh b, a
+	lod b, [sp + %1]
+	mov a, %2
+	pop d, c
+=
+	mov c, a
+	mov d, b
+	lod b, [sp + %eval(%1 2 -)]
+	mov a, %2
+
+# --- Registers -----------------------------------------------------------
+
+	mov %1, %1
+=
+
+# A register set again before it is read (the second mov does not
+# read it: a "mov r, r" was removed by the rule above)
+	mov %1, %2
+	mov %1, %3
+=
+	mov %1, %3
+
+	lod %1, %2
+	mov %1, %3
+=
+	mov %1, %3
+
+# [a:b] = [c:d], then [c:d] = [a:b]: the second copy changes nothing
+	mov a, c
+	mov b, d
+	mov c, a
+	mov d, b
+=
+	mov a, c
+	mov b, d
+
+# [a:b] loaded with the same constant again after storing it
+	mov a, %1
+	mov b, %2
+	str %3, a
+	str %4, b
+	mov a, %1
+	mov b, %2
+=
+	mov a, %1
+	mov b, %2
+	str %3, a
+	str %4, b
+
