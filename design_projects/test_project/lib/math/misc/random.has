@@ -20,7 +20,10 @@
 ; The same seed always gives the same sequence of numbers.
 srand:
     psh a, b, c, d
-    cal load32
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
     psh a
     or a, b
     or a, c
@@ -94,7 +97,10 @@ rand16:
 rand32:
     psh a, b, c, d
     cal rand_step
-    cal store32
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
     pop a, b, c, d
     ret
 

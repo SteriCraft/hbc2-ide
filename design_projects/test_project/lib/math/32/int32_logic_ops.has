@@ -9,77 +9,90 @@
 ; result and b = all result bytes ORed together, for the flags.
 
 and32:
-    psh a, b, c, d, i, j, x, y
-    cal logic32_start
-and32_loop:
+    psh a, b
+    lod a, [x:y + 3]
+    and a, [i:j + 3]
+    str [x:y + 3], a
+    mov b, a
+    lod a, [x:y + 2]
+    and a, [i:j + 2]
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]
+    and a, [i:j + 1]
+    str [x:y + 1], a
+    or b, a
     lod a, [x:y]
-    lod c, [i:j]
-    and a, c
-    cal logic32_next
-    jmz logic32_end
-    jmp and32_loop
+    and a, [i:j]
+    str [x:y], a
+    or b, a                 ; Z = result is 0
+    jmp logic32_end
 
 or32:
-    psh a, b, c, d, i, j, x, y
-    cal logic32_start
-or32_loop:
+    psh a, b
+    lod a, [x:y + 3]
+    or a, [i:j + 3]
+    str [x:y + 3], a
+    mov b, a
+    lod a, [x:y + 2]
+    or a, [i:j + 2]
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]
+    or a, [i:j + 1]
+    str [x:y + 1], a
+    or b, a
     lod a, [x:y]
-    lod c, [i:j]
-    or a, c
-    cal logic32_next
-    jmz logic32_end
-    jmp or32_loop
+    or a, [i:j]
+    str [x:y], a
+    or b, a                 ; Z = result is 0
+    jmp logic32_end
 
 xor32:
-    psh a, b, c, d, i, j, x, y
-    cal logic32_start
-xor32_loop:
+    psh a, b
+    lod a, [x:y + 3]
+    xor a, [i:j + 3]
+    str [x:y + 3], a
+    mov b, a
+    lod a, [x:y + 2]
+    xor a, [i:j + 2]
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]
+    xor a, [i:j + 1]
+    str [x:y + 1], a
+    or b, a
     lod a, [x:y]
-    lod c, [i:j]
-    xor a, c
-    cal logic32_next
-    jmz logic32_end
-    jmp xor32_loop
+    xor a, [i:j]
+    str [x:y], a
+    or b, a                 ; Z = result is 0
+    jmp logic32_end
 
 not32:
-    psh a, b, c, d, i, j, x, y
-    cal logic32_start
-not32_loop:
+    psh a, b
+    lod a, [x:y + 3]
+    not a
+    str [x:y + 3], a
+    mov b, a
+    lod a, [x:y + 2]
+    not a
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]
+    not a
+    str [x:y + 1], a
+    or b, a
     lod a, [x:y]
     not a
-    cal logic32_next
-    jmz logic32_end
-    jmp not32_loop
-
-; [x:y] and [i:j] = their LSB, b = 0, d = 4 bytes to do.
-logic32_start:
-    add y, 3
-    adc x, 0
-    add j, 3
-    adc i, 0
-    mov b, 0
-    mov d, 4
-    ret
-
-; Stores result byte a, adds it to b, moves both pointers to the byte
-; before. Z = all 4 bytes done.
-logic32_next:
     str [x:y], a
-    or b, a
-    dec y
-    sbb x, 0
-    dec j
-    sbb i, 0
-    dec d
-    ret
-
-logic32_end:                ; a = MSB of the result, b = all bytes ORed
-    or b, 0
+    or b, a                 ; Z = result is 0
+                            ; falls through
+logic32_end:                ; a = MSB of the result, Z = result is 0
     jmz logic32_flags       ; result 0: Z = 1, N = 0
     or a, 0                 ; N = bit 31
     clz                     ; result is not 0 (even if its MSB is)
 logic32_flags:
-    pop a, b, c, d, i, j, x, y   ; pop leaves the flags alone
+    pop a, b                ; pop leaves the flags alone
     ret
 
 ; ------------------------------------------------------------
@@ -87,34 +100,20 @@ logic32_flags:
 ; flags: C = bit shifted out
 ; ------------------------------------------------------------
 shl32:
-    psh a, x, y
-    add y, 3                ; [x:y] = LSB
-    adc x, 0
-    lod a, [x:y]            ; byte 3 (LSB)
+    psh a
+    lod a, [x:y + 3]        ; byte 3 (LSB)
     add a, a
-    str [x:y], a
-    psf                     ; keep the carry while moving the pointer
-    dec y
-    sbb x, 0
-    pof
-    lod a, [x:y]            ; byte 2
+    str [x:y + 3], a        ; lod and str leave C alone
+    lod a, [x:y + 2]        ; byte 2
     adc a, a
-    str [x:y], a
-    psf
-    dec y
-    sbb x, 0
-    pof
-    lod a, [x:y]            ; byte 1
+    str [x:y + 2], a
+    lod a, [x:y + 1]        ; byte 1
     adc a, a
-    str [x:y], a
-    psf
-    dec y
-    sbb x, 0
-    pof
+    str [x:y + 1], a
     lod a, [x:y]            ; byte 0 (MSB)
     adc a, a                ; C = bit shifted out
     str [x:y], a
-    pop a, x, y
+    pop a
     ret
 
 ; ------------------------------------------------------------
@@ -123,14 +122,20 @@ shl32:
 ; flags: C = bit shifted out
 ; ------------------------------------------------------------
 shr32:
-    psh a, b, c, d, x, y
-    cal shr32_load
+    psh a, b, c, d
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
     asr a
     and a, 0x7F
     jmp shr32_b
 asr32:
-    psh a, b, c, d, x, y
-    cal shr32_load
+    psh a, b, c, d
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
     asr a
 shr32_b:
     jmc shr32_b1
@@ -156,34 +161,12 @@ shr32_d:
 shr32_d1:
     asr d
     or d, 0x80
-shr32_store:                ; [x:y] is on the LSB
-    psf                     ; keep C while moving the pointer
-    str [x:y], d
-    dec y
-    sbb x, 0
-    str [x:y], c
-    dec y
-    sbb x, 0
-    str [x:y], b
-    dec y
-    sbb x, 0
-    str [x:y], a
-    pof
-    pop a, b, c, d, x, y    ; pop leaves the flags alone
-    ret
-
-; [a:b:c:d] = the 4 bytes at [x:y], [x:y] = address of the LSB.
-shr32_load:
-    lod a, [x:y]
-    inc y
-    adc x, 0
-    lod b, [x:y]
-    inc y
-    adc x, 0
-    lod c, [x:y]
-    inc y
-    adc x, 0
-    lod d, [x:y]
+shr32_store:
+    str [x:y], a            ; str leaves the flags alone
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    pop a, b, c, d
     ret
 
 ; ------------------------------------------------------------
@@ -194,7 +177,7 @@ shr32_load:
 ; ------------------------------------------------------------
 ; Same method on [a:b:c:d], with the count in i.
 shl32n:
-    psh a, b, c, d, i, j, x, y
+    psh a, b, c, d, i, j
     cal shift32n_start
 shl32n_bytes:
     cmp i, 8
@@ -217,7 +200,7 @@ shl32n_bits:
     jmp shl32n_bits
 
 asr32n:
-    psh a, b, c, d, i, j, x, y
+    psh a, b, c, d, i, j
     cal shift32n_start
     mov j, 0                ; j = byte coming in at the top
     or a, 0
@@ -227,7 +210,7 @@ asr32n_neg:
     mov j, 0xFF
     jmp shr32n_go
 shr32n:
-    psh a, b, c, d, i, j, x, y
+    psh a, b, c, d, i, j
     cal shift32n_start
     mov j, 0
 shr32n_go:                  ; C = 0 from shift32n_start
@@ -277,29 +260,24 @@ shr32n_d1:
     or d, 0x80
     jmp shr32n_bits
 
-; i = min(c, 33), [a:b:c:d] = value, [x:y] = its LSB, C = 0.
+; i = min(c, 33), [a:b:c:d] = value, C = 0.
 shift32n_start:
     mov i, c
     cmp i, 34
     jmf shift32n_start_ok
     mov i, 33               ; past 33 the result and C no longer change
 shift32n_start_ok:
-    cal shr32_load
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
     clc
     ret
 
-shift32n_end:               ; [x:y] is on the LSB
-    psf                     ; keep C while moving the pointer
-    str [x:y], d
-    dec y
-    sbb x, 0
-    str [x:y], c
-    dec y
-    sbb x, 0
-    str [x:y], b
-    dec y
-    sbb x, 0
-    str [x:y], a
-    pof
-    pop a, b, c, d, i, j, x, y
+shift32n_end:
+    str [x:y], a            ; str leaves the flags alone
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    pop a, b, c, d, i, j
     ret

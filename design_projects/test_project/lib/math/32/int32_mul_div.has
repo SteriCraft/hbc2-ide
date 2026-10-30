@@ -6,23 +6,27 @@
 ; Multiplies the absolute values, then negates the product if the signs
 ; differ. A product of 2^31 or more only fits when it is exactly 2^31 and
 ; negative; neg32 detects exactly that case (it sets C for 0x80000000).
-; Not reentrant (uses mul32_p and mul32s_t).
-.data32 mul32s_t 0              ; |op2|
-
+; |op2| is made in a copy on the stack: the value at [i:j] does not change.
 mul32s:
     psh a, b, c, i, j
     lod a, [x:y]
+    xor a, [i:j]                ; bit 7 = sign of the product
+    ssp 4                       ; [sp] = copy of op2
     lod b, [i:j]
-    xor a, b                    ; bit 7 = sign of the product
+    str [sp], b
+    lod b, [i:j + 1]
+    str [sp + 1], b
+    lod b, [i:j + 2]
+    str [sp + 2], b
+    lod b, [i:j + 3]
+    str [sp + 3], b
+    rsp [i:j]                   ; [i:j] -> the copy
     psh x, y
-    mov x, mul32s_t.msb
-    mov y, mul32s_t.lsb
-    cal copy32
-    cal abs32                   ; mul32s_t = |op2|
+    mov x, i
+    mov y, j
+    cal abs32                   ; copy = |op2|
     pop x, y
     cal abs32                   ; [x:y] = |op1|
-    mov i, mul32s_t.msb
-    mov j, mul32s_t.lsb
     cal mul32                   ; C = more than 32 bits
     mov b, 1                    ; b = overflow (mov leaves C alone)
     jmc mul32s_sign
@@ -50,6 +54,7 @@ mul32s_flag:
     jme mul32s_end
     stc
 mul32s_end:
+    asp 4                       ; asp leaves the flags alone
     pop a, b, c, i, j
     ret
 
@@ -58,23 +63,16 @@ mul32s_end:
 ;         and the value at [i:j] = remainder
 ; flags: C = division by zero, or -2^31 / -1; then nothing changes
 ; ------------------------------------------------------------
-; Same rules as div16s. Not reentrant (uses div32_rq).
-.data32 div32s_min 0x80000000
-.data32 div32s_m1 0xFFFFFFFF
-
+; Same rules as div16s.
 div32s:
     psh a, b
-    psh x, y
-    mov x, i
-    mov y, j
-    cal tst32
-    pop x, y
+    lod a, [i:j]
+    or a, [i:j + 1]
+    or a, [i:j + 2]
+    or a, [i:j + 3]
     jmz div32s_err              ; division by zero
-    psh i, j
-    mov i, div32s_min.msb
-    mov j, div32s_min.lsb
-    cal cmp32
-    pop i, j
+    lod a, [x:y]
+    cmp a, 0x80
     jme div32s_min_check        ; -2^31 / -1?
 div32s_ok:
     lod a, [x:y]                ; bit 7 = sign of the remainder
@@ -102,16 +100,18 @@ div32s_end:
     pop a, b
     clc
     ret
-div32s_min_check:
-    psh x, y
-    mov x, i
-    mov y, j
-    psh i, j
-    mov i, div32s_m1.msb
-    mov j, div32s_m1.lsb
-    cal cmp32
-    pop i, j
-    pop x, y
+div32s_min_check:               ; MSB = 0x80
+    lod a, [x:y + 1]
+    or a, [x:y + 2]
+    or a, [x:y + 3]
+    jmz div32s_min_m1           ; dividend = -2^31
+    jmp div32s_ok
+div32s_min_m1:
+    lod a, [i:j]                ; divisor = -1: all bytes 0xFF
+    and a, [i:j + 1]
+    and a, [i:j + 2]
+    and a, [i:j + 3]
+    cmp a, 0xFF
     jme div32s_err
     jmp div32s_ok
 div32s_err:

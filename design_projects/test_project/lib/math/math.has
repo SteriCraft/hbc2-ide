@@ -35,102 +35,62 @@
 ; load16: [a:b] = 16-bit value at [x:y]
 ; ------------------------------------------------------------
 load16:
-    psh x, y
     lod a, [x:y]            ; MSB
-    inc y                   ; next address (carry into x)
-    adc x, 0
-    lod b, [x:y]            ; LSB
-    pop x, y
+    lod b, [x:y + 1]        ; LSB
     ret
 
 ; ------------------------------------------------------------
 ; store16: 16-bit value at [x:y] = [a:b]
 ; ------------------------------------------------------------
 store16:
-    psh x, y
     str [x:y], a
-    inc y
-    adc x, 0
-    str [x:y], b
-    pop x, y
+    str [x:y + 1], b
     ret
 
 ; ------------------------------------------------------------
 ; copy16: 16-bit value at [x:y] = 16-bit value at [i:j]
 ; ------------------------------------------------------------
 copy16:
-    psh a, i, j, x, y
+    psh a
     lod a, [i:j]
     str [x:y], a
-    inc j
-    adc i, 0
-    inc y
-    adc x, 0
-    lod a, [i:j]
-    str [x:y], a
-    pop a, i, j, x, y
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    pop a
     ret
 
 ; ------------------------------------------------------------
 ; load32: [a:b:c:d] = 32-bit value at [x:y]
 ; ------------------------------------------------------------
 load32:
-    psh x, y
     lod a, [x:y]            ; MSB
-    inc y
-    adc x, 0
-    lod b, [x:y]
-    inc y
-    adc x, 0
-    lod c, [x:y]
-    inc y
-    adc x, 0
-    lod d, [x:y]            ; LSB
-    pop x, y
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]        ; LSB
     ret
 
 ; ------------------------------------------------------------
 ; store32: 32-bit value at [x:y] = [a:b:c:d]
 ; ------------------------------------------------------------
 store32:
-    psh x, y
     str [x:y], a
-    inc y
-    adc x, 0
-    str [x:y], b
-    inc y
-    adc x, 0
-    str [x:y], c
-    inc y
-    adc x, 0
-    str [x:y], d
-    pop x, y
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
     ret
 
 ; ------------------------------------------------------------
 ; copy32: 32-bit value at [x:y] = 32-bit value at [i:j]
 ; ------------------------------------------------------------
 copy32:
-    psh a, i, j, x, y
+    psh a
     lod a, [i:j]
     str [x:y], a
-    inc j
-    adc i, 0
-    inc y
-    adc x, 0
-    lod a, [i:j]
-    str [x:y], a
-    inc j
-    adc i, 0
-    inc y
-    adc x, 0
-    lod a, [i:j]
-    str [x:y], a
-    inc j
-    adc i, 0
-    inc y
-    adc x, 0
-    lod a, [i:j]
-    str [x:y], a
-    pop a, i, j, x, y
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    lod a, [i:j + 2]
+    str [x:y + 2], a
+    lod a, [i:j + 3]
+    str [x:y + 3], a
+    pop a
     ret

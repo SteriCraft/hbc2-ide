@@ -18,18 +18,14 @@ mul16s:
     cal mul16
     and i, 0x80
     jmz mul16s_end
-    mov i, 0                ; [a:b:c:d] = -[a:b:c:d]
-    sub i, d
-    mov d, i
-    mov i, 0
-    sbb i, c
-    mov c, i
-    mov i, 0
-    sbb i, b
-    mov b, i
-    mov i, 0
-    sbb i, a
-    mov a, i
+    not a                   ; [a:b:c:d] = NOT [a:b:c:d] + 1
+    not b
+    not c
+    not d
+    add d, 1
+    adc c, 0
+    adc b, 0
+    adc a, 0
 mul16s_end:
     pop i
     ret

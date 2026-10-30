@@ -33,17 +33,17 @@ popcnt16:
     ret
 
 popcnt32:
-    psh b, d, x, y
+    psh d
     mov a, 0
-    mov b, 4                ; 4 bytes
-popcnt32_loop:
     lod d, [x:y]
     cal popcnt_byte
-    inc y
-    adc x, 0
-    dec b
-    jmz bitcnt32_end
-    jmp popcnt32_loop
+    lod d, [x:y + 1]
+    cal popcnt_byte
+    lod d, [x:y + 2]
+    cal popcnt_byte
+    lod d, [x:y + 3]
+    cal popcnt_byte
+    jmp bitcnt32_end
 
 ; a += number of 1 bits in d. Changes d.
 popcnt_byte:
@@ -94,22 +94,35 @@ lzcnt16_lsb:
     ret
 
 lzcnt32:
-    psh b, d, x, y
+    psh d
     mov a, 0
-    mov b, 4
-lzcnt32_loop:               ; from the MSB
-    lod d, [x:y]
+    lod d, [x:y]            ; from the MSB
     or d, 0
-    jmz lzcnt32_zero
+    jmz lzcnt32_1
+lzcnt32_found:              ; d = first byte that is not 0
     cal lzcnt_byte
     jmp bitcnt32_end
+lzcnt32_1:
+    mov a, 8
+    lod d, [x:y + 1]
+    or d, 0
+    jmz lzcnt32_2
+    jmp lzcnt32_found
+lzcnt32_2:
+    mov a, 16
+    lod d, [x:y + 2]
+    or d, 0
+    jmz lzcnt32_3
+    jmp lzcnt32_found
+lzcnt32_3:
+    mov a, 24
+    lod d, [x:y + 3]
+    or d, 0
+    jmz lzcnt32_zero
+    jmp lzcnt32_found
 lzcnt32_zero:
-    add a, 8
-    inc y
-    adc x, 0
-    dec b
-    jmz bitcnt32_end        ; value 0: a = 32
-    jmp lzcnt32_loop
+    mov a, 32               ; value 0
+    jmp bitcnt32_end
 
 ; a += number of 0 bits above the highest 1 of d (d must not be 0).
 ; Changes d.
@@ -150,24 +163,35 @@ tzcnt16_msb:
     ret
 
 tzcnt32:
-    psh b, d, x, y
-    add y, 3                ; from the LSB
-    adc x, 0
+    psh d
     mov a, 0
-    mov b, 4
-tzcnt32_loop:
+    lod d, [x:y + 3]        ; from the LSB
+    or d, 0
+    jmz tzcnt32_2
+tzcnt32_found:              ; d = first byte that is not 0
+    cal tzcnt_byte
+    jmp bitcnt32_end
+tzcnt32_2:
+    mov a, 8
+    lod d, [x:y + 2]
+    or d, 0
+    jmz tzcnt32_1
+    jmp tzcnt32_found
+tzcnt32_1:
+    mov a, 16
+    lod d, [x:y + 1]
+    or d, 0
+    jmz tzcnt32_0
+    jmp tzcnt32_found
+tzcnt32_0:
+    mov a, 24
     lod d, [x:y]
     or d, 0
     jmz tzcnt32_zero
-    cal tzcnt_byte
-    jmp bitcnt32_end
+    jmp tzcnt32_found
 tzcnt32_zero:
-    add a, 8
-    dec y
-    sbb x, 0
-    dec b
-    jmz bitcnt32_end        ; value 0: a = 32
-    jmp tzcnt32_loop
+    mov a, 32               ; value 0
+    jmp bitcnt32_end
 
 ; a += number of 0 bits below the lowest 1 of d (d must not be 0).
 ; Changes d. asr copies the top bit down, which is fine: a 1 comes out
@@ -181,6 +205,6 @@ tzcnt_byte_end:
     ret
 
 bitcnt32_end:
+    pop d
     or a, 0                 ; Z = result is 0
-    pop b, d, x, y
     ret

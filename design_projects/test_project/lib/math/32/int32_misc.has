@@ -3,40 +3,39 @@
 ; flags: C = overflow (the input was -2147483648, which stays the same),
 ;        Z = result is 0
 ; ------------------------------------------------------------
+; 0 - value, byte by byte from the LSB: the ALU reads the value from
+; memory, and mov / str / or leave C alone between the bytes.
 neg32:
-    psh a, b, c, d, i
-    cal load32
-    mov i, 0                ; [a:b:c:d] = 0 - [a:b:c:d]
-    sub i, d
-    mov d, i
-    mov i, 0
-    sbb i, c
-    mov c, i
-    mov i, 0
-    sbb i, b
-    mov b, i
-    mov i, 0
-    sbb i, a
-    mov a, i
-    cal store32
-    clc                     ; overflow only for 0x80000000
-    cmp a, 0x80
-    jme neg32_low
-    jmp neg32_z
-neg32_low:
-    mov i, b
-    or i, c
-    or i, d
-    jmz neg32_ovf
-    jmp neg32_z
+    psh a, b
+    mov a, 0                ; byte 3 (LSB)
+    sub a, [x:y + 3]
+    str [x:y + 3], a
+    mov b, a                ; b = OR of the result bytes
+    mov a, 0                ; byte 2
+    sbb a, [x:y + 2]
+    str [x:y + 2], a
+    or b, a
+    mov a, 0                ; byte 1
+    sbb a, [x:y + 1]
+    str [x:y + 1], a
+    or b, a
+    mov a, 0                ; byte 0 (MSB)
+    sbb a, [x:y]
+    str [x:y], a
+    or b, a                 ; Z = result is 0
+    clc                     ; overflow only for 0x80000000: clc and cmp
+    cmp a, 0x80             ; leave Z alone
+    jme neg32_msb
+    pop a, b
+    ret
+neg32_msb:
+    cmp b, 0x80             ; MSB = 0x80: the other bytes must be 0
+    jme neg32_ovf
+    pop a, b
+    ret
 neg32_ovf:
     stc
-neg32_z:
-    mov i, a                ; Z = all bytes are 0, C untouched
-    or i, b
-    or i, c
-    or i, d
-    pop a, b, c, d, i
+    pop a, b
     ret
 
 ; ------------------------------------------------------------
@@ -45,20 +44,19 @@ neg32_z:
 ;        Z = result is 0
 ; ------------------------------------------------------------
 abs32:
-    psh a, b, c, d
+    psh a
     lod a, [x:y]
-    and a, 0x80             ; sign bit (in the MSB)
-    jmz abs32_pos
-    pop a, b, c, d
-    jmp neg32               ; negative: neg32 returns to our caller
-abs32_pos:
-    cal load32
-    or a, b                 ; Z
-    or a, c
-    or a, d
+    or a, 0                 ; N = sign bit
+    jmn abs32_neg
+    or a, [x:y + 1]
+    or a, [x:y + 2]
+    or a, [x:y + 3]         ; Z
     clc
-    pop a, b, c, d
+    pop a
     ret
+abs32_neg:
+    pop a
+    jmp neg32               ; negative: neg32 returns to our caller
 
 ; ------------------------------------------------------------
 ; min32s: value at [x:y] = the smaller of the values at [x:y] and [i:j]
@@ -101,14 +99,17 @@ max32s_keep:
 ;         (0x8000 -> 0xFFFF8000)
 ; ------------------------------------------------------------
 sext16:
-    psh a, b, c, d
-    mov c, a                ; low half = [a:b]
-    mov d, b
-    and a, 0x80
-    jmz sext16_store        ; positive: high half = 0
-    mov a, 0xFF
+    str [x:y + 2], a        ; low half = [a:b]
+    str [x:y + 3], b
+    psh a
+    or a, 0                 ; N = sign bit
+    mov a, 0                ; positive: high half = 0 (mov leaves N alone)
+    jmn sext16_neg
 sext16_store:
-    mov b, a
-    cal store32
-    pop a, b, c, d
+    str [x:y], a
+    str [x:y + 1], a
+    pop a
     ret
+sext16_neg:
+    mov a, 0xFF
+    jmp sext16_store

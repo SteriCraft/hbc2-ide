@@ -78,7 +78,10 @@ itoa16_neg:
 
 utoa32:
     psh a, b, c, d, i, j
-    cal utoa32_load
+    lod a, [i:j]
+    lod b, [i:j + 1]
+    lod c, [i:j + 2]
+    lod d, [i:j + 3]
 utoa32_go:                  ; itoa32 enters here
     mov j, 0
     mov i, '0'
@@ -171,7 +174,10 @@ utoa32_e4_end:
 
 itoa32:
     psh a, b, c, d, i, j
-    cal utoa32_load
+    lod a, [i:j]
+    lod b, [i:j + 1]
+    lod c, [i:j + 2]
+    lod d, [i:j + 3]
     or a, 0
     jmn itoa32_neg
     jmp utoa32_go
@@ -187,20 +193,6 @@ itoa32_neg:
     adc b, 0
     adc a, 0
     jmp utoa32_go
-
-; [a:b:c:d] = the 4 bytes at [i:j]. Changes i, j.
-utoa32_load:
-    lod a, [i:j]
-    inc j
-    adc i, 0
-    lod b, [i:j]
-    inc j
-    adc i, 0
-    lod c, [i:j]
-    inc j
-    adc i, 0
-    lod d, [i:j]
-    ret
 
 ; One decimal digit: [a:b] = value, [c:d] = power of ten. Writes the
 ; digit (unless it is a leading zero), [a:b] = value % power. Changes i.
@@ -264,21 +256,16 @@ htoa_end:
     ret
 
 htoa32:
-    psh b, c, d, i, j
-    mov b, 4                ; 4 bytes, most significant first
-htoa32_loop:
-    lod c, [i:j]
+    psh c, d
+    lod c, [i:j]            ; most significant byte first
     cal htoa_byte
-    inc j
-    adc i, 0
-    dec b
-    jmz htoa32_end
-    jmp htoa32_loop
-htoa32_end:
-    mov c, 0
-    str [x:y], c
-    pop b, c, d, i, j
-    ret
+    lod c, [i:j + 1]
+    cal htoa_byte
+    lod c, [i:j + 2]
+    cal htoa_byte
+    lod c, [i:j + 3]
+    cal htoa_byte
+    jmp htoa_end
 
 ; Writes byte c as 2 hex digits. Changes c, d.
 htoa_byte:
@@ -321,21 +308,14 @@ atou:
     cal atou_read
     jmc atou_error
 atou_store:                 ; atoi joins here
-    pop x, y                ; drop the saved [i:j]
-    pop x, y                ; [x:y] -> result
-    psh x, y
+    asp 2                   ; drop the saved [i:j]
+    lod x, [sp + 1]         ; [x:y] -> result
+    lod y, [sp]
     str [x:y], a
-    inc y
-    adc x, 0
-    str [x:y], b
-    inc y
-    adc x, 0
-    str [x:y], c
-    inc y
-    adc x, 0
-    str [x:y], d
-    pop x, y
-    pop a, b, c, d
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    pop a, b, c, d, x, y
     clc
     ret
 atou_error:
@@ -406,13 +386,12 @@ atou_read_go:
 atou_read_loop:             ; y = digit at [i:j]
     inc j
     adc i, 0
-    psh y
     add d, d                ; [x:a:b:c:d] *= 2
     adc c, c
     adc b, b
     adc a, a
     adc x, x
-    psh x, a, b, c, d       ; keep value * 2
+    psh x, a, b, c, d       ; keep value * 2: [sp] = d ... [sp + 4] = x
     add d, d                ; *= 4: value * 8
     adc c, c
     adc b, b
@@ -423,18 +402,13 @@ atou_read_loop:             ; y = digit at [i:j]
     adc b, b
     adc a, a
     adc x, x
-    pop y                   ; += value * 2, popped from d up
-    add d, y                ; (pop does not change the flags)
-    pop y
-    adc c, y
-    pop y
-    adc b, y
-    pop y
-    adc a, y
-    pop y
-    adc x, y
-    pop y                   ; += digit
-    add d, y
+    add d, [sp]             ; += value * 2
+    adc c, [sp + 1]
+    adc b, [sp + 2]
+    adc a, [sp + 3]
+    adc x, [sp + 4]
+    asp 5                   ; asp leaves the flags alone
+    add d, y                ; += digit
     adc c, 0
     adc b, 0
     adc a, 0

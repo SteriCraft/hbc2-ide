@@ -3,12 +3,11 @@
 ; flags: C = unsigned overflow, Z = result is 0
 ; ------------------------------------------------------------
 add16:
-    psh i
     add b, d                ; LSB first
     adc a, c                ; MSB + carry, C = carry out
-    mov i, a
-    or i, b                 ; Z = (a | b) == 0, C untouched
-    pop i
+    psh a
+    or a, b                 ; Z = (a | b) == 0, C untouched
+    pop a                   ; pop leaves the flags alone
     ret
 
 ; ------------------------------------------------------------
@@ -16,12 +15,11 @@ add16:
 ; flags: C = borrow ([a:b] < [c:d] unsigned), Z = result is 0
 ; ------------------------------------------------------------
 sub16:
-    psh i
     sub b, d
     sbb a, c
-    mov i, a
-    or i, b
-    pop i
+    psh a
+    or a, b
+    pop a
     ret
 
 ; ------------------------------------------------------------

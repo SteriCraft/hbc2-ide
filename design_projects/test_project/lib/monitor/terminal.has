@@ -322,26 +322,16 @@ term_kbd_install_check:
     cli                     ; no interrupt while a vector is half written
     mov x, 0xFE
     mov y, a
-    shl y                   ; [x:y] = IVT entry of the port = $0xFE00 + 2 * port
-    jmc term_kbd_install_high
-    jmp term_kbd_install_write
-term_kbd_install_high:
-    inc x                   ; port 128 or more: entry in $0xFFxx
-term_kbd_install_write:
+    shl y                   ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                ; [x:y] = IVT entry of the port = $0xFE00 + 2 * port
     mov a, term_kbd_pressed.msb
     str [x:y], a
-    add y, 1
-    adc x, 0
     mov a, term_kbd_pressed.lsb
-    str [x:y], a
-    add y, 1                ; next entry: second port, key released
-    adc x, 0
-    mov a, term_kbd_released.msb
-    str [x:y], a
-    add y, 1
-    adc x, 0
+    str [x:y + 1], a
+    mov a, term_kbd_released.msb    ; next entry: second port, key released
+    str [x:y + 2], a
     mov a, term_kbd_released.lsb
-    str [x:y], a
+    str [x:y + 3], a
     mov a, 1
     str term_kbd_ready, a
     pof                     ; interrupts back as they were
@@ -373,10 +363,7 @@ term_kbd_push:
     jme term_kbd_push_end   ; full: the event is lost
     str term_kbd_head, y
     mov x, term_kbd_queue.msb
-    mov y, term_kbd_queue.lsb
-    add y, b
-    adc x, 0
-    str [x:y], a
+    str [x:b + term_kbd_queue.lsb], a   ; term_kbd_queue[b] = event
 term_kbd_push_end:
     pop b, x, y
     pop a
@@ -387,7 +374,7 @@ term_kbd_push_end:
 ; empty or Enter ends the line.
 
 term_kbd_read:
-    psh a, b, x, y
+    psh a, b, x
 term_kbd_read_next:
     lod a, term_line_done
     cmp a, 0
@@ -399,23 +386,20 @@ term_kbd_read_event:
     cmp a, b
     jme term_kbd_read_end   ; queue empty
     mov x, term_kbd_queue.msb
-    mov y, term_kbd_queue.lsb
-    add y, b
-    adc x, 0
-    lod a, [x:y]            ; a = oldest event
+    lod a, [x:b + term_kbd_queue.lsb]   ; a = oldest event
     inc b
     and b, 0x0F
     str term_kbd_tail, b
     cal term_key
     jmp term_kbd_read_next
 term_kbd_read_end:
-    pop a, b, x, y
+    pop a, b, x
     ret
 
 ; term_key: handles one key event a
 
 term_key:
-    psh a, b, x, y
+    psh a, b, x
     cmp a, 0x8E             ; Shift released
     jme term_key_shift_up
     cmp a, 0x91             ; Alt released
@@ -438,11 +422,8 @@ term_key:
     lod b, term_line_len
     cmp b, TERM_LINE_MAX
     jme term_key_end        ; line full
-    mov x, term_line.msb    ; term_line[len] = a
-    mov y, term_line.lsb
-    add y, b
-    adc x, 0
-    str [x:y], a
+    mov x, term_line.msb
+    str [x:b + term_line.lsb], a    ; term_line[len] = a
     inc b
     str term_line_len, b
     cal term_putc           ; show it
@@ -467,12 +448,9 @@ term_key_alt_up:
 
 term_key_enter:
     lod b, term_line_len
-    mov x, term_line.msb    ; term_line[len] = 0
-    mov y, term_line.lsb
-    add y, b
-    adc x, 0
+    mov x, term_line.msb
     mov a, 0
-    str [x:y], a
+    str [x:b + term_line.lsb], a    ; term_line[len] = 0
     mov a, 1
     str term_line_done, a
     cal term_newline
@@ -500,7 +478,7 @@ term_key_backspace_up:
 term_key_backspace_show:
     cal term_cursor_show    ; ...and draw it over the last character
 term_key_end:
-    pop a, b, x, y
+    pop a, b, x
     ret
 
 ; term_key_char: a = scan code of a key -> a = its character (0 if none),
@@ -547,19 +525,18 @@ term_key_char_normal:
     mov y, term_keys_normal.lsb
 term_key_char_find:
     mov c, term_keys_scan.msb
-    mov d, term_keys_scan.lsb
+    mov d, 0                ; d = place in the tables (they are shorter than 256)
 term_key_char_search:
-    lod b, [c:d]
+    lod b, [c:d + term_keys_scan.lsb]
     cmp b, 0
     jme term_key_char_none  ; end of the table: not found
     cmp a, b
     jme term_key_char_found
-    add d, 1                ; next key, in both tables
-    adc c, 0
-    add y, 1
-    adc x, 0
+    inc d                   ; next key
     jmp term_key_char_search
 term_key_char_found:
+    add y, d
+    adc x, 0
     lod a, [x:y]            ; same place in the layer's table
     jmp term_key_char_end
 term_key_char_none:

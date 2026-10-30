@@ -85,9 +85,9 @@ the result stay as they were.
 
 ### Interrupts
 
-Most routines only use registers and the stack and can be called from
-anywhere. The 32-bit multiply, divide, power, square root, GCD and all
-random routines use fixed variables: see
+Every routine except the random ones only uses registers and the stack,
+so it can be called from anywhere, interrupt handlers included. The random
+routines share the generator's state: see
 [section 12](#12-interrupts-and-work-areas) before calling them from an
 interrupt handler.
 
@@ -492,24 +492,18 @@ Text is ASCII and ends with a 0 byte, like `.data msg "Hi", 0`.
 
 ## 12. Interrupts and work areas
 
-Some routines keep values in fixed variables while they work. If an
-interrupt handler calls one of them while the main program is in the middle
-of a call that uses the same variables, both get wrong results. Either don't
-call these routines from interrupt handlers, or disable interrupts around
-the calls in the main program (`cli` … `sti`).
+The routines that need work space (`mul32`, `div32`, `pow32`, `gcd32`,
+`isqrt32`, `mul32s`, `randr32`) keep it on the stack, so they are safe
+anywhere, interrupt handlers included. The deepest, `gcd32`, uses 29 bytes of
+stack (return address included).
 
-| Routines | Variables used |
-|---|---|
-| `mul32`, and everything that calls it: `mul32s`, `pow32` | `mul32_m`, `mul32_n` |
-| `mul32s` | also `mul32s_t` |
-| `pow32` | also `pow32_b` |
-| `div32`, and everything that calls it: `div32s`, `gcd32` | `div32_d`, `div32_n` |
-| `gcd32` | also `gcd32_b`, `gcd32_t` |
-| `isqrt32` | `isqrt32_n`, `isqrt32_r`, `isqrt32_k` |
-| `srand`, `srand_rtc`, `rand8`, `rand16`, `rand32`, `randr8`, `randr16`, `randr32` | `rand_s` (the generator's state) |
-| `randr32` | also `randr_span`, `randr_mask` |
-
-Every other routine uses only registers and the stack: it is safe anywhere.
+Only the random routines keep a value in a fixed variable: `rand_s`, the
+generator's state, shared by `srand`, `srand_rtc`, `rand8`, `rand16`,
+`rand32`, `randr8`, `randr16` and `randr32`. If an interrupt handler calls
+one of them while the main program is in the middle of another, the
+sequence of numbers gets mixed up. Either don't call them from interrupt
+handlers, or disable interrupts around the calls in the main program
+(`cli` … `sti`).
 
 ---
 
@@ -523,22 +517,24 @@ worst case.
 |---|---|
 | `mul16` | 75 (7 × 1000) to 164 (65535 × 65535) |
 | `div16` | 86 (100 / 7) to 190 (12345 / 1000) |
-| `mul32` | 184 (7 × 100000) to 478 (max × max) |
-| `div32` | 402 (1000 / 7) to 680 (123456789 / 100000) |
-| `mul16s` / `div16s` | the unsigned routine + 36 to 99 |
-| `mul32s` / `div32s` | the unsigned routine + 132 to 316 |
+| `mul32` | 155 (7 × 100000) to 446 (max × max) |
+| `div32` | 359 (1000 / 7) to 637 (123456789 / 100000) |
+| `mul16s` / `div16s` | the unsigned routine + 32 to 81 |
+| `mul32s` / `div32s` | the unsigned routine + 50 to 126 |
 | `and16` … `not16` | 7 |
-| `and32` … `xor32` / `not32` | 85 / 81 |
+| `and32` … `xor32` / `not32` | 26 / 25 |
+| `add32` / `sub32` / `copy32` / `neg32` | 22 / 22 / 12 / 25 |
 | `shr16` / `asr16` | 8 / 6 |
-| `shr32` / `asr32` | 53 / 51 |
+| `shr32` / `asr32` | 33 / 31 |
 | `shl16n` / `shr16n` / `asr16n` | up to 62 / 121 / 111 |
-| `shl32n` / `shr32n` / `asr32n` | up to 135 / 213 / 203 |
-| `popcnt8` / `16` / `32` | 25 / 44 / 108 |
-| `lzcnt` / `tzcnt` | 14 to 42 (8-bit), 15 to 48 (16-bit), 21 to 78 (32-bit) |
-| `utoa8` / `utoa16` / `utoa32` | up to 111 / 253 / 643 |
-| `htoa8` / `htoa16` / `htoa32` | 36 / 62 / 140 |
-| `atou` / `atoi` | up to 498 / 523 (10 digits) |
-| `randr8` / `randr16` / `randr32` | about 170 / 150 to 240 / 360 to 450, on average |
+| `shl32n` / `shr32n` / `asr32n` | up to 115 / 193 / 183 |
+| `popcnt8` / `16` / `32` | 25 / 44 / 83 |
+| `lzcnt` / `tzcnt` | 14 to 42 (8-bit), 15 to 48 (16-bit), 14 to 55 (32-bit) |
+| `utoa8` / `utoa16` / `utoa32` | up to 111 / 253 / 635 |
+| `htoa8` / `htoa16` / `htoa32` | 36 / 62 / 115 |
+| `atou` / `atoi` | up to 429 / 454 (10 digits) |
+| `isqrt16` / `isqrt32` | 192 / about 490 |
+| `randr8` / `randr16` / `randr32` | about 170 / 150 to 240 / 190 to 300, on average |
 
 ---
 

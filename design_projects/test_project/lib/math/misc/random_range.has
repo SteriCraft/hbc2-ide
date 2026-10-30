@@ -1,17 +1,13 @@
 ; ============================================================
 ; Random numbers in a range
 ; ============================================================
-; Uses rand8, rand16 and rand_step from rand.has, and copy32, sub32,
-; load32, add32 from math32.has.
+; Uses rand8, rand16 and rand_step from random.has.
 
 ; Method: span = hi - lo, mask = the smallest 0b0..01..1 >= span. Take a
 ; random number, keep the bits of the mask, and try again while it is
 ; above span (fewer than 2 tries on average). Then add lo.
 ; Every value of the range is equally likely: no "% n" bias, no division.
 ; Not reentrant, like rand8 / rand16 / rand32.
-
-.data32 randr_span 0            ; randr32's work space
-.data32 randr_mask 0
 
 ; ------------------------------------------------------------
 ; randr8: a = random number from a to b (included), unsigned
@@ -87,38 +83,39 @@ randr16_error:
 ; ------------------------------------------------------------
 randr32:
     psh a, b, c, d, i, j, x, y
-    psh x, y                ; lo
-    mov x, randr_span.msb
-    mov y, randr_span.lsb
-    cal copy32              ; span = hi
-    pop i, j
-    psh i, j                ; [i:j] -> lo
-    cal sub32               ; span = hi - lo, C = hi < lo
-    jmc randr32_error
-    cal load32              ; [a:b:c:d] = span
+    lod d, [i:j + 3]        ; [a:b:c:d] = span = hi - lo
+    sub d, [x:y + 3]        ; (lod leaves C alone)
+    lod c, [i:j + 2]
+    sbb c, [x:y + 2]
+    lod b, [i:j + 1]
+    sbb b, [x:y + 1]
+    lod a, [i:j]
+    sbb a, [x:y]
+    jmc randr32_error       ; hi < lo
+    ssp 4                   ; [sp] = mask
     mov i, 0
     mov j, a
     cal randr_mask8
-    str randr_mask, j
+    str [sp], j
     mov j, b
     cal randr_mask8
-    str randr_mask + 1, j
+    str [sp + 1], j
     mov j, c
     cal randr_mask8
-    str randr_mask + 2, j
+    str [sp + 2], j
     mov j, d
     cal randr_mask8
-    str randr_mask + 3, j
+    str [sp + 3], j
     mov i, a                ; [i:j:x:y] = span
     mov j, b
     mov x, c
     mov y, d
 randr32_loop:
     cal rand_step           ; [a:b:c:d] = random (keeps i, j, x, y)
-    and a, randr_mask
-    and b, randr_mask + 1
-    and c, randr_mask + 2
-    and d, randr_mask + 3
+    and a, [sp]
+    and b, [sp + 1]
+    and c, [sp + 2]
+    and d, [sp + 3]
     cmp a, i                ; above span: again
     jms randr32_loop
     jmf randr32_ok
@@ -131,19 +128,21 @@ randr32_loop:
     cmp d, y
     jms randr32_loop
 randr32_ok:
-    str randr_span, a       ; reuses randr_span for the random number
-    str randr_span + 1, b
-    str randr_span + 2, c
-    str randr_span + 3, d
-    pop x, y                ; [x:y] -> lo
-    mov i, randr_span.msb
-    mov j, randr_span.lsb
-    cal add32               ; value = lo + random
+    lod x, [sp + 5]         ; [x:y] -> lo
+    lod y, [sp + 4]
+    add d, [x:y + 3]        ; value = lo + random
+    str [x:y + 3], d
+    adc c, [x:y + 2]
+    str [x:y + 2], c
+    adc b, [x:y + 1]
+    str [x:y + 1], b
+    adc a, [x:y]
+    str [x:y], a
+    asp 4
     pop a, b, c, d, i, j, x, y
     clc
     ret
 randr32_error:
-    pop x, y
     pop a, b, c, d, i, j, x, y
     stc
     ret

@@ -63,29 +63,14 @@ _iod_interrupt_handler_keyboard_plugged:
     psh y                           ; (pressed, released): point both vectors to a
     mov x, 0xFE                     ; default handler, so keys are ignored until the
     mov y, a                        ; program installs its own.
-    shl y                           ; [x:y] = IVT entry of the first port = $0xFE00 + 2 * port
-    jmc _iod_interrupt_handler_keyboard_high_port
-    jmp _iod_interrupt_handler_keyboard_vector
-_iod_interrupt_handler_keyboard_high_port:
-    inc x                           ; Port 128 or more: entry in $0xFFxx
-_iod_interrupt_handler_keyboard_vector:
+    shl y                           ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                        ; [x:y] = IVT entry of the first port = $0xFE00 + 2 * port
     mov a, _keyboard_default_handler.msb
     str [x:y], a
-    inc y
+    str [x:y + 2], a                ; second port: the next entry
     mov a, _keyboard_default_handler.lsb
-    str [x:y], a
-    inc y                           ; Second port: the next entry
-    cmp y, 0
-    jme _iod_interrupt_handler_keyboard_second_high
-    jmp _iod_interrupt_handler_keyboard_second
-_iod_interrupt_handler_keyboard_second_high:
-    inc x                           ; First port 127: the second entry is $0xFF00
-_iod_interrupt_handler_keyboard_second:
-    mov a, _keyboard_default_handler.msb
-    str [x:y], a
-    inc y
-    mov a, _keyboard_default_handler.lsb
-    str [x:y], a
+    str [x:y + 1], a
+    str [x:y + 3], a
     pop y
     pop x
     jmp _iod_interrupt_handler_id_done
@@ -95,18 +80,13 @@ _iod_interrupt_handler_rtc_plugged:
     psh x                           ; The RTC interrupts every second: point its vector
     psh y                           ; to a default handler, so it is ignored until the
     mov x, 0xFE                     ; program installs its own.
-    mov y, a                        ; [x:y] = IVT entry of the port = $0xFE00 + 2 * port
-    shl y
-    jmc _iod_interrupt_handler_rtc_high_port
-    jmp _iod_interrupt_handler_rtc_vector
-_iod_interrupt_handler_rtc_high_port:
-    inc x                           ; Port 128 or more: entry in $0xFFxx
-_iod_interrupt_handler_rtc_vector:
+    mov y, a
+    shl y                           ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                        ; [x:y] = IVT entry of the port = $0xFE00 + 2 * port
     mov a, _rtc_default_handler.msb
     str [x:y], a
-    inc y
     mov a, _rtc_default_handler.lsb
-    str [x:y], a
+    str [x:y + 1], a
     pop y
     pop x
     jmp _iod_interrupt_handler_id_done
