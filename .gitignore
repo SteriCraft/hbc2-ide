@@ -19,3 +19,7 @@ codeLinesNumbers.sh
 
 # assembled images of the design projects
 design_projects/**/*.bin
+
+# C compiler build output
+compiler/bin/
+compiler/build/
