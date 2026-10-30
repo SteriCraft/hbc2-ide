@@ -225,7 +225,10 @@ mod tests {
         let mut project = Project::open(&project.root).unwrap();
         assert_eq!(project.files.len(), 3);
         assert_eq!(project.folders, vec![project.root.join("lib")]);
-        assert_eq!(project.include_path(&project.root.join("lib/math.has")), "lib/math.has");
+        assert_eq!(
+            project.include_path(&project.root.join("lib/math.has")),
+            "lib/math.has"
+        );
         assert!(!project.rescan(), "nothing changed");
 
         std::fs::create_dir(project.root.join("empty")).unwrap();

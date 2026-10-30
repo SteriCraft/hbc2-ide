@@ -4,8 +4,8 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
-use hbc2_core::Machine;
 use chrono::{Datelike, Timelike};
+use hbc2_core::Machine;
 use hbc2_core::peripherals::rtc::DateTime;
 use hbc2_core::peripherals::{Eeprom, Monitor};
 
