@@ -5,8 +5,7 @@ it works together with hand-written assembly. The compiler is the Fuzix
 Compiler Kit with an HBC-2 backend (see `ROADMAP.md`).
 
 The assembly examples in sections 5, 9 and 10 were run on the emulator.
-Section 11 (runtime helpers) is a draft: it may change while the backend is
-written.
+Section 11 describes the runtime helpers, in `compiler/runtime`.
 
 ## 1. Types
 
@@ -269,9 +268,12 @@ The runtime helpers keep no state in global variables, so compiled code can
 be interrupted anywhere. C variables shared with a handler should be
 `volatile`, although the compiler mostly ignores the keyword.
 
-## 11. Runtime helpers (draft)
+## 11. Runtime helpers
 
-Operations that are not compiled inline become calls to helpers named
+Most operations are compiled inline: + - & | ^ ~ on every size, all the
+comparisons, shifts by a constant, multiplies by small constants, unsigned
+/ and % by a power of two, and ++ -- += -= &= |= ^= on variables. The
+others become calls to helpers named
 `__<operation><type>`: the type suffix is none for `int`, `u` for
 `unsigned`, `c`/`uc` for `char`, `l`/`ul` for `long` (`__mul`, `__divu`,
 `__cclt`, `__pluseql`, …). Before the call, the caller pops the left operand
@@ -287,10 +289,19 @@ into registers. The right operand is in the working register.
 * For assignment operators (`+=`, `++`, `<<=`, …) the left operand is the
   address of the variable: `[c:d]`, or `[x:y]` when the value is a `long`.
 * The result is in the working register: `b`, `[a:b]` or `[c:d]:[a:b]`.
-* Comparisons give 0 or 1 in `[a:b]`.
+* Comparisons give 0 or 1 in `[a:b]` (the compiler no longer calls them: it
+  compares inline; they stay for assembly code).
 * Helpers may change every register; they keep SP, and they use only
   registers and the stack (no global variables).
-* Helpers are built from the math library's routines.
+* Signed division rounds toward zero, the remainder has the sign of the
+  left operand. Division by zero gives all bits set (the remainder: the
+  left operand).
+* Shifts use the low byte of the count; a count of the width or more gives
+  0 (or -1 for a negative value shifted right).
+* The helpers are written for this convention (they don't keep registers,
+  unlike the math library), in `compiler/runtime`: `compare.has`,
+  `long.has`, `mul.has`, `div.has`, `shift.has`, `assign.has`,
+  `switch.has`, all included by `runtime.has` (about 3.9 KB).
 
 `switch` jumps to `__switch<type>` with the value in the working register and
 `[x:y]` = the address of the table: the number of cases (2 bytes), then for
@@ -313,4 +324,7 @@ Other limits:
 * There are at most 32 parameters per function, 128 `case` labels per
   `switch`, 30 members per struct and 50 `enum` constants.
 * The constant `-32768` can get the wrong type.
+* A decimal constant from 32768 to 65535 is an `unsigned int` (standard C
+  makes it a `long`): `x / 40000` is an unsigned division. Write `40000L`
+  for a `long`.
 * A cast to `(void)` to drop a result is refused.

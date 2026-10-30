@@ -1,0 +1,55 @@
+; C runtime: ordered comparisons of int and unsigned (ABI.md section 11).
+; Left operand in [c:d], right operand in [a:b]. Result: [a:b] = 0 or 1.
+; Signed comparisons flip both sign bits, then compare unsigned.
+
+__ccltu:                        ; left < right
+    sub d, b
+    sbb c, a                    ; C = borrow = left < right
+    mov a, 0                    ; mov keeps the flags
+    mov b, 0
+    adc b, 0
+    ret
+
+__ccgtu:                        ; left > right, that is right < left
+    sub b, d
+    sbb a, c
+    mov a, 0
+    mov b, 0
+    adc b, 0
+    ret
+
+__ccltequ:                      ; left <= right, that is not (right < left)
+    sub b, d
+    sbb a, c
+    mov a, 0
+    mov b, 1
+    sbb b, 0
+    ret
+
+__ccgtequ:                      ; left >= right, that is not (left < right)
+    sub d, b
+    sbb c, a
+    mov a, 0
+    mov b, 1
+    sbb b, 0
+    ret
+
+__cclt:
+    xor c, 0x80
+    xor a, 0x80
+    jmp __ccltu
+
+__ccgt:
+    xor c, 0x80
+    xor a, 0x80
+    jmp __ccgtu
+
+__cclteq:
+    xor c, 0x80
+    xor a, 0x80
+    jmp __ccltequ
+
+__ccgteq:
+    xor c, 0x80
+    xor a, 0x80
+    jmp __ccgtequ

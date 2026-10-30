@@ -1,0 +1,219 @@
+; C runtime: division and remainder (ABI.md section 11).
+; Signed division rounds toward zero; the remainder has the sign of the
+; left operand (as in C99). Division by zero gives a quotient with all
+; bits set and the left operand as the remainder.
+
+; ----- 16 bits: left in [c:d], right in [a:b], result in [a:b]
+
+; Unsigned [c:d] / [a:b]: quotient in [c:d], remainder in [i:j].
+; Restoring division: the dividend shifts out of [c:d] into the
+; remainder; each quotient bit enters at the bottom of [c:d].
+__divmodu:
+    mov i, 0
+    mov j, 0
+    mov x, 16
+__divmodu_bit:
+    shl d
+    adc c, c                    ; C = next bit of the dividend
+    adc j, j
+    adc i, i                    ; remainder * 2 + bit; C = 17th bit
+    jmc __divmodu_sub           ; 17 bits: larger than any divisor
+    mov y, j                    ; remainder - divisor, only for the borrow
+    sub y, b
+    mov y, i
+    sbb y, a
+    jmc __divmodu_next          ; remainder < divisor: quotient bit 0
+__divmodu_sub:
+    sub j, b
+    sbb i, a
+    inc d                       ; quotient bit 1
+__divmodu_next:
+    dec x
+    jmz __divmodu_done
+    jmp __divmodu_bit
+__divmodu_done:
+    ret
+
+__divu:
+    cal __divmodu
+    mov a, c
+    mov b, d
+    ret
+
+__remu:
+    cal __divmodu
+    mov a, i
+    mov b, j
+    ret
+
+; [c:d] = |[c:d]|, [a:b] = |[a:b]|
+__divabs:
+    or c, 0
+    jmn __divabs_left
+__divabs_right:
+    or a, 0
+    jmn __divabs_neg_right
+    ret
+__divabs_left:
+    not c
+    not d
+    add d, 1
+    adc c, 0
+    jmp __divabs_right
+__divabs_neg_right:
+    not a
+    not b
+    add b, 1
+    adc a, 0
+    ret
+
+__div:
+    mov x, c
+    xor x, a                    ; bit 7 = the quotient is negative
+    psh x
+    cal __divabs
+    cal __divmodu
+    mov a, c
+    mov b, d
+    pop x
+    or x, 0
+    jmn __div_negate
+    ret
+__div_negate:
+    not a
+    not b
+    add b, 1
+    adc a, 0
+    ret
+
+__rem:
+    psh c                       ; bit 7 = the left operand is negative
+    cal __divabs
+    cal __divmodu
+    mov a, i
+    mov b, j
+    pop x
+    or x, 0
+    jmn __div_negate
+    ret
+
+; ----- 32 bits: left in [x:y]:[i:j], right in [c:d]:[a:b], result in [c:d]:[a:b]
+
+; Unsigned: quotient in [x:y]:[i:j], remainder in [c:d]:[a:b].
+; The divisor goes on the stack; the remainder subtracts it, and adds it
+; back when the result is negative.
+__divmodul:
+    psh b, a, d, c              ; divisor: [sp] (MSB) .. [sp + 3]
+    mov a, 32
+    psh a                       ; [sp] = bits to do; divisor at [sp + 1] .. [sp + 4]
+    mov a, 0
+    mov b, 0
+    mov c, 0
+    mov d, 0
+__divmodul_bit:
+    shl j
+    adc i, i
+    adc y, y
+    adc x, x                    ; C = next bit of the dividend
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c                    ; remainder * 2 + bit; C = 33rd bit
+    jmc __divmodul_force
+    sub b, [sp + 4]
+    sbb a, [sp + 3]
+    sbb d, [sp + 2]
+    sbb c, [sp + 1]
+    jmc __divmodul_restore      ; remainder < divisor: add it back
+    inc j                       ; quotient bit 1
+    jmp __divmodul_next
+__divmodul_force:
+    sub b, [sp + 4]
+    sbb a, [sp + 3]
+    sbb d, [sp + 2]
+    sbb c, [sp + 1]
+    inc j
+    jmp __divmodul_next
+__divmodul_restore:
+    add b, [sp + 4]
+    adc a, [sp + 3]
+    adc d, [sp + 2]
+    adc c, [sp + 1]
+__divmodul_next:
+    psh a                       ; no free register: count down in the stack
+    lod a, [sp + 1]
+    dec a
+    str [sp + 1], a
+    pop a                       ; pop keeps the flags
+    jmz __divmodul_done
+    jmp __divmodul_bit
+__divmodul_done:
+    asp 5
+    ret
+
+__divul:
+    cal __divmodul
+    mov c, x
+    mov d, y
+    mov a, i
+    mov b, j
+    ret
+
+__remul:
+    jmp __divmodul              ; the remainder is already in [c:d]:[a:b]
+
+; [x:y]:[i:j] = |left|, [c:d]:[a:b] = |right|
+__divabsl:
+    or x, 0
+    jmn __divabsl_left
+__divabsl_right:
+    or c, 0
+    jmn __divabsl_neg_right
+    ret
+__divabsl_left:
+    not x
+    not y
+    not i
+    not j
+    add j, 1
+    adc i, 0
+    adc y, 0
+    adc x, 0
+    jmp __divabsl_right
+__divabsl_neg_right:
+    jmp __negatel
+
+__divl:
+    psh a                       ; save a
+    psh a                       ; [sp] = sign slot
+    mov a, x
+    xor a, c                    ; bit 7 = the quotient is negative
+    str [sp], a
+    lod a, [sp + 1]
+    cal __divabsl
+    cal __divmodul
+    lod c, [sp]
+    asp 2
+    or c, 0
+    jmn __divl_negative
+    jmp __divul_move
+__divl_negative:
+    cal __divul_move
+    jmp __negatel
+__divul_move:
+    mov c, x
+    mov d, y
+    mov a, i
+    mov b, j
+    ret
+
+__reml:
+    psh x                       ; bit 7 = the left operand is negative
+    cal __divabsl
+    cal __divmodul
+    pop x
+    or x, 0
+    jmn __reml_negative
+    ret
+__reml_negative:
+    jmp __negatel

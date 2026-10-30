@@ -1,0 +1,10 @@
+; C runtime: every helper the compiler calls (see compiler/ABI.md, section 11).
+; A C program is assembled with crt0.has, this file, and the compiled files.
+
+.include "compare.has"
+.include "long.has"
+.include "mul.has"
+.include "div.has"
+.include "shift.has"
+.include "assign.has"
+.include "switch.has"

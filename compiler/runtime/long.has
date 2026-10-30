@@ -1,0 +1,150 @@
+; C runtime: long arithmetic, logic and comparisons (ABI.md section 11).
+; Left operand in [x:y]:[i:j], right operand (or the only operand) in
+; [c:d]:[a:b], most significant byte first. Result in [c:d]:[a:b];
+; comparisons give [a:b] = 0 or 1.
+
+__plusl:
+    add b, j
+    adc a, i
+    adc d, y
+    adc c, x
+    ret
+
+__minusl:                       ; left - right
+    sub j, b
+    sbb i, a
+    sbb y, d
+    sbb x, c
+    mov b, j
+    mov a, i
+    mov d, y
+    mov c, x
+    ret
+
+__bandl:
+    and b, j
+    and a, i
+    and d, y
+    and c, x
+    ret
+
+__orl:
+    or b, j
+    or a, i
+    or d, y
+    or c, x
+    ret
+
+__xorl:
+    xor b, j
+    xor a, i
+    xor d, y
+    xor c, x
+    ret
+
+__cpll:                         ; ~value
+    not c
+    not d
+    not a
+    not b
+    ret
+
+__negatel:                      ; -value
+    not c
+    not d
+    not a
+    not b
+    add b, 1
+    adc a, 0
+    adc d, 0
+    adc c, 0
+    ret
+
+__cceql:
+    xor b, j
+    xor a, i
+    xor d, y
+    xor c, x
+    or b, a
+    or b, d
+    or b, c                     ; Z = equal
+    mov a, 0
+    mov b, 1
+    jmz __cceql_done
+    mov b, 0
+__cceql_done:
+    ret
+
+__ccnel:
+    xor b, j
+    xor a, i
+    xor d, y
+    xor c, x
+    or b, a
+    or b, d
+    or b, c                     ; b = 0 if equal
+    mov a, 0
+    jmz __ccnel_done
+    mov b, 1
+__ccnel_done:
+    ret
+
+__ccltul:                       ; left < right
+    sub j, b
+    sbb i, a
+    sbb y, d
+    sbb x, c                    ; C = left < right
+    mov a, 0
+    mov b, 0
+    adc b, 0
+    ret
+
+__ccgtul:                       ; left > right, that is right < left
+    sub b, j
+    sbb a, i
+    sbb d, y
+    sbb c, x
+    mov a, 0
+    mov b, 0
+    adc b, 0
+    ret
+
+__ccltequl:                     ; not (right < left)
+    sub b, j
+    sbb a, i
+    sbb d, y
+    sbb c, x
+    mov a, 0
+    mov b, 1
+    sbb b, 0
+    ret
+
+__ccgtequl:                     ; not (left < right)
+    sub j, b
+    sbb i, a
+    sbb y, d
+    sbb x, c
+    mov a, 0
+    mov b, 1
+    sbb b, 0
+    ret
+
+__ccltl:
+    xor x, 0x80
+    xor c, 0x80
+    jmp __ccltul
+
+__ccgtl:
+    xor x, 0x80
+    xor c, 0x80
+    jmp __ccgtul
+
+__cclteql:
+    xor x, 0x80
+    xor c, 0x80
+    jmp __ccltequl
+
+__ccgteql:
+    xor x, 0x80
+    xor c, 0x80
+    jmp __ccgtequl

@@ -1,7 +1,19 @@
 # C compiler tests
 
-Each file says what `main` returns. Until the test harness exists (roadmap
-step 5), run one by hand:
+Each file says what `main` returns on its first line. The Rust test
+`hbc2/crates/hbc2-cc/tests/programs.rs` compiles and runs them all
+(`cargo test -p hbc2-cc`, after `compiler/build.cmd`), and prints the size
+of each program's code and the number of instructions it ran.
+
+* `basics.c`, `frames.c`: calls, structs, pointers, big stack frames.
+* `bench.c`: small real programs (sieve, sort, strings, CRC, `long`
+  arithmetic); also the benchmark for the code the compiler makes.
+* `ops/*.c` come from `gen_ops.py`: every operator on one type, with
+  variables and constants, as values and as conditions, on globals (`_g`)
+  and locals (`_l`). They return the number of the first failed check, 0
+  when all pass. Run `python gen_ops.py` again after changing it.
+
+To run one by hand:
 
 ```
 python ../tools/hbc2cc.py basics.c -o basics.has

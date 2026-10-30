@@ -1,0 +1,10 @@
+[package]
+name = "hbc2-cc"
+description = "C compiler driver for the HBC-2 (Fuzix Compiler Kit stages in compiler/bin)"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+hbc2-asm = { path = "../hbc2-asm" }
+hbc2-core = { path = "../hbc2-core" }

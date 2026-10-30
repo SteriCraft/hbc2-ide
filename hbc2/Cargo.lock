@@ -1404,6 +1404,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "hbc2-cc"
+version = "0.1.0"
+dependencies = [
+ "hbc2-asm",
+ "hbc2-core",
+]
+
+[[package]]
 name = "hbc2-cli"
 version = "0.1.0"
 dependencies = [

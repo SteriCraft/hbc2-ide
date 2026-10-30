@@ -23,3 +23,6 @@ design_projects/**/*.bin
 # C compiler build output
 compiler/bin/
 compiler/build/
+
+# swap file left by the Fuzix preprocessor (it unlinks it while open: fails on Windows)
+.cppswap

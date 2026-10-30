@@ -241,7 +241,7 @@ static void directive(void)
 			/* Skip magic names */
 			if (p == filename && c == '<')
 				p = filename + 32;
-			if (c == '/')
+			if (c == '/' || c == '\\')	/* HBC-2: Windows paths too */
 				p = filename;
 			else if (p < filename + 32)
 				*p++ = c;

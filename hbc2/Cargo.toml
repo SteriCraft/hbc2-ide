@@ -3,6 +3,7 @@ resolver = "3"
 members = [
     "crates/hbc2-core",
     "crates/hbc2-asm",
+    "crates/hbc2-cc",
     "crates/hbc2-runner",
     "crates/hbc2-cli",
     "crates/hbc2-ide",

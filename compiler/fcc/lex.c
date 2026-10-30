@@ -174,6 +174,9 @@ void next_token(void)
 					break;
 				p++;
 			}
+			/* HBC-2: a 32 character name is followed by its 0 too */
+			if (c == 32)
+				tokbyte();
 			*p = 0;
 		}
 		next_token();

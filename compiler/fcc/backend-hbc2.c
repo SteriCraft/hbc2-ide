@@ -30,6 +30,7 @@
 #define T_LSTORE	(T_USER+4)	/* store to a local or argument */
 #define T_LBREF		(T_USER+5)	/* load of a labelled object (local static) */
 #define T_LBSTORE	(T_USER+6)	/* store to a labelled object */
+#define T_XREF		(T_USER+7)	/* only in operands made here: [x:y + value] */
 
 #define ARGBASE		2		/* return address between the frame and the arguments */
 
@@ -248,6 +249,13 @@ static unsigned simple_size(unsigned t)
 		|| t == CLONG || t == ULONG;
 }
 
+/* Operations whose code depends on the sign of their type */
+static unsigned sign_matters(unsigned op)
+{
+	return op == T_SLASH || op == T_PERCENT || op == T_GTGT ||
+		op == T_SLASHEQ || op == T_PERCENTEQ || op == T_SHREQ;
+}
+
 struct node *gen_rewrite(struct node *n)
 {
 	return n;
@@ -260,8 +268,10 @@ struct node *gen_rewrite_node(struct node *n)
 	unsigned op = n->op;
 	unsigned nt = n->type;
 
-	/* Casts that change nothing: same size and sign change, pointers */
-	if (op == T_CAST) {
+	/* Casts that change nothing: same size and sign change, pointers.
+	   The node below takes the new type, so not when its code depends
+	   on the sign: "(int)(u % 10)" must stay an unsigned %. */
+	if (op == T_CAST && !sign_matters(r->op)) {
 		if (nt == r->type || (nt ^ r->type) == UNSIGNED ||
 		    (PTR(nt) && PTR(r->type))) {
 			free_node(n);
@@ -381,35 +391,129 @@ void gen_jump(const char *tail, unsigned n)
 	printf("\tjmp __L%u_%u%s\n", unit, n, tail);
 }
 
-/* Sets Z from the working value, keeping it */
+/*
+ *	Conditions. A condition (if, while, &&, ...) does not need a 0 / 1
+ *	value: the code of a comparison leaves the flags, and cc says which
+ *	flag state means "true". The CPU only jumps when a flag is set, so a
+ *	jump on a clear flag is "jump over the jump".
+ */
+
+#define CC_NONE		0	/* no flags: test the working value */
+#define CC_Z		1	/* true when Z is set */
+#define CC_NZ		2	/* true when Z is clear */
+#define CC_C		3	/* true when C is set */
+#define CC_NC		4	/* true when C is clear */
+
+static unsigned cc;
+static const char *cc_reg;	/* CC_Z / CC_NZ: the register that is 0 when Z is set */
+
+static unsigned cc_invert(unsigned c)
+{
+	switch (c) {
+	case CC_Z:
+		return CC_NZ;
+	case CC_NZ:
+		return CC_Z;
+	case CC_C:
+		return CC_NC;
+	case CC_NC:
+		return CC_C;
+	}
+	return c;
+}
+
+/* Sets Z from the working value: true when Z is clear */
 static void test_work(void)
 {
 	switch (work_size) {
 	case 1:
 		puts("\tor b, 0");
+		cc_reg = "b";
 		break;
 	case 4:
 		puts("\tmov i, a\n\tor i, b\n\tor i, c\n\tor i, d");
+		cc_reg = "i";
 		break;
 	default:
 		puts("\tmov i, a\n\tor i, b");
+		cc_reg = "i";
 		break;
 	}
+	cc = CC_NZ;
+}
+
+/* Jumps to target when the condition is want_true */
+static void cc_jump(unsigned want_true, const char *target)
+{
+	unsigned k = want_true ? cc : cc_invert(cc);
+	unsigned x;
+	switch (k) {
+	case CC_Z:
+		printf("\tjmz %s\n", target);
+		return;
+	case CC_C:
+		printf("\tjmc %s\n", target);
+		return;
+	}
+	x = new_label();
+	printf("\t%s __X%u_%u\n\tjmp %s\n", k == CC_NZ ? "jmz" : "jmc", unit, x, target);
+	print_xlabel(x);
+}
+
+/* Inside && and ||, every part must leave the same flags: true when Z
+   is clear (the jumps of a chain meet at one label) */
+static void cc_fix(void)
+{
+	switch (cc) {
+	case CC_Z:
+		printf("\tsub %s, 1\n", cc_reg);	/* C = the register was 0 = true */
+		/* fall through */
+	case CC_C:
+		puts("\tmov i, 0\n\tadc i, 0");
+		break;
+	case CC_NC:
+		puts("\tmov i, 1\n\tsbb i, 0");
+		break;
+	default:
+		return;
+	}
+	cc = CC_NZ;
+	cc_reg = "i";
+}
+
+/* [a:b] = 1 if the condition is true, else 0 */
+static void cc_value(void)
+{
+	unsigned c = cc;
+	if (c == CC_Z || c == CC_NZ) {
+		printf("\tsub %s, 1\n", cc_reg);	/* C = the register was 0 */
+		c = (c == CC_Z) ? CC_C : CC_NC;
+	}
+	if (c == CC_C)
+		puts("\tmov a, 0\n\tmov b, 0\n\tadc b, 0");
+	else
+		puts("\tmov a, 0\n\tmov b, 1\n\tsbb b, 0");
+	cc = CC_NONE;
+	work_size = 2;
+}
+
+static void jump_on(unsigned want_true, const char *tail, unsigned n)
+{
+	char buf[48];
+	if (cc == CC_NONE)
+		test_work();
+	snprintf(buf, sizeof(buf), "__L%u_%u%s", unit, n, tail);
+	cc_jump(want_true, buf);
 }
 
 void gen_jfalse(const char *tail, unsigned n)
 {
-	test_work();
-	printf("\tjmz __L%u_%u%s\n", unit, n, tail);
+	jump_on(0, tail, n);
 }
 
 void gen_jtrue(const char *tail, unsigned n)
 {
-	unsigned x = new_label();
-	test_work();
-	printf("\tjmz __X%u_%u\n", unit, x);
-	printf("\tjmp __L%u_%u%s\n", unit, n, tail);
-	print_xlabel(x);
+	jump_on(1, tail, n);
 }
 
 /* The value is in the working register; __switch* finds the case in the table at [x:y] */
@@ -735,26 +839,6 @@ static unsigned gen_minus(struct node *n)
 	return 1;
 }
 
-/* == and != on 8 or 16 bits */
-static unsigned gen_equal(struct node *n, unsigned want_equal)
-{
-	unsigned s = get_size(n->right->type);
-	if (s > 2 || get_size(n->left->type) != s)
-		return 0;
-	pop_left(n);
-	if (s == 1)
-		puts("\txor b, d");
-	else
-		puts("\txor b, d\n\txor a, c\n\tor b, a");
-	n->flags |= ISBOOL;
-	if (want_equal)
-		bool_from_z();
-	else
-		bool_from_nz();
-	work_size = 2;
-	return 1;
-}
-
 unsigned gen_push(struct node *n)
 {
 	unsigned s = get_size(n->type);
@@ -774,6 +858,919 @@ unsigned gen_push(struct node *n)
 	return 0;
 }
 
+/*
+ *	Inline code for the common cases (gen_shortcut). The right operand
+ *	of an operation can often be used as it is by the ALU instructions:
+ *	a constant, a local ([sp + n]), a global (address), or an unsigned
+ *	char of those zero extended. Then nothing is pushed.
+ */
+
+#define OP_ADD		0
+#define OP_SUB		1
+#define OP_AND		2
+#define OP_OR		3
+#define OP_XOR		4
+
+/* One byte of an operand: a constant, or text (register or memory) */
+struct opbyte {
+	unsigned is_const;
+	unsigned value;
+	char text[64];
+};
+
+static void finish(unsigned s)
+{
+	work_size = s;
+	cc = CC_NONE;
+}
+
+/* Text of byte i of a memory operand (i = 0: most significant) */
+static void mem_text(char *buf, size_t len, struct node *m, unsigned i)
+{
+	unsigned o = WORD(m->value + i);
+	switch (m->op) {
+	case T_LREF:
+		snprintf(buf, len, "[sp + %u]", WORD(m->value + sp + i));
+		return;
+	case T_XREF:
+		snprintf(buf, len, "[x:y + %u]", o);
+		return;
+	case T_NREF:
+		if (o)
+			snprintf(buf, len, "_%s + %u", namestr(m->snum), o);
+		else
+			snprintf(buf, len, "_%s", namestr(m->snum));
+		return;
+	case T_LBREF:
+		if (o)
+			snprintf(buf, len, "__T%u_%u + %u", unit, m->val2, o);
+		else
+			snprintf(buf, len, "__T%u_%u", unit, m->val2);
+		return;
+	}
+	error("mem_text");
+}
+
+/* A variable the ALU instructions can read directly, of size s */
+static unsigned mem_ok(struct node *m, unsigned s)
+{
+	if (!simple_size(m->type) || get_size(m->type) != s)
+		return 0;
+	switch (m->op) {
+	case T_LREF:
+		return m->value + sp + s - 1 <= 255;
+	case T_NREF:
+	case T_LBREF:
+		return 1;
+	}
+	return 0;
+}
+
+/* The zero extended unsigned char inside a cast to 16 bits, or NULL */
+static struct node *zext_of(struct node *r)
+{
+	if (r->op == T_CAST && simple_size(r->right->type) &&
+	    get_size(r->right->type) == 1 && !is_signed(r->right->type) &&
+	    get_size(r->type) == 2)
+		return r->right;
+	return NULL;
+}
+
+/* Can r (of size s) be an operand of the ALU instructions? */
+static unsigned operand_ok(struct node *r, unsigned s)
+{
+	struct node *z;
+	if (r->op == T_CONSTANT)
+		return 1;
+	if (s == 2 && (z = zext_of(r)) != NULL)
+		return mem_ok(z, 1);
+	return mem_ok(r, s);
+}
+
+/* Byte i (0: most significant) of the operand r of size s */
+static void operand_byte(struct node *r, unsigned s, unsigned i, struct opbyte *o)
+{
+	o->is_const = 0;
+	if (r->op == T_CONSTANT) {
+		o->is_const = 1;
+		o->value = BYTE(r->value >> (8 * (s - 1 - i)));
+		snprintf(o->text, sizeof(o->text), "%u", o->value);
+		return;
+	}
+	if (r->op == T_CAST) {
+		/* zero extended char: high byte 0 */
+		if (i == 0) {
+			o->is_const = 1;
+			o->value = 0;
+			strcpy(o->text, "0");
+			return;
+		}
+		r = r->right;
+		i = 0;
+	}
+	mem_text(o->text, sizeof(o->text), r, i);
+}
+
+static void reg_byte(const char *reg, struct opbyte *o)
+{
+	o->is_const = 0;
+	snprintf(o->text, sizeof(o->text), "%s", reg);
+}
+
+/* Loads byte i of the operand into a register (mov or lod) */
+static void load_byte(const char *reg, struct opbyte *o)
+{
+	printf("\t%s %s, %s\n", o->is_const ? "mov" : "lod", reg, o->text);
+}
+
+/* Does "op reg, constant" change nothing? (started: a carry is pending) */
+static unsigned no_change(unsigned op, struct opbyte *o, unsigned started)
+{
+	if (!o->is_const)
+		return 0;
+	switch (op) {
+	case OP_ADD:
+	case OP_SUB:
+		return o->value == 0 && !started;
+	case OP_AND:
+		return o->value == 0xFF;
+	default:
+		return o->value == 0;
+	}
+}
+
+/* reg = reg op byte, bytes taken from the least significant one */
+static void alu_byte(unsigned op, const char *reg, struct opbyte *o, unsigned *started)
+{
+	static const char *first[] = { "add", "sub", "and", "or", "xor" };
+	if (no_change(op, o, *started))
+		return;
+	if (o->is_const) {
+		if (op == OP_AND && o->value == 0) {
+			printf("\tmov %s, 0\n", reg);
+			return;
+		}
+		if (op == OP_OR && o->value == 0xFF) {
+			printf("\tmov %s, 0xFF\n", reg);
+			return;
+		}
+		if (op == OP_XOR && o->value == 0xFF) {
+			printf("\tnot %s\n", reg);
+			return;
+		}
+	}
+	if (op == OP_ADD && *started)
+		printf("\tadc %s, %s\n", reg, o->text);
+	else if (op == OP_SUB && *started)
+		printf("\tsbb %s, %s\n", reg, o->text);
+	else
+		printf("\t%s %s, %s\n", first[op], reg, o->text);
+	*started = 1;
+}
+
+/* Working value (size s) = working value op r */
+static void alu_operand(unsigned op, struct node *r, unsigned s)
+{
+	const char **w = regs_of(s);
+	struct opbyte o;
+	unsigned started = 0;
+	unsigned i;
+	for (i = s; i-- > 0;) {
+		operand_byte(r, s, i, &o);
+		alu_byte(op, w[i], &o, &started);
+	}
+}
+
+/* + - & | ^ with an operand that needs no push */
+static unsigned direct_arith(struct node *n, unsigned op, unsigned commutative)
+{
+	struct node *l = n->left;
+	struct node *r = n->right;
+	unsigned s;
+
+	if (!simple_size(n->type) || !simple_size(l->type) || !simple_size(r->type))
+		return 0;
+	s = get_size(n->type);
+	if (get_size(l->type) != s || get_size(r->type) != s)
+		return 0;
+	if (!operand_ok(r, s)) {
+		if (!commutative || !operand_ok(l, s))
+			return 0;
+		l = n->right;
+		r = n->left;
+	}
+	codegen_lr(l);
+	alu_operand(op, r, s);
+	finish(s);
+	return 1;
+}
+
+/*
+ *	Comparisons: always inline. Ordered ones subtract (C = borrow);
+ *	signed ones first flip the sign bits, which turns them into unsigned
+ *	ones. Equality XORs the bytes and ORs the results together.
+ */
+
+static unsigned is_compare(unsigned op)
+{
+	return op == T_EQEQ || op == T_BANGEQ || op == T_LT || op == T_GT ||
+		op == T_LTEQ || op == T_GTEQ;
+}
+
+static unsigned mirror(unsigned op)
+{
+	switch (op) {
+	case T_LT:
+		return T_GT;
+	case T_GT:
+		return T_LT;
+	case T_LTEQ:
+		return T_GTEQ;
+	case T_GTEQ:
+		return T_LTEQ;
+	}
+	return op;
+}
+
+/* The char inside a cast of a char to 16 bits, or NULL */
+static struct node *char_of(struct node *n)
+{
+	if (n->op == T_CAST && simple_size(n->right->type) &&
+	    get_size(n->right->type) == 1 && get_size(n->type) == 2)
+		return n->right;
+	return NULL;
+}
+
+/* Does the 16-bit constant c fit in the char type t? */
+static unsigned fits_char(struct node *c, unsigned t)
+{
+	unsigned v = WORD(c->value);
+	if (is_signed(t))
+		return v <= 0x7F || v >= 0xFF80;
+	return v <= 0xFF;
+}
+
+/* The operand of a comparison: in registers, or an ALU operand */
+struct cmp_operand {
+	const char **regs;
+	struct node *node;
+};
+
+static void cmp_byte(struct cmp_operand *b, unsigned s, unsigned i, struct opbyte *o)
+{
+	if (b->regs)
+		reg_byte(b->regs[i], o);
+	else
+		operand_byte(b->node, s, i, o);
+}
+
+/* Registers m (minuend, s bytes) - b: C = borrow. flip: b is a signed
+   value whose sign bit must be flipped (a register b is flipped before) */
+static void sub_chain(const char **m, struct cmp_operand *b, unsigned s, unsigned flip)
+{
+	struct opbyte o;
+	unsigned started = 0;
+	unsigned i;
+	for (i = s; i-- > 0;) {
+		cmp_byte(b, s, i, &o);
+		if (i == 0 && flip && !b->regs) {
+			if (o.is_const) {
+				o.value ^= 0x80;
+				snprintf(o.text, sizeof(o.text), "%u", o.value);
+			} else {
+				/* lod and xor keep C */
+				printf("\tlod j, %s\n\txor j, 0x80\n", o.text);
+				reg_byte("j", &o);
+			}
+		}
+		if (no_change(OP_SUB, &o, started))
+			continue;
+		printf("\t%s %s, %s\n", started ? "sbb" : "sub", m[i], o.text);
+		started = 1;
+	}
+	if (!started)
+		puts("\tclc");
+}
+
+/* b - registers a (b not in registers): C = borrow, byte by byte in i */
+static void rsub_chain(struct cmp_operand *b, const char **a, unsigned s, unsigned flip)
+{
+	struct opbyte o;
+	unsigned i;
+	for (i = s; i-- > 0;) {
+		cmp_byte(b, s, i, &o);
+		load_byte("i", &o);
+		if (i == 0 && flip)
+			puts("\txor i, 0x80");
+		printf("\t%s i, %s\n", i == s - 1 ? "sub" : "sbb", a[i]);
+	}
+}
+
+/* Is the constant c (size s), after the sign flip, the largest value? */
+static unsigned is_max(struct node *c, unsigned s, unsigned sg)
+{
+	unsigned long v = c->value;
+	unsigned long mask = (s == 4) ? 0xFFFFFFFFUL : (1UL << (8 * s)) - 1;
+	if (sg)
+		v ^= 1UL << (8 * s - 1);
+	return (v & mask) == mask;
+}
+
+/* a op b, a in registers (changed): sets cc */
+static void compare_emit(unsigned op, unsigned s, unsigned sg, const char **a,
+			 struct cmp_operand *b)
+{
+	struct opbyte o;
+	unsigned i, done = 0;
+
+	if (op == T_EQEQ || op == T_BANGEQ) {
+		for (i = 0; i < s; i++) {
+			cmp_byte(b, s, i, &o);
+			if (o.is_const && o.value == 0)
+				continue;
+			printf("\txor %s, %s\n", a[i], o.text);
+			done = 1;
+		}
+		for (i = 0; i + 1 < s; i++)
+			printf("\tor %s, %s\n", a[s - 1], a[i]);
+		if (s == 1 && !done)
+			printf("\tor %s, 0\n", a[0]);
+		cc_reg = a[s - 1];
+		cc = (op == T_EQEQ) ? CC_Z : CC_NZ;
+		return;
+	}
+	/* Signed and 0: x < 0 and x >= 0 only need the sign bit */
+	if (sg && !b->regs && b->node->op == T_CONSTANT &&
+	    (op == T_LT || op == T_GTEQ)) {
+		unsigned long mask = (s == 4) ? 0xFFFFFFFFUL : (1UL << (8 * s)) - 1;
+		if ((b->node->value & mask) == 0) {
+			printf("\tshl %s\n", a[0]);
+			cc = (op == T_LT) ? CC_C : CC_NC;
+			return;
+		}
+	}
+	if (sg) {
+		printf("\txor %s, 0x80\n", a[0]);
+		if (b->regs)
+			printf("\txor %s, 0x80\n", b->regs[0]);
+	}
+	if (op == T_LT || op == T_GTEQ) {
+		sub_chain(a, b, s, sg);			/* C = a < b */
+		cc = (op == T_LT) ? CC_C : CC_NC;
+		return;
+	}
+	/* > and <= */
+	if (!b->regs && b->node->op == T_CONSTANT && !is_max(b->node, s, sg)) {
+		/* a > k is a >= k + 1: C = a < k + 1 */
+		struct node k1 = *b->node;
+		struct cmp_operand b1;
+		k1.value = b->node->value + 1;
+		b1.regs = NULL;
+		b1.node = &k1;
+		sub_chain(a, &b1, s, sg);
+		cc = (op == T_GT) ? CC_NC : CC_C;
+		return;
+	}
+	if (b->regs) {
+		struct cmp_operand ra;
+		ra.regs = a;
+		ra.node = NULL;
+		sub_chain(b->regs, &ra, s, 0);		/* C = b < a */
+	} else
+		rsub_chain(b, a, s, sg);
+	cc = (op == T_GT) ? CC_C : CC_NC;
+}
+
+/* Generates the comparison n: sets cc, the working value is lost */
+static void gen_compare(struct node *n)
+{
+	static const char *pop1[] = { "d" };
+	static const char *pop2[] = { "c", "d" };
+	static const char *pop4[] = { "x", "y", "i", "j" };
+	struct node *l = n->left;
+	struct node *r = n->right;
+	struct node *nl, *nr;
+	struct cmp_operand b;
+	unsigned op = n->op;
+	unsigned s = get_size(l->type);
+	unsigned sg = is_signed(l->type);
+
+	if (!operand_ok(r, s) && operand_ok(l, s)) {
+		l = n->right;
+		r = n->left;
+		op = mirror(op);
+	}
+	/* A char against a constant that fits, or against a char of the
+	   same type: compare the bytes */
+	nl = char_of(l);
+	if (nl && r->op == T_CONSTANT && fits_char(r, nl->type)) {
+		l = nl;
+		s = 1;
+		sg = is_signed(nl->type);
+	} else if (nl && (nr = char_of(r)) != NULL && nr->type == nl->type) {
+		l = nl;
+		r = nr;
+		s = 1;
+		sg = is_signed(nl->type);
+	}
+	codegen_lr(l);
+	if (operand_ok(r, s)) {
+		b.regs = NULL;
+		b.node = r;
+		compare_emit(op, s, sg, regs_of(s), &b);
+		return;
+	}
+	/* Left on the stack, then into d / [c:d] / [x:y]:[i:j] */
+	gen_push(l);
+	codegen_lr(r);
+	sp -= s;
+	switch (s) {
+	case 1:
+		puts("\tpop d");
+		b.regs = regs1;
+		compare_emit(op, s, sg, pop1, &b);
+		return;
+	case 2:
+		puts("\tpop d, c");
+		b.regs = regs2;
+		compare_emit(op, s, sg, pop2, &b);
+		return;
+	default:
+		puts("\tpop j, i, y, x");
+		b.regs = regs4;
+		compare_emit(op, s, sg, pop4, &b);
+		return;
+	}
+}
+
+/* Evaluates n as a condition: leaves cc set */
+static void cond(struct node *n)
+{
+	switch (n->op) {
+	case T_BOOL:
+		cond(n->right);
+		return;
+	case T_BANG:
+		cond(n->right);
+		cc = cc_invert(cc);
+		return;
+	case T_ANDAND:
+	case T_OROR:
+		/* the parts become conditions too (CCONLY goes down) */
+		n->flags |= CCONLY;
+		codegen_lr(n);
+		if (cc == CC_NONE)
+			error("cond chain");
+		return;
+	}
+	if (is_compare(n->op) && simple_size(n->left->type)) {
+		gen_compare(n);
+		return;
+	}
+	codegen_lr(n);
+	if (cc == CC_NONE)
+		test_work();
+}
+
+/*
+ *	Shifts by a constant
+ */
+
+static void shift_left(unsigned s, unsigned k)
+{
+	unsigned i, m;
+	if (s == 4) {
+		if (k == 1) {
+			puts("\tshl b\n\tadc a, a\n\tadc d, d\n\tadc c, c");
+			return;
+		}
+		m = k / 8;
+		for (i = 0; i < 4; i++) {
+			if (i + m < 4)
+				printf("\tmov %s, %s\n", regs4[i], regs4[i + m]);
+			else
+				printf("\tmov %s, 0\n", regs4[i]);
+		}
+		return;
+	}
+	if (k >= 8) {
+		puts("\tmov a, b\n\tmov b, 0");
+		for (k -= 8; k; k--)
+			puts("\tshl a");
+		return;
+	}
+	while (k--)
+		puts("\tshl b\n\tadc a, a");
+}
+
+static void shift_right(unsigned s, unsigned k, unsigned sg)
+{
+	const char *hi = sg ? "asr" : "shr";
+	unsigned i, m;
+	if (s == 4) {
+		/* k is 8, 16 or 24 */
+		m = k / 8;
+		if (sg)
+			puts("\tmov i, c\n\tshl i\n\tmov i, 0\n\tsbb i, 0");
+		for (i = 4; i-- > 0;) {
+			if (i >= m)
+				printf("\tmov %s, %s\n", regs4[i], regs4[i - m]);
+			else
+				printf("\tmov %s, %s\n", regs4[i], sg ? "i" : "0");
+		}
+		return;
+	}
+	if (k >= 8) {
+		if (sg)
+			puts("\tmov b, a\n\tshl a\n\tmov a, 0\n\tsbb a, 0");
+		else
+			puts("\tmov b, a\n\tmov a, 0");
+		for (k -= 8; k; k--)
+			printf("\t%s b\n", hi);
+		return;
+	}
+	if (k == 1) {
+		/* the bit leaving a (C after asr) enters b at the top */
+		puts("\tshr b\n\tasr a");
+		if (!sg)
+			puts("\tand a, 0x7F");
+		puts("\tmov i, 0\n\tsbb i, 0\n\tand i, 0x80\n\tor b, i");
+		return;
+	}
+	/* b = b >> k | a << (8 - k), then a >> k */
+	for (i = 0; i < k; i++)
+		puts("\tshr b");
+	puts("\tmov i, a");
+	for (i = k; i < 8; i++)
+		puts("\tshl i");
+	puts("\tor b, i");
+	for (i = 0; i < k; i++)
+		printf("\t%s a\n", hi);
+}
+
+static unsigned direct_shift(struct node *n)
+{
+	struct node *r = n->right;
+	unsigned s, k;
+	if (r->op != T_CONSTANT || !simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	if (s < 2 || r->value >= 8 * s)
+		return 0;
+	k = r->value;
+	if (s == 4 && k % 8 && !(k == 1 && n->op == T_LTLT))
+		return 0;
+	codegen_lr(n->left);
+	if (k) {
+		if (n->op == T_LTLT)
+			shift_left(s, k);
+		else
+			shift_right(s, k, is_signed(n->type));
+	}
+	finish(s);
+	return 1;
+}
+
+/* log2 of a power of two, or -1 */
+static int power_of_2(unsigned long v)
+{
+	int m = 0;
+	if (v == 0 || (v & (v - 1)))
+		return -1;
+	while (v > 1) {
+		v >>= 1;
+		m++;
+	}
+	return m;
+}
+
+/* 16-bit multiply by a constant: shifts and adds when short */
+static unsigned direct_mul(struct node *n)
+{
+	struct node *l = n->left;
+	struct node *r = n->right;
+	unsigned k, top, bits, i;
+	int m;
+
+	if (!simple_size(n->type) || get_size(n->type) != 2)
+		return 0;
+	if (r->op != T_CONSTANT) {
+		if (l->op != T_CONSTANT)
+			return 0;
+		l = n->right;
+		r = n->left;
+	}
+	if (get_size(l->type) != 2)
+		return 0;
+	k = WORD(r->value);
+	if (k == 0)
+		return 0;
+	m = power_of_2(k);
+	if (m >= 0) {
+		codegen_lr(l);
+		if (m)
+			shift_left(2, m);
+		finish(2);
+		return 1;
+	}
+	for (top = 15; !(k & (1U << top)); top--)
+		;
+	for (bits = 0, i = 0; i < 16; i++)
+		bits += (k >> i) & 1;
+	if (2 + 2 * top + 2 * (bits - 1) > 12)
+		return 0;
+	codegen_lr(l);
+	puts("\tmov c, a\n\tmov d, b");
+	for (i = top; i-- > 0;) {
+		puts("\tshl b\n\tadc a, a");
+		if (k & (1U << i))
+			puts("\tadd b, d\n\tadc a, c");
+	}
+	finish(2);
+	return 1;
+}
+
+/* Unsigned / and % by a power of two */
+static unsigned direct_divmod(struct node *n)
+{
+	struct node *r = n->right;
+	unsigned s, i, started = 0;
+	struct opbyte o;
+	int m;
+
+	if (r->op != T_CONSTANT || !simple_size(n->type) || is_signed(n->type))
+		return 0;
+	s = get_size(n->type);
+	if (s < 2 || get_size(n->left->type) != s)
+		return 0;
+	m = power_of_2(r->value & ((s == 4) ? 0xFFFFFFFFUL : 0xFFFFUL));
+	if (m < 0)
+		return 0;
+	if (n->op == T_SLASH) {
+		if (s == 4 && m % 8)
+			return 0;
+		codegen_lr(n->left);
+		if (m)
+			shift_right(s, m, 0);
+	} else {
+		unsigned long mask = (1UL << m) - 1;
+		codegen_lr(n->left);
+		for (i = s; i-- > 0;) {
+			o.is_const = 1;
+			o.value = BYTE(mask >> (8 * (s - 1 - i)));
+			snprintf(o.text, sizeof(o.text), "%u", o.value);
+			alu_byte(OP_AND, regs_of(s)[i], &o, &started);
+		}
+	}
+	finish(s);
+	return 1;
+}
+
+/*
+ *	Pointers: [x:y] = the pointer, the constant part of the address
+ *	goes into the [x:y + n] offset.
+ */
+
+/* Splits p into base + offset (offset + s - 1 <= 255) */
+static struct node *ptr_split(struct node *p, unsigned s, unsigned *off)
+{
+	*off = 0;
+	if (p->op == T_PLUS && p->right->op == T_CONSTANT &&
+	    WORD(p->right->value) + s - 1 <= 255 && simple_size(p->left->type) &&
+	    get_size(p->left->type) == 2) {
+		*off = WORD(p->right->value);
+		return p->left;
+	}
+	return p;
+}
+
+/* Can the pointer be loaded into [x:y] without the working registers? */
+static unsigned ptr_simple(struct node *base)
+{
+	return mem_ok(base, 2);
+}
+
+/* [x:y] = the pointer base */
+static void ptr_load(struct node *base)
+{
+	char hi[64], lo[64];
+	if (ptr_simple(base)) {
+		mem_text(hi, sizeof(hi), base, 0);
+		mem_text(lo, sizeof(lo), base, 1);
+		printf("\tlod x, %s\n\tlod y, %s\n", hi, lo);
+		return;
+	}
+	codegen_lr(base);
+	puts("\tmov x, a\n\tmov y, b");
+}
+
+static void xy_access(unsigned load, unsigned s, unsigned off)
+{
+	const char **r = regs_of(s);
+	unsigned i;
+	for (i = 0; i < s; i++) {
+		if (load)
+			printf("\tlod %s, [x:y + %u]\n", r[i], off + i);
+		else
+			printf("\tstr [x:y + %u], %s\n", off + i, r[i]);
+	}
+}
+
+static unsigned direct_deref(struct node *n)
+{
+	struct node *base;
+	unsigned s, off;
+	if (!simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	base = ptr_split(n->right, s, &off);
+	ptr_load(base);
+	xy_access(1, s, off);
+	finish(s);
+	return 1;
+}
+
+/* *p = value */
+static unsigned direct_store(struct node *n)
+{
+	struct node *base;
+	struct node *r = n->right;
+	unsigned s, off;
+	if (!simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	if (!simple_size(r->type) || get_size(r->type) != s)
+		return 0;
+	base = ptr_split(n->left, s, &off);
+	if (ptr_simple(base)) {
+		codegen_lr(r);
+		ptr_load(base);
+	} else if (r->op == T_CONSTANT || mem_ok(r, s)) {
+		/* the value is loaded after the pointer, without [x:y] */
+		ptr_load(base);
+		codegen_lr(r);
+	} else {
+		codegen_lr(base);
+		gen_push(base);
+		codegen_lr(r);
+		sp -= 2;
+		puts("\tpop y, x");
+	}
+	xy_access(0, s, off);
+	finish(s);
+	return 1;
+}
+
+/*
+ *	++ -- += -= &= |= ^= on a variable, or through a pointer with a
+ *	constant: done in memory
+ */
+
+static unsigned direct_eqop(struct node *n)
+{
+	struct node *l = n->left;
+	struct node *r = n->right;
+	struct node m;
+	const char **w;
+	char buf[64];
+	struct opbyte o;
+	unsigned nr = n->flags & NORETURN;
+	unsigned op, post = 0, s, i, started = 0;
+
+	switch (n->op) {
+	case T_PLUSPLUS:
+		post = !nr;
+		/* fall through */
+	case T_PLUSEQ:
+		op = OP_ADD;
+		break;
+	case T_MINUSMINUS:
+		post = !nr;
+		/* fall through */
+	case T_MINUSEQ:
+		op = OP_SUB;
+		break;
+	case T_ANDEQ:
+		op = OP_AND;
+		break;
+	case T_OREQ:
+		op = OP_OR;
+		break;
+	case T_HATEQ:
+		op = OP_XOR;
+		break;
+	default:
+		return 0;
+	}
+	if (!simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	w = regs_of(s);
+	if (r->op != T_CONSTANT && (!simple_size(r->type) || get_size(r->type) != s))
+		return 0;
+
+	memset(&m, 0, sizeof(m));
+	m.type = n->type;
+	m.value = l->value;
+	switch (l->op) {
+	case T_LOCAL:
+		m.op = T_LREF;
+		break;
+	case T_ARGUMENT:
+		m.op = T_LREF;
+		m.value += argbase + frame_len;
+		break;
+	case T_NAME:
+		m.op = T_NREF;
+		m.snum = l->snum;
+		break;
+	case T_LABEL:
+		m.op = T_LBREF;
+		m.val2 = l->val2;
+		break;
+	default:
+		m.op = T_XREF;
+		break;
+	}
+	if (m.op == T_LREF && m.value + sp + s - 1 > 255)
+		return 0;
+	if (m.op == T_XREF) {
+		unsigned off;
+		struct node *base;
+		if (r->op != T_CONSTANT)
+			return 0;
+		base = ptr_split(l, s, &off);
+		ptr_load(base);
+		m.value = off;
+	} else if (r->op != T_CONSTANT)
+		codegen_lr(r);
+
+	if (r->op != T_CONSTANT) {
+		/* the right value is in the working registers */
+		for (i = s; i-- > 0;) {
+			mem_text(buf, sizeof(buf), &m, i);
+			if (op == OP_SUB) {
+				printf("\tlod i, %s\n\t%s i, %s\n\tstr %s, i\n\tmov %s, i\n",
+					buf, i == s - 1 ? "sub" : "sbb", w[i], buf, w[i]);
+				continue;
+			}
+			reg_byte(w[i], &o);
+			snprintf(o.text, sizeof(o.text), "%s", buf);
+			alu_byte(op, w[i], &o, &started);
+			printf("\tstr %s, %s\n", buf, w[i]);
+		}
+		finish(s);
+		return 1;
+	}
+	/* char + or - 1 in memory: inc / dec (no [sp + n] form) */
+	if (s == 1 && nr && (op == OP_ADD || op == OP_SUB) && BYTE(r->value) == 1 &&
+	    m.op != T_LREF) {
+		mem_text(buf, sizeof(buf), &m, 0);
+		printf("\t%s %s\n", op == OP_ADD ? "inc" : "dec", buf);
+		finish(s);
+		return 1;
+	}
+	if (nr) {
+		/* byte by byte through b, unchanged bytes skipped */
+		for (i = s; i-- > 0;) {
+			operand_byte(r, s, i, &o);
+			if (no_change(op, &o, started))
+				continue;
+			mem_text(buf, sizeof(buf), &m, i);
+			printf("\tlod b, %s\n", buf);
+			alu_byte(op, "b", &o, &started);
+			printf("\tstr %s, b\n", buf);
+		}
+		finish(s);
+		return 1;
+	}
+	for (i = 0; i < s; i++) {
+		mem_text(buf, sizeof(buf), &m, i);
+		printf("\tlod %s, %s\n", w[i], buf);
+	}
+	for (i = s; i-- > 0;) {
+		operand_byte(r, s, i, &o);
+		if (post) {
+			/* the old value stays, the new one is made in i */
+			if (no_change(op, &o, started))
+				continue;
+			mem_text(buf, sizeof(buf), &m, i);
+			printf("\tmov i, %s\n", w[i]);
+			alu_byte(op, "i", &o, &started);
+			printf("\tstr %s, i\n", buf);
+		} else
+			alu_byte(op, w[i], &o, &started);
+	}
+	if (!post) {
+		for (i = 0; i < s; i++) {
+			mem_text(buf, sizeof(buf), &m, i);
+			printf("\tstr %s, %s\n", buf, w[i]);
+		}
+	}
+	finish(s);
+	return 1;
+}
+
 unsigned gen_direct(struct node *n)
 {
 	switch (n->op) {
@@ -784,6 +1781,7 @@ unsigned gen_direct(struct node *n)
 		if (n->right->value)
 			printf("\tasp %lu\n", n->right->value);
 		work_size = get_size(n->type);
+		cc = CC_NONE;
 		return 1;
 	}
 	return 0;
@@ -800,6 +1798,17 @@ unsigned gen_shortcut(struct node *n)
 	struct node *r = n->right;
 	unsigned nr = n->flags & NORETURN;
 
+	/* A part of an && / || condition that is not a T_BOOL (FCC folds
+	   "x >= 0u" into a constant, for instance): a condition too */
+	if ((n->flags & (CCONLY | CCFIXED)) == (CCONLY | CCFIXED) && n->op != T_BOOL) {
+		n->flags &= ~(CCONLY | CCFIXED);
+		cond(n);
+		cc_fix();
+		n->flags |= ISBOOL;
+		work_size = 2;
+		return 1;
+	}
+
 	switch (n->op) {
 	case T_COMMA:
 		/* left, right: the left value is not needed */
@@ -808,6 +1817,58 @@ unsigned gen_shortcut(struct node *n)
 		r->flags |= nr;
 		codegen_lr(r);
 		return 1;
+	case T_BOOL:
+		/* A condition: only the flags are needed */
+		if (!(n->flags & CCONLY))
+			return 0;
+		cond(r);
+		if (n->flags & CCFIXED)
+			cc_fix();
+		n->flags |= ISBOOL;
+		work_size = 2;
+		return 1;
+	case T_EQEQ:
+	case T_BANGEQ:
+	case T_LT:
+	case T_GT:
+	case T_LTEQ:
+	case T_GTEQ:
+		if (!simple_size(l->type))
+			return 0;
+		gen_compare(n);
+		cc_value();
+		n->flags |= ISBOOL;
+		return 1;
+	case T_PLUS:
+		return direct_arith(n, OP_ADD, 1);
+	case T_MINUS:
+		return direct_arith(n, OP_SUB, 0);
+	case T_AND:
+		return direct_arith(n, OP_AND, 1);
+	case T_OR:
+		return direct_arith(n, OP_OR, 1);
+	case T_HAT:
+		return direct_arith(n, OP_XOR, 1);
+	case T_LTLT:
+	case T_GTGT:
+		return direct_shift(n);
+	case T_STAR:
+		return direct_mul(n);
+	case T_SLASH:
+	case T_PERCENT:
+		return direct_divmod(n);
+	case T_PLUSPLUS:
+	case T_MINUSMINUS:
+	case T_PLUSEQ:
+	case T_MINUSEQ:
+	case T_ANDEQ:
+	case T_OREQ:
+	case T_HATEQ:
+		return direct_eqop(n);
+	case T_DEREF:
+		return direct_deref(n);
+	case T_EQ:
+		return direct_store(n);
 	}
 	return 0;
 }
@@ -825,6 +1886,7 @@ unsigned gen_node(struct node *n)
 
 	s = get_size(n->type);
 	work_size = s;
+	cc = CC_NONE;
 
 	switch (n->op) {
 	case T_CONSTANT:
@@ -910,10 +1972,6 @@ unsigned gen_node(struct node *n)
 		return gen_arith(n, "or", "or");
 	case T_HAT:
 		return gen_arith(n, "xor", "xor");
-	case T_EQEQ:
-		return gen_equal(n, 1);
-	case T_BANGEQ:
-		return gen_equal(n, 0);
 	case T_TILDE:
 		if (s == 1) {
 			puts("\tnot b");

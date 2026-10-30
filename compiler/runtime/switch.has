@@ -1,0 +1,92 @@
+; C runtime: switch (ABI.md section 11). Jumped to (not called) with the
+; value in the working register and [x:y] = the table: number of cases
+; (2 bytes), then each case's value and code address, then the default
+; code address. Jumps to the code of the matching case.
+
+__switch:                       ; int: value in [a:b], cases of 2 + 2 bytes
+    lod c, [x:y]
+    lod d, [x:y + 1]            ; [c:d] = cases left
+    add y, 2
+    adc x, 0
+__switch_case:
+    mov i, c
+    or i, d
+    jmz __switch_jump           ; no case left: [x:y] = the default address
+    cmp a, [x:y]
+    jme __switch_high
+__switch_next:
+    add y, 4
+    adc x, 0
+    sub d, 1
+    sbb c, 0
+    jmp __switch_case
+__switch_high:
+    cmp b, [x:y + 1]
+    jme __switch_found
+    jmp __switch_next
+__switch_found:
+    add y, 2
+    adc x, 0
+__switch_jump:                  ; [x:y] = where the code address is
+    lod i, [x:y]
+    lod j, [x:y + 1]
+    jmp [i:j]
+
+__switchc:                      ; char: value in b, cases of 1 + 2 bytes
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    add y, 2
+    adc x, 0
+__switchc_case:
+    mov i, c
+    or i, d
+    jmz __switch_jump
+    cmp b, [x:y]
+    jme __switchc_found
+    add y, 3
+    adc x, 0
+    sub d, 1
+    sbb c, 0
+    jmp __switchc_case
+__switchc_found:
+    add y, 1
+    adc x, 0
+    jmp __switch_jump
+
+__switchl:                      ; long: value in [c:d]:[a:b], cases of 4 + 2 bytes
+    lod i, [x:y]
+    lod j, [x:y + 1]            ; [i:j] = cases left
+    add y, 2
+    adc x, 0
+__switchl_case:
+    cmp i, 0
+    jme __switchl_high_zero
+__switchl_test:
+    cmp c, [x:y]
+    jme __switchl_1
+__switchl_next:
+    add y, 6
+    adc x, 0
+    sub j, 1
+    sbb i, 0
+    jmp __switchl_case
+__switchl_high_zero:
+    cmp j, 0
+    jme __switch_jump           ; no case left
+    jmp __switchl_test
+__switchl_1:
+    cmp d, [x:y + 1]
+    jme __switchl_2
+    jmp __switchl_next
+__switchl_2:
+    cmp a, [x:y + 2]
+    jme __switchl_3
+    jmp __switchl_next
+__switchl_3:
+    cmp b, [x:y + 3]
+    jme __switchl_found
+    jmp __switchl_next
+__switchl_found:
+    add y, 4
+    adc x, 0
+    jmp __switch_jump

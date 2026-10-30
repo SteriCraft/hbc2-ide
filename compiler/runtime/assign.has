@@ -1,0 +1,490 @@
+; C runtime: assignment operators (+= -= *= /= %= <<= >>= &= |= ^=) and
+; ++ / -- (ABI.md section 11). They change a variable through its address
+; and give the new value (the old one for postinc / postdec).
+;
+;   char : address in [c:d], value in b,           result in b
+;   int  : address in [c:d], value in [a:b],       result in [a:b]
+;   long : address in [x:y], value in [c:d]:[a:b], result in [c:d]:[a:b]
+;
+; ++ and -- get the amount to add (1, or the size of the pointed object).
+; The suffix c is a signed char for /= %= >>=, uc an unsigned char.
+
+; ----- char
+
+__pluseqc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    add b, d
+    str [x:y], b
+    ret
+
+__minuseqc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    sub d, b
+    str [x:y], d
+    mov b, d
+    ret
+
+__postincc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    add b, d
+    str [x:y], b
+    mov b, d
+    ret
+
+__postdecc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    mov c, d
+    sub c, b
+    str [x:y], c
+    mov b, d
+    ret
+
+__andeqc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    and b, d
+    str [x:y], b
+    ret
+
+__oreqc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    or b, d
+    str [x:y], b
+    ret
+
+__xoreqc:
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    xor b, d
+    str [x:y], b
+    ret
+
+; *[c:d] = op(*[c:d], b), both as unsigned chars widened to int;
+; [i:j] = the int helper
+__eqop8u:
+    psh d, c
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    mov c, 0
+    mov a, 0
+    cal [i:j]
+    pop d, c
+    mov x, c
+    mov y, d
+    str [x:y], b
+    ret
+
+; Same with signed chars
+__eqop8s:
+    psh d, c
+    mov x, c
+    mov y, d
+    lod d, [x:y]
+    mov c, d                    ; sign extensions: C = sign bit, 0 - 0 - C
+    shl c
+    mov c, 0
+    sbb c, 0
+    mov a, b
+    shl a
+    mov a, 0
+    sbb a, 0
+    cal [i:j]
+    pop d, c
+    mov x, c
+    mov y, d
+    str [x:y], b
+    ret
+
+__muleqc:
+    mov i, __mul.msb
+    mov j, __mul.lsb
+    jmp __eqop8u
+
+__shleqc:
+    mov i, __shl.msb
+    mov j, __shl.lsb
+    jmp __eqop8u
+
+__divequc:
+    mov i, __divu.msb
+    mov j, __divu.lsb
+    jmp __eqop8u
+
+__remequc:
+    mov i, __remu.msb
+    mov j, __remu.lsb
+    jmp __eqop8u
+
+__shrequc:
+    mov i, __shru.msb
+    mov j, __shru.lsb
+    jmp __eqop8u
+
+__diveqc:
+    mov i, __div.msb
+    mov j, __div.lsb
+    jmp __eqop8s
+
+__remeqc:
+    mov i, __rem.msb
+    mov j, __rem.lsb
+    jmp __eqop8s
+
+__shreqc:
+    mov i, __shr.msb
+    mov j, __shr.lsb
+    jmp __eqop8s
+
+; ----- int
+
+__pluseq:
+    mov x, c
+    mov y, d
+    lod d, [x:y + 1]
+    add b, d
+    lod c, [x:y]                ; lod keeps the carry
+    adc a, c
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+__minuseq:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    sub d, b
+    sbb c, a
+    str [x:y], c
+    str [x:y + 1], d
+    mov a, c
+    mov b, d
+    ret
+
+__postinc:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    add b, d
+    adc a, c
+    str [x:y], a
+    str [x:y + 1], b
+    mov a, c
+    mov b, d
+    ret
+
+__postdec:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    mov i, c
+    mov j, d
+    sub j, b
+    sbb i, a
+    str [x:y], i
+    str [x:y + 1], j
+    mov a, c
+    mov b, d
+    ret
+
+__andeq:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    and a, c
+    and b, d
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+__oreq:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    or a, c
+    or b, d
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+__xoreq:
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    xor a, c
+    xor b, d
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+; *[c:d] = op(*[c:d], [a:b]); [i:j] = the int helper
+__eqop16:
+    psh d, c
+    mov x, c
+    mov y, d
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    cal [i:j]
+    pop d, c
+    mov x, c
+    mov y, d
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+__muleq:
+    mov i, __mul.msb
+    mov j, __mul.lsb
+    jmp __eqop16
+
+__diveq:
+    mov i, __div.msb
+    mov j, __div.lsb
+    jmp __eqop16
+
+__divequ:
+    mov i, __divu.msb
+    mov j, __divu.lsb
+    jmp __eqop16
+
+__remeq:
+    mov i, __rem.msb
+    mov j, __rem.lsb
+    jmp __eqop16
+
+__remequ:
+    mov i, __remu.msb
+    mov j, __remu.lsb
+    jmp __eqop16
+
+__shleq:
+    mov i, __shl.msb
+    mov j, __shl.lsb
+    jmp __eqop16
+
+__shreq:
+    mov i, __shr.msb
+    mov j, __shr.lsb
+    jmp __eqop16
+
+__shrequ:
+    mov i, __shru.msb
+    mov j, __shru.lsb
+    jmp __eqop16
+
+; ----- long
+
+__pluseql:
+    lod j, [x:y + 3]            ; lod keeps the carry
+    add b, j
+    lod j, [x:y + 2]
+    adc a, j
+    lod j, [x:y + 1]
+    adc d, j
+    lod j, [x:y]
+    adc c, j
+    jmp __eqopl_store_xy
+
+__minuseql:
+    lod j, [x:y + 3]
+    sub j, b
+    mov b, j                    ; mov keeps the carry
+    lod j, [x:y + 2]
+    sbb j, a
+    mov a, j
+    lod j, [x:y + 1]
+    sbb j, d
+    mov d, j
+    lod j, [x:y]
+    sbb j, c
+    mov c, j
+    jmp __eqopl_store_xy
+
+__andeql:
+    lod j, [x:y]
+    and c, j
+    lod j, [x:y + 1]
+    and d, j
+    lod j, [x:y + 2]
+    and a, j
+    lod j, [x:y + 3]
+    and b, j
+    jmp __eqopl_store_xy
+
+__oreql:
+    lod j, [x:y]
+    or c, j
+    lod j, [x:y + 1]
+    or d, j
+    lod j, [x:y + 2]
+    or a, j
+    lod j, [x:y + 3]
+    or b, j
+    jmp __eqopl_store_xy
+
+__xoreql:
+    lod j, [x:y]
+    xor c, j
+    lod j, [x:y + 1]
+    xor d, j
+    lod j, [x:y + 2]
+    xor a, j
+    lod j, [x:y + 3]
+    xor b, j
+    jmp __eqopl_store_xy
+
+; *[x:y] = [c:d]:[a:b]
+__eqopl_store_xy:
+    str [x:y], c
+    str [x:y + 1], d
+    str [x:y + 2], a
+    str [x:y + 3], b
+    ret
+
+; ++ / --: the amount goes on the stack, the old value is the result
+__postincl:
+    psh b, a, d, c              ; amount: [sp] (MSB) .. [sp + 3]
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    mov j, b
+    add j, [sp + 3]
+    str [x:y + 3], j            ; str and mov keep the carry
+    mov j, a
+    adc j, [sp + 2]
+    str [x:y + 2], j
+    mov j, d
+    adc j, [sp + 1]
+    str [x:y + 1], j
+    mov j, c
+    adc j, [sp]
+    str [x:y], j
+    asp 4
+    ret
+
+__postdecl:
+    psh b, a, d, c
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    mov j, b
+    sub j, [sp + 3]
+    str [x:y + 3], j
+    mov j, a
+    sbb j, [sp + 2]
+    str [x:y + 2], j
+    mov j, d
+    sbb j, [sp + 1]
+    str [x:y + 1], j
+    mov j, c
+    sbb j, [sp]
+    str [x:y], j
+    asp 4
+    ret
+
+; *= /= %= <<= >>= : the variable's value becomes the left operand
+; [x:y]:[i:j] of the long helper. The address waits on the stack.
+__muleql:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __mull
+    jmp __eqopl_store
+
+__diveql:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __divl
+    jmp __eqopl_store
+
+__divequl:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __divul
+    jmp __eqopl_store
+
+__remeql:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __reml
+    jmp __eqopl_store
+
+__remequl:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __remul
+    jmp __eqopl_store
+
+__shleql:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __shll
+    jmp __eqopl_store
+
+__shreql:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __shrl
+    jmp __eqopl_store
+
+__shrequl:
+    psh y, x
+    psh b, a, d, c
+    cal __eqopl_load
+    cal __shrul
+    jmp __eqopl_store
+
+; Called with, above the return address: the value ([sp + 2] (MSB) ..
+; [sp + 5]) and the address ([sp + 6], [sp + 7]). Loads the variable into
+; [x:y]:[i:j] and the value into [c:d]:[a:b], and removes the value from
+; the stack (the address stays).
+__eqopl_load:
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+    lod x, [c:d]
+    lod y, [c:d + 1]
+    lod i, [c:d + 2]
+    lod j, [c:d + 3]
+    lod c, [sp + 2]
+    lod d, [sp + 3]
+    lod a, [sp + 4]
+    lod b, [sp + 5]
+    psh b                       ; move the return address up by 4 bytes
+    lod b, [sp + 1]
+    str [sp + 5], b
+    lod b, [sp + 2]
+    str [sp + 6], b
+    pop b
+    asp 4
+    ret
+
+; [sp] = address (x, y): *address = [c:d]:[a:b]
+__eqopl_store:
+    pop y, x
+    jmp __eqopl_store_xy

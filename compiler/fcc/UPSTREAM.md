@@ -17,3 +17,7 @@ through `../msvc/compat.h`, a forced include):
 * `symtab.h`, `frontend.c`: names keep 31 characters instead of 15
   (`NAMELEN` 16 -> 32, `get_symbol_tail` reads `NAMELEN - 2` more bytes,
   `tokenize_symbol` buffer sized `NAMELEN`). Longer names are still cut.
+* `frontend.c` (`directive`), `lex.c` (`T_LINE`): file names from `cpp`
+  lines keep what follows the last `\` as well as the last `/` (Windows
+  paths), and cc1 now reads the end marker of a 32-character name (it used
+  to lose its place in the token stream: "useless declaration" errors).
