@@ -8,7 +8,7 @@ use eframe::egui::{
 use hbc2_asm::Program;
 use hbc2_asm::disasm::disassemble_with;
 use hbc2_core::isa::{INSTRUCTION_SIZE, PROGRAM_START};
-use hbc2_runner::{RunState, Snapshot};
+use hbc2_runner::Snapshot;
 
 use crate::emulator::ram_address;
 use crate::views::cpu::name_of;
@@ -98,6 +98,7 @@ impl DisasmView {
         ui: &mut egui::Ui,
         s: &Snapshot,
         program: Option<&Arc<Program>>,
+        follow: bool,
     ) -> Option<u16> {
         let mut toggled = None;
         let pc = s.cpu.pc;
@@ -133,8 +134,7 @@ impl DisasmView {
         let row_height = ui.text_style_height(&TextStyle::Monospace) + 2.0;
         let spacing = ui.spacing().item_spacing.y;
         let mut area = egui::ScrollArea::both().auto_shrink(false);
-        let paused = s.state == RunState::Paused;
-        if self.follow_pc && paused && self.followed != Some((s.ticks, pc)) {
+        if self.follow_pc && follow && self.followed != Some((s.ticks, pc)) {
             self.followed = Some((s.ticks, pc));
             if let Some(index) = pc_row {
                 let offset = (index as f32 - 5.0).max(0.0) * (row_height + spacing);

@@ -4,7 +4,8 @@ use eframe::egui::{self, Align, Button, Color32, Layout, RichText};
 use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
-use crate::app::{Action, Dialog, State};
+use crate::app::{Action, Dialog, State, can_undo};
+use crate::find::FindMode;
 use crate::project::{NEW_FILE_TEMPLATE, folder_name, project_folder_name, source_file_name};
 use crate::settings::{SPEEDS, TargetSetting, frequency_label, speed_label};
 
@@ -59,9 +60,6 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 {
                     actions.push(Action::SaveAll);
                 }
-                if ui.add(shortcut_button("Close tab", "Ctrl+W")).clicked() {
-                    actions.push(Action::CloseCurrentTab);
-                }
                 ui.separator();
                 ui.horizontal(|ui| {
                     ui.label("Editor font");
@@ -74,6 +72,45 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 ui.separator();
                 if ui.button("Quit").clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
+                }
+            });
+
+            ui.menu_button("Edit", |ui| {
+                let editor = state.active_editor.is_some();
+                let (can_undo, can_redo) = match &state.active_editor {
+                    Some(path) => (
+                        can_undo(&state.docs, ui.ctx(), path, false),
+                        can_undo(&state.docs, ui.ctx(), path, true),
+                    ),
+                    None => (false, false),
+                };
+                if ui
+                    .add_enabled(can_undo, shortcut_button("Undo", "Ctrl+Z"))
+                    .clicked()
+                {
+                    actions.push(Action::Undo);
+                }
+                if ui
+                    .add_enabled(can_redo, shortcut_button("Redo", "Ctrl+Y"))
+                    .clicked()
+                {
+                    actions.push(Action::Redo);
+                }
+                ui.separator();
+                if ui
+                    .add_enabled(editor, shortcut_button("Find…", "Ctrl+F"))
+                    .clicked()
+                {
+                    actions.push(Action::OpenFind(FindMode::File));
+                }
+                if ui
+                    .add_enabled(
+                        has_project,
+                        shortcut_button("Find in files…", "Ctrl+Shift+F"),
+                    )
+                    .clicked()
+                {
+                    actions.push(Action::OpenFind(FindMode::Files));
                 }
             });
 
@@ -184,11 +221,12 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui
                     .checkbox(
                         &mut state.settings.follow_pc,
-                        "Show the current line when paused",
+                        "Follow the current instruction",
                     )
                     .changed()
                 {
                     state.disasm_view.follow_pc = state.settings.follow_pc;
+                    state.memory_view.follow_pc = state.settings.follow_pc;
                 }
             });
 
@@ -374,6 +412,11 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
             ("F10", "Step one instruction"),
             ("Ctrl+F5", "Power cycle"),
             ("Ctrl+S", "Save"),
+            ("Ctrl+W", "Close the tab"),
+            ("Ctrl+W+R", "Close the other tabs"),
+            ("Ctrl+W+K", "Close all tabs"),
+            ("Ctrl+F", "Find in the file"),
+            ("Ctrl+Shift+F", "Find in the project's files"),
         ] {
             ui.monospace(key);
             ui.label(what);

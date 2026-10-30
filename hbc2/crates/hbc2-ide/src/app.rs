@@ -7,6 +7,7 @@
 
 use std::collections::{BTreeSet, HashMap};
 use std::io;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::time::Instant;
@@ -19,12 +20,14 @@ use hbc2_runner::{RunState, Snapshot, Speed};
 use serde::{Deserialize, Serialize};
 
 use crate::console::{Console, Level};
-use crate::document::Document;
+use crate::document::{Document, shift_breakpoints};
 use crate::emulator::{Emulator, Image, Peripherals, ram_address};
+use crate::find::{Find, FindMode};
 use crate::project::{self, Project};
 use crate::settings::{ProjectSettings, Settings, TargetSetting};
 use crate::tabs::Tab;
 use crate::views::disasm::DisasmView;
+use crate::views::editor::{char_index_of_line, editor_id};
 use crate::views::memory::MemoryView;
 use crate::views::monitor::MonitorView;
 
@@ -60,6 +63,23 @@ pub enum Action {
     /// Closes an editor tab, asking about unsaved changes.
     CloseTab(PathBuf),
     CloseCurrentTab,
+    /// Closes several editor tabs, asking about unsaved changes once.
+    CloseTabs(Vec<PathBuf>),
+    CloseGroup(TabGroup),
+    /// Undoes or redoes the last edit in the editor tab.
+    Undo,
+    Redo,
+    /// Opens the find bar.
+    OpenFind(FindMode),
+    /// Closes the find bar; the editor gets the keyboard, with the current
+    /// match selected.
+    CloseFind,
+    /// Opens a file and selects a "find in files" match.
+    ShowMatch {
+        path: PathBuf,
+        line: u32,
+        columns: Range<usize>,
+    },
     Assemble,
     Run,
     Pause,
@@ -78,6 +98,18 @@ pub enum Action {
     RtcInterrupt,
     Quit,
     ShowDialog(Dialog),
+}
+
+/// Editor tabs closed together, from the tab menu or the keyboard.
+#[derive(Clone, Debug)]
+pub enum TabGroup {
+    /// The editor tabs after this one.
+    ToTheRight(PathBuf),
+    /// The editor tabs without unsaved changes.
+    Saved,
+    /// All editor tabs but this one (the current editor if none).
+    Others(Option<PathBuf>),
+    All,
 }
 
 #[derive(Clone, Debug)]
@@ -147,6 +179,9 @@ pub struct State {
     pub monitor_view: MonitorView,
     pub memory_view: MemoryView,
     pub disasm_view: DisasmView,
+    pub find: Find,
+    /// The file of the editor tab shown in the editor group, if any.
+    pub active_editor: Option<PathBuf>,
     /// (cycles, PC) the editor last jumped to.
     followed: Option<(u64, u16)>,
     /// Last breakpoint stop written to the console.
@@ -162,6 +197,8 @@ pub struct State {
 pub struct Ide {
     pub dock: DockState<Tab>,
     pub state: State,
+    /// Ctrl+W is held: true once R or K made it Ctrl+W+R or Ctrl+W+K.
+    close_chord: Option<bool>,
 }
 
 /// Open editor buffers first, files on disk otherwise: assembling uses
@@ -188,6 +225,9 @@ pub fn default_layout() -> DockState<Tab> {
 }
 
 /// Tabs of the right-hand group, which share its width equally.
+/// Up to this speed, the editor, disassembly and memory views follow the PC while running.
+pub const FOLLOW_MAX_HZ: u64 = 100;
+
 pub const TOOL_TABS: [Tab; 3] = [Tab::Cpu, Tab::Disassembly, Tab::Memory];
 
 /// Fractions of the splits (the sizes the user set with the mouse).
@@ -236,6 +276,7 @@ impl Ide {
         let snapshot = emulator.runner.snapshot();
         let mut ide = Ide {
             dock,
+            close_chord: None,
             state: State {
                 settings,
                 project: None,
@@ -252,6 +293,8 @@ impl Ide {
                 monitor_view: MonitorView::default(),
                 memory_view: MemoryView::default(),
                 disasm_view: DisasmView::default(),
+                find: Find::default(),
+                active_editor: None,
                 followed: None,
                 reported_stop: None,
                 last_disk_check: 0.0,
@@ -261,6 +304,7 @@ impl Ide {
             },
         };
         ide.state.disasm_view.follow_pc = ide.state.settings.follow_pc;
+        ide.state.memory_view.follow_pc = ide.state.settings.follow_pc;
         ide.state
             .console
             .info("HBC-2 IDE ready. F7 assembles, F5 runs, F10 steps.");
@@ -315,6 +359,7 @@ impl Ide {
         self.watch_emulator();
         self.check_disk(&ctx);
         self.handle_close_request(&ctx);
+        self.state.active_editor = self.active_editor();
 
         crate::chrome::menu_bar(ui, &mut self.state);
         crate::chrome::toolbar(ui, &mut self.state);
@@ -367,12 +412,71 @@ impl Ide {
             (K::new(M::COMMAND, Key::F5), Action::Reset),
             (K::new(M::COMMAND | M::SHIFT, Key::S), Action::SaveAll),
             (K::new(M::COMMAND, Key::S), Action::Save),
-            (K::new(M::COMMAND, Key::W), Action::CloseCurrentTab),
             (K::new(M::COMMAND, Key::O), Action::OpenProjectDialog),
+            (
+                K::new(M::COMMAND | M::SHIFT, Key::F),
+                Action::OpenFind(FindMode::Files),
+            ),
+            (K::new(M::COMMAND, Key::F), Action::OpenFind(FindMode::File)),
         ];
         for (shortcut, action) in table {
             if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
                 self.state.actions.push(action);
+            }
+        }
+        // Ctrl+W closes the tab when W is released; R or K pressed while
+        // Ctrl+W is held closes the other tabs or all of them instead.
+        if ctx.input_mut(|i| i.consume_shortcut(&K::new(M::COMMAND, Key::W))) {
+            self.close_chord.get_or_insert(false);
+        }
+        if let Some(chord) = &mut self.close_chord {
+            let (others, all) = ctx.input_mut(|i| {
+                (
+                    i.consume_key(M::COMMAND, Key::R),
+                    i.consume_key(M::COMMAND, Key::K),
+                )
+            });
+            if others {
+                *chord = true;
+                self.state.actions.push(Action::CloseGroup(TabGroup::Others(None)));
+            }
+            if all {
+                *chord = true;
+                self.state.actions.push(Action::CloseGroup(TabGroup::All));
+            }
+            if !ctx.input(|i| i.key_down(Key::W)) {
+                if !*chord {
+                    self.state.actions.push(Action::CloseCurrentTab);
+                }
+                self.close_chord = None;
+            }
+        }
+        // Escape closes the find bar, from the editor too (the find bar's own
+        // field handles it by itself; the monitor sends it to the HBC-2).
+        let editor_focused = |m: &egui::Memory| {
+            self.state
+                .active_editor
+                .as_ref()
+                .is_some_and(|p| m.has_focus(editor_id(p)))
+        };
+        if self.state.find.mode.is_some()
+            && ctx.memory(|m| m.focused().is_none() || editor_focused(m))
+            && ctx.input_mut(|i| i.consume_key(M::NONE, Key::Escape))
+        {
+            self.state.actions.push(Action::CloseFind);
+        }
+        // A focused text field undoes its own edits; with nothing focused,
+        // undo works on the editor tab.
+        if ctx.memory(|m| m.focused().is_none()) {
+            let table = [
+                (K::new(M::COMMAND | M::SHIFT, Key::Z), Action::Redo),
+                (K::new(M::COMMAND, Key::Y), Action::Redo),
+                (K::new(M::COMMAND, Key::Z), Action::Undo),
+            ];
+            for (shortcut, action) in table {
+                if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
+                    self.state.actions.push(action);
+                }
             }
         }
     }
@@ -398,12 +502,22 @@ impl Ide {
                 crate::views::cpu::group_digits(s.ticks)
             ));
         }
-        if s.state == RunState::Paused && s.ticks > 0 && self.state.settings.follow_pc {
+        if s.ticks > 0 && self.state.settings.follow_pc && self.state.follows_execution() {
             let key = (s.ticks, s.cpu.pc);
-            if self.state.followed != Some(key) {
+            let running = s.state == RunState::Running;
+            // While running, the cycle count changes with every snapshot:
+            // only a new PC moves the editor.
+            let new = match self.state.followed {
+                Some((_, pc)) if running => pc != s.cpu.pc,
+                followed => followed != Some(key),
+            };
+            if new {
                 self.state.followed = Some(key);
                 if let Some((path, line)) = self.state.source_location(s.cpu.pc) {
-                    self.state.actions.push(Action::OpenFile(path, Some(line)));
+                    self.open_file(&path, Some(line));
+                    if let Some(doc) = self.state.docs.iter_mut().find(|d| d.path == path) {
+                        doc.scroll_gently = running;
+                    }
                 }
             }
         }
@@ -651,18 +765,92 @@ impl Ide {
                 let paths = state.dirty_paths();
                 state.save(&paths);
             }
-            Action::CloseTab(path) => {
-                let dirty = state.docs.iter().any(|d| d.path == path && d.is_dirty());
-                if dirty && state.guard_unsaved(vec![path.clone()], Action::CloseTab(path.clone()))
-                {
+            Action::CloseTab(path) => self.state.actions.push(Action::CloseTabs(vec![path])),
+            Action::CloseTabs(paths) => {
+                if state.guard_unsaved(paths.clone(), Action::CloseTabs(paths.clone())) {
                     return;
                 }
-                self.remove_editor_tabs(|p| p == path);
-                self.state.docs.retain(|d| d.path != path);
+                self.remove_editor_tabs(|p| paths.iter().any(|q| q == p));
+                self.state.docs.retain(|d| !paths.contains(&d.path));
+            }
+            Action::CloseGroup(group) => {
+                let paths = self.tab_group(group);
+                if !paths.is_empty() {
+                    self.state.actions.push(Action::CloseTabs(paths));
+                }
             }
             Action::CloseCurrentTab => {
                 if let Some(path) = self.current_editor() {
                     self.state.actions.push(Action::CloseTab(path));
+                }
+            }
+            Action::Undo | Action::Redo => {
+                // Files cannot be edited while the program runs.
+                if self.state.snapshot.state == RunState::Running {
+                    return;
+                }
+                if let Some(path) = self.active_editor() {
+                    self.state.undo(ctx, &path, matches!(action, Action::Redo));
+                }
+            }
+            Action::OpenFind(mode) => {
+                let editor = self.active_editor();
+                let state = &mut self.state;
+                match mode {
+                    FindMode::File if editor.is_none() => return,
+                    FindMode::Files if state.project.is_none() => {
+                        return state.console.error("Open a project first (File menu).");
+                    }
+                    _ => {}
+                }
+                // Search for the selected text, when it is on one line.
+                if let Some(path) = &editor
+                    && let Some(doc) = state.docs.iter().find(|d| &d.path == path)
+                    && let Some(range) = egui::text_edit::TextEditState::load(ctx, editor_id(path))
+                        .and_then(|s| s.cursor.char_range())
+                {
+                    let range = range.as_sorted_char_range();
+                    let selected: String = doc
+                        .text
+                        .chars()
+                        .skip(range.start.0)
+                        .take(range.end.0 - range.start.0)
+                        .collect();
+                    if !selected.is_empty() && !selected.contains('\n') {
+                        state.find.query = selected;
+                    }
+                }
+                state.find.mode = Some(mode);
+                state.find.focus_query = true;
+                state.find.current = None;
+            }
+            Action::CloseFind => {
+                let find = &mut state.find;
+                find.mode = None;
+                // Back in the editor, the current match is selected.
+                if let Some((path, m)) = find.current.take()
+                    && let Some(doc) = state.docs.iter_mut().find(|d| d.path == path)
+                {
+                    doc.select = Some(m);
+                }
+                if let Some(path) = self.active_editor()
+                    && let Some(doc) = self.state.docs.iter_mut().find(|d| d.path == path)
+                {
+                    doc.focus = true;
+                }
+            }
+            Action::ShowMatch {
+                path,
+                line,
+                columns,
+            } => {
+                let path = project::absolute(&path).unwrap_or(path);
+                self.open_file(&path, None);
+                if let Some(doc) = self.state.docs.iter_mut().find(|d| d.path == path) {
+                    let start = char_index_of_line(&doc.text, line);
+                    doc.select = Some(start + columns.start..start + columns.end);
+                    // The editor keeps its selection only while it has the keyboard.
+                    doc.focus = true;
                 }
             }
             Action::Assemble => {
@@ -846,6 +1034,7 @@ impl Ide {
         }
         if let Some(doc) = self.state.docs.iter_mut().find(|d| d.path == path) {
             doc.scroll_to = line.or(doc.scroll_to);
+            doc.scroll_gently = false;
         }
     }
 
@@ -867,6 +1056,45 @@ impl Ide {
         if let Some(found) = self.dock.find_tab(&tab) {
             let _ = self.dock.set_active_tab(found);
             self.dock.set_focused_node_and_surface(found.node_path());
+        }
+    }
+
+    /// Path of the editor tab shown in the editor group, focused or not.
+    fn active_editor(&self) -> Option<PathBuf> {
+        let path = self.dock.find_tab_from(|t| matches!(t, Tab::Editor(_)))?;
+        let leaf = self.dock.leaf(path.node_path()).ok()?;
+        match leaf.tabs.get(leaf.active.0) {
+            Some(Tab::Editor(path)) => Some(path.clone()),
+            _ => None,
+        }
+    }
+
+    /// The open editors in `group`, in tab order.
+    fn tab_group(&mut self, group: TabGroup) -> Vec<PathBuf> {
+        let editors: Vec<PathBuf> = self
+            .dock
+            .iter_all_tabs()
+            .filter_map(|(_, t)| match t {
+                Tab::Editor(path) => Some(path.clone()),
+                _ => None,
+            })
+            .collect();
+        match group {
+            TabGroup::ToTheRight(path) => match editors.iter().position(|p| *p == path) {
+                Some(i) => editors[i + 1..].to_vec(),
+                None => Vec::new(),
+            },
+            TabGroup::Saved => editors
+                .into_iter()
+                .filter(|p| !self.state.docs.iter().any(|d| &d.path == p && d.is_dirty()))
+                .collect(),
+            TabGroup::Others(path) => {
+                let Some(keep) = path.or_else(|| self.current_editor()) else {
+                    return Vec::new();
+                };
+                editors.into_iter().filter(|p| *p != keep).collect()
+            }
+            TabGroup::All => editors,
         }
     }
 
@@ -921,6 +1149,41 @@ impl State {
         ok
     }
 
+    /// Undoes (or redoes) the last edit of a file, with the undo history of
+    /// its editor, then gives the editor the keyboard.
+    fn undo(&mut self, ctx: &egui::Context, path: &Path, redo: bool) {
+        let id = editor_id(path);
+        let Some(doc) = self.docs.iter_mut().find(|d| d.path == path) else {
+            return;
+        };
+        let mut editor = egui::text_edit::TextEditState::load(ctx, id).unwrap_or_default();
+        let mut history = editor.undoer();
+        if let Some((range, text)) = history_step(&mut history, &editor, &doc.text, redo) {
+            let before = std::mem::replace(&mut doc.text, text);
+            // The cursor goes back exactly as it was: the editor drops the
+            // redo steps as soon as it differs from the history's.
+            editor.cursor.set_char_range(Some(range));
+            let sorted = range.as_sorted_char_range();
+            doc.select = Some(sorted.start.0..sorted.end.0); // brings it into view
+            self.edits += 1;
+            let lines = self
+                .project_settings
+                .breakpoints
+                .entry(path.to_path_buf())
+                .or_default();
+            let old = lines.clone();
+            shift_breakpoints(lines, &before, &doc.text);
+            if *lines != old {
+                self.actions.push(Action::BreakpointsChanged);
+            }
+        }
+        editor.set_undoer(history);
+        editor.store(ctx, id);
+        // The editor is the tab shown, drawn in this frame: it can take the
+        // keyboard now (before it is drawn again, which would drop its selection).
+        ctx.memory_mut(|m| m.request_focus(id));
+    }
+
     pub fn discard(&mut self, paths: &[PathBuf]) {
         for doc in self.docs.iter_mut().filter(|d| paths.contains(&d.path)) {
             doc.revert();
@@ -943,9 +1206,16 @@ impl State {
         Some((program.files.get(line.file)?.clone(), line.line))
     }
 
-    /// Line of the next instruction in `path`, when paused.
+    /// Whether the editor, disassembly and memory views follow the PC: when paused
+    /// (after each step), and while running slowly enough to watch.
+    pub fn follows_execution(&self) -> bool {
+        self.snapshot.state == RunState::Paused
+            || matches!(Speed::from(self.settings.speed), Speed::Hz(hz) if hz <= FOLLOW_MAX_HZ)
+    }
+
+    /// Line of the next instruction in `path`, when paused or running slowly.
     pub fn pc_line(&self, path: &Path) -> Option<u32> {
-        if self.snapshot.state != RunState::Paused {
+        if !self.follows_execution() {
             return None;
         }
         let (file, line) = self.source_location(self.snapshot.cpu.pc)?;
@@ -1165,6 +1435,58 @@ impl State {
                     .error(format!("Cannot write {}: {e}", path.display())),
             }
         }
+    }
+}
+
+/// Whether the editor of `path` has an edit to undo (or redo).
+pub fn can_undo(docs: &[Document], ctx: &egui::Context, path: &Path, redo: bool) -> bool {
+    let Some(doc) = docs.iter().find(|d| d.path == path) else {
+        return false;
+    };
+    let editor = egui::text_edit::TextEditState::load(ctx, editor_id(path)).unwrap_or_default();
+    history_step(&mut editor.undoer(), &editor, &doc.text, redo).is_some()
+}
+
+/// An editor's undo history: (cursor, text) states.
+type History = egui::util::undoer::Undoer<(egui::text::CCursorRange, String)>;
+
+/// Moves `history` one undo (or redo) step back (or forward), to the first
+/// state with another text than `text`, and returns that state. Steps that
+/// only moved the cursor are skipped: they would change nothing visible.
+fn history_step(
+    history: &mut History,
+    editor: &egui::text_edit::TextEditState,
+    text: &str,
+    redo: bool,
+) -> Option<(egui::text::CCursorRange, String)> {
+    use egui::text::{CCursor, CCursorRange};
+    // The history's latest state, read by undoing from a state it cannot
+    // hold (undo then returns the latest state, and leaves it in place).
+    let impossible = (CCursorRange::one(CCursor::new(usize::MAX)), String::new());
+    let latest = history.clone().undo(&impossible).cloned();
+    // An editor without the keyboard has dropped its selection: when the
+    // text is the latest state's, so is the cursor (the history compares both).
+    let mut current = match latest {
+        Some(state) if state.1 == text => state,
+        _ => {
+            let cursor = editor
+                .cursor
+                .char_range()
+                .unwrap_or_else(|| CCursorRange::one(CCursor::new(0)));
+            (cursor, text.to_string())
+        }
+    };
+    loop {
+        let state = if redo {
+            history.redo(&current)
+        } else {
+            history.undo(&current)
+        }?
+        .clone();
+        if state.1 != text {
+            return Some(state);
+        }
+        current = state;
     }
 }
 

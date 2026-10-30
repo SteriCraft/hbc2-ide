@@ -10,6 +10,7 @@ mod chrome;
 pub mod console;
 pub mod document;
 pub mod emulator;
+pub mod find;
 pub mod font;
 pub mod highlight;
 pub mod keymap;

@@ -2,6 +2,7 @@
 
 use std::collections::BTreeSet;
 use std::io;
+use std::ops::Range;
 use std::path::{Path, PathBuf};
 use std::time::SystemTime;
 
@@ -18,6 +19,15 @@ pub struct Document {
     pub conflict: bool,
     /// Line (1-based) to bring into view on the next frame.
     pub scroll_to: Option<u32>,
+    /// Bring `scroll_to` into view without centering it (following a
+    /// running program: the view moves only when the line leaves it).
+    pub scroll_gently: bool,
+    /// Characters to select and bring into view on the next frame.
+    pub select: Option<Range<usize>>,
+    /// Gives the editor the keyboard when it is next drawn. (Focusing a
+    /// widget that is not drawn in the frame stops the program when
+    /// Windows' accessibility is active.)
+    pub focus: bool,
     /// Highlighted layout of `text`, keyed by a hash of the text and the style.
     pub layout_cache: Option<(u64, LayoutJob)>,
 }
@@ -32,6 +42,9 @@ impl Document {
             disk_time: modified(path),
             conflict: false,
             scroll_to: None,
+            scroll_gently: false,
+            select: None,
+            focus: false,
             layout_cache: None,
         })
     }

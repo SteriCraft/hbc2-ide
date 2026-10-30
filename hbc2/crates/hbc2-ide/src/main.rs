@@ -24,7 +24,53 @@ impl eframe::App for App {
     }
 }
 
+/// A crash closes the window: say why in a message box (release builds
+/// have no console), and keep the details in a file.
+fn report_crashes() {
+    let default_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        default_hook(info);
+        let backtrace = std::backtrace::Backtrace::force_capture();
+        let log = std::env::temp_dir().join("hbc2-ide-crash.log");
+        let _ = std::fs::write(&log, format!("{info}\n\n{backtrace}"));
+        show_error(
+            "HBC-2 IDE crashed",
+            &format!("{info}\n\nDetails were written to {}", log.display()),
+        );
+    }));
+}
+
+/// A message box above every window (an ordinary one opens behind the
+/// IDE's window).
+#[cfg(windows)]
+fn show_error(title: &str, text: &str) {
+    use windows_sys::Win32::UI::WindowsAndMessaging::{
+        MB_ICONERROR, MB_OK, MB_SETFOREGROUND, MB_TOPMOST, MessageBoxW,
+    };
+    let wide = |s: &str| s.encode_utf16().chain([0]).collect::<Vec<u16>>();
+    let (title, text) = (wide(title), wide(text));
+    // SAFETY: both strings are NUL-terminated and outlive the call.
+    unsafe {
+        MessageBoxW(
+            std::ptr::null_mut(),
+            text.as_ptr(),
+            title.as_ptr(),
+            MB_OK | MB_ICONERROR | MB_TOPMOST | MB_SETFOREGROUND,
+        );
+    }
+}
+
+#[cfg(not(windows))]
+fn show_error(title: &str, text: &str) {
+    rfd::MessageDialog::new()
+        .set_level(rfd::MessageLevel::Error)
+        .set_title(title)
+        .set_description(text)
+        .show();
+}
+
 fn main() -> eframe::Result {
+    report_crashes();
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
             .with_title("HBC-2 IDE")

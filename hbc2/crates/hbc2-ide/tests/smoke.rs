@@ -6,7 +6,7 @@ use std::time::{Duration, Instant};
 
 use eframe::egui;
 use hbc2_ide::Ide;
-use hbc2_ide::app::{Action, Saved};
+use hbc2_ide::app::{Action, Saved, TabGroup};
 use hbc2_ide::settings::Settings;
 use hbc2_ide::tabs::Tab;
 use hbc2_runner::{RunState, Speed};
@@ -39,6 +39,9 @@ impl Harness {
             settings: Settings::default(),
             splits: Vec::new(),
         };
+        // As when Windows' accessibility is active: the window then checks
+        // that the focused widget is in the accessibility tree.
+        ctx.enable_accesskit();
         let ide = Ide::new(&ctx, Some(saved));
         Harness { ctx, ide }
     }
@@ -54,6 +57,11 @@ impl Harness {
         let ide = &mut self.ide;
         let mut output = self.ctx.run_ui(input, |ui| ide.ui(ui));
         output.textures_delta.clear(); // no GPU here
+        // What the window does with the shapes before drawing them.
+        let _ = self
+            .ctx
+            .tessellate(std::mem::take(&mut output.shapes), output.pixels_per_point);
+        check_accessibility(&output.platform_output);
     }
 
     fn act(&mut self, action: Action) {
@@ -72,6 +80,17 @@ impl Harness {
             std::thread::sleep(Duration::from_millis(5));
             self.frame();
         }
+    }
+}
+
+/// The focused widget must be in the accessibility tree: AccessKit stops
+/// the program otherwise.
+fn check_accessibility(output: &egui::PlatformOutput) {
+    if let Some(update) = &output.accesskit_update {
+        assert!(
+            update.nodes.iter().any(|(id, _)| *id == update.focus),
+            "the focused widget is not in the accessibility tree"
+        );
     }
 }
 
@@ -186,6 +205,27 @@ fn assemble_run_and_break() {
 }
 
 #[test]
+fn the_editor_follows_a_slow_run() {
+    let dir = temp_project("slowrun");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::SetSpeed(Speed::Hz(100)));
+    h.act(Action::Run);
+    h.wait("the current line while running", |ide| {
+        ide.state.snapshot.state == RunState::Running && ide.state.pc_line(&main).is_some()
+    });
+    assert!(h.ide.state.follows_execution());
+
+    // Faster than 100 Hz, the current line is only shown when paused.
+    h.act(Action::SetSpeed(Speed::Hz(1000)));
+    assert!(!h.ide.state.follows_execution());
+    assert_eq!(h.ide.state.pc_line(&main), None);
+    h.act(Action::Pause);
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn failed_assembly_does_not_run() {
     let dir = temp_project("fail");
     std::fs::write(dir.join("main.has"), "_start:\n    mov q, 1\n").unwrap();
@@ -228,6 +268,52 @@ fn unsaved_changes_are_asked_about() {
     h.ide.state.discard(std::slice::from_ref(&main));
     h.act(Action::CloseTab(main.clone()));
     assert!(!editor_open(&h.ide, &main));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn tab_menu_closes_groups_of_tabs() {
+    let dir = temp_project("tabgroups");
+    let main = dir.join("main.has");
+    let handler = dir.join("interruptHandler.has");
+    let other = dir.join("other.has");
+    std::fs::write(&other, "").unwrap();
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFile(handler.clone(), None));
+    h.act(Action::OpenFile(other.clone(), None));
+    let open = |ide: &Ide| -> Vec<bool> {
+        [&main, &handler, &other].iter().map(|p| editor_open(ide, p)).collect()
+    };
+    assert_eq!(open(&h.ide), [true, true, true]);
+
+    // Unsaved files stay open.
+    let doc = h.ide.state.docs.iter_mut().find(|d| d.path == handler).unwrap();
+    doc.text.push('x');
+    h.act(Action::CloseGroup(TabGroup::Saved));
+    assert_eq!(open(&h.ide), [false, true, false]);
+
+    // Tabs: handler, main, other.
+    h.act(Action::OpenFile(main.clone(), None));
+    h.act(Action::OpenFile(other.clone(), None));
+    h.act(Action::CloseGroup(TabGroup::ToTheRight(main.clone())));
+    assert_eq!(open(&h.ide), [true, true, false]);
+
+    // Closing the others asks about the unsaved one first.
+    h.act(Action::CloseGroup(TabGroup::Others(Some(main.clone()))));
+    assert_eq!(open(&h.ide), [true, true, false]);
+    assert!(matches!(
+        h.ide.state.dialog,
+        Some(hbc2_ide::app::Dialog::Unsaved { .. })
+    ));
+    h.ide.state.dialog = None;
+    h.ide.state.discard(std::slice::from_ref(&handler));
+    h.act(Action::CloseGroup(TabGroup::Others(Some(main.clone()))));
+    assert_eq!(open(&h.ide), [true, false, false]);
+
+    h.act(Action::CloseGroup(TabGroup::All));
+    assert_eq!(open(&h.ide), [false, false, false]);
+    assert!(h.ide.dock.find_tab(&Tab::Welcome).is_some());
     std::fs::remove_dir_all(&dir).unwrap();
 }
 
@@ -299,4 +385,290 @@ fn doc_dirty(ide: &Ide, path: &Path) -> bool {
         .docs
         .iter()
         .any(|d| d.path == path && d.is_dirty())
+}
+
+impl Harness {
+    /// One frame with these input events (typing, keys).
+    fn frame_with(&mut self, events: Vec<egui::Event>) {
+        let input = egui::RawInput {
+            screen_rect: Some(egui::Rect::from_min_size(
+                egui::Pos2::ZERO,
+                egui::vec2(1400.0, 900.0),
+            )),
+            events,
+            ..Default::default()
+        };
+        let ide = &mut self.ide;
+        let mut output = self.ctx.run_ui(input, |ui| ide.ui(ui));
+        output.textures_delta.clear();
+        let _ = self
+            .ctx
+            .tessellate(std::mem::take(&mut output.shapes), output.pixels_per_point);
+        check_accessibility(&output.platform_output);
+    }
+
+    /// Characters selected in the editor of `path`.
+    fn selection(&self, path: &Path) -> Option<std::ops::Range<usize>> {
+        let id = hbc2_ide::views::editor::editor_id(path);
+        let range = egui::text_edit::TextEditState::load(&self.ctx, id)?
+            .cursor
+            .char_range()?
+            .as_sorted_char_range();
+        Some(range.start.0..range.end.0)
+    }
+}
+
+fn main_text(ide: &Ide, path: &Path) -> String {
+    ide.state
+        .docs
+        .iter()
+        .find(|d| d.path == path)
+        .unwrap()
+        .text
+        .clone()
+}
+
+#[test]
+fn undo_and_redo_from_the_edit_menu() {
+    let dir = temp_project("undo");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    let original = main_text(&h.ide, &main);
+    // (undo, redo) available, as the Edit menu shows them.
+    let can = |h: &Harness| {
+        let docs = &h.ide.state.docs;
+        (
+            hbc2_ide::app::can_undo(docs, &h.ctx, &main, false),
+            hbc2_ide::app::can_undo(docs, &h.ctx, &main, true),
+        )
+    };
+
+    // Clicking in the editor (moving the cursor) gives nothing to undo.
+    let id = hbc2_ide::views::editor::editor_id(&main);
+    h.ctx.memory_mut(|m| m.request_focus(id));
+    h.frame();
+    h.frame_with(vec![egui::Event::Key {
+        key: egui::Key::ArrowDown,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }]);
+    h.frame();
+    assert_eq!(can(&h), (false, false));
+
+    // Type in the editor, then undo and redo with the menu actions.
+    h.frame_with(vec![egui::Event::Text("xyz".into())]);
+    let typed = main_text(&h.ide, &main);
+    assert_ne!(typed, original, "the text was typed");
+    assert_eq!(can(&h), (true, false));
+
+    h.act(Action::Undo);
+    assert_eq!(main_text(&h.ide, &main), original);
+    for _ in 0..3 {
+        h.frame(); // the editor, focused again, keeps the redo step
+    }
+    assert_eq!(can(&h), (false, true));
+    h.act(Action::Redo);
+    assert_eq!(main_text(&h.ide, &main), typed);
+    h.frame();
+    assert_eq!(can(&h), (true, false));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn find_bar_and_matches() {
+    use hbc2_ide::find::FindMode;
+    let dir = temp_project("find");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+
+    h.act(Action::OpenFind(FindMode::File));
+    assert_eq!(h.ide.state.find.mode, Some(FindMode::File));
+    h.frame();
+
+    // A "find in files" result opens its file with the match selected.
+    let line = line_of(PROGRAM, "jmp loop");
+    h.act(Action::ShowMatch {
+        path: main.clone(),
+        line,
+        columns: 8..12,
+    });
+    h.frame();
+    let text = main_text(&h.ide, &main);
+    let start: usize = text
+        .split('\n')
+        .take(line as usize - 1)
+        .map(|l| l.chars().count() + 1)
+        .sum();
+    assert_eq!(h.selection(&main), Some(start + 8..start + 12));
+    let selected: String = text.chars().skip(start + 8).take(4).collect();
+    assert_eq!(selected, "loop");
+
+    // Ctrl+F then searches for the selected text.
+    h.act(Action::OpenFind(FindMode::Files));
+    assert_eq!(h.ide.state.find.query, "loop");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn find_as_you_type_then_next() {
+    use hbc2_ide::find::FindMode;
+    let dir = temp_project("find-next");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFind(FindMode::File));
+    h.frame(); // the query field takes the keyboard
+
+    let text = main_text(&h.ide, &main);
+    let found = hbc2_ide::find::find_all(&text, "loop", Default::default());
+    assert_eq!(found.len(), 2);
+    let current = |h: &Harness| h.ide.state.find.current.as_ref().map(|(_, m)| m.clone());
+
+    // Typing goes to the first match.
+    h.frame_with(vec![egui::Event::Text("loop".into())]);
+    assert_eq!(h.ide.state.find.query, "loop");
+    assert_eq!(current(&h), Some(found[0].clone()));
+
+    // Enter goes to the next one, then wraps around.
+    let enter = |shift: bool| egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: if shift {
+            egui::Modifiers::SHIFT
+        } else {
+            egui::Modifiers::NONE
+        },
+    };
+    h.frame_with(vec![enter(false)]);
+    assert_eq!(current(&h), Some(found[1].clone()));
+    h.frame_with(vec![enter(false)]);
+    assert_eq!(current(&h), Some(found[0].clone()));
+    h.frame_with(vec![enter(true)]);
+    assert_eq!(current(&h), Some(found[1].clone()));
+
+    // Escape closes the bar and selects the match in the editor.
+    h.frame_with(vec![egui::Event::Key {
+        key: egui::Key::Escape,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }]);
+    h.frame();
+    assert_eq!(h.ide.state.find.mode, None);
+    assert_eq!(h.selection(&main), Some(found[1].clone()));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn find_in_files_opens_another_file() {
+    use hbc2_ide::find::FindMode;
+    let dir = temp_project("find-files");
+    let other = dir.join("lib.has");
+    std::fs::write(&other, "; helpers\n\nprint_text:\n    ret\n").unwrap();
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFind(FindMode::Files));
+    h.frame();
+    h.frame_with(vec![egui::Event::Text("print_text".into())]);
+    let enter = egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    };
+    h.frame_with(vec![enter]);
+    let hits = h.ide.state.find.results.as_ref().unwrap().hits.clone();
+    assert_eq!(hits.len(), 1);
+    let hit = &hits[0];
+    h.act(Action::ShowMatch {
+        path: hit.path.clone(),
+        line: hit.line,
+        columns: hit.columns.clone(),
+    });
+    for _ in 0..5 {
+        h.frame();
+    }
+    assert!(editor_open(&h.ide, &other));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn escape_in_the_editor_closes_the_find_bar() {
+    use hbc2_ide::find::FindMode;
+    let dir = temp_project("find-escape");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFind(FindMode::File));
+    h.frame(); // the find bar's field takes the keyboard
+    // Then the user clicks in the editor.
+    let id = hbc2_ide::views::editor::editor_id(&main);
+    h.ctx.memory_mut(|m| m.request_focus(id));
+    h.frame();
+    assert!(h.ctx.memory(|m| m.has_focus(id)));
+    h.frame_with(vec![egui::Event::Key {
+        key: egui::Key::Escape,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers: egui::Modifiers::NONE,
+    }]);
+    assert_eq!(h.ide.state.find.mode, None);
+    h.frame();
+    assert!(
+        h.ctx.memory(|m| m.has_focus(id)),
+        "the editor keeps the keyboard"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn selecting_past_the_bottom_scrolls() {
+    let dir = temp_project("drag-scroll");
+    let long = dir.join("long.has");
+    let text: String = (1..=600).map(|i| format!("nop ; line {i}\n")).collect();
+    std::fs::write(&long, &text).unwrap();
+    let mut h = Harness::new();
+    // Without a real window, the monitor's window would be drawn over the editor.
+    h.ide.state.settings.monitor_window = false;
+    h.act(Action::OpenProject(dir.clone()));
+    h.act(Action::OpenFile(long.clone(), None));
+    h.frame();
+
+    // Press in the editor's text, near its top, then hold the mouse below it.
+    let id = hbc2_ide::views::editor::editor_id(&long);
+    let editor = h.ctx.read_response(id).expect("the editor is drawn").rect;
+    let view = h.ctx.read_response(id).unwrap().interact_rect;
+    let start = egui::pos2(editor.left() + 120.0, view.top() + 30.0);
+    let below = egui::pos2(start.x, view.bottom() + 150.0);
+    let button = |pos, pressed| egui::Event::PointerButton {
+        pos,
+        button: egui::PointerButton::Primary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    };
+    h.frame_with(vec![egui::Event::PointerMoved(start), button(start, true)]);
+    h.frame_with(vec![egui::Event::PointerMoved(below)]);
+    let first = h.selection(&long).expect("a selection").end;
+    for _ in 0..60 {
+        h.frame();
+    }
+    let selected = h.selection(&long).unwrap();
+    h.frame_with(vec![button(below, false)]);
+
+    // A screen shows about 40 lines; the selection went well past them.
+    let line_length = "nop ; line 100\n".len();
+    assert!(
+        selected.end > first + 40 * line_length,
+        "selection {selected:?}, first {first}"
+    );
+    std::fs::remove_dir_all(&dir).unwrap();
 }

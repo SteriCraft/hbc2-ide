@@ -3,6 +3,7 @@
 
 use std::collections::BTreeSet;
 use std::hash::{Hash, Hasher};
+use std::path::Path;
 use std::sync::Arc;
 
 use eframe::egui::text::{CCursor, CCursorRange};
@@ -12,17 +13,24 @@ use eframe::egui::{
 };
 
 use crate::document::{Document, shift_breakpoints};
+use crate::find::{self, Options};
 use crate::highlight;
 
 /// What the editor shows besides the text.
 pub struct Marks<'a> {
     pub breakpoints: &'a mut BTreeSet<u32>,
-    /// Line of the instruction the CPU will run next (when paused).
+    /// Line of the instruction the CPU will run next.
     pub pc_line: Option<u32>,
+    /// The program is running: the text cannot be edited.
+    pub read_only: bool,
     /// Errors and warnings: (line, is_error, message).
     pub diagnostics: &'a [(u32, bool, String)],
     /// Lines holding an instruction in the last build (`None` = no build).
     pub code_lines: Option<&'a BTreeSet<u32>>,
+    /// Text of the find bar, whose matches are highlighted.
+    pub search: Option<(&'a str, Options)>,
+    /// The find bar's current match (else the selection, if it is a match).
+    pub current_match: Option<std::ops::Range<usize>>,
     pub font_size: f32,
 }
 
@@ -34,6 +42,12 @@ pub struct EditorResponse {
 
 const MARKER_WIDTH: f32 = 16.0;
 
+/// Id of the text widget of the editor of `path` (its state holds the
+/// cursor and the undo history).
+pub fn editor_id(path: &Path) -> Id {
+    Id::new(("editor", path))
+}
+
 pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> EditorResponse {
     let mut result = EditorResponse::default();
     let font = FontId::monospace(marks.font_size);
@@ -42,12 +56,15 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
     let line_total = crate::document::line_count(&doc.text);
     let digits = line_total.to_string().len().max(3) as f32;
     let gutter_width = (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0);
-    let editor_id = Id::new(("editor", &doc.path));
+    let editor_id = editor_id(&doc.path);
 
     let Document {
         text,
         layout_cache,
         scroll_to,
+        scroll_gently,
+        select,
+        focus,
         ..
     } = doc;
 
@@ -82,7 +99,15 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .max(1.0) as usize;
             let focused = ui.memory(|m| m.has_focus(editor_id));
             let before = focused.then(|| text.clone());
-            let mut output = TextEdit::multiline(text)
+            // A `&str` buffer can be selected and copied, not edited.
+            let mut shown: &str;
+            let buffer: &mut dyn egui::TextBuffer = if marks.read_only {
+                shown = text.as_str();
+                &mut shown
+            } else {
+                text
+            };
+            let mut output = TextEdit::multiline(buffer)
                 .id(editor_id)
                 .font(font.clone())
                 .code_editor()
@@ -98,6 +123,12 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .layouter(&mut layouter)
                 .show(ui);
 
+            if std::mem::take(focus) {
+                output.response.request_focus();
+            }
+            if output.response.dragged() {
+                drag_scroll(ui);
+            }
             if output.response.changed() {
                 result.changed = true;
                 if let Some(before) = before {
@@ -133,6 +164,35 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if let Some(rect) = marks.pc_line.and_then(row_rect) {
                 shapes.push(Shape::rect_filled(rect, 0.0, pc_color(dark)));
+            }
+            // Find matches; the selected one stands out.
+            if let Some((query, options)) = marks.search {
+                let selected = marks.current_match.clone().or_else(|| {
+                    output
+                        .state
+                        .cursor
+                        .char_range()
+                        .map(|r| r.as_sorted_char_range())
+                        .map(|r| r.start.0..r.end.0)
+                });
+                let clip = ui.clip_rect();
+                for m in find::find_all(text, query, options) {
+                    let rect = text_rect(&output.galley, output.galley_pos, &m);
+                    if !clip.intersects(rect) {
+                        continue;
+                    }
+                    let current = selected.as_ref() == Some(&m);
+                    let (fill, stroke) = match_colors(dark, current);
+                    shapes.push(Shape::rect_filled(rect, 2.0, fill));
+                    if current {
+                        shapes.push(Shape::rect_stroke(
+                            rect,
+                            2.0,
+                            Stroke::new(1.0, stroke),
+                            egui::StrokeKind::Outside,
+                        ));
+                    }
+                }
             }
             ui.painter().set(background, Shape::Vec(shapes));
 
@@ -218,23 +278,99 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 }
             }
 
-            // Go to a line: scroll there and put the cursor at its start.
+            // Go to a line: scroll there and put the cursor at its start. Only
+            // the start of the row is brought into view, so a long line does
+            // not scroll the view to the right.
             if let Some(line) = scroll_to.take()
                 && let Some(rect) = row_rect(line)
             {
-                ui.scroll_to_rect(
-                    rect.expand2(vec2(0.0, rect.height() * 2.0)),
-                    Some(Align::Center),
-                );
+                let rect = rect.with_max_x(rect.min.x + 1.0);
+                let align = (!std::mem::take(scroll_gently)).then_some(Align::Center);
+                ui.scroll_to_rect(rect.expand2(vec2(0.0, rect.height() * 2.0)), align);
                 let index = char_index_of_line(text, line);
                 output
                     .state
                     .cursor
                     .set_char_range(Some(CCursorRange::one(CCursor::new(index))));
-                output.state.store(ui.ctx(), editor_id);
+                output.state.clone().store(ui.ctx(), editor_id);
+            }
+
+            // Select some text (a find match, an undone edit) and scroll to it.
+            if let Some(range) = select.take() {
+                let rect = text_rect(&output.galley, output.galley_pos, &range);
+                ui.scroll_to_rect(rect.expand2(vec2(48.0, rect.height() * 2.0)), None);
+                let selected = output.state.cursor.char_range().map(|r| {
+                    let r = r.as_sorted_char_range();
+                    r.start.0..r.end.0
+                });
+                if selected != Some(range.clone()) {
+                    output.state.cursor.set_char_range(Some(CCursorRange::two(
+                        CCursor::new(range.start),
+                        CCursor::new(range.end),
+                    )));
+                    output.state.clone().store(ui.ctx(), editor_id);
+                }
             }
         });
     result
+}
+
+/// While text is selected with the mouse, a pointer past an edge of the
+/// view scrolls toward it, faster the further it is. Called in the scroll
+/// area, during the drag.
+fn drag_scroll(ui: &egui::Ui) {
+    let Some(pointer) = ui.ctx().pointer_latest_pos() else {
+        return;
+    };
+    let view = ui.clip_rect();
+    let past = |p: f32, low: f32, high: f32| {
+        if p < low {
+            p - low
+        } else if p > high {
+            p - high
+        } else {
+            0.0
+        }
+    };
+    let distance = vec2(
+        past(pointer.x, view.left(), view.right()),
+        past(pointer.y, view.top(), view.bottom()),
+    );
+    if distance == egui::Vec2::ZERO {
+        return;
+    }
+    // Points per second: from a slow start at the edge to fast far away.
+    let speed = |d: f32| {
+        if d == 0.0 {
+            0.0
+        } else {
+            d.signum() * (d.abs() * 12.0).clamp(150.0, 6000.0)
+        }
+    };
+    let dt = ui.input(|i| i.stable_dt).min(0.05);
+    // A positive delta moves the content down, which shows what is above.
+    ui.scroll_with_delta(-vec2(speed(distance.x), speed(distance.y)) * dt);
+    ui.ctx().request_repaint(); // keep scrolling while the mouse is still
+}
+
+/// Screen rectangle of some characters of one line.
+fn text_rect(galley: &Galley, origin: egui::Pos2, chars: &std::ops::Range<usize>) -> Rect {
+    let start = galley.pos_from_cursor(CCursor::new(chars.start));
+    let end = galley.pos_from_cursor(CCursor::new(chars.end));
+    Rect::from_min_max(start.min, pos2(end.min.x.max(start.min.x), start.max.y))
+        .translate(origin.to_vec2())
+}
+
+/// (fill, outline) of a find match.
+fn match_colors(dark: bool, current: bool) -> (Color32, Color32) {
+    let alpha = match (dark, current) {
+        (true, false) => 45,
+        (true, true) => 110,
+        (false, false) => 40,
+        (false, true) => 90,
+    };
+    let fill = Color32::from_rgba_unmultiplied(80, 140, 255, alpha);
+    (fill, Color32::from_rgb(80, 140, 255))
 }
 
 /// Screen y range (top, bottom) of each line of the text.
@@ -253,7 +389,7 @@ fn line_rows(galley: &Arc<Galley>, origin: egui::Pos2) -> Vec<(f32, f32)> {
     rows
 }
 
-fn char_index_of_line(text: &str, line: u32) -> usize {
+pub fn char_index_of_line(text: &str, line: u32) -> usize {
     if line <= 1 {
         return 0;
     }

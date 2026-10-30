@@ -8,10 +8,12 @@ use egui_dock::tab_viewer::OnCloseResponse;
 use hbc2_runner::RunState;
 use serde::{Deserialize, Serialize};
 
-use crate::app::{Action, State, TOOL_TABS};
+use crate::app::{Action, State, TOOL_TABS, TabGroup};
+use crate::find::FindMode;
 use crate::views;
 use crate::views::editor::{Marks, editor_ui};
 use crate::views::files::FileAction;
+use crate::views::find::find_bar;
 
 #[derive(Clone, Debug, PartialEq, Eq, Hash, Serialize, Deserialize)]
 pub enum Tab {
@@ -65,9 +67,33 @@ impl egui_dock::TabViewer for Viewer<'_> {
     }
 
     fn on_tab_button(&mut self, tab: &mut Tab, response: &egui::Response) {
-        if let Tab::Editor(path) = tab {
-            response.clone().on_hover_text(path.display().to_string());
-        }
+        let Tab::Editor(path) = tab else { return };
+        response.clone().on_hover_text(path.display().to_string());
+        let actions = &mut self.state.actions;
+        response.context_menu(|ui| {
+            let item = |text: &str, shortcut: &str| {
+                egui::Button::new(text.to_string()).shortcut_text(shortcut.to_string())
+            };
+            let mut clicked = |ui: &mut egui::Ui, button: egui::Button, action: Action| {
+                if ui.add(button).clicked() {
+                    actions.push(action);
+                    ui.close();
+                }
+            };
+            clicked(ui, item("Close this tab", "Ctrl+W"), Action::CloseTab(path.clone()));
+            clicked(
+                ui,
+                item("Close tabs to the right", ""),
+                Action::CloseGroup(TabGroup::ToTheRight(path.clone())),
+            );
+            clicked(ui, item("Close saved files", ""), Action::CloseGroup(TabGroup::Saved));
+            clicked(
+                ui,
+                item("Close other tabs", "Ctrl+W+R"),
+                Action::CloseGroup(TabGroup::Others(Some(path.clone()))),
+            );
+            clicked(ui, item("Close all tabs", "Ctrl+W+K"), Action::CloseGroup(TabGroup::All));
+        });
     }
 
     /// Only editor tabs close; the other tabs are fixed.
@@ -98,12 +124,9 @@ impl egui_dock::TabViewer for Viewer<'_> {
         })
     }
 
-    fn scroll_bars(&self, tab: &Tab) -> [bool; 2] {
-        // These views scroll by themselves.
-        match tab {
-            Tab::Welcome => [true, true],
-            _ => [false, false],
-        }
+    fn scroll_bars(&self, _tab: &Tab) -> [bool; 2] {
+        // Every view scrolls by itself.
+        [false, false]
     }
 
     fn ui(&mut self, ui: &mut egui::Ui, tab: &mut Tab) {
@@ -111,7 +134,16 @@ impl egui_dock::TabViewer for Viewer<'_> {
         let snapshot = state.snapshot.clone();
         let baseline = state.emulator.baseline.clone();
         match tab {
-            Tab::Welcome => crate::chrome::welcome(ui, state),
+            Tab::Welcome => {
+                // "Find in files" also works with no file open.
+                if state.find.mode == Some(FindMode::Files) {
+                    find_bar(ui, state, None);
+                }
+                egui::ScrollArea::both()
+                    .id_salt("welcome")
+                    .auto_shrink(false)
+                    .show(ui, |ui| crate::chrome::welcome(ui, state));
+            }
             Tab::Project => {
                 let docs = &state.docs;
                 let action = views::files::files_ui(
@@ -157,13 +189,19 @@ impl egui_dock::TabViewer for Viewer<'_> {
                 let baseline = baseline
                     .as_deref()
                     .filter(|_| snapshot.state == RunState::Paused);
+                let follow = state.follows_execution();
                 state
                     .memory_view
-                    .ui(ui, &snapshot, baseline, &state.emulator.runner);
+                    .ui(ui, &snapshot, baseline, &state.emulator.runner, follow);
             }
             Tab::Disassembly => {
                 let program = state.emulator.program.clone();
-                if let Some(address) = state.disasm_view.ui(ui, &snapshot, program.as_ref()) {
+                let follow = state.follows_execution();
+                if let Some(address) =
+                    state
+                        .disasm_view
+                        .ui(ui, &snapshot, program.as_ref(), follow)
+                {
                     state.actions.push(Action::ToggleAddressBreakpoint(address));
                 }
             }
@@ -178,6 +216,7 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
         ui.label(format!("{} is not loaded.", path.display()));
         return;
     };
+    find_bar(ui, state, Some(index));
 
     if state.docs[index].conflict {
         ui.horizontal(|ui| {
@@ -221,7 +260,16 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
             } else {
                 None
             },
+            search: (state.find.mode.is_some() && !state.find.query.is_empty())
+                .then_some((state.find.query.as_str(), state.find.options)),
+            current_match: state
+                .find
+                .current
+                .as_ref()
+                .filter(|(p, _)| p == path)
+                .map(|(_, m)| m.clone()),
             font_size: state.settings.editor_font_size,
+            read_only: state.snapshot.state == RunState::Running,
         },
     );
     if response.changed {

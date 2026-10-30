@@ -17,6 +17,11 @@ pub enum Source {
 }
 
 pub struct MemoryView {
+    pub follow_pc: bool,
+    /// PC last followed.
+    followed: Option<(u64, u16)>,
+    /// Rows shown last frame.
+    visible_rows: std::ops::Range<usize>,
     source: Source,
     goto_text: String,
     /// Row to scroll to on the next frame.
@@ -29,6 +34,9 @@ pub struct MemoryView {
 impl Default for MemoryView {
     fn default() -> Self {
         MemoryView {
+            follow_pc: true,
+            followed: None,
+            visible_rows: 0..0,
             source: Source::Ram,
             goto_text: String::new(),
             scroll_to_row: None,
@@ -45,6 +53,7 @@ impl MemoryView {
         s: &Snapshot,
         baseline: Option<&Snapshot>,
         runner: &Runner,
+        follow: bool,
     ) {
         stack_strip(ui, s, baseline);
         let eeprom = s.eeprom.as_ref().map(|e| e.memory());
@@ -52,6 +61,8 @@ impl MemoryView {
             self.source = Source::Ram;
         }
         ui.horizontal(|ui| {
+            ui.checkbox(&mut self.follow_pc, "Follow PC");
+            ui.separator();
             ui.selectable_value(&mut self.source, Source::Ram, "RAM");
             ui.add_enabled_ui(eeprom.is_some(), |ui| {
                 ui.selectable_value(&mut self.source, Source::Eeprom, "EEPROM")
@@ -116,6 +127,16 @@ impl MemoryView {
         let dark = ui.visuals().dark_mode;
         let row_height = ui.text_style_height(&TextStyle::Monospace) + 2.0;
         let rows = memory.len().div_ceil(BYTES_PER_ROW);
+        // Follow the PC: scroll when its row leaves the view.
+        let key = (s.ticks, s.cpu.pc);
+        if self.follow_pc && follow && self.source == Source::Ram && self.followed != Some(key) {
+            self.followed = Some(key);
+            let pc_row = s.cpu.pc as usize / BYTES_PER_ROW;
+            let last_full = self.visible_rows.end.saturating_sub(2);
+            if pc_row < self.visible_rows.start || pc_row > last_full {
+                self.scroll_to_row.get_or_insert(pc_row.saturating_sub(5));
+            }
+        }
         let mut area = egui::ScrollArea::both().auto_shrink(false);
         if let Some(row) = self.scroll_to_row.take() {
             let spacing = ui.spacing().item_spacing.y;
@@ -125,6 +146,7 @@ impl MemoryView {
         let sp = s.cpu.sp as usize;
         let address_digits = if memory.len() > 0x1_0000 { 5 } else { 4 };
         area.show_rows(ui, row_height, rows, |ui, range| {
+            self.visible_rows = range.clone();
             for row in range {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 4.0;

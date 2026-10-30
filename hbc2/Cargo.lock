@@ -1429,6 +1429,7 @@ dependencies = [
  "rfd",
  "ron",
  "serde",
+ "windows-sys 0.61.2",
  "winresource",
 ]
 
