@@ -351,8 +351,10 @@ fn write(
                 };
                 let value = match &op.operand {
                     Operand::Reg(r) => Some(Resolved::Reg(*r)),
-                    Operand::Pair(h, l, offset) => Some(Resolved::Pair(*h, *l, *offset)),
-                    Operand::Stack(offset) => Some(Resolved::Stack(*offset)),
+                    Operand::Pair(h, l, offset) => {
+                        value8(offset, op_loc, report).map(|n| Resolved::Pair(*h, *l, n))
+                    }
+                    Operand::Stack(offset) => value8(offset, op_loc, report).map(Resolved::Stack),
                     Operand::Imm(v) => value8(v, op_loc, report).map(Resolved::Imm),
                     Operand::Wide(n) => Some(Resolved::Wide(*n)),
                     Operand::Mem(Address::Absolute(a)) => address16(*a as i64, op_loc, report),
@@ -377,7 +379,9 @@ fn write(
                 None => {
                     let offset = operands
                         .iter()
-                        .find(|op| matches!(op.operand, Operand::Pair(_, _, n) if n != 0));
+                        .find(|op| {
+                            matches!(&op.operand, Operand::Pair(_, _, n) if *n != Value8::Number(0))
+                        });
                     match offset {
                         Some(op) => report.error(
                             Loc {

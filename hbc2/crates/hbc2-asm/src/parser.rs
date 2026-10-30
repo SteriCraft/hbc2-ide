@@ -26,10 +26,11 @@ pub(crate) enum Address {
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) enum Operand {
     Reg(Register),
-    /// `[x:y]` or `[x:y + n]`: x = most significant byte, n = offset (0-255).
-    Pair(Register, Register, u8),
-    /// `[sp]` or `[sp + n]`: the byte at the stack pointer + n (0-255).
-    Stack(u8),
+    /// `[x:y]` or `[x:y + n]`: x = most significant byte, n = offset (0-255,
+    /// a character, or `name.msb` / `name.lsb`).
+    Pair(Register, Register, Value8),
+    /// `[sp]` or `[sp + n]`: the byte at the stack pointer + n (same offsets).
+    Stack(Value8),
     Imm(Value8),
     /// A number from 256 to 65535 (`asp` / `ssp` only).
     Wide(u16),
@@ -359,22 +360,34 @@ fn operand(c: &mut Cursor, wide: bool) -> ParseResult<Operand> {
     }
 }
 
-/// The end of a bracket operand: `]`, or `+ n]` with n from 0 to 255.
-fn bracket_offset(c: &mut Cursor, example: &str) -> ParseResult<u8> {
+/// The end of a bracket operand: `]`, or `+ n]` with n from 0 to 255, a
+/// character, or `name.msb` / `name.lsb`.
+fn bracket_offset(c: &mut Cursor, example: &str) -> ParseResult<Value8> {
     let offset = match c.peek() {
         Some(Tok::Plus) => {
             c.next();
             let col = c.col();
-            let n = number(c)?;
-            if !(0..=255).contains(&n) {
-                return Err((col, format!("offset {n} is out of range (0 to 255)")));
+            match c.peek() {
+                Some(Tok::Number(_)) => {
+                    let n = number(c)?;
+                    if !(0..=255).contains(&n) {
+                        return Err((col, format!("offset {n} is out of range (0 to 255)")));
+                    }
+                    Value8::Number(n)
+                }
+                Some(Tok::Char(_) | Tok::Ident(_)) => value8(c)?,
+                _ => {
+                    return c.error(format!(
+                        "expected an offset (0 to 255, or name.lsb / name.msb), found {}",
+                        c.found()
+                    ));
+                }
             }
-            n as u8
         }
         Some(Tok::Minus) => {
             return c.error(format!("offsets are added, from 0 to 255: {example}"));
         }
-        _ => 0,
+        _ => Value8::Number(0),
     };
     c.expect(Tok::RBracket, "']'")?;
     Ok(offset)
@@ -620,19 +633,19 @@ mod tests {
         );
         assert_eq!(
             operands("str [x:y], b"),
-            [Operand::Pair(X, Y, 0), Operand::Reg(B)]
+            [Operand::Pair(X, Y, Value8::Number(0)), Operand::Reg(B)]
         );
         assert_eq!(
             operands("lod a, [x:y + 0x10]"),
-            [Operand::Reg(A), Operand::Pair(X, Y, 0x10)]
+            [Operand::Reg(A), Operand::Pair(X, Y, Value8::Number(0x10))]
         );
         assert_eq!(
             operands("add a, [SP + 3]"),
-            [Operand::Reg(A), Operand::Stack(3)]
+            [Operand::Reg(A), Operand::Stack(Value8::Number(3))]
         );
         assert_eq!(
             operands("str [sp], a"),
-            [Operand::Stack(0), Operand::Reg(A)]
+            [Operand::Stack(Value8::Number(0)), Operand::Reg(A)]
         );
         assert_eq!(operands("ssp 300"), [Operand::Wide(300)]);
         assert_eq!(operands("asp 2"), [Operand::Imm(Value8::Number(2))]);

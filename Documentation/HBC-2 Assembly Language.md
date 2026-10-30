@@ -69,7 +69,7 @@ Escape sequences in characters and strings: `\n` `\r` `\t` `\0` `\\` `\'` `\"` `
 |---|---|---|
 | register | `a` | A register. |
 | register pair | `[x:y]` | Two registers forming a 16-bit address or value. The first one is the most significant byte. |
-| register pair + offset | `[x:y + 4]` | The address in the pair plus an offset from 0 to 255 (see [Offsets](#offsets)). |
+| register pair + offset | `[x:y + 4]`, `[x:b + table.lsb]` | The address in the pair plus an offset from 0 to 255 (see [Offsets](#offsets)). |
 | stack slot | `[sp]`, `[sp + 3]` | The byte at the stack pointer plus an offset from 0 to 255 (see [The stack](#the-stack)). |
 | value | `42`, `'A'`, `-1`, `name.msb`, `name.lsb` | An 8-bit value. `name.msb` / `name.lsb` are the high / low byte of the address of a label or variable. |
 | address | `$0x9000`, `name`, `name + 2`, `name - 4` | A 16-bit memory address. A label or variable name stands for its address. |
@@ -107,12 +107,24 @@ The form decides the addressing mode.
 `[x:y + n]` is the address in `[x:y]` plus `n`, from 0 to 255. The CPU adds
 it on 16 bits: `[x:y + 0x20]` with `[x:y]` = `$0x12F0` is `$0x1310`, and
 `$0xFFF0` + `0x20` wraps around to `$0x0010`. The registers are not changed.
-`[x:y]` is the same as `[x:y + 0]`. The offset can be a define:
+`[x:y]` is the same as `[x:y + 0]`. The offset is a number, a character,
+a define, or `name.msb` / `name.lsb`:
 
 ```
 .define AGE 2                 ; field offsets of a record
     lod a, [x:y + AGE]        ; a = the record's age
     inc [x:y + AGE]
+```
+
+`name.lsb` as the offset indexes a table with an 8-bit register: with the
+table's high byte in the first register, `[x:b + table.lsb]` is the
+address of `table + b`, carry into the high byte included.
+
+```
+.data squares 0, 1, 4, 9, 16, 25, 36, 49
+
+    mov x, squares.msb
+    lod a, [x:b + squares.lsb]    ; a = squares[b]
 ```
 
 Offsets are only added: `[x:y - 1]` is an error. Jumps, `rsp` and `wsp`
@@ -276,4 +288,4 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32` |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
-| | added: `[x:y + n]`, `[sp + n]`, `asp`, `ssp`, `rsp`, `wsp` |
+| | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

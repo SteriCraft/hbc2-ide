@@ -152,6 +152,55 @@ _start:
 }
 
 #[test]
+fn offsets_can_be_label_bytes_and_characters() {
+    let p = asm(".define FIELD 2
+.data table $0x12F0 1, 2, 3
+_start:
+    lod a, [x:y + table.lsb]
+    str [x:b + table.msb], c
+    add d, [sp + table.lsb]
+    inc [i:j + 'A']
+    lod a, [x:y + FIELD]
+");
+    let expected = [
+        encode::ramreg_offset(O::Lod, X, Y, A, 0xF0),
+        encode::ramreg_offset(O::Str, X, B, C, 0x12),
+        encode::stack_offset(O::Add, D, 0xF0),
+        encode::ramreg_offset(O::Inc, I, J, A, b'A'),
+        encode::ramreg_offset(O::Lod, X, Y, A, 2),
+    ];
+    for (n, e) in expected.iter().enumerate() {
+        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
+    }
+
+    // Indexing a table: [x:b + table.lsb] with x = table.msb is table + b,
+    // the carry into the high byte included.
+    let p = asm(".data table $0x12F0 0
+_start:
+    mov x, table.msb
+    mov b, 0x15
+    mov a, 0x5A
+    str [x:b + table.lsb], a
+    hlt
+");
+    let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.run(100);
+    assert_eq!(m.board.ram.read(0x1305), 0x5A);
+
+    assert!(errors("_start:
+    lod a, [x:y + nowhere.lsb]
+")[0].contains("unknown label"));
+    assert!(errors("_start:
+    lod a, [x:y + -1]
+")[0].contains("expected an offset"));
+    assert!(errors("_start:
+    jmp [x:y + next.lsb]
+next:
+    nop
+")[0].contains("no offset"));
+}
+
+#[test]
 fn a_function_with_arguments_and_locals_runs() {
     // sum3(a, b, c) on the stack, result in a; one local; restores b.
     let p = asm("
