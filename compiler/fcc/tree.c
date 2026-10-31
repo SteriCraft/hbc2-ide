@@ -128,6 +128,9 @@ struct node *make_symbol(register struct symbol *s)
 	}
 	n->snum = s->name;
 	n->flags = LVAL;
+	/* HBC-2: the backend sees every use of a volatile variable */
+	if (is_volatile(s->name))
+		n->flags |= SIDEEFFECT;
 	n->type = s->type;
 	/* Rewrite implicit pointer forms */
 #if 0

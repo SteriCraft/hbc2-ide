@@ -21,6 +21,10 @@ through `../msvc/compat.h`, a forced include):
   lines keep what follows the last `\` as well as the last `/` (Windows
   paths), and cc1 now reads the end marker of a 32-character name (it used
   to lose its place in the token stream: "useless declaration" errors).
+* `tree.c` (`make_symbol` node): the node of a volatile variable (global
+  or static: the ones `add_volatile` records) gets `SIDEEFFECT`, so the
+  HBC-2 backend sees every use (reads, stores, `++`, `+=`) and lists the
+  volatile names for the driver's reload removal.
 * Source lines for the debugger (`;#line n` lines in the HBC-2 output):
   * `frontend.c` (cc0): the name of the C file goes out with the first `cpp`
     line (`write_line`, split out of `write_token`), even when a header

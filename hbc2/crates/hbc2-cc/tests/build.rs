@@ -301,3 +301,37 @@ fn undefined_in_unused_function() {
     .unwrap_err();
     assert!(e.contains("not defined: 'g'"), "{e}");
 }
+
+/// Compiles one C file and returns the assembly.
+fn compiled(test: &str, source: &str) -> String {
+    let dir = std::env::temp_dir().join("hbc2-cc-build").join(test);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("main.c");
+    std::fs::write(&path, source).unwrap();
+    let out = dir.join("main.has");
+    hbc2_cc::compile(&path, &out, 1).unwrap_or_else(|e| panic!("{}", report(&e)));
+    std::fs::read_to_string(out).unwrap()
+}
+
+/// A volatile variable is loaded again each time (the reload removal
+/// leaves it alone); a plain one is not.
+#[test]
+fn volatile_reloads() {
+    let count = |asm: &str, name: &str| {
+        asm.lines()
+            .filter(|l| l.trim_start().starts_with("lod ") && l.contains(name))
+            .count()
+    };
+    let code = "int f(void) { int a; int b; v = 1; a = v; b = v; return a + b; }\n";
+    let plain = compiled("plain", &format!("int v;\n{code}"));
+    let vol = compiled("volatile", &format!("volatile int v;\n{code}"));
+    assert_eq!(count(&plain, "_v"), 0, "{plain}");
+    assert_eq!(count(&vol, "_v"), 4, "{vol}");
+    assert!(vol.contains(";volatile _v"), "{vol}");
+    // static volatile (renamed after the pass)
+    let st = compiled(
+        "static_volatile",
+        &format!("static volatile int v;\n{code}"),
+    );
+    assert_eq!(count(&st, "_v"), 4, "{st}");
+}

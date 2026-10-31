@@ -261,12 +261,90 @@ struct node *gen_rewrite(struct node *n)
 	return n;
 }
 
+/*
+ *	Volatile memory: the driver removes loads of values the registers
+ *	already hold, except for these. Listed at the end of the file as
+ *	";volatile _name" (a global or static, every byte), ";volatile stack"
+ *	(locals: any stack slot), ";volatile pointer" (anything through a
+ *	pointer) and ";volatile *" (everything: too many names).
+ */
+#define MAX_VOLATILE	32
+static char volatile_names[MAX_VOLATILE][48];
+static unsigned volatile_count;
+static unsigned volatile_stack, volatile_pointer, volatile_all;
+
+static void add_volatile_name(const char *name)
+{
+	unsigned i;
+	for (i = 0; i < volatile_count; i++)
+		if (strcmp(volatile_names[i], name) == 0)
+			return;
+	if (volatile_count == MAX_VOLATILE) {
+		volatile_all = 1;	/* too many: no removal in this file */
+		return;
+	}
+	snprintf(volatile_names[volatile_count++], 48, "%s", name);
+}
+
+/* cc1 flags the node of a volatile variable, and (once the function or
+   the file has used "volatile") every dereference that might be one */
+static void note_volatile(struct node *n)
+{
+	char buf[48];
+	if (n == NULL || !(n->flags & SIDEEFFECT))
+		return;
+	switch (n->op) {
+	case T_NAME:
+		snprintf(buf, sizeof(buf), "_%s", namestr(n->snum));
+		add_volatile_name(buf);
+		return;
+	case T_LABEL:
+		snprintf(buf, sizeof(buf), "__T%u_%u", unit, n->val2);
+		add_volatile_name(buf);
+		return;
+	case T_LOCAL:
+	case T_ARGUMENT:
+		volatile_stack = 1;
+		return;
+	case T_DEREF:
+		switch (n->right->op) {
+		case T_NAME:
+		case T_LABEL:
+			return;		/* the name node says */
+		case T_LOCAL:
+		case T_ARGUMENT:
+			volatile_stack = 1;
+			return;
+		}
+		volatile_pointer = 1;
+		return;
+	}
+}
+
+static void print_volatiles(void)
+{
+	unsigned i;
+	for (i = 0; i < volatile_count; i++)
+		printf(";volatile %s\n", volatile_names[i]);
+	if (volatile_stack)
+		puts(";volatile stack");
+	if (volatile_pointer)
+		puts(";volatile pointer");
+	if (volatile_all)
+		puts(";volatile *");
+}
+
 struct node *gen_rewrite_node(struct node *n)
 {
 	struct node *r = n->right;
 	struct node *l = n->left;
 	unsigned op = n->op;
 	unsigned nt = n->type;
+
+	note_volatile(l);
+	note_volatile(r);
+	if (op == T_DEREF)
+		note_volatile(n);
 
 	/* Casts that change nothing: same size and sign change, pointers.
 	   The node below takes the new type, so not when its code depends
@@ -679,6 +757,7 @@ void gen_start(void)
 void gen_end(void)
 {
 	flush_all();
+	print_volatiles();
 }
 
 void gen_tree(struct node *n)

@@ -3,8 +3,9 @@
 //! The compiler is the Fuzix Compiler Kit with an HBC-2 backend, built by
 //! `compiler/build.cmd` into `compiler/bin`. [`compile`] runs its stages on
 //! one C file (cpp, cc0, cc1, cc2, then copt with the peephole rules of
-//! `compiler/fcc/rules.hbc2`), gives its `static` names their own prefix and
-//! writes the assembly. [`build_program`] compiles the files of a program
+//! `compiler/fcc/rules.hbc2`), removes loads of values the registers already
+//! hold (`reloads.rs`), gives its `static` names their own prefix and writes
+//! the assembly. [`build_program`] compiles the files of a program
 //! and assembles them with `compiler/runtime/crt0.has`,
 //! `compiler/runtime/runtime.has` and the C library (see `compiler/ABI.md`).
 //! The library is `compiler/lib`: headers in `include` (always on the
@@ -17,6 +18,7 @@
 
 mod lines;
 mod messages;
+mod reloads;
 
 use std::collections::HashSet;
 use std::fs::{self, File, OpenOptions};
@@ -445,6 +447,8 @@ pub fn compile(
             }
         }
         let asm = fs::read_to_string(output).map_err(|e| format!("{}: {e}", output.display()))?;
+        // before the renaming: the volatile names are the C ones
+        let asm = reloads::remove_reloads(&asm);
         fs::write(output, rename_statics(&asm, unit))
             .map_err(|e| format!("{}: {e}", output.display()))?;
         Ok(true)
