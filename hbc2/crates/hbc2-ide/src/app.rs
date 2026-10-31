@@ -14,6 +14,8 @@ use std::time::Instant;
 
 use eframe::egui;
 use egui_dock::{DockState, Node, NodeIndex, TabIndex};
+
+use crate::editor_groups::{self, Drop};
 use hbc2_asm::source::normalize;
 use hbc2_asm::{Diagnostic, Program, Severity, SourceProvider, Target};
 use hbc2_runner::{RunState, Snapshot, Speed};
@@ -70,6 +72,10 @@ pub enum Action {
     /// Closes several editor tabs, asking about unsaved changes once.
     CloseTabs(Vec<PathBuf>),
     CloseGroup(TabGroup),
+    /// Moves a file tab (dragged and dropped).
+    MoveTab(PathBuf, Drop),
+    /// Opens a file tab in a new group right of its own.
+    SplitRight(PathBuf),
     /// Undoes or redoes the last edit in the editor tab.
     Undo,
     Redo,
@@ -209,8 +215,12 @@ pub struct State {
     pub memory_view: MemoryView,
     pub disasm_view: DisasmView,
     pub find: Find,
-    /// The file of the editor tab shown in the editor group, if any.
+    /// The file of the editor tab shown in the editor group last used, if any.
     pub active_editor: Option<PathBuf>,
+    /// The file tab being dragged.
+    pub tab_drag: Option<PathBuf>,
+    /// The file tabs as drawn this frame, for dropping a dragged tab.
+    pub tab_rects: Vec<(Tab, egui::Rect)>,
     /// (cycles, PC) the editor last jumped to.
     followed: Option<(u64, u16)>,
     /// Last breakpoint stop written to the console.
@@ -231,6 +241,9 @@ pub struct Ide {
     /// While the right-hand group is hidden: its split fraction and open
     /// tab, to put it back as it was.
     tools_stash: Option<(f32, TabIndex)>,
+    /// The file last shown in a focused editor group: [`Ide::active_editor`]
+    /// is the tab shown in its group.
+    last_editor: Option<PathBuf>,
 }
 
 /// Open editor buffers first, files on disk otherwise: assembling uses
@@ -351,6 +364,7 @@ impl Ide {
             dock,
             close_chord: None,
             tools_stash: None,
+            last_editor: None,
             state: State {
                 settings,
                 project: None,
@@ -371,6 +385,8 @@ impl Ide {
                 disasm_view: DisasmView::default(),
                 find: Find::default(),
                 active_editor: None,
+                tab_drag: None,
+                tab_rects: Vec::new(),
                 followed: None,
                 reported_stop: None,
                 last_disk_check: 0.0,
@@ -399,12 +415,18 @@ impl Ide {
             settings: self.state.settings.clone(),
             splits: match self.tools_stash {
                 // Saved as if shown, so that the layout fits on the next start.
+                // The editor groups are saved as one.
                 Some(stash) => {
                     let mut dock = self.dock.clone();
+                    editor_groups::merge_groups(&mut dock);
                     show_tools(&mut dock, stash);
                     split_fractions(&dock)
                 }
-                None => split_fractions(&self.dock),
+                None => {
+                    let mut dock = self.dock.clone();
+                    editor_groups::merge_groups(&mut dock);
+                    split_fractions(&dock)
+                }
             },
         }
     }
@@ -444,6 +466,9 @@ impl Ide {
         self.watch_emulator();
         self.check_disk(&ctx);
         self.handle_close_request(&ctx);
+        if let Some(path) = self.current_editor() {
+            self.last_editor = Some(path);
+        }
         self.state.active_editor = self.active_editor();
 
         crate::chrome::menu_bar(ui, &mut self.state);
@@ -482,12 +507,24 @@ impl Ide {
                 // the hide button at the right of its tab bar.
                 let tools_width =
                     tools_rect(&self.dock).map_or(0.0, |rect| (rect.width() - bar).max(0.0));
+                // File tabs alone in their group cannot be split from it.
+                let alone = self
+                    .dock
+                    .iter_leaves()
+                    .filter_map(|(_, leaf)| match leaf.tabs() {
+                        [Tab::Editor(path)] => Some(path.clone()),
+                        _ => None,
+                    })
+                    .collect();
+                self.state.tab_rects.clear();
                 let mut viewer = crate::tabs::Viewer {
                     state: &mut self.state,
                     tools_width,
+                    alone,
                 };
-                // Tabs cannot be moved, and only editor tabs can be closed;
-                // the separators still resize the groups.
+                // egui_dock's own dragging is off: it would move every tab
+                // anywhere. File tabs are dragged by `drag_tab` instead. Only
+                // editor tabs can be closed; the separators resize the groups.
                 egui_dock::DockArea::new(&mut self.dock)
                     .style(dock_style)
                     .draggable_tabs(false)
@@ -506,6 +543,7 @@ impl Ide {
                 }
             });
         self.hide_fixed_separator_cursor(&ctx);
+        self.drag_tab(&ctx);
         crate::chrome::dialogs(&ctx, &mut self.state);
         self.monitor_window(&ctx);
 
@@ -702,6 +740,49 @@ impl Ide {
                 split.fraction = ((total - need) / total).clamp(0.05, 0.95);
             }
         }
+    }
+
+    /// A file tab being dragged: shows where it would go, and moves it there
+    /// when the mouse button is released. Escape cancels.
+    fn drag_tab(&mut self, ctx: &egui::Context) {
+        let Some(path) = self.state.tab_drag.clone() else {
+            return;
+        };
+        if ctx.input(|i| i.key_pressed(egui::Key::Escape)) {
+            self.state.tab_drag = None;
+            return;
+        }
+        let tab = Tab::Editor(path.clone());
+        let Some(pointer) = ctx.pointer_latest_pos() else {
+            return;
+        };
+        let target = editor_groups::drop_target(&self.dock, &tab, &self.state.tab_rects, pointer);
+        if !ctx.input(|i| i.pointer.primary_down()) {
+            self.state.tab_drag = None;
+            if let Some((drop, _)) = target {
+                self.state.actions.push(Action::MoveTab(path, drop));
+            }
+            return;
+        }
+
+        ctx.set_cursor_icon(egui::CursorIcon::Grabbing);
+        let layer = egui::LayerId::new(egui::Order::Tooltip, egui::Id::new("tab_drag"));
+        let painter = ctx.layer_painter(layer);
+        let accent = ctx.global_style().visuals.selection.bg_fill;
+        if let Some((_, rect)) = target {
+            painter.rect_filled(rect, 0.0, accent.gamma_multiply(0.35));
+        }
+        // The file name follows the pointer.
+        let name = path.file_name().unwrap_or_default().to_string_lossy();
+        let font = egui::TextStyle::Button.resolve(&ctx.global_style());
+        let text_color = ctx.global_style().visuals.strong_text_color();
+        let galley = painter.layout_no_wrap(name.to_string(), font, text_color);
+        let at = pointer + egui::vec2(12.0, 8.0);
+        let label = egui::Rect::from_min_size(at, galley.size()).expand2(egui::vec2(6.0, 3.0));
+        painter.rect_filled(label, 2.0, ctx.global_style().visuals.window_fill);
+        painter.rect_stroke(label, 2.0, (1.0, accent), egui::StrokeKind::Inside);
+        painter.galley(at, galley, text_color);
+        ctx.request_repaint();
     }
 
     /// The separator left of the right-hand group cannot be dragged: no
@@ -912,6 +993,17 @@ impl Ide {
                 let paths = self.tab_group(group);
                 if !paths.is_empty() {
                     self.state.actions.push(Action::CloseTabs(paths));
+                }
+            }
+            Action::MoveTab(path, drop) => {
+                editor_groups::move_tab(&mut self.dock, &Tab::Editor(path.clone()), drop);
+                self.last_editor = Some(path);
+            }
+            Action::SplitRight(path) => {
+                let tab = Tab::Editor(path.clone());
+                if let Some(anchor) = editor_groups::split_anchor(&self.dock, &tab) {
+                    editor_groups::move_tab(&mut self.dock, &tab, Drop::SplitRight(anchor));
+                    self.last_editor = Some(path);
                 }
             }
             Action::CloseCurrentTab => {
@@ -1148,22 +1240,10 @@ impl Ide {
         self.remove_editor_tabs(|_| true);
     }
 
-    /// Removes the editor tabs whose path matches. The start page takes the
-    /// place of the last one, so the editor group never goes away.
+    /// Removes the editor tabs whose path matches (see
+    /// [`crate::editor_groups::remove_editor_tabs`]).
     fn remove_editor_tabs(&mut self, remove: impl Fn(&Path) -> bool) {
-        let editor = |t: &Tab| matches!(t, Tab::Editor(p) if remove(p));
-        let kept = self
-            .dock
-            .iter_all_tabs()
-            .any(|(_, t)| matches!(t, Tab::Editor(_)) && !editor(t));
-        if !kept
-            && self.dock.find_tab(&Tab::Welcome).is_none()
-            && let Some(path) = self.dock.find_tab_from(|t| matches!(t, Tab::Editor(_)))
-            && let Ok(leaf) = self.dock.leaf_mut(path.node_path())
-        {
-            leaf.append_tab(Tab::Welcome);
-        }
-        self.dock.retain_tabs(|t| !editor(t));
+        editor_groups::remove_editor_tabs(&mut self.dock, remove);
     }
 
     /// Moves a file or folder into `dir`, on disk and in the open editors
@@ -1260,12 +1340,12 @@ impl Ide {
         }
     }
 
-    /// Puts a new editor tab next to the other editors, or in place of the
-    /// start page.
+    /// Puts a new editor tab in the editor group last used, or in place of
+    /// the start page.
     fn add_editor_tab(&mut self, tab: Tab) {
         let near = self
-            .dock
-            .find_tab_from(|t| matches!(t, Tab::Editor(_)))
+            .active_editor()
+            .and_then(|path| self.dock.find_tab(&Tab::Editor(path)))
             .or_else(|| self.dock.find_tab(&Tab::Welcome));
         match near.and_then(|path| self.dock.leaf_mut(path.node_path()).ok()) {
             Some(leaf) => leaf.append_tab(tab.clone()),
@@ -1281,9 +1361,14 @@ impl Ide {
         }
     }
 
-    /// Path of the editor tab shown in the editor group, focused or not.
+    /// Path of the editor tab shown in the editor group last used, focused
+    /// or not (the first group if that one is gone).
     fn active_editor(&self) -> Option<PathBuf> {
-        let path = self.dock.find_tab_from(|t| matches!(t, Tab::Editor(_)))?;
+        let path = self
+            .last_editor
+            .as_ref()
+            .and_then(|path| self.dock.find_tab(&Tab::Editor(path.clone())))
+            .or_else(|| self.dock.find_tab_from(|t| matches!(t, Tab::Editor(_))))?;
         let leaf = self.dock.leaf(path.node_path()).ok()?;
         match leaf.tabs.get(leaf.active.0) {
             Some(Tab::Editor(path)) => Some(path.clone()),
@@ -1302,10 +1387,21 @@ impl Ide {
             })
             .collect();
         match group {
-            TabGroup::ToTheRight(path) => match editors.iter().position(|p| *p == path) {
-                Some(i) => editors[i + 1..].to_vec(),
-                None => Vec::new(),
-            },
+            TabGroup::ToTheRight(path) => {
+                let Some(at) = self.dock.find_tab(&Tab::Editor(path)) else {
+                    return Vec::new();
+                };
+                let Ok(leaf) = self.dock.leaf(at.node_path()) else {
+                    return Vec::new();
+                };
+                leaf.tabs()[at.tab.0 + 1..]
+                    .iter()
+                    .filter_map(|t| match t {
+                        Tab::Editor(path) => Some(path.clone()),
+                        _ => None,
+                    })
+                    .collect()
+            }
             TabGroup::Saved => editors
                 .into_iter()
                 .filter(|p| !self.state.docs.iter().any(|d| &d.path == p && d.is_dirty()))

@@ -10,6 +10,7 @@ mod chrome;
 pub mod console;
 pub mod document;
 pub mod editing;
+pub mod editor_groups;
 pub mod emulator;
 pub mod find;
 pub mod font;

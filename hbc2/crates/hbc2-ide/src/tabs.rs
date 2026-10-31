@@ -45,6 +45,8 @@ pub struct Viewer<'a> {
     pub state: &'a mut State,
     /// Width of the right-hand group, shared equally by its tabs.
     pub tools_width: f32,
+    /// File tabs alone in their group ("Split right" is off for them).
+    pub alone: Vec<PathBuf>,
 }
 
 impl egui_dock::TabViewer for Viewer<'_> {
@@ -67,13 +69,28 @@ impl egui_dock::TabViewer for Viewer<'_> {
     }
 
     fn on_tab_button(&mut self, tab: &mut Tab, response: &egui::Response) {
+        if !matches!(tab, Tab::Editor(_)) {
+            return;
+        }
+        self.state.tab_rects.push((tab.clone(), response.rect));
         let Tab::Editor(path) = tab else { return };
-        response.clone().on_hover_text(path.display().to_string());
+        if response.drag_started_by(egui::PointerButton::Primary) {
+            self.state.tab_drag = Some(path.clone());
+        }
+        if self.state.tab_drag.is_none() {
+            response.clone().on_hover_text(path.display().to_string());
+        }
+        let alone = self.alone.contains(path);
         let actions = &mut self.state.actions;
         response.context_menu(|ui| {
             let item = |text: &str, shortcut: &str| {
                 egui::Button::new(text.to_string()).shortcut_text(shortcut.to_string())
             };
+            if ui.add_enabled(!alone, item("Split right", "")).clicked() {
+                actions.push(Action::SplitRight(path.clone()));
+                ui.close();
+            }
+            ui.separator();
             let mut clicked = |ui: &mut egui::Ui, button: egui::Button, action: Action| {
                 if ui.add(button).clicked() {
                     actions.push(action);
