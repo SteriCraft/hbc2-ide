@@ -190,10 +190,23 @@ _term_clear:
 lib_term_clear_end:
     ret
 
-; void term_set_colors(unsigned char colors)
+; void term_set_colors(unsigned char colors, unsigned char fill)
 _term_set_colors:
-    lod a, [sp + 2]
+    lod a, [sp + 2]             ; a = colors
+    lod b, [sp + 3]             ; b = fill
     str term_color, a
+    cmp b, 0
+    jme term_set_colors_end     ; fill = 0: only the next characters
+    mov b, a
+    and a, 0x0F                 ; a = text color (low nibble)
+    cal screen_set_txt
+    mov a, b
+    shr a                       ; a = background (high nibble)
+    shr a
+    shr a
+    shr a
+    cal screen_set_bg
+term_set_colors_end:
     ret
 
 ; void term_prompt(void)

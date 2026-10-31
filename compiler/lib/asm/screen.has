@@ -401,3 +401,52 @@ screen_set_bg_none:
 screen_set_bg_err:
     stc
     ret
+
+
+; ------------------------------------------------------------
+; screen_set_txt: sets the text color of every cell to a (0..15)
+; ------------------------------------------------------------
+; Background colors are kept.
+; C = 1 and nothing changes when a > 15 or there is no monitor.
+
+screen_set_txt:
+    cmp a, 0x0F
+    jms screen_set_txt_err   ; not a color
+    psh a, b, c, d, i, j, x, y
+    lod d, _monitor_port      ; d = DATA_0 port
+    cmp d, 0
+    jme screen_set_txt_none  ; no monitor
+    mov i, d
+    add i, 2                ; i = POS_X port
+    mov c, i
+    inc c                   ; c = POS_Y port
+    mov j, c
+    inc j                   ; j = CMD port
+    mov y, 0
+screen_set_txt_row:
+    out c, y                ; POS_Y = row
+    mov x, 0
+screen_set_txt_cell:
+    out i, x                ; POS_X = column
+    mov b, SCREEN_CMD_READ
+    out j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
+    in b, d
+    and b, 0xF0             ; keep the background color
+    or b, a                 ; new text color
+    out d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    mov b, SCREEN_CMD_WRITE
+    out j, b                ; CMD = WRITE
+    inc x
+    cmp x, SCREEN_COLUMNS
+    jmf screen_set_txt_cell  ; x < 42: same row
+    inc y
+    cmp y, SCREEN_ROWS
+    jmf screen_set_txt_row   ; y < 24: next row
+    pop a, b, c, d, i, j, x, y
+    clc
+    ret
+screen_set_txt_none:
+    pop a, b, c, d, i, j, x, y
+screen_set_txt_err:
+    stc
+    ret

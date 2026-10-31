@@ -98,14 +98,18 @@ int screen_fill(unsigned char color);           /* 0, or 1 */
    on the last row. The first output switches the monitor to text mode
    and clears the screen. */
 
-void term_clear(void);              /* clears the screen, cursor at the top left */
-void term_set_colors(unsigned char colors);     /* for the text printed next */
-void term_prompt(void);             /* '>' at the start of the row, cursor after it */
+void term_clear(void);              // clears the screen, cursor at the top left
+
+/* If fill = 0, colors affect only the following characters.
+   If fill = 1, the whole screen is updating (no data loss). */
+void term_set_colors(unsigned char colors, unsigned char fill);
+void term_prompt(void);             // '>' at the start of the row, cursor after it
+
 /* Reads a line typed on the keyboard until Enter (Backspace erases):
    the text, 0-terminated, at most 127 characters, kept until the next
    call. Waits for a keyboard. */
 char *term_readline(void);
-void term_update(void);             /* cursor blink and keys; called by term_readline */
+void term_update(void);             // cursor blink and keys; called by term_readline
 
 
 /* --- Real-time clock -------------------------------------------------- */
