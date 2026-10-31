@@ -135,6 +135,13 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if output.response.dragged() {
                 drag_scroll(ui);
+                // egui's scroll area ignores the wheel during a drag: scroll
+                // here, the selection follows the pointer over the text.
+                let wheel = ui.input(|i| i.smooth_scroll_delta());
+                if wheel != egui::Vec2::ZERO {
+                    ui.scroll_with_delta(wheel);
+                    ui.input_mut(|i| i.smooth_scroll_delta = egui::Vec2::ZERO);
+                }
             }
             // The status bar, drawn before the editor, shows the cursor
             // position: one more frame when the cursor moves.
