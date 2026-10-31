@@ -18,7 +18,6 @@ use crate::{font, keymap};
 /// Text mode is 252 pixels wide, pixel mode 256.
 const TEXT_WIDTH: usize = TEXT_COLUMNS * CHAR_WIDTH;
 
-#[derive(Default)]
 pub struct MonitorView {
     texture: Option<TextureHandle>,
     /// The monitor state the texture shows.
@@ -28,6 +27,18 @@ pub struct MonitorView {
     /// Shift is held on the HBC-2 keyboard because the host's Caps Lock is on.
     caps_shift: bool,
     pub integer_scale: bool,
+}
+
+impl Default for MonitorView {
+    fn default() -> Self {
+        Self {
+            texture: None,
+            shown: None,
+            held: HashMap::new(),
+            caps_shift: false,
+            integer_scale: true,
+        }
+    }
 }
 
 pub fn color(index: u8) -> Color32 {
