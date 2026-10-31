@@ -360,7 +360,14 @@ into registers. The right operand is in the working register.
 * The helpers are written for this convention (they don't keep registers,
   unlike the math library), in `compiler/runtime`: `compare.has`,
   `long.has`, `mul.has`, `div.has`, `shift.has`, `assign.has`,
-  `switch.has`, all included by `runtime.has` (about 3.9 KB).
+  `switch.has`, all included by `runtime.has` (about 6.5 KB; a program
+  carries only the helpers it uses).
+* `mul.has`, `div.has` and `shift.has` use the methods of the math
+  library (8 steps of a byte written out, whole bytes moved first) and
+  compute only the bits C keeps: the low half of a product, a remainder as
+  wide as the divisor. Cycles: `__mul` 46-91, `__divu` 68-120, `__mull`
+  85-253, `__divul` 109-251 (2 to 7 times faster than the first versions,
+  2026-10-31).
 
 `switch` jumps to `__switch<type>` with the value in the working register and
 `[x:y]` = the address of the table: the number of cases (2 bytes), then for

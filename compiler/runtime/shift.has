@@ -2,8 +2,9 @@
 ; and the high bytes of a long count are ignored). A count of the size of
 ; the value or more gives 0, or -1 / 0 for a negative signed value.
 ;
+; Whole bytes first (a byte move each), then the bits that are left.
 ; There is no rotate through carry: for a right shift, each lower byte gets
-; the bit leaving the byte above it with a jump on C.
+; the bit leaving the byte above it with a jump on C (shr keeps C).
 
 ; ----- 16 bits: value in [c:d], count in [a:b], result in [a:b]
 
@@ -14,12 +15,25 @@ __shl:
 __shl_count:
     cmp b, 15
     jms __shift_zero
-__shl_bit:
+    cmp b, 8
+    jmf __shl_bits
+    mov c, d                    ; 8 bits: a byte move
+    mov d, 0
+    sub b, 8
+    jmz __shift_done
+__shl_high:                     ; only c is left to shift
+    shl c
+    dec b
+    jmz __shift_done
+    jmp __shl_high
+__shl_bits:
     or b, 0
     jmz __shift_done
+__shl_bit:
     shl d
     adc c, c
     dec b
+    jmz __shift_done
     jmp __shl_bit
 __shift_done:
     mov a, c
@@ -37,20 +51,32 @@ __shru:                         ; logical
 __shru_count:
     cmp b, 15
     jms __shift_zero
-__shru_bit:
+    cmp b, 8
+    jmf __shru_bits
+    mov d, c                    ; 8 bits: a byte move
+    mov c, 0
+    sub b, 8
+    jmz __shift_done
+__shru_low:                     ; only d is left to shift
+    shr d
+    dec b
+    jmz __shift_done
+    jmp __shru_low
+__shru_bits:
     or b, 0
     jmz __shift_done
+__shru_bit:
     asr c                       ; C = bit leaving c
     and c, 0x7F                 ; and keeps C
+    shr d                       ; shr keeps C
     jmc __shru_one
-    asr d
-    and d, 0x7F
     dec b
+    jmz __shift_done
     jmp __shru_bit
 __shru_one:
-    asr d
     or d, 0x80
     dec b
+    jmz __shift_done
     jmp __shru_bit
 
 __shr:                          ; arithmetic: the sign bit is copied
@@ -60,19 +86,33 @@ __shr:                          ; arithmetic: the sign bit is copied
 __shr_count:
     cmp b, 15
     jms __shr_sign
-__shr_bit:
+    cmp b, 8
+    jmf __shr_bits
+    mov d, c                    ; 8 bits: a byte move, c = 0 or -1
+    shl c                       ; C = sign
+    mov c, 0
+    sbb c, 0
+    sub b, 8
+    jmz __shift_done
+__shr_low:                      ; d's bit 7 is the sign: asr d alone
+    asr d
+    dec b
+    jmz __shift_done
+    jmp __shr_low
+__shr_bits:
     or b, 0
     jmz __shift_done
+__shr_bit:
     asr c
+    shr d
     jmc __shr_one
-    asr d
-    and d, 0x7F
     dec b
+    jmz __shift_done
     jmp __shr_bit
 __shr_one:
-    asr d
     or d, 0x80
     dec b
+    jmz __shift_done
     jmp __shr_bit
 __shr_sign:                     ; 0, or -1 for a negative value
     mov b, 0
@@ -105,14 +145,25 @@ __shll:
     cal __shift_setl
     cmp x, 31
     jms __shiftl_zero
-__shll_bit:
+__shll_bytes:
+    cmp x, 8
+    jmf __shll_bits
+    mov c, d
+    mov d, a
+    mov a, b
+    mov b, 0
+    sub x, 8
+    jmp __shll_bytes
+__shll_bits:
     or x, 0
     jmz __shiftl_done
+__shll_bit:
     shl b
     adc a, a
     adc d, d
     adc c, c
     dec x
+    jmz __shiftl_done
     jmp __shll_bit
 __shiftl_done:
     ret
@@ -125,20 +176,71 @@ __shiftl_zero:
 
 __shrul:                        ; logical
     cal __shift_setl
-    mov y, 1                    ; y = 1: logical loop (see __shrl_loop)
     cmp x, 31
     jms __shiftl_zero
+__shrul_bytes:
+    cmp x, 8
+    jmf __shrul_bits
+    mov b, a
+    mov a, d
+    mov d, c
+    mov c, 0
+    sub x, 8
+    jmp __shrul_bytes
+__shrul_bits:
+    or x, 0
+    jmz __shiftl_done
 __shrul_bit:
-    or x, 0
-    jmz __shiftl_done
-    asr c
+    asr c                       ; C = bit leaving c: into d, then a, then b
     and c, 0x7F
-    jmp __shrl_d
-__shrl_bit:                     ; arithmetic, after the count check
+    jmc __shrul_d1
+    asr d
+    and d, 0x7F
+    jmp __shrul_a
+__shrul_d1:
+    asr d
+    or d, 0x80
+__shrul_a:
+    jmc __shrul_a1
+    asr a
+    and a, 0x7F
+    jmp __shrul_b
+__shrul_a1:
+    asr a
+    or a, 0x80
+__shrul_b:
+    jmc __shrul_b1
+    asr b
+    and b, 0x7F
+    jmp __shrul_next
+__shrul_b1:
+    asr b
+    or b, 0x80
+__shrul_next:
+    dec x
+    jmz __shiftl_done
+    jmp __shrul_bit
+
+__shrl:                         ; arithmetic
+    cal __shift_setl
+    cmp x, 31
+    jms __shrl_sign
+__shrl_bytes:
+    cmp x, 8
+    jmf __shrl_bits
+    mov b, a
+    mov a, d
+    mov d, c
+    shl c                       ; c = 0 or -1
+    mov c, 0
+    sbb c, 0
+    sub x, 8
+    jmp __shrl_bytes
+__shrl_bits:
     or x, 0
     jmz __shiftl_done
-    asr c
-__shrl_d:                       ; C = bit leaving c: into d, then a, then b
+__shrl_bit:
+    asr c                       ; C = bit leaving c: into d, then a, then b
     jmc __shrl_d1
     asr d
     and d, 0x7F
@@ -164,17 +266,7 @@ __shrl_b1:
     or b, 0x80
 __shrl_next:
     dec x
-    jmp __shrl_loop
-__shrl_loop:                    ; the logical shift goes back to its own loop
-    or y, 0
-    jmz __shrl_bit
-    jmp __shrul_bit
-
-__shrl:                         ; arithmetic
-    cal __shift_setl
-    mov y, 0                    ; y = 0: arithmetic loop (see __shrl_loop)
-    cmp x, 31
-    jms __shrl_sign
+    jmz __shiftl_done
     jmp __shrl_bit
 __shrl_sign:
     mov a, 0

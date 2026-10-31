@@ -154,14 +154,18 @@ fn values32(n: usize) -> Vec<u32> {
         0xFFFF_FFFE,
         0xFFFF_FFFF,
         100_000,
+        0x12_3456,
+        0xFF_FFFF,
+        0x100_0000,
     ];
     let mut rng = Rng(0x0FED_CBA9_8765_4321);
     while v.len() < n {
         let x = rng.next();
-        v.push(match x & 3 {
+        v.push(match x % 5 {
             0 => (x >> 16) as u32,
             1 => (x >> 16) as u32 & 0xFFFF,
             2 => (x >> 16) as u32 & 0xFF,
+            3 => (x >> 16) as u32 & 0xFF_FFFF,
             _ => ((x >> 16) as u32 & 0xFFFF).wrapping_neg(),
         });
     }
@@ -281,6 +285,42 @@ fn divide_32() {
     check32("__reml", 25, |l, r| {
         (r != 0).then(|| s32(l).wrapping_rem(s32(r)) as u32)
     });
+}
+
+#[test]
+fn divide_by_zero() {
+    // all bits set, the remainder is the left operand (signed too)
+    for l in values16(40) {
+        for (helper, want) in [("__divu", 0xFFFF), ("__div", 0xFFFF), ("__remu", l), ("__rem", l)] {
+            let m = call(helper, &args16(l, 0), &[]);
+            assert_eq!(r16(&m, A, B), want, "{helper}({l:#06x}, 0)");
+        }
+    }
+    for l in values32(40) {
+        for (helper, want) in [("__divul", u32::MAX), ("__divl", u32::MAX), ("__remul", l), ("__reml", l)] {
+            let m = call(helper, &args32(l, 0), &[]);
+            assert_eq!(r32(&m), want, "{helper}({l:#010x}, 0)");
+        }
+    }
+}
+
+/// Many more pairs than the tests above, for the multiply and divide
+/// helpers (their paths depend on how many bytes each operand has).
+#[test]
+fn multiply_divide_many() {
+    check16("__mul", |l, r| Some(l.wrapping_mul(r)));
+    let v = values32(90);
+    for (l, r) in pairs(&v) {
+        let cases = [
+            ("__mull", l.wrapping_mul(r)),
+            ("__divul", l.checked_div(r).unwrap_or(u32::MAX)),
+            ("__remul", l.checked_rem(r).unwrap_or(l)),
+        ];
+        for (helper, want) in cases {
+            let m = call(helper, &args32(l, r), &[]);
+            assert_eq!(r32(&m), want, "{helper}({l:#010x}, {r:#010x})");
+        }
+    }
 }
 
 #[test]

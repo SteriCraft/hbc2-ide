@@ -1,73 +1,455 @@
 ; C runtime: multiplication (ABI.md section 11). The low half of the
-; product is the same for signed and unsigned values.
+; product is the same for signed and unsigned values, and only the low half
+; is computed. Method of the math library's mul16 / mul32 (shift and add,
+; 8 steps of a byte written out), keeping only the bits of the result.
+; The multiplier is complemented first (not), so that shl gives C = 1 for a
+; 0 bit: jmc then skips the addition (there is no "jump if no carry").
 
 ; [a:b] = [c:d] * [a:b]
-; Shift and add, from the top bit of the right operand:
-; result = result * 2, plus the left operand when the bit is 1.
+; [c:d] * [a:b] = [c:d] * b + (d * a) << 8 (16 bits; c * a is lost).
+; When a = 0 only the first part is left; when c = 0 the operands are
+; swapped so that a becomes 0.
 __mul:
-    mov i, 0                    ; [i:j] = result
-    mov j, 0
-    mov x, 16                   ; bits to do
-__mul_bit:
-    shl j
-    adc i, i                    ; result * 2
+    or a, 0
+    jmz __mul_byte              ; right < 256
+    or c, 0
+    jmz __mul_swap              ; left < 256: it becomes the right operand
+    not a                       ; y = d * a (low byte), a's bits from the top
+    mov y, 0
+    shl a
+    jmc __mul_h1
+    mov y, d
+__mul_h1:
+    shl y
+    shl a
+    jmc __mul_h2
+    add y, d
+__mul_h2:
+    shl y
+    shl a
+    jmc __mul_h3
+    add y, d
+__mul_h3:
+    shl y
+    shl a
+    jmc __mul_h4
+    add y, d
+__mul_h4:
+    shl y
+    shl a
+    jmc __mul_h5
+    add y, d
+__mul_h5:
+    shl y
+    shl a
+    jmc __mul_h6
+    add y, d
+__mul_h6:
+    shl y
+    shl a
+    jmc __mul_h7
+    add y, d
+__mul_h7:
+    shl y
+    shl a
+    jmc __mul_h8
+    add y, d
+__mul_h8:
+    jmp __mul_low
+__mul_swap:
+    mov x, a
+    mov a, c
+    mov c, x
+    mov x, b
+    mov b, d
+    mov d, x
+__mul_byte:
+    mov y, 0
+; [a:b] = [c:d] * b + y * 256
+__mul_low:
+    mov x, b                    ; x = multiplier, from the top bit
+    not x
+    mov a, 0
+    mov b, 0
+    shl x
+    jmc __mul_l1
+    mov a, c                    ; first bit: the product was 0
+    mov b, d
+__mul_l1:
     shl b
-    adc a, a                    ; C = next bit of the right operand
-    jmc __mul_add
-__mul_next:
-    dec x
-    jmz __mul_done
-    jmp __mul_bit
-__mul_add:
-    add j, d
-    adc i, c
-    jmp __mul_next
-__mul_done:
-    mov a, i
-    mov b, j
+    adc a, a
+    shl x
+    jmc __mul_l2
+    add b, d
+    adc a, c
+__mul_l2:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l3
+    add b, d
+    adc a, c
+__mul_l3:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l4
+    add b, d
+    adc a, c
+__mul_l4:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l5
+    add b, d
+    adc a, c
+__mul_l5:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l6
+    add b, d
+    adc a, c
+__mul_l6:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l7
+    add b, d
+    adc a, c
+__mul_l7:
+    shl b
+    adc a, a
+    shl x
+    jmc __mul_l8
+    add b, d
+    adc a, c
+__mul_l8:
+    add a, y
     ret
 
 ; [c:d]:[a:b] = [x:y]:[i:j] * [c:d]:[a:b]
-; Both operands go on the stack; the result builds up in [c:d]:[a:b],
-; one byte of the right operand at a time (in x).
+; The multiplicand goes on the stack (MSB at [sp]), the multiplier in
+; x, y, i, j (MSB first). One pass per multiplier byte: product =
+; product * 256 + byte * multiplicand, keeping 1 byte of the product after
+; the first pass, 2 after the second... (the others are lost), so the
+; product grows one register at a time: b, then [a:b], [d:a:b], [c:d:a:b].
+; Zero bytes at the top of the multiplier cost nothing; the operand with
+; more of them is taken as the multiplier.
 __mull:
-    psh j, i, y, x              ; left: [sp + 4] (MSB) .. [sp + 7]
-    psh b, a, d, c              ; right: [sp] (MSB) .. [sp + 3]
-    mov a, 0
-    mov b, 0
+    or c, 0
+    jmz __mull_c0
+    or x, 0                     ; right has 4 bytes: left better if x = 0
+    jmz __mull_swap
+    jmp __mull_keep
+__mull_c0:
+    or d, 0
+    jmz __mull_keep             ; right < 2^16
+    or x, 0                     ; right has 3 bytes: left better if < 2^16
+    jmz __mull_x0
+    jmp __mull_keep
+__mull_x0:
+    or y, 0
+    jmz __mull_swap
+__mull_keep:                    ; multiplicand = left, multiplier = right
+    psh j, i, y, x
+    mov x, c
+    mov y, d
+    mov i, a
+    mov j, b
+    jmp __mull_go
+__mull_swap:                    ; multiplicand = right, multiplier = left
+    psh b, a, d, c
+__mull_go:
     mov c, 0
     mov d, 0
-    lod x, [sp]
-    cal __mull_byte
-    lod x, [sp + 1]
-    cal __mull_byte
-    lod x, [sp + 2]
-    cal __mull_byte
-    lod x, [sp + 3]
-    cal __mull_byte
-    asp 8
-    ret
-
-; result = result * 256 + x * left, with the left operand at [sp + 6] (MSB)
-; .. [sp + 9] (above the return address)
-__mull_byte:
-    mov y, 8
-__mull_bit:
+    mov a, 0
+    mov b, 0
+; pass 1: product [b], multiplier byte x
+__mull_z1:
+    or x, 0
+    jmz __mull_z2
+__mull_p1:
+    not x
+    shl x
+    jmc __mull_11
+    lod b, [sp + 3]
+__mull_11:
+    shl b
+    shl x
+    jmc __mull_12
+    add b, [sp + 3]
+__mull_12:
+    shl b
+    shl x
+    jmc __mull_13
+    add b, [sp + 3]
+__mull_13:
+    shl b
+    shl x
+    jmc __mull_14
+    add b, [sp + 3]
+__mull_14:
+    shl b
+    shl x
+    jmc __mull_15
+    add b, [sp + 3]
+__mull_15:
+    shl b
+    shl x
+    jmc __mull_16
+    add b, [sp + 3]
+__mull_16:
+    shl b
+    shl x
+    jmc __mull_17
+    add b, [sp + 3]
+__mull_17:
+    shl b
+    shl x
+    jmc __mull_18
+    add b, [sp + 3]
+__mull_18:
+    jmp __mull_p2
+; a zero byte is skipped only while the product is 0
+; pass 2: product [a:b], multiplier byte y
+__mull_z2:
+    or y, 0
+    jmz __mull_z3
+__mull_p2:
+    not y
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_21
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_21:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_22
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_22:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_23
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_23:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_24
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_24:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_25
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_25:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_26
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_26:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_27
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_27:
+    shl b
+    adc a, a
+    shl y
+    jmc __mull_28
+    add b, [sp + 3]
+    adc a, [sp + 2]
+__mull_28:
+    jmp __mull_p3
+; a zero byte is skipped only while the product is 0
+; pass 3: product [d:a:b], multiplier byte i
+__mull_z3:
+    or i, 0
+    jmz __mull_z4
+__mull_p3:
+    not i
     shl b
     adc a, a
     adc d, d
-    adc c, c                    ; result * 2
-    shl x                       ; C = next bit
-    jmc __mull_add
-__mull_next:
-    dec y
-    jmz __mull_byte_done
-    jmp __mull_bit
-__mull_add:
-    add b, [sp + 9]
-    adc a, [sp + 8]
-    adc d, [sp + 7]
-    adc c, [sp + 6]
-    jmp __mull_next
-__mull_byte_done:
+    shl i
+    jmc __mull_31
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_31:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_32
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_32:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_33
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_33:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_34
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_34:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_35
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_35:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_36
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_36:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_37
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_37:
+    shl b
+    adc a, a
+    adc d, d
+    shl i
+    jmc __mull_38
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+__mull_38:
+    jmp __mull_p4
+; a zero byte is skipped only while the product is 0
+; pass 4: product [c:d:a:b], multiplier byte j
+__mull_z4:
+    or j, 0
+    jmz __mull_end
+__mull_p4:
+    not j
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_41
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_41:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_42
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_42:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_43
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_43:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_44
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_44:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_45
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_45:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_46
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_46:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_47
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_47:
+    shl b
+    adc a, a
+    adc d, d
+    adc c, c
+    shl j
+    jmc __mull_48
+    add b, [sp + 3]
+    adc a, [sp + 2]
+    adc d, [sp + 1]
+    adc c, [sp]
+__mull_48:
+__mull_end:
+    asp 4
     ret

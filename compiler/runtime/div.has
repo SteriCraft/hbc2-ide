@@ -2,36 +2,446 @@
 ; Signed division rounds toward zero; the remainder has the sign of the
 ; left operand (as in C99). Division by zero gives a quotient with all
 ; bits set and the left operand as the remainder.
+;
+; Method of the math library's div16 / div32 (shift and subtract, 8 steps
+; of a byte written out), with a remainder only as wide as the divisor:
+; 1, 2 or 4 bytes (__div8_1, __div8_2, __div8_4 divide one byte of the
+; dividend). The remainder is always smaller than the divisor, so with a
+; divisor of n bytes the first n - 1 bytes of the dividend go straight
+; into the remainder (their quotient bytes are 0).
+
+; ----- 8 steps: one dividend byte, its quotient byte in its place
+
+; Divisor a (1 byte), remainder b, dividend byte c
+__div8_1:
+    shl c
+    adc b, b
+    jmc __div8_1s1
+    cmp b, a
+    jmf __div8_1n1
+__div8_1s1:
+    sub b, a
+    inc c
+__div8_1n1:
+    shl c
+    adc b, b
+    jmc __div8_1s2
+    cmp b, a
+    jmf __div8_1n2
+__div8_1s2:
+    sub b, a
+    inc c
+__div8_1n2:
+    shl c
+    adc b, b
+    jmc __div8_1s3
+    cmp b, a
+    jmf __div8_1n3
+__div8_1s3:
+    sub b, a
+    inc c
+__div8_1n3:
+    shl c
+    adc b, b
+    jmc __div8_1s4
+    cmp b, a
+    jmf __div8_1n4
+__div8_1s4:
+    sub b, a
+    inc c
+__div8_1n4:
+    shl c
+    adc b, b
+    jmc __div8_1s5
+    cmp b, a
+    jmf __div8_1n5
+__div8_1s5:
+    sub b, a
+    inc c
+__div8_1n5:
+    shl c
+    adc b, b
+    jmc __div8_1s6
+    cmp b, a
+    jmf __div8_1n6
+__div8_1s6:
+    sub b, a
+    inc c
+__div8_1n6:
+    shl c
+    adc b, b
+    jmc __div8_1s7
+    cmp b, a
+    jmf __div8_1n7
+__div8_1s7:
+    sub b, a
+    inc c
+__div8_1n7:
+    shl c
+    adc b, b
+    jmc __div8_1s8
+    cmp b, a
+    jmf __div8_1n8
+__div8_1s8:
+    sub b, a
+    inc c
+__div8_1n8:
+    ret
+
+; Divisor [c:d], remainder [a:b], dividend byte x
+__div8_2:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s1
+    cmp a, c
+    jmf __div8_2n1
+    jms __div8_2s1
+    cmp b, d
+    jmf __div8_2n1
+__div8_2s1:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n1:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s2
+    cmp a, c
+    jmf __div8_2n2
+    jms __div8_2s2
+    cmp b, d
+    jmf __div8_2n2
+__div8_2s2:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n2:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s3
+    cmp a, c
+    jmf __div8_2n3
+    jms __div8_2s3
+    cmp b, d
+    jmf __div8_2n3
+__div8_2s3:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n3:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s4
+    cmp a, c
+    jmf __div8_2n4
+    jms __div8_2s4
+    cmp b, d
+    jmf __div8_2n4
+__div8_2s4:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n4:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s5
+    cmp a, c
+    jmf __div8_2n5
+    jms __div8_2s5
+    cmp b, d
+    jmf __div8_2n5
+__div8_2s5:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n5:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s6
+    cmp a, c
+    jmf __div8_2n6
+    jms __div8_2s6
+    cmp b, d
+    jmf __div8_2n6
+__div8_2s6:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n6:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s7
+    cmp a, c
+    jmf __div8_2n7
+    jms __div8_2s7
+    cmp b, d
+    jmf __div8_2n7
+__div8_2s7:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n7:
+    shl x
+    adc b, b
+    adc a, a
+    jmc __div8_2s8
+    cmp a, c
+    jmf __div8_2n8
+    jms __div8_2s8
+    cmp b, d
+    jmf __div8_2n8
+__div8_2s8:
+    sub b, d
+    sbb a, c
+    inc x
+__div8_2n8:
+    ret
+
+; Divisor on the caller's stack ([sp] = MSB .. [sp + 3], here 2 bytes
+; further up), remainder [c:d:a:b], dividend byte x
+__div8_4:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s1
+    cmp c, [sp + 2]
+    jmf __div8_4n1
+    jms __div8_4s1
+    cmp d, [sp + 3]
+    jmf __div8_4n1
+    jms __div8_4s1
+    cmp a, [sp + 4]
+    jmf __div8_4n1
+    jms __div8_4s1
+    cmp b, [sp + 5]
+    jmf __div8_4n1
+__div8_4s1:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n1:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s2
+    cmp c, [sp + 2]
+    jmf __div8_4n2
+    jms __div8_4s2
+    cmp d, [sp + 3]
+    jmf __div8_4n2
+    jms __div8_4s2
+    cmp a, [sp + 4]
+    jmf __div8_4n2
+    jms __div8_4s2
+    cmp b, [sp + 5]
+    jmf __div8_4n2
+__div8_4s2:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n2:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s3
+    cmp c, [sp + 2]
+    jmf __div8_4n3
+    jms __div8_4s3
+    cmp d, [sp + 3]
+    jmf __div8_4n3
+    jms __div8_4s3
+    cmp a, [sp + 4]
+    jmf __div8_4n3
+    jms __div8_4s3
+    cmp b, [sp + 5]
+    jmf __div8_4n3
+__div8_4s3:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n3:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s4
+    cmp c, [sp + 2]
+    jmf __div8_4n4
+    jms __div8_4s4
+    cmp d, [sp + 3]
+    jmf __div8_4n4
+    jms __div8_4s4
+    cmp a, [sp + 4]
+    jmf __div8_4n4
+    jms __div8_4s4
+    cmp b, [sp + 5]
+    jmf __div8_4n4
+__div8_4s4:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n4:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s5
+    cmp c, [sp + 2]
+    jmf __div8_4n5
+    jms __div8_4s5
+    cmp d, [sp + 3]
+    jmf __div8_4n5
+    jms __div8_4s5
+    cmp a, [sp + 4]
+    jmf __div8_4n5
+    jms __div8_4s5
+    cmp b, [sp + 5]
+    jmf __div8_4n5
+__div8_4s5:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n5:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s6
+    cmp c, [sp + 2]
+    jmf __div8_4n6
+    jms __div8_4s6
+    cmp d, [sp + 3]
+    jmf __div8_4n6
+    jms __div8_4s6
+    cmp a, [sp + 4]
+    jmf __div8_4n6
+    jms __div8_4s6
+    cmp b, [sp + 5]
+    jmf __div8_4n6
+__div8_4s6:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n6:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s7
+    cmp c, [sp + 2]
+    jmf __div8_4n7
+    jms __div8_4s7
+    cmp d, [sp + 3]
+    jmf __div8_4n7
+    jms __div8_4s7
+    cmp a, [sp + 4]
+    jmf __div8_4n7
+    jms __div8_4s7
+    cmp b, [sp + 5]
+    jmf __div8_4n7
+__div8_4s7:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n7:
+    shl x
+    adc b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    jmc __div8_4s8
+    cmp c, [sp + 2]
+    jmf __div8_4n8
+    jms __div8_4s8
+    cmp d, [sp + 3]
+    jmf __div8_4n8
+    jms __div8_4s8
+    cmp a, [sp + 4]
+    jmf __div8_4n8
+    jms __div8_4s8
+    cmp b, [sp + 5]
+    jmf __div8_4n8
+__div8_4s8:
+    sub b, [sp + 5]
+    sbb a, [sp + 4]
+    sbb d, [sp + 3]
+    sbb c, [sp + 2]
+    inc x
+__div8_4n8:
+    ret
 
 ; ----- 16 bits: left in [c:d], right in [a:b], result in [a:b]
 
 ; Unsigned [c:d] / [a:b]: quotient in [c:d], remainder in [i:j].
-; Restoring division: the dividend shifts out of [c:d] into the
-; remainder; each quotient bit enters at the bottom of [c:d].
 __divmodu:
+    or a, 0
+    jmz __divmodu_small
+    mov i, a                    ; divisor >= 256: quotient < 256, and c
+    mov j, b                    ; goes straight into the remainder
+    mov x, d                    ; x = the byte to divide
+    mov b, c
+    mov a, 0                    ; [a:b] = remainder
+    mov c, i
+    mov d, j                    ; [c:d] = divisor
+    cal __div8_2
+    mov i, a
+    mov j, b
+    mov c, 0
+    mov d, x
+    ret
+__divmodu_small:                ; divisor < 256: 1-byte remainder
+    or b, 0
+    jmz __divmodu_zero
+    mov a, b                    ; a = divisor
+    mov b, 0                    ; b = remainder
+    or c, 0
+    jmz __divmodu_low           ; c = 0: its quotient byte is 0 too
+    cal __div8_1
+__divmodu_low:
+    mov x, c
+    mov c, d
+    cal __div8_1
+    mov d, c
+    mov c, x
     mov i, 0
-    mov j, 0
-    mov x, 16
-__divmodu_bit:
-    shl d
-    adc c, c                    ; C = next bit of the dividend
-    adc j, j
-    adc i, i                    ; remainder * 2 + bit; C = 17th bit
-    jmc __divmodu_sub           ; 17 bits: larger than any divisor
-    mov y, j                    ; remainder - divisor, only for the borrow
-    sub y, b
-    mov y, i
-    sbb y, a
-    jmc __divmodu_next          ; remainder < divisor: quotient bit 0
-__divmodu_sub:
-    sub j, b
-    sbb i, a
-    inc d                       ; quotient bit 1
-__divmodu_next:
-    dec x
-    jmz __divmodu_done
-    jmp __divmodu_bit
-__divmodu_done:
+    mov j, b
+    ret
+__divmodu_zero:
+    mov i, c
+    mov j, d
+    mov c, 0xFF
+    mov d, 0xFF
     ret
 
 __divu:
@@ -68,6 +478,9 @@ __divabs_neg_right:
     ret
 
 __div:
+    mov x, a
+    or x, b
+    jmz __div_zero
     mov x, c
     xor x, a                    ; bit 7 = the quotient is negative
     psh x
@@ -85,6 +498,10 @@ __div_negate:
     add b, 1
     adc a, 0
     ret
+__div_zero:
+    mov a, 0xFF
+    mov b, 0xFF
+    ret
 
 __rem:
     psh c                       ; bit 7 = the left operand is negative
@@ -100,55 +517,100 @@ __rem:
 ; ----- 32 bits: left in [x:y]:[i:j], right in [c:d]:[a:b], result in [c:d]:[a:b]
 
 ; Unsigned: quotient in [x:y]:[i:j], remainder in [c:d]:[a:b].
-; The divisor goes on the stack; the remainder subtracts it, and adds it
-; back when the result is negative.
 __divmodul:
-    psh b, a, d, c              ; divisor: [sp] (MSB) .. [sp + 3]
-    mov a, 32
-    psh a                       ; [sp] = bits to do; divisor at [sp + 1] .. [sp + 4]
-    mov a, 0
-    mov b, 0
+    or c, 0
+    jmz __divmodul_3
+    psh b, a, d, c              ; 4-byte divisor: on the stack
+    mov c, 0                    ; x, y, i straight into the remainder
+    mov d, x
+    mov a, y
+    mov b, i
+    mov x, j
+    cal __div8_4
+    mov j, x
+    mov i, 0
+    jmp __divmodul_4end
+__divmodul_3:
+    or d, 0
+    jmz __divmodul_2
+    psh b, a, d, c              ; 3-byte divisor: __div8_4 too (c stays 0)
+    mov d, 0
+    mov a, x                    ; x, y straight into the remainder
+    mov b, y
+    mov x, i
+    cal __div8_4
+    mov i, x
+    mov x, j
+    cal __div8_4
+    mov j, x
+__divmodul_4end:
+    mov x, 0
+    mov y, 0
+    asp 4
+    ret
+__divmodul_2:
+    or a, 0
+    jmz __divmodul_1
+    mov c, a                    ; [c:d] = 2-byte divisor
+    mov d, b
+    mov a, 0                    ; x straight into the remainder [a:b]
+    mov b, x
+    mov x, y
+    cal __div8_2
+    mov y, x
+    mov x, i
+    cal __div8_2
+    mov i, x
+    mov x, j
+    cal __div8_2
+    mov j, x
+    mov x, 0
     mov c, 0
     mov d, 0
-__divmodul_bit:
-    shl j
-    adc i, i
-    adc y, y
-    adc x, x                    ; C = next bit of the dividend
-    adc b, b
-    adc a, a
-    adc d, d
-    adc c, c                    ; remainder * 2 + bit; C = 33rd bit
-    jmc __divmodul_force
-    sub b, [sp + 4]
-    sbb a, [sp + 3]
-    sbb d, [sp + 2]
-    sbb c, [sp + 1]
-    jmc __divmodul_restore      ; remainder < divisor: add it back
-    inc j                       ; quotient bit 1
-    jmp __divmodul_next
-__divmodul_force:
-    sub b, [sp + 4]
-    sbb a, [sp + 3]
-    sbb d, [sp + 2]
-    sbb c, [sp + 1]
-    inc j
-    jmp __divmodul_next
-__divmodul_restore:
-    add b, [sp + 4]
-    adc a, [sp + 3]
-    adc d, [sp + 2]
-    adc c, [sp + 1]
-__divmodul_next:
-    psh a                       ; no free register: count down in the stack
-    lod a, [sp + 1]
-    dec a
-    str [sp + 1], a
-    pop a                       ; pop keeps the flags
-    jmz __divmodul_done
-    jmp __divmodul_bit
-__divmodul_done:
-    asp 5
+    ret
+__divmodul_1:
+    or b, 0
+    jmz __divmodul_zero
+    mov a, b                    ; a = 1-byte divisor, b = remainder
+    mov b, 0
+    or x, 0                     ; zero bytes at the top: quotient byte 0,
+    jmz __divmodul_1y0          ; remainder still 0
+    mov c, x
+    cal __div8_1
+    mov x, c
+    jmp __divmodul_1y
+__divmodul_1y0:
+    or y, 0
+    jmz __divmodul_1i0
+__divmodul_1y:
+    mov c, y
+    cal __div8_1
+    mov y, c
+    jmp __divmodul_1i
+__divmodul_1i0:
+    or i, 0
+    jmz __divmodul_1j
+__divmodul_1i:
+    mov c, i
+    cal __div8_1
+    mov i, c
+__divmodul_1j:
+    mov c, j
+    cal __div8_1
+    mov j, c
+    mov c, 0
+    mov d, 0
+    mov a, 0
+    ret
+__divmodul_zero:
+    mov c, x
+    mov d, y
+    mov a, i
+    mov b, j
+    mov x, 0xFF
+    mov y, 0xFF
+    mov i, 0xFF
+    mov j, 0xFF
     ret
 
 __divul:
@@ -184,6 +646,12 @@ __divabsl_neg_right:
     jmp __negatel
 
 __divl:
+    psh a                       ; right = 0: all bits set (pop keeps the flags)
+    or a, b
+    or a, c
+    or a, d
+    pop a
+    jmz __divl_zero
     psh a                       ; save a
     psh a                       ; [sp] = sign slot
     mov a, x
@@ -205,6 +673,12 @@ __divul_move:
     mov d, y
     mov a, i
     mov b, j
+    ret
+__divl_zero:
+    mov a, 0xFF
+    mov b, 0xFF
+    mov c, 0xFF
+    mov d, 0xFF
     ret
 
 __reml:
