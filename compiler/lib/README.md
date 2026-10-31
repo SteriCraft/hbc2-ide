@@ -60,8 +60,8 @@ Device detection (`monitor_port`, …) is in the startup code:
 `../runtime/boot.has` (EEPROM; see `../ABI.md`, section 8).
 
 `printf` has the minimal set: `%d %u %x %X %c %s %%`, `l` for `long`
-(`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`, `%-5d` is not
-there). No floating point. It gets its digits from `utoa`, `ultoa`, `htoa` and
+(`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`), `-` to align left
+(`%-6s`). No floating point. It gets its digits from `utoa`, `ultoa`, `htoa` and
 `lhtoa` (no division: 3.5 times faster than with `/` and `%`, for 0.3 KB
 more).
 

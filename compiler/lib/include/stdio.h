@@ -23,7 +23,8 @@ int puts(const char *s);
    %s (string), %% (a %). l before d, u, x: a long (%ld, %lu, %lx).
    A width before it gives the least number of characters, padded with
    spaces on the left, or with zeros when the width starts with 0
-   (%5d, %04x). No floating point.
+   (%5d, %04x); a - before the width pads on the right instead (%-6s).
+   No floating point.
    Returns the number of characters printed. */
 int printf(const char *fmt, ...);
 

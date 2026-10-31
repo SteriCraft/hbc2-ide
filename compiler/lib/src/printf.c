@@ -1,25 +1,29 @@
 /* printf: the minimal set (ROADMAP decision 14): %d %u %x %X %c %s %%,
-   l for long, a width, 0 for zero padding. The digits come from utoa,
+   l for long, a width, 0 for zero padding, - to align left. The digits come from utoa,
    ultoa, htoa and lhtoa (stdlib.h). */
 
 #include <stdio.h>
 #include <stdarg.h>
 #include <stdlib.h>
 
-/* Prints s (len characters) after its sign, padded to width. Returns
-   the number of characters printed. */
-static int field(const char *s, int len, char neg, int width, char pad)
+/* Prints s (len characters) after its sign, padded to width (after the
+   text when left). Returns the number of characters printed. */
+static int field(const char *s, int len, char neg, int width, char pad, char left)
 {
     int count = len + neg;
     int n;
     if (neg && pad == '0')
         putchar('-');                       /* -0042: the sign before the zeros */
-    for (n = count; n < width; n++)
-        putchar(pad);
+    if (!left)
+        for (n = count; n < width; n++)
+            putchar(pad);
     if (neg && pad != '0')
         putchar('-');
     for (n = 0; n < len; n++)
         putchar(s[n]);
+    if (left)
+        for (n = count; n < width; n++)
+            putchar(' ');
     return count < width ? width : count;
 }
 
@@ -33,7 +37,7 @@ int printf(const char *fmt, ...)
     int width;
     unsigned u;
     unsigned long lu;
-    char c, pad, is_long, neg, hex;
+    char c, pad, left, is_long, neg, hex;
 
     va_start(ap, fmt);
     while ((c = *fmt++) != 0) {
@@ -43,10 +47,17 @@ int printf(const char *fmt, ...)
             continue;
         }
         pad = ' ';
-        if (*fmt == '0') {
-            pad = '0';
-            fmt++;
+        left = 0;
+        for (;; fmt++) {                    /* the flags: 0 and - */
+            if (*fmt == '0')
+                pad = '0';
+            else if (*fmt == '-')
+                left = 1;
+            else
+                break;
         }
+        if (left)
+            pad = ' ';                      /* - wins over 0 */
         width = 0;
         while (*fmt >= '0' && *fmt <= '9')
             width = width * 10 + (*fmt++ - '0');
@@ -88,17 +99,17 @@ int printf(const char *fmt, ...)
                     for (u = 0; s + u < e; u++)
                         s[u] |= 0x20;       /* lower case; digits already have the bit */
             }
-            count += field(s, e - s, neg, width, pad);
+            count += field(s, e - s, neg, width, pad, left);
             break;
         case 'c':
             *s = va_arg(ap, int);
-            count += field(s, 1, 0, width, ' ');
+            count += field(s, 1, 0, width, ' ', left);
             break;
         case 's':
             s = va_arg(ap, char *);
             for (u = 0; s[u]; u++)
                 ;
-            count += field(s, u, 0, width, ' ');
+            count += field(s, u, 0, width, ' ', left);
             break;
         case 0:
             fmt--;                          /* a % at the end: stop there */

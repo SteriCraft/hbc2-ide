@@ -28,6 +28,8 @@ int main(void)
         return 10;
     if (printf("%X %lX %04X|\n", 0xBEEFu, 0xABCDEF0UL, 0xa) != 19)
         return 12;
+    if (printf("[%-5s][%-5d][%-05d][%-2s][%-3c]\n", "ab", 42, -7, "long", 'z') != 33)
+        return 13;
     if (printf("end%") != 3)                /* a % at the end is dropped */
         return 11;
     return 0;
