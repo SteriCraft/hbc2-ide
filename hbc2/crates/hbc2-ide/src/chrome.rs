@@ -18,6 +18,7 @@ fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
 
 /// Why a C project has no EEPROM target.
 const C_RAM_ONLY: &str = "C programs are loaded into RAM";
+const C_STRIPS: &str = "C programs always leave out unused code";
 
 fn build_label(c_project: bool) -> &'static str {
     if c_project { "Build" } else { "Assemble" }
@@ -168,6 +169,21 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                         actions.push(Action::SetTarget(TargetSetting::Eeprom));
                     }
                 });
+                ui.separator();
+                let mut strip = state.project_settings.strip || c_project;
+                if ui
+                    .add_enabled(
+                        !c_project,
+                        egui::Checkbox::new(&mut strip, "Leave out unused code"),
+                    )
+                    .on_hover_text(
+                        "Labels and variables nothing reaches from _start, a fixed address or .keep are not assembled",
+                    )
+                    .on_disabled_hover_text(C_STRIPS)
+                    .changed()
+                {
+                    actions.push(Action::SetStrip(strip));
+                }
                 ui.separator();
                 let loaded = state.emulator.image().is_some();
                 if ui
@@ -486,8 +502,12 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
         Some(p) => p.language,
         None => Language::Assembly,
     };
+    // Every dialog gets the same margins and spacing.
     let modal = egui::Modal::new(egui::Id::new("dialog")).show(ctx, |ui| {
+        egui::Frame::new().inner_margin(16.0).show(ui, |ui| {
         ui.set_max_width(460.0);
+        ui.spacing_mut().item_spacing.y = 6.0;
+        ui.spacing_mut().button_padding = egui::vec2(10.0, 4.0);
         match &mut dialog {
             Dialog::Unsaved { paths, then } => {
                 ui.heading("Unsaved changes");
@@ -520,95 +540,91 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 interrupt_handler,
                 error,
             } => {
-                egui::Frame::new().inner_margin(16.0).show(ui, |ui| {
-                    ui.set_max_width(560.0);
-                    ui.spacing_mut().item_spacing.y = 6.0;
-                    ui.spacing_mut().button_padding = egui::vec2(10.0, 4.0);
-                    ui.heading("New project");
-                    ui.add_space(12.0);
+                ui.set_max_width(560.0);
+                ui.heading("New project");
+                ui.add_space(12.0);
 
-                    ui.label("Name");
-                    let edit = ui.add(egui::TextEdit::singleline(name).desired_width(380.0));
-                    edit.request_focus();
-                    ui.add_space(10.0);
+                ui.label("Name");
+                let edit = ui.add(egui::TextEdit::singleline(name).desired_width(380.0));
+                edit.request_focus();
+                ui.add_space(10.0);
 
-                    ui.label("Location");
-                    ui.horizontal(|ui| {
-                        ui.monospace(parent.display().to_string());
-                        if ui.button("Browse…").clicked() {
-                            let mut picker = rfd::FileDialog::new()
-                                .set_title("Folder where the project folder is created");
-                            if parent.is_dir() {
-                                picker = picker.set_directory(&*parent);
-                            }
-                            if let Some(dir) = picker.pick_folder() {
-                                *parent = dir;
-                                *error = None;
-                            }
+                ui.label("Location");
+                ui.horizontal(|ui| {
+                    ui.monospace(parent.display().to_string());
+                    if ui.button("Browse…").clicked() {
+                        let mut picker = rfd::FileDialog::new()
+                            .set_title("Folder where the project folder is created");
+                        if parent.is_dir() {
+                            picker = picker.set_directory(&*parent);
                         }
-                    });
-                    ui.add_space(10.0);
+                        if let Some(dir) = picker.pick_folder() {
+                            *parent = dir;
+                            *error = None;
+                        }
+                    }
+                });
+                ui.add_space(10.0);
 
-                    ui.label("Language");
-                    ui.horizontal(|ui| {
-                        ui.radio_value(language, Language::Assembly, "Assembly (main.has)");
-                        ui.radio_value(language, Language::C, "C (main.c)");
-                    });
-                    ui.add_space(10.0);
+                ui.label("Language");
+                ui.horizontal(|ui| {
+                    ui.radio_value(language, Language::Assembly, "Assembly (main.has)");
+                    ui.radio_value(language, Language::C, "C (main.c)");
+                });
+                ui.add_space(10.0);
 
-                    if *language == Language::Assembly {
-                        ui.checkbox(interrupt_handler, "Include a default interrupt handler");
-                    } else {
-                        ui.label(
-                            RichText::new(
-                                "Every .c and .has file of the folder is built. The startup \
-                                 code finds the devices before main runs.",
-                            )
+                if *language == Language::Assembly {
+                    ui.checkbox(interrupt_handler, "Include a default interrupt handler");
+                } else {
+                    ui.label(
+                        RichText::new(
+                            "Every .c and .has file of the folder is built. The startup \
+                             code finds the devices before main runs.",
+                        )
+                        .weak(),
+                    );
+                }
+                ui.add_space(10.0);
+
+                if let Ok(folder) = project_folder_name(name) {
+                    ui.label(
+                        RichText::new(format!("Creates {}", parent.join(folder).display()))
                             .weak(),
-                        );
-                    }
-                    ui.add_space(10.0);
-
-                    if let Ok(folder) = project_folder_name(name) {
-                        ui.label(
-                            RichText::new(format!("Creates {}", parent.join(folder).display()))
-                                .weak(),
-                        );
-                    }
-                    if let Some(error) = error {
-                        ui.colored_label(ui.visuals().error_fg_color, error.as_str());
-                    }
-                    let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
-                    ui.add_space(12.0);
-                    ui.horizontal(|ui| {
-                        if ui.button("Create").clicked() || enter {
-                            match project_folder_name(name) {
-                                Err(e) => *error = Some(e.into()),
-                                Ok(_) if !parent.is_dir() => {
-                                    *error = Some("The location folder does not exist.".into())
-                                }
-                                Ok(folder) => {
-                                    let root = parent.join(folder);
-                                    if root.exists() {
-                                        *error =
-                                            Some("A folder with this name already exists.".into());
-                                    } else {
-                                        keep = false;
-                                        state
-                                            .actions
-                                            .push(Action::CreateProject(
-                                                root,
-                                                *language,
-                                                *interrupt_handler,
-                                            ));
-                                    }
+                    );
+                }
+                if let Some(error) = error {
+                    ui.colored_label(ui.visuals().error_fg_color, error.as_str());
+                }
+                let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    if ui.button("Create").clicked() || enter {
+                        match project_folder_name(name) {
+                            Err(e) => *error = Some(e.into()),
+                            Ok(_) if !parent.is_dir() => {
+                                *error = Some("The location folder does not exist.".into())
+                            }
+                            Ok(folder) => {
+                                let root = parent.join(folder);
+                                if root.exists() {
+                                    *error =
+                                        Some("A folder with this name already exists.".into());
+                                } else {
+                                    keep = false;
+                                    state
+                                        .actions
+                                        .push(Action::CreateProject(
+                                            root,
+                                            *language,
+                                            *interrupt_handler,
+                                        ));
                                 }
                             }
                         }
-                        if ui.button("Cancel").clicked() {
-                            keep = false;
-                        }
-                    });
+                    }
+                    if ui.button("Cancel").clicked() {
+                        keep = false;
+                    }
                 });
             }
             Dialog::NewFile { dir, name, error } => {
@@ -770,6 +786,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 }
             }
         }
+        });
     });
     if modal.should_close() && !matches!(dialog, Dialog::Unsaved { .. }) {
         keep = false;
