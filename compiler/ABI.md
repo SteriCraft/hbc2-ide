@@ -213,8 +213,12 @@ manual, "Leaving out unused code").
   and a name used but defined nowhere are reported by the assembler; the
   driver gives the C file instead of its compiled file, and the C name:
   `b.c: error: 'n' is already defined (a.c)`,
-  `main.c: error: not defined: 'f'`. Two `int n;` without a value in two
-  files are a duplicate too (no "common" variables).
+  `main.c: error: not defined: 'f'`.
+* **Common variables.** A global with no value (`int n;`) may be in several
+  files: they are one variable (`.common _n 2` in the compiled file; the
+  assembler merges them). `int n = 5;` in one file gives its value; a
+  function `n`, or a defined `n` smaller than the largest `int n[…];`, is an
+  error. A `static int n;` stays each file's own.
 * **Library names.** A program may define a function or variable of the
   library (`puts`, `putchar`…): its definition is used everywhere, the
   library's too calls it, and the library's is left out (`.library` in

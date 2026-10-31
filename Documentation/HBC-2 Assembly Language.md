@@ -42,7 +42,7 @@ Each line holds one of:
 
 * an instruction: `mnemonic operand, operand`
 * a label: `name:`, optionally followed by an address (`handler: $0xF000`) or by an instruction (`loop: inc a`)
-* a directive: `.data`, `.data16`, `.data32`, `.bss`, `.define`, `.include`, `.keep` or `.library`
+* a directive: `.data`, `.data16`, `.data32`, `.bss`, `.common`, `.define`, `.include`, `.keep` or `.library`
 
 Comments start with `;` and run to the end of the line.
 
@@ -246,8 +246,8 @@ Strings and `name.msb` / `name.lsb` are only allowed in `.data`.
 
 `.bss name size` reserves `size` bytes (1 to 65535; a number or a define) that
 start at zero. Nothing is written in the program image for them: the program
-clears them itself when it starts. The C compiler uses `.bss` for variables
-with no initial value.
+clears them itself when it starts. The C compiler uses `.bss` for `static`
+variables with no initial value (and `.common` for the others, see below).
 
 All `.bss` variables are placed together, in source order, in one free area
 after the code and data. They cannot have an address. The assembler defines
@@ -283,6 +283,26 @@ clear_done:
 
 For the EEPROM target, the area may be anywhere in RAM: it is not copied
 from the EEPROM.
+
+### `.common`: a zeroed variable shared by several files
+
+```
+.common counter 2                  ; in a.has
+.common counter 2                  ; in b.has: the same variable
+```
+
+`.common name size` is a `.bss` variable that may be written more than once,
+in the same file or in other files. They all make one variable, as large as
+the largest of them, placed with the `.bss` variables (after them, in the
+order the names are first seen). A label, `.data` or `.bss` of the same name
+is used instead of them; a `.data` or `.bss` smaller than the largest
+`.common` is an error, and so is a label (code is not a variable). A
+program's `.common` replaces a library's definition, like the program's
+other definitions (`.library`).
+
+The C compiler writes `.common` for a global variable that has no value
+(`int n;`): C allows that line in several files, and they all refer to one
+variable. `int n = 5;` in one of the files gives its value.
 
 ## Automatic placement
 
@@ -409,7 +429,7 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.keep`, `.library`, leaving out unused code (C builds; asm projects when asked) |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.common`, `.keep`, `.library`, leaving out unused code (C builds; asm projects when asked) |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
 | | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

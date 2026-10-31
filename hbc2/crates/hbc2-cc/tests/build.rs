@@ -49,7 +49,7 @@ fn errors() {
     );
     assert!(e.contains("a.c, line 1)"), "{e}");
 
-    // a global variable too
+    // a global variable too (two values; "int n;" alone is shared)
     let e = build(
         "variable",
         &[
@@ -58,12 +58,15 @@ fn errors() {
                 "a.c",
                 "int f(void) { return 0; }\nint n = 1;\nint puts(const char *s) { return 0; }\n",
             ),
-            ("b.c", "int n;\n"),
+            ("b.c", "int n = 2;\n"),
         ],
         library,
     )
     .unwrap_err();
-    assert!(e.contains("b.c: error: 'n' is already defined ("), "{e}");
+    assert!(
+        e.contains("b.c:1:1: error: 'n' is already defined ("),
+        "{e}"
+    );
     assert!(e.contains("a.c, line 2)"), "{e}");
     // a library name is not a duplicate: the program's puts replaces it
     assert!(!e.contains("'puts'"), "{e}");

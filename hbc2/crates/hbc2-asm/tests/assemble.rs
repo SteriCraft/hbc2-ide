@@ -781,6 +781,61 @@ fn bss_errors() {
 }
 
 #[test]
+fn common_variables_are_merged() {
+    let files = MemoryFiles::new()
+        .with(
+            "main.has",
+            ".include \"other.has\"
+.common hits 2
+.common table 4
+.common level 2
+_start:
+    hlt
+.common hits 2
+",
+        )
+        .with(
+            "other.has",
+            ".common table 8      ; the largest size wins
+.data level 0x00, 0x07   ; a definition wins over the .common
+.common hits 2
+",
+        );
+    let p = build(files, Target::Ram).unwrap();
+    let start = addr(&p, "__bss_start");
+    assert_eq!(
+        addr(&p, "hits"),
+        start + 8,
+        "after the .bss variables, first seen first"
+    );
+    assert_eq!(addr(&p, "table"), start, "seen first, in other.has");
+    assert_eq!(p.symbol("table").unwrap().size, 8);
+    assert_eq!(addr(&p, "__bss_end"), start + 10);
+    assert_eq!(p.image[addr(&p, "level") as usize + 1], 7);
+    assert_eq!(p.symbols.iter().filter(|s| s.name == "hits").count(), 1);
+
+    // A program's .common replaces a library definition.
+    let files = MemoryFiles::new()
+        .with(
+            "main.has",
+            ".include \"lib.has\"\n_start:\n    hlt\n.common put 2\n",
+        )
+        .with("lib.has", ".library\nput:\n    ret\n.common spare 1\n");
+    let p = build(files, Target::Ram).unwrap();
+    assert_eq!(p.symbol("put").unwrap().kind, SymbolKind::Data);
+    assert!(p.symbol("spare").is_some(), "a library .common alone stays");
+
+    let e = |src: &str| errors(&format!("_start:\n    hlt\n{src}\n"))[0].clone();
+    assert!(e(".common v 4\n.bss v 2").contains("'v' is 2 bytes (line 4), smaller"));
+    assert!(e(".data v 1\n.common v 2").contains("smaller than this .common (2 bytes)"));
+    assert!(e(".common _start 2").contains("is a label"));
+    assert!(e(".common v 0").contains(".common size 0 is out of range"));
+    assert!(e(".common v").contains(".common expects a name and a size"));
+    assert!(e(".common v $0x9000 2").contains("no address"));
+    assert!(e(".common __bss_end 2").contains("defined by the assembler"));
+}
+
+#[test]
 fn data_addresses_mixed_with_bytes() {
     let p = asm("
 .data table $0x1200 1, 2, 3, 4

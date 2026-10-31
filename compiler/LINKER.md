@@ -47,11 +47,6 @@ Continue at **Next**, tick the boxes, and add notes under "How it works" as the 
   - `lib/README.md` "Size", `ABI.md` if it mentions program size or linking, `ROADMAP.md` status/step 11, `notes/session-log.md`.
   - `cargo test --workspace`, clippy, fmt; commit.
 
-## Later (not in step 11)
-
-- ~~Per-project option for assembly projects~~ done 2026-10-31: `ProjectSettings::strip` (off by default: unused routines may be kept on purpose to call them from the debugger), `Action::SetStrip`, checkbox in the Build menu, `hbc2 asm --strip`; smoke test `unused_code_is_left_out_when_asked`. ASM_p (then test_project): 15021 → 2497 bytes.
-- Common symbols (tentative `int n;` in two files is a duplicate today).
-
 ## How it works
 
 - hbc2-asm: `assemble_with(entry, provider, Options { target, strip })`; `assemble` = strip off. `Program.removed: Vec<Removed>` (name, size, kind, file, line; source order), `Program::bytes_removed()`.

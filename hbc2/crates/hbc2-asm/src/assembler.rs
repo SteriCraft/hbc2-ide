@@ -12,6 +12,9 @@
 //!   (after code and data). Nothing is written for them in the image.
 //!   `__bss_start` and `__bss_end` (one past the last byte) are defined for
 //!   the startup code that clears the area.
+//! * `.common` variables (C's `int n;`, which may be in several files) of
+//!   the same name are one `.bss` variable, as large as the largest. A
+//!   label, `.data` or `.bss` of that name is used instead of them.
 //!
 //! A program's own definition of a name replaces the library's (`.library`):
 //! the library's definition gets a name nothing can refer to.
@@ -71,6 +74,16 @@ struct Bss {
     size: u32,
     address: u32,
     loc: Loc,
+}
+
+/// `.common` variables of one name, as [`group`] collects them.
+struct Common {
+    name: String,
+    /// The largest size, and where it is.
+    size: u32,
+    loc: Loc,
+    /// All of them are in the library.
+    library: bool,
 }
 
 /// Names defined by the assembler for the `.bss` area.
@@ -148,6 +161,7 @@ fn group(items: Vec<Item>, files: &[PathBuf], report: &mut Report) -> Grouped {
         files,
     };
     let mut open: Option<usize> = None;
+    let mut commons: Vec<Common> = Vec::new();
 
     for item in items {
         let (Located { loc, stmt }, library) = match item {
@@ -228,8 +242,25 @@ fn group(items: Vec<Item>, files: &[PathBuf], report: &mut Report) -> Grouped {
                     });
                 }
             }
+            Stmt::Common { name, size } => match commons.iter_mut().find(|c| c.name == name) {
+                Some(common) => {
+                    if common.size < size {
+                        (common.size, common.loc) = (size, loc);
+                    }
+                    common.library &= library;
+                }
+                None => commons.push(Common {
+                    name,
+                    size,
+                    loc,
+                    library,
+                }),
+            },
             Stmt::Keep { name } => out.keeps.push((name, loc)),
         }
+    }
+    for common in commons {
+        names.common(&mut out, common, report);
     }
 
     if !names.owners.contains_key("_start") {
@@ -312,18 +343,69 @@ impl Names<'_> {
                 Some(name)
             }
             _ => {
-                let first = first.loc;
-                let message = match self.files.get(first.file) {
-                    Some(file) if first.file != loc.file => format!(
-                        "'{name}' is already defined ({}, line {})",
-                        file.display(),
-                        first.line
-                    ),
-                    _ => format!("'{name}' is already defined (line {})", first.line),
-                };
+                let message = format!(
+                    "'{name}' is already defined ({})",
+                    self.place(first.loc, loc)
+                );
                 report.error(loc, message);
                 None
             }
+        }
+    }
+
+    /// Settles a `.common` variable once every other definition is known:
+    /// a `.data` or `.bss` of the same name is used instead (it must be
+    /// large enough), else it becomes a `.bss` variable. The library's
+    /// definitions give way to the program's `.common`, as to its others.
+    fn common(&mut self, out: &mut Grouped, common: Common, report: &mut Report) {
+        let Common {
+            name,
+            size,
+            loc,
+            library,
+        } = common;
+        let first = match self.owners.get(&name) {
+            Some(first) if !(first.library && !library) => *first,
+            _ => {
+                let at = At::Bss(out.bss.len());
+                if let Some(name) = self.define(out, at, name, loc, library, report) {
+                    out.bss.push(Bss {
+                        name,
+                        size,
+                        address: 0,
+                        loc,
+                    });
+                }
+                return;
+            }
+        };
+        let place = self.place(first.loc, loc);
+        let defined = match first.at {
+            At::Label(..) => {
+                report.error(
+                    loc,
+                    format!("'{name}' is a label ({place}), not a variable"),
+                );
+                return;
+            }
+            At::Data(i) => out.data[i].size(),
+            At::Bss(i) => out.bss[i].size,
+        };
+        if defined < size {
+            report.error(
+                loc,
+                format!("'{name}' is {defined} bytes ({place}), smaller than this .common ({size} bytes)"),
+            );
+        }
+    }
+
+    /// Where `first` is, said from `loc`: "line 4", or "file, line 4".
+    fn place(&self, first: Loc, loc: Loc) -> String {
+        match self.files.get(first.file) {
+            Some(file) if first.file != loc.file => {
+                format!("{}, line {}", file.display(), first.line)
+            }
+            _ => format!("line {}", first.line),
         }
     }
 }

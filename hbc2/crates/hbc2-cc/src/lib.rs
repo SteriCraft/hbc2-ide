@@ -57,6 +57,12 @@ pub const BUILD_DIR: &str = ".build";
 /// Unit number of the first library C file: the program's files are 1, 2, …
 pub const LIBRARY_FIRST_UNIT: u32 = 100;
 
+/// `path` from the current folder: the `.include`s of a generated file
+/// would otherwise be read from that file's folder.
+fn absolute(path: &Path) -> Result<PathBuf, Vec<Diagnostic>> {
+    std::path::absolute(path).map_err(|e| io_error(path, e))
+}
+
 /// A path for `.include` in hbc2-asm, where `\` starts an escape.
 pub fn include_path(path: &Path) -> String {
     path.display().to_string().replace('\\', "/")
@@ -88,6 +94,7 @@ pub struct Library {
 /// `compiler/lib/lib.has`. A compiled file newer than its C file, the
 /// headers, the compiler and the program running is kept.
 pub fn build_library(dir: &Path) -> Result<Library, Vec<Diagnostic>> {
+    let dir = &absolute(dir)?;
     fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
     let src = lib_dir().join("src");
     let mut sources = files_in(&src, "c").map_err(|e| io_error(&src, e))?;
@@ -175,6 +182,7 @@ pub fn build_program(
     library: &Library,
     dir: &Path,
 ) -> Result<Build, Vec<Diagnostic>> {
+    let dir = &absolute(dir)?;
     fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
     let rt = runtime_dir();
     let mut main = String::new();
@@ -203,7 +211,7 @@ pub fn build_program(
                 c_files.push((output.clone(), source.clone()));
                 output
             }
-            Some("has") => source.clone(),
+            Some("has") => absolute(source)?,
             _ => {
                 diagnostics.push(plain(format!(
                     "{}: not a .c or .has file",

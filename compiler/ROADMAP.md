@@ -7,8 +7,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 ## Status
 
 - **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 62 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
-- **Next:** nothing planned. Ask the user what comes next; candidates: EEPROM, float, the backend ideas below. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
-- Possible later backend work: carry what the registers hold across loop labels (a dataflow version of reloads.rs; looked at bench.c's loops: the paths into a loop label rarely agree, small gain expected); `x *= k` / `x /= k` in place like `<<=`.
+- **Next:** nothing planned. Ask the user what comes next; the candidates (EEPROM, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 
 ## Notes files (read only when needed)
 
@@ -72,7 +71,6 @@ Details moved out of this file to keep it short. Open the one for the part you t
 - `compiler/msvc/` — `compat.h` (forced include: io.h names, binary `open`, `itoa`/`_itoa` renamed, strcasecmp, strlcpy/strlcat), `compat.c` (binary stdin/stdout/stderr before main via `.CRT$XCU`), `unistd.h` stub.
 - `compiler/build.cmd` — MSVC build (vcvars64 of VS 2022 Community) → `compiler/bin/*.exe`, objects/logs in `compiler/build/` (both git-ignored). Builds cc0, cpp, copt, cc1.ref (target-6800.c), cc2.ref (backend-default.c). Add cc1.hbc2/cc2.hbc2 in step 3.
 - Full upstream clone for reading other backends: re-clone https://github.com/EtchedPixels/Fuzix-Compiler-Kit at the commit in UPSTREAM.md (scratchpad copies don't last). 6809 = `be-codegen-6800.c` + `be-code-6809.c` + `be-func-6800.c` + `be-track-6800.c`; cc1 for 6809 = `target-6800.c`.
-- Possible later (step 10): build the C tools from cargo (`cc` crate, one tiny bin crate per tool) so `cargo build` does everything.
 
 ## Steps
 
@@ -80,7 +78,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 - [x] 2. Write the ABI document — `compiler/ABI.md`. Section 11 (helpers) is a draft to settle in steps 3-4.
 - [x] 3. Minimal backend `backend-hbc2.c`: constants, load/store globals + locals, calls, prologue/epilogue, labels, jumps, branches; everything else → helpers. Also inline already: + - & | ^ ~ unary- (8/16), == != (8/16), ! and bool, casts (incl. sign extension), deref / assign through pointers, frames > 255.
 - [x] 4. Runtime: `crt0.has` + 89 helpers (`runtime.has` includes compare, long, mul, div, shift, assign, switch; ≈3.9 KB). Written for the C convention, NOT wrappers of the user's math library (it saves all registers; runtime must be self-contained).
-- [x] 5. Test harness: crate `hbc2/crates/hbc2-cc` (lib: `compile()` = Rust version of the driver; tests/helpers.rs: each helper called directly on the emulator vs a Rust model, breakpoint on a return label; tests/programs.rs: every `compiler/tests/*.c`, "Expected: main returns N" on line 1). Both checked by mutation (a broken helper makes them fail). FCC's own test programs: not run yet (upstream `test/` not copied).
+- [x] 5. Test harness: crate `hbc2/crates/hbc2-cc` (lib: `compile()` = Rust version of the driver; tests/helpers.rs: each helper called directly on the emulator vs a Rust model, breakpoint on a return label; tests/programs.rs: every `compiler/tests/*.c`, "Expected: main returns N" on line 1). Both checked by mutation (a broken helper makes them fail). FCC's own test programs: not run yet (in TODO.md).
 - [x] 6. Inline code (see "Inline code (step 6)" below).
 - [x] 7. `copt` peephole rules (see "Peephole rules (step 7)" below).
 - [x] 8. Library: `hbc2.h` (monitor/keyboard/RTC wrappers, in/out), `putchar`/`puts` on `term_putc`, `string.h`, small `printf`.
@@ -97,6 +95,4 @@ Details moved out of this file to keep it short. Open the one for the part you t
   - [x] 10e. asm→C line map (`;#line n` markers through FCC, `lines.rs` remaps the Program).
 - [x] 12. Speed-ups (user, 2026-10-31): one-byte bit tests (`x & 0x8000`) in conditions / ?: / 0-1 values; `<<=` `>>=` by a constant in place; reload removal after copt (`hbc2-cc/src/reloads.rs`, volatile-aware; copt's store-then-load rules removed); string.h in asm (`lib/asm/string.has`, 2.7 KB → 1.1 KB). tests/bits.c, tests/reloads.c, build.rs volatile_reloads; all mutation-checked. See notes/reloads.md.
 - [x] 11. Linker (decision 15) — see `LINKER.md`: `Options::strip` in hbc2-asm (on for C builds), `.keep`, `.library` (program names replace the library's), `hbc2 cc --map`.
-
-Later: EEPROM, float.
 

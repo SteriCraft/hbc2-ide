@@ -82,6 +82,13 @@ pub(crate) enum Stmt {
         name: String,
         size: u32,
     },
+    /// `.common name size`: like `.bss`, but may be written several times
+    /// (C's `int n;` in several files): one variable, as large as the
+    /// largest. A label, `.data` or `.bss` of the same name wins over it.
+    Common {
+        name: String,
+        size: u32,
+    },
     /// `.keep name`: never removed by the removal of unreached code (for
     /// code reached only through a computed address).
     Keep {
@@ -181,9 +188,13 @@ fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> 
             });
             Ok(())
         }
-        Some(Tok::Directive(d)) if d == "bss" => {
+        Some(Tok::Directive(d)) if d == "bss" || d == "common" => {
+            let common = d == "common";
             c.next();
-            out.push(Located { loc, stmt: bss(c)? });
+            out.push(Located {
+                loc,
+                stmt: bss(c, common)?,
+            });
             Ok(())
         }
         Some(Tok::Directive(d)) if d == "keep" => {
@@ -571,33 +582,39 @@ fn data(c: &mut Cursor, width: u32) -> ParseResult<Stmt> {
     })
 }
 
-/// `.bss name size`: reserves `size` bytes (1 to 65535) in the zeroed area.
-fn bss(c: &mut Cursor) -> ParseResult<Stmt> {
-    const USAGE: &str = ".bss expects a name and a size in bytes: .bss buffer 64";
+/// `.bss name size` / `.common name size`: reserves `size` bytes (1 to
+/// 65535) in the zeroed area.
+fn bss(c: &mut Cursor, common: bool) -> ParseResult<Stmt> {
+    let directive = if common { ".common" } else { ".bss" };
+    let usage = format!("{directive} expects a name and a size in bytes: {directive} buffer 64");
     let Some(Tok::Ident(name)) = c.peek() else {
-        return c.error(USAGE);
+        return c.error(usage);
     };
     let name = definition_name(c, name)?;
     if c.peek() == Some(&Tok::Dollar) {
-        return c.error(".bss takes no address: the assembler places all .bss variables together");
+        return c.error(format!(
+            "{directive} takes no address: the assembler places all .bss variables together"
+        ));
     }
     if c.at_end() {
-        return c.error(USAGE);
+        return c.error(usage);
     }
     let col = c.col();
     let size = number(c)?;
     if !(1..=0xFFFF).contains(&size) {
         return Err((
             col,
-            format!(".bss size {size} is out of range (1 to 65535)"),
+            format!("{directive} size {size} is out of range (1 to 65535)"),
         ));
     }
     if !c.at_end() {
         return c.error(format!("unexpected {} after the size", c.found()));
     }
-    Ok(Stmt::Bss {
-        name,
-        size: size as u32,
+    let size = size as u32;
+    Ok(if common {
+        Stmt::Common { name, size }
+    } else {
+        Stmt::Bss { name, size }
     })
 }
 

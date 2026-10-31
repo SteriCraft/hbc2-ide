@@ -103,7 +103,11 @@ struct pending {
 	unsigned items;		/* values written */
 	unsigned in_str;	/* inside a "..." run */
 	unsigned long space;	/* .bss size */
+	unsigned common;	/* exported .bss: C's "int n;", maybe in other files too */
 };
+
+/* The last exported name: its object comes next */
+static char exported[48];
 
 static struct pending pending[A_LITERAL + 1];
 static unsigned area = A_CODE;
@@ -136,7 +140,7 @@ static void flush_area(unsigned a)
 		return;
 	close_str(p);
 	if (a == A_BSS)
-		printf(".bss %s %lu\n", p->name, p->space);
+		printf(".%s %s %lu\n", p->common ? "common" : "bss", p->name, p->space);
 	else if (p->items == 0)
 		error("empty data object");
 	else
@@ -174,6 +178,7 @@ static void start_object(const char *name)
 	p->items = 0;
 	p->in_str = 0;
 	p->space = 0;
+	p->common = area == A_BSS && strcmp(name, exported) == 0;
 }
 
 static void separator(struct pending *p)
@@ -421,6 +426,7 @@ void gen_export(const char *name)
 {
 	/* The build renames the other (static) names of the file */
 	printf("; export _%s\n", name);
+	snprintf(exported, sizeof(exported), "_%s", name);
 }
 
 void gen_segment(unsigned s)
