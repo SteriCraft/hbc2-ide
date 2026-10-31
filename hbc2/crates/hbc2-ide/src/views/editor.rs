@@ -72,12 +72,12 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
         scroll_gently,
         select,
         focus,
-        emptied,
+        trimmed,
         ..
     } = doc;
 
-    // Saving emptied blank lines: the cursor keeps its place in the text.
-    if let Some(removed) = emptied.take()
+    // Saving trimmed line ends: the cursor keeps its place in the text.
+    if let Some(removed) = trimmed.take()
         && let Some(mut state) = TextEditState::load(ui.ctx(), editor_id)
         && let Some(range) = state.cursor.char_range()
     {
