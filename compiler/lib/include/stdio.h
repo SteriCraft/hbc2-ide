@@ -15,7 +15,7 @@
    '\n' and 0x20-0x7E are not shown. Returns c (as an unsigned char). */
 int putchar(int c);
 
-/* Prints s, then '\n'. Returns 0. */
+// Prints s, then '\n'. Returns 0.
 int puts(const char *s);
 
 /* Prints fmt, with the arguments in place of:
@@ -33,8 +33,8 @@ int printf(const char *fmt, ...);
    after its characters. Waits for a keyboard. */
 int getchar(void);
 
-/* Reads a line typed into s, without the '\n' (at most 127 characters:
-   s needs 128 bytes). Returns s. */
+/* Reads a line typed into s, without the '\n' (at most 127 characters: s needs 128 bytes).
+   Returns s. */
 char *gets(char *s);
 
 #endif
