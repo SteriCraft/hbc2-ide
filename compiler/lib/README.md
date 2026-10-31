@@ -21,7 +21,7 @@ definition is used everywhere, the library's left out.
 * `include/` — the headers.
 * `lib.has` — includes the assembly files below.
 * `asm/screen.has`, `asm/terminal.has` — **copies** of the monitor driver
-  and the terminal of `design_projects/test_project/lib/monitor`. The
+  and the terminal of `design_projects/ASM_p/lib/monitor`. The
   changes are listed at the top of each file (the port variables have their
   C names). When the originals change, copy them again and redo the
   changes.

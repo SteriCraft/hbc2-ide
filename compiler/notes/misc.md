@@ -15,5 +15,5 @@
   For n > 255 only to access: `rsp [x:y]`, `add x, n >> 8`, then `[x:y + (n & 255)]` (the CPU adds the offset on 16 bits, so no carry handling).
 - No 16-bit ALU ops: 16-bit add = `add` low + `adc` high.
 - Function pointers: `cal [r:r]`.
-- Math library: `design_projects/test_project/lib/math` (user's files; 16/ in registers, 32/ through pointers). Don't edit without saying so in chat.
+- Math library: `design_projects/ASM_p/lib/math` (user's files; 16/ in registers, 32/ through pointers). Don't edit without saying so in chat.
 

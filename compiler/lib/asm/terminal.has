@@ -3,7 +3,7 @@
 ; ============================================================
 ;
 ; Copy for the C library (compiler/lib). Changes from the original in
-; design_projects/test_project/lib/monitor:
+; design_projects/ASM_p/lib/monitor:
 ; - the port variables have their C names (_monitor_port, _rtc_port,
 ;   _keyboard_port: compiler/runtime/devices.has);
 ; - no .include of the screen driver: lib.has includes both.
