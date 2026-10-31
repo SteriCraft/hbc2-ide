@@ -13,6 +13,7 @@ definition is used everywhere, the library's left out.
 | `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `src/stdio.c`, `src/printf.c` |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
 | `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr memcpy memmove memset memcmp memchr` | `asm/string.has` |
+| `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
 | `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`; extras: `srand_rtc`, `rand_range`, `itoa utoa ltoa ultoa htoa lhtoa` | `asm/stdlib.has`, `asm/mathlib/misc` |
 | `math.h` | integer only (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/math.has` (wrappers), `asm/mathlib` |
@@ -43,6 +44,11 @@ for floating point one day.
 * `asm/hbc2.has` — the C wrappers: they read the C arguments from the stack
   (`../ABI.md`, section 9) and call the driver routines.
 * `asm/stdio.has` — `putchar`, `puts`.
+* `asm/ctype.has` — `ctype.h`, written by the project's author: range
+  compares on the low byte, false (or unchanged) when the high byte is
+  not 0 (`EOF`). The `is…` functions share their exits (`ctype_true`,
+  `ctype_false`); `isgraph` jumps to `isprint` (a tail call). 668 bytes
+  in all, 9 to 24 instructions a call.
 * `asm/stdlib.has` — `exit`, `abs`, `labs`, the random-number and the
   number <-> text wrappers.
 * `src/*.c` — library functions written in C, compiled by the build
@@ -77,6 +83,6 @@ with `puts` 1.7 KB (the terminal and screen drivers), with `printf`
 ## Tests
 
 `compiler/tests/hardware.c`, `eeprom.c`, `stdio.c`, `strings.c`, `printf.c`,
-`random.c`, `convert.c`, `math.c` (some
+`random.c`, `convert.c`, `math.c`, `ctype.c` (some
 with `.screen` / `.keys` files) check the library on the emulator: see
 `../tests/README.md`.

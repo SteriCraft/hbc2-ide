@@ -23,6 +23,9 @@ of each program's code and the number of instructions it ran.
   256-byte boundaries, the last byte, past the end).
 * `stdio.c`: `putchar`, `puts`, `getchar`, `gets`, scrolling.
 * `strings.c`: `string.h`, with lengths over 255 and overlapping moves.
+* `ctype.c`: `ctype.h`, every function on every value from `EOF` to 255
+  and a few out of range, against plain C (the `is…` must give exactly
+  0 or 1).
 * `printf.c`: every `printf` format, widths and padding, the counts.
 * `random.c`, `convert.c`: `stdlib.h` random numbers and number <-> text.
 * `math.c`: `math.h`, `abs`, `labs`, each against plain C on edge and

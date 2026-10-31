@@ -2,6 +2,7 @@
 
 (Moved out of ROADMAP.md 2026-10-31. Read only when working on this part.)
 
+- 2026-10-31: ctype.h added to the library (user wrote asm/ctype.has with guidance; I added isblank, shared exits ctype_true/false, isgraph tail-calls isprint: 856 -> 668 B). tests/ctype.c: every value EOF..255 + out of range against plain C, is... must return exactly 0/1 (mutation-checked). Committed.
 - 2026-10-31: step 13 EEPROM (user asked: read/write/copy routines in hbc2.h + a boot loader). Added `__program_end` to hbc2-asm, eeprom_* in hbc2.has, boot.has, EEPROM target in hbc2-cc / CLI / IDE, docs. All tests pass, clippy clean. Committed with the user's OK.
 - 2026-10-31: math.h (step 2 of the math plan): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz` + `l` versions, `min max umin umax` (functions, not macros: arguments evaluated once), `abs labs` in stdlib.h. `div`/`ldiv` left out (struct return: FCC has none). Whole math library copied unchanged to `lib/asm/mathlib/` (replaces the loose random/random_range/text copies, which were identical); wrappers `lib/asm/math.has`. FCC bug fixed (fcc/UPSTREAM.md): `sizeof a / sizeof a[0]` parsed as `sizeof (a / ...)` -> "bad type"; `get_sizeof` takes `hier10` without a bracket. tests/math.c (self-checking, mutation-checked).
 

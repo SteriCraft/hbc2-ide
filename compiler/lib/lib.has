@@ -14,3 +14,4 @@
 .include "asm/mathlib/math.has"
 .include "asm/stdio.has"
 .include "asm/string.has"
+.include "asm/ctype.has"

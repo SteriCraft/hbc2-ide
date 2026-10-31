@@ -1,0 +1,257 @@
+; ------ ctype.h - C standard library - HBC-2 assembly ------
+; [sp + 0] and [sp + 1] hold the return address
+; [sp + 2] and further are the arguments
+; [a:b] holds the return value
+; Available registers: a, b, c, d, x, y, i, j
+;
+; The is... functions return 1 (true) or 0 (false). A value whose high
+; byte is not 0 (EOF, or out of the 0-255 range) is no character: false,
+; and tolower / toupper return it unchanged.
+; They share their exits: ctype_true and ctype_false, at the end.
+; -----------------------------------------------------------
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isalnum:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, '0'					; Compare [sp + 3] (8-bit character) to digits range (0x30 - 0x39)
+	jmf ctype_false
+	cmp d, ':'					; ':' follows '9'
+	jmf ctype_true
+	cmp d, 'A'					; Compare [sp + 3] (8-bit character) to upper case range (0x41 - 0x5A)
+	jmf ctype_false
+	cmp d, '['					; '[' follows 'Z'
+	jmf ctype_true
+	cmp d, 'a'					; Compare [sp + 3] (8-bit character) to lower case range (0x61 - 0x7A)
+	jmf ctype_false
+	cmp d, 'z'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isalpha:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, 'A'					; Compare [sp + 3] (8-bit character) to upper case range (0x41 - 0x5A)
+	jmf ctype_false
+	cmp d, '['					; '[' follows 'Z'
+	jmf ctype_true
+	cmp d, 'a'					; Compare [sp + 3] (8-bit character) to lower case range (0x61 - 0x7A)
+	jmf ctype_false
+	cmp d, 'z'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_islower:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, 'a'					; Compare [sp + 3] (8-bit character) to lower case range (0x61 - 0x7A)
+	jmf ctype_false
+	cmp d, 'z'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isupper:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, 'A'					; Compare [sp + 3] (8-bit character) to upper case range (0x41 - 0x5A)
+	jmf ctype_false
+	cmp d, 'Z'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isdigit:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, '0'					; Compare [sp + 3] (8-bit character) to digits range (0x30 - 0x39)
+	jmf ctype_false
+	cmp d, '9'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isxdigit:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, '0'					; Compare [sp + 3] (8-bit character) to digits range (0x30 - 0x39)
+	jmf ctype_false
+	cmp d, ':'					; ':' follows '9'
+	jmf ctype_true
+	cmp d, 'A'					; Compare [sp + 3] (8-bit character) to hex upper case range (0x41 - 0x46)
+	jmf ctype_false
+	cmp d, 'G'
+	jmf ctype_true
+	cmp d, 'a'					; Compare [sp + 3] (8-bit character) to hex lower case range (0x61 - 0x66)
+	jmf ctype_false
+	cmp d, 'f'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_iscntrl:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, ' '					; Below ' ' (0x20): control character
+	jmf ctype_true
+	cmp d, 0x7F					; 0x7F: control character
+	jme ctype_true
+	jmp ctype_false
+
+
+; [sp + 3]: Character least significant byte
+; isprint without the space: a tail call (jmp, not cal). The stack is as
+; the caller left it, so _isprint finds the same argument and its ret
+; goes straight back to the caller.
+_isgraph:
+	lod d, [sp + 3]
+	cmp d, ' '					; The space: printable, not graphic
+	jme ctype_false
+	jmp _isprint				; isprint checks the high byte
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isspace:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, ' '
+	jme ctype_true
+	cmp d, '\t'					; '\t' is the first of the five control spaces
+	jmf ctype_false
+	cmp d, 0x0E					; 0x0E follows '\r' (0x0D)
+	jmf ctype_true
+	jmp ctype_false
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isblank:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, ' '
+	jme ctype_true
+	cmp d, '\t'
+	jme ctype_true
+	jmp ctype_false
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_isprint:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, ' '					; Below ' ': non print char
+	jmf ctype_false
+	cmp d, 0x7F					; 0x7F: non print char
+	jmf ctype_true
+	jmp ctype_false
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_ispunct:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): false
+	jms ctype_false
+	cmp d, '!'					; Compare [sp + 3] (8-bit character) to the first range (0x21 - 0x2F)
+	jmf ctype_false
+	cmp d, '0'					; '0' follows '/'
+	jmf ctype_true
+	cmp d, ':'					; Compare [sp + 3] (8-bit character) to the second range (0x3A - 0x40)
+	jmf ctype_false
+	cmp d, 'A'					; 'A' follows '@'
+	jmf ctype_true
+	cmp d, '['					; Compare [sp + 3] (8-bit character) to the third range (0x5B - 0x60)
+	jmf ctype_false
+	cmp d, 'a'					; 'a' follows '`'
+	jmf ctype_true
+	cmp d, '{'					; Compare [sp + 3] (8-bit character) to the last range (0x7B - 0x7E)
+	jmf ctype_false
+	cmp d, '~'
+	jms ctype_false
+	jmp ctype_true
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_tolower:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): no change
+	jms tolower_return
+	cmp d, 'A'
+	jmf tolower_return
+	cmp d, 'Z'
+	jms tolower_return
+	add d, 0x20					; Becomes lower-case
+tolower_return:
+	mov a, c
+	mov b, d
+	ret
+
+
+; [sp + 2]: Character most significant byte
+; [sp + 3]: Character least significant byte
+_toupper:
+	lod c, [sp + 2]
+	lod d, [sp + 3]
+	cmp c, 0x00					; High byte > 0 (EOF or out of range): no change
+	jms toupper_return
+	cmp d, 'a'
+	jmf toupper_return
+	cmp d, 'z'
+	jms toupper_return
+	sub d, 0x20					; Becomes upper-case
+toupper_return:
+	mov a, c
+	mov b, d
+	ret
+
+
+; The exits of the is... functions: [a:b] = 1 or 0.
+ctype_true:
+	mov a, 0
+	mov b, 1
+	ret
+ctype_false:
+	mov a, 0
+	mov b, 0
+	ret

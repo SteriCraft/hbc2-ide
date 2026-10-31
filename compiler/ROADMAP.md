@@ -6,7 +6,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-13 done (step 13 = EEPROM, 2026-10-31) (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 65 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
+- **Phase:** steps 1-13 done (step 13 = EEPROM, 2026-10-31) (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 66 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
 - **Next:** nothing planned. Ask the user what comes next; the candidates (EEPROM next to a RAM program in the IDE, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 
 ## Notes files (read only when needed)
