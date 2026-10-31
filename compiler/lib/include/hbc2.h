@@ -1,5 +1,5 @@
 /* hbc2.h - the HBC-2 hardware from C: I/O ports, interrupts, monitor,
-   terminal, real-time clock, keyboard, EEPROM. Assembly in compiler/lib/asm/hbc2.has.
+   terminal, real-time clock, EEPROM, random numbers, keyboard. Assembly in compiler/lib/asm/hbc2.has.
 
    Functions returning "0, or 1" give 1 when the device is missing or the
    values are refused. */
@@ -84,6 +84,7 @@ unsigned screen_write(const char *text, unsigned length,
                       unsigned char x, unsigned char y, unsigned char colors);
 int screen_clear(unsigned char colors);         /* spaces everywhere; 0, or 1 */
 int screen_set_bg(unsigned char color);         /* background of every cell; 0, or 1 */
+int screen_set_txt(unsigned char color);        /* text of every cell; 0, or 1 */
 
 /* Pixel mode */
 int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color);
@@ -139,6 +140,14 @@ int eeprom_write(unsigned long address, unsigned char value);   /* 0, or 1 */
    0, or 1 (nothing copied). */
 int eeprom_load(void *ram, unsigned long address, unsigned length);
 int eeprom_save(unsigned long address, const void *ram, unsigned length);
+
+
+/* --- Random numbers ----------------------------------------------------
+   Extras of rand and srand (stdlib.h): same generator. */
+
+int srand_rtc(void);        /* seeds from the clock: 0, or 1 (no RTC) */
+/* lo to hi (both included), every value equally likely; lo when hi < lo */
+int rand_range(int lo, int hi);
 
 
 /* --- Keyboard ----------------------------------------------------------

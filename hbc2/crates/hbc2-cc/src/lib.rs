@@ -93,7 +93,8 @@ pub struct Library {
 /// Compiles the C files of the library (`compiler/lib/src/*.c`) into
 /// `dir`, and writes `dir/library.has`, which includes them and
 /// `compiler/lib/lib.has`. A compiled file newer than its C file, the
-/// headers, the compiler and the program running is kept.
+/// headers, the compiler and the program running is kept, unless the list
+/// of C files changed.
 pub fn build_library(dir: &Path) -> Result<Library, Vec<Diagnostic>> {
     let dir = &absolute(dir)?;
     fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
@@ -105,25 +106,31 @@ pub fn build_library(dir: &Path) -> Result<Library, Vec<Diagnostic>> {
         ".library\n.include \"{}\"\n",
         include_path(&lib_dir().join("lib.has"))
     );
-    let tools = newest_tool();
     let mut files = Vec::new();
-    let mut errors = Vec::new();
-    for (n, source) in sources.into_iter().enumerate() {
+    for source in &sources {
         let stem = source.file_stem().unwrap_or_default().to_string_lossy();
         let output = dir.join(format!("lib_{stem}.has"));
-        let inputs = tools.max(modified(&source));
-        if modified(&output) <= inputs
-            && let Err(e) = compile(&source, &output, LIBRARY_FIRST_UNIT + n as u32)
+        text += &format!(".include \"{}\"\n", include_path(&output));
+        files.push((output, source.clone()));
+    }
+    // A file's unit number is its place in the list: when the list
+    // changes (a file added or removed), the compiled files may carry old
+    // numbers, so they are all compiled again.
+    let path = dir.join("library.has");
+    let same_list = fs::read_to_string(&path).is_ok_and(|old| old == text);
+    let tools = newest_tool();
+    let mut errors = Vec::new();
+    for (n, (output, source)) in files.iter().enumerate() {
+        let inputs = tools.max(modified(source));
+        if (!same_list || modified(output) <= inputs)
+            && let Err(e) = compile(source, output, LIBRARY_FIRST_UNIT + n as u32)
         {
             errors.extend(e);
         }
-        text += &format!(".include \"{}\"\n", include_path(&output));
-        files.push((output, source));
     }
     if errors.iter().any(|d| d.severity == Severity::Error) {
         return Err(errors);
     }
-    let path = dir.join("library.has");
     fs::write(&path, text).map_err(|e| io_error(&path, e))?;
     Ok(Library { path, files })
 }

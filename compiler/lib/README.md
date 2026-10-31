@@ -9,13 +9,13 @@ definition is used everywhere, the library's left out.
 
 | Header | Content | Code |
 |---|---|---|
-| `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
+| `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
 | `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `src/stdio.c`, `src/printf.c` |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
-| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr memcpy memmove memset memcmp memchr` | `asm/string.has` |
+| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr memcpy memmove memset memcmp memchr` | `asm/string.has`, `src/string.c` (`strstr`) |
 | `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
-| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`; extras: `srand_rtc`, `rand_range`, `itoa utoa ltoa ultoa htoa lhtoa` | `asm/stdlib.has`, `asm/mathlib/misc` |
+| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`, `strtol`, `strtoul`; common extras: `itoa utoa ltoa ultoa` (radix 2, 8, 10, 16) | `asm/stdlib.has`, `src/stdlib.c`, `asm/mathlib/misc` |
 | `math.h` | integer only (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/math.has` (wrappers), `asm/mathlib` |
 
 `div`, `ldiv` (stdlib.h) are missing: they return a struct, and FCC has no
@@ -49,11 +49,19 @@ for floating point one day.
   not 0 (`EOF`). The `is…` functions share their exits (`ctype_true`,
   `ctype_false`); `isgraph` jumps to `isprint` (a tail call). 668 bytes
   in all, 9 to 24 instructions a call.
-* `asm/stdlib.has` — `exit`, `abs`, `labs`, the random-number and the
-  number <-> text wrappers.
+* `asm/stdlib.has` — `exit`, `abs`, `labs`, the random-number wrappers,
+  and the number -> text routines that `src/stdlib.c` and
+  `src/printf.c` call (`__utoa_dec`, `__utoa_hex`…: not in a header,
+  those files declare them; they return the end of the text).
+* `src/stdlib.c` — `itoa`, `utoa`, `ltoa`, `ultoa`: radix 10 and 16 from
+  the routines above, radix 2 and 8 from shifts (no division anywhere).
+  `strtol`, `strtoul` (bases 0 and 2 to 36; one multiplication a digit,
+  no division) and `atoi`, `atol` (`strtol` in base 10).
 * `src/*.c` — library functions written in C, compiled by the build
   (`hbc2_cc::build_library`). Unit numbers from 100 (`__L100_…`), so their
   labels and `static` names don't clash with the program's files (1, 2, …).
+  A file's number is its place in name order: when a file is added or
+  removed, the build compiles them all again.
 
 Device detection (`monitor_port`, …) is in the startup code:
 `../runtime/devices.has`, included by `../runtime/crt0.has` (RAM) and
@@ -61,15 +69,16 @@ Device detection (`monitor_port`, …) is in the startup code:
 
 `printf` has the minimal set: `%d %u %x %X %c %s %%`, `l` for `long`
 (`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`), `-` to align left
-(`%-6s`). No floating point. It gets its digits from `utoa`, `ultoa`, `htoa` and
-`lhtoa` (no division: 3.5 times faster than with `/` and `%`, for 0.3 KB
+(`%-6s`). No floating point. It gets its digits from `__utoa_dec`,
+`__ultoa_dec`, `__utoa_hex` and `__ultoa_hex` (`asm/stdlib.has`; no division: 3.5 times faster than with `/` and `%`, for 0.3 KB
 more).
 
 ## Size
 
 In all, about 7.7 KB of code and data: the drivers and wrappers ≈ 5 KB
 (terminal 1.6 KB, screen 1.3 KB, `string.h` 1.1 KB, wrappers 0.7 KB), the
-compiled C files ≈ 2.8 KB (`printf.c` 2.5 KB, `stdio.c` 0.3 KB). The
+compiled C files ≈ 2.8 KB (`printf.c` 2.5 KB, `stdio.c` 0.3 KB, plus
+`stdlib.c`). The
 runtime helpers add up to ≈ 6.5 KB more (multiplication 1.4 KB,
 division 2.2 KB, shifts 0.8 KB: only those a program uses). `string.h` was in C until 2026-10-31
 (2.7 KB, 2-4 times slower).

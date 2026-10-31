@@ -2,6 +2,7 @@
 /* Returns the number of the first failed check. */
 
 #include <stdlib.h>
+#include <hbc2.h>
 
 static int first[20];
 static char seen[16];

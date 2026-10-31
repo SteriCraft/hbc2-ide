@@ -130,6 +130,12 @@ _screen_set_bg:
     cal screen_set_bg
     jmp lib_carry
 
+; int screen_set_txt(unsigned char color);
+_screen_set_txt:
+    lod a, [sp + 2]             ; a = color
+    cal screen_set_txt
+    jmp lib_carry
+
 ; int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color)
 _screen_put_pixel:
     lod x, [sp + 2]
@@ -455,6 +461,34 @@ lib_eeprom_save_byte:
     sbb b, 0
     cal lib_eeprom_next
     jmp lib_eeprom_save_loop
+
+; --- Random numbers (extras of rand and srand, stdlib.h) ----------------
+
+; int srand_rtc(void): seeds from the real-time clock; 0, or 1 (no RTC)
+_srand_rtc:
+    lod d, _rtc_port
+    mov a, 0
+    mov b, 1
+    cmp d, 0
+    jme lib_srand_rtc_end
+    cal srand_rtc
+    mov b, 0
+lib_srand_rtc_end:
+    ret
+
+; int rand_range(int lo, int hi): lo to hi (included), signed; lo when
+; hi < lo. Flipping the sign bit turns signed order into unsigned order,
+; so randr16 (unsigned) does the work.
+_rand_range:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    xor a, 0x80
+    xor c, 0x80
+    cal randr16
+    xor a, 0x80
+    ret
 
 ; --- Keyboard ------------------------------------------------------------
 

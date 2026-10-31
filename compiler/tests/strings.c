@@ -75,6 +75,7 @@ int compares(void)
 int searches(void)
 {
     char *s = "hello world";
+    char *t, *u;
     if (strchr(s, 'o') != s + 4 || strrchr(s, 'o') != s + 7)
         return 30;
     if (strchr(s, 'z') != NULL || strrchr(s, 'z') != NULL)
@@ -87,6 +88,24 @@ int searches(void)
         return 34;
     if (strchr(s, 0x100 + 'e') != s + 1)    /* c is used as a char */
         return 35;
+    /* strstr: where the substring starts */
+    if (strstr(s, "world") != s + 6 || strstr(s, s) != s || strstr(s, "d") != s + 10)
+        return 36;
+    if (strstr(s, "") != s || *strstr("", "") != 0)     /* empty substring: str */
+        return 37;
+    /* not found: letters apart, longer than the string, empty string */
+    if (strstr("a-b-c", "abc") || strstr(s, "hello world!") || strstr("", "a") || strstr(s, "wx"))
+        return 38;
+    /* a start that fails, then the right one (also overlapping) */
+    t = "abxabc";
+    u = "aaab";
+    if (strstr(t, "abc") != t + 3 || strstr(u, "aab") != u + 1)
+        return 39;
+    memset(a, 'x', 300);                    /* past 255 characters */
+    a[299] = 'y';
+    a[300] = 0;
+    if (strstr(a, "xy") != a + 298)
+        return 39;
     return 0;
 }
 
