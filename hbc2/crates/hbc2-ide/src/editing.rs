@@ -1,6 +1,7 @@
 //! Editing helpers of the code editor: indent or unindent the selected
-//! lines (Tab, Shift+Tab), closing brackets added after an opening one, and
-//! a new line that keeps the indentation of the line above (Enter).
+//! lines (Tab, Shift+Tab), closing brackets and quotes added after an
+//! opening one, and a new line that keeps the indentation of the line above
+//! (Enter).
 //!
 //! Positions are character indices (not bytes), like the editor's cursor.
 //! The selection goes from `anchor` (where it started) to `cursor` (the end
@@ -19,9 +20,17 @@ const INDENT_SPACES: usize = 4;
 
 const PAIRS: [(char, char); 3] = [('(', ')'), ('[', ']'), ('{', '}')];
 
+/// Quotes: the same character opens and closes.
+const QUOTES: [char; 2] = ['"', '\''];
+
 /// The closing bracket of `open`.
-pub fn closing(open: char) -> Option<char> {
+fn closing_bracket(open: char) -> Option<char> {
     PAIRS.iter().find(|p| p.0 == open).map(|p| p.1)
+}
+
+/// The closing bracket or quote of `open`.
+pub fn closing(open: char) -> Option<char> {
+    closing_bracket(open).or(QUOTES.contains(&open).then_some(open))
 }
 
 fn is_closing(c: char) -> bool {
@@ -99,10 +108,12 @@ pub fn indent(text: &str, anchor: usize, cursor: usize, outdent: bool) -> Edit {
     }
 }
 
-/// An opening bracket typed. With a selection, the brackets go around it.
-/// Otherwise both brackets are written, with the cursor between them, if
+/// An opening bracket or a quote typed. With a selection, the pair goes
+/// around it. Otherwise both are written, with the cursor between them, if
 /// the next character is a space, a closing bracket, `;`, `,` or the end of
-/// the text (`None`: the bracket is typed as usual).
+/// the text (`None`: the character is typed as usual). A quote is not
+/// paired before the same quote (it closes the string) or after a letter,
+/// a digit, `_` or `\` (`don't`, `'\''`).
 pub fn open_bracket(text: &str, anchor: usize, cursor: usize, open: char) -> Option<Edit> {
     let close = closing(open)?;
     let mut chars: Vec<char> = text.chars().collect();
@@ -117,6 +128,13 @@ pub fn open_bracket(text: &str, anchor: usize, cursor: usize, open: char) -> Opt
         });
     }
     let next = chars.get(start).copied();
+    let prev = start.checked_sub(1).and_then(|i| chars.get(i)).copied();
+    if open == close
+        && (next == Some(close)
+            || prev.is_some_and(|c| c.is_alphanumeric() || c == '_' || c == '\\'))
+    {
+        return None;
+    }
     if !next.is_none_or(|c| c.is_whitespace() || is_closing(c) || c == ';' || c == ',') {
         return None;
     }
@@ -128,10 +146,13 @@ pub fn open_bracket(text: &str, anchor: usize, cursor: usize, open: char) -> Opt
     })
 }
 
-/// A closing bracket typed just before the same bracket: the cursor goes
-/// past it instead of adding a second one.
+/// A closing bracket or quote typed just before the same one: the cursor
+/// goes past it instead of adding a second one.
 pub fn close_bracket(text: &str, anchor: usize, cursor: usize, close: char) -> Option<Edit> {
-    if anchor != cursor || !is_closing(close) || text.chars().nth(cursor) != Some(close) {
+    if anchor != cursor
+        || !(is_closing(close) || QUOTES.contains(&close))
+        || text.chars().nth(cursor) != Some(close)
+    {
         return None;
     }
     Some(Edit {
@@ -205,8 +226,8 @@ pub fn close_brace(text: &str, anchor: usize, cursor: usize, typed: char) -> Opt
     })
 }
 
-/// Backspace between an opening bracket and its closing one, as just
-/// typed: both go.
+/// Backspace between an opening bracket (or quote) and its closing one, as
+/// just typed: both go.
 pub fn backspace(text: &str, anchor: usize, cursor: usize) -> Option<Edit> {
     if anchor != cursor || cursor == 0 {
         return None;
@@ -248,7 +269,7 @@ pub fn newline(text: &str, anchor: usize, cursor: usize) -> Edit {
         .rev()
         .find(|c| !c.is_whitespace())
         .copied();
-    let close = before.and_then(closing);
+    let close = before.and_then(closing_bracket);
 
     let mut insert = vec!['\n'];
     insert.extend(&indent);
@@ -336,6 +357,31 @@ mod tests {
         assert_eq!(show(&backspace("f()", 2, 2).unwrap()), "f|");
         assert_eq!(backspace("f(x)", 2, 2), None);
         assert_eq!(backspace("()", 0, 0), None);
+    }
+
+    #[test]
+    fn quotes() {
+        assert_eq!(show(&open_bracket("f(", 2, 2, '"').unwrap()), "f(\"|\"");
+        assert_eq!(
+            show(&open_bracket("x = ;", 4, 4, '\'').unwrap()),
+            "x = '|';"
+        );
+        assert_eq!(show(&open_bracket("f()", 2, 2, '"').unwrap()), "f(\"|\")");
+        assert_eq!(show(&open_bracket("ab", 0, 2, '"').unwrap()), "\"<ab>\"");
+        // Before the same quote: it closes the string, the cursor steps over it.
+        assert_eq!(open_bracket("\"ab\"", 3, 3, '"'), None);
+        assert_eq!(
+            show(&close_bracket("\"ab\"", 3, 3, '"').unwrap()),
+            "\"ab\"|"
+        );
+        // After a word or a backslash, or before a word: just the quote.
+        assert_eq!(open_bracket("don", 3, 3, '\''), None);
+        assert_eq!(open_bracket("'\\", 2, 2, '\''), None);
+        assert_eq!(open_bracket("ab", 0, 0, '"'), None);
+        // Backspace between two quotes: both go.
+        assert_eq!(show(&backspace("x\"\"", 2, 2).unwrap()), "x|");
+        // Enter after a quote: no extra indentation.
+        assert_eq!(show(&newline("\"", 1, 1)), "\"\n|");
     }
 
     #[test]
