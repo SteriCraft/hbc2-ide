@@ -136,6 +136,33 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             if output.response.dragged() {
                 drag_scroll(ui);
             }
+            // The status bar, drawn before the editor, shows the cursor
+            // position: one more frame when the cursor moves.
+            let cursor = output
+                .state
+                .cursor
+                .char_range()
+                .map(|r| (r.primary.index.0, r.secondary.index.0));
+            let shown = editor_id.with("shown-cursor");
+            if ui.data(|d| d.get_temp(shown)) != Some(cursor) {
+                ui.data_mut(|d| d.insert_temp(shown, cursor));
+                ui.ctx().request_repaint();
+                // The cursor moved left of the view (a click on a short line
+                // after reading a long one, Home...): back to the start of
+                // the lines when the cursor is still shown from there. egui
+                // only scrolls until the cursor reaches the edge.
+                if let Some((at, _)) = cursor {
+                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at));
+                    let view = ui.clip_rect();
+                    let left = output.response.rect.left();
+                    if rect.min.x < view.left() + 1.0
+                        && rect.min.x - left < view.width() - 4.0 * digit_width
+                    {
+                        let start = Rect::from_x_y_ranges(left..=left + 1.0, rect.y_range());
+                        ui.scroll_to_rect(start, None);
+                    }
+                }
+            }
             if output.response.clicked()
                 && let Some(pointer) = output.response.interact_pointer_pos()
                 && click_count(ui, editor_id, pointer) < 3

@@ -36,6 +36,39 @@ pub enum Kind {
     Function,
 }
 
+/// Columns between tab stops: a tab goes to the next multiple of 4, as in
+/// most editors.
+pub const TAB_WIDTH: usize = 4;
+
+/// The column (from 0) after `line_start`, the start of a line, with each
+/// tab going to the next tab stop.
+pub fn column(line_start: &str) -> usize {
+    line_start.chars().fold(0, |column, c| match c {
+        '\t' => column + TAB_WIDTH - column % TAB_WIDTH,
+        _ => column + 1,
+    })
+}
+
+/// Appends `text`, which starts at `column` of its line, to the job and
+/// moves `column` past it. egui draws every tab 4 spaces wide wherever it
+/// is: each tab gets a smaller font size, so that it ends on the next tab
+/// stop (a tab has nothing to show, only its width changes).
+fn append_with_tabs(job: &mut LayoutJob, text: &str, format: &TextFormat, column: &mut usize) {
+    for (index, piece) in text.split('\t').enumerate() {
+        if index > 0 {
+            let width = TAB_WIDTH - *column % TAB_WIDTH;
+            let mut tab = format.clone();
+            tab.font_id.size *= width as f32 / TAB_WIDTH as f32;
+            job.append("\t", 0.0, tab);
+            *column += width;
+        }
+        if !piece.is_empty() {
+            job.append(piece, 0.0, format.clone());
+            *column += piece.chars().count();
+        }
+    }
+}
+
 /// Which highlighter a file gets, by its extension.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub enum Syntax {
@@ -270,12 +303,10 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
             Syntax::Assembly => spans(content),
             Syntax::C => c_spans(content, &mut in_comment),
         };
+        let mut column = 0;
         for (range, kind) in spans {
-            job.append(
-                &content[range],
-                0.0,
-                TextFormat::simple(font.clone(), color(kind, dark)),
-            );
+            let format = TextFormat::simple(font.clone(), color(kind, dark));
+            append_with_tabs(&mut job, &content[range], &format, &mut column);
         }
         job.append(
             &line[content.len()..],
@@ -291,6 +322,48 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn columns_with_tab_stops() {
+        assert_eq!(column(""), 0);
+        assert_eq!(column("ab"), 2);
+        assert_eq!(column("\t"), 4);
+        assert_eq!(column("ab\t"), 4);
+        assert_eq!(column("abcd\t"), 8);
+        assert_eq!(column("\tlod c, [sp + 2]\t"), 20);
+    }
+
+    /// Tabs end on the tab stops in the laid out text: the comments of
+    /// these lines start at the same x.
+    #[test]
+    fn tabs_line_up() {
+        // Each comment starts at column 20.
+        let text = "\tmov a, 1\t\t; one\n\tlod c, [sp + 2]\t; two\n\tret\t\t\t\t; three\n";
+        let font = FontId::monospace(14.0);
+        let job = layout_job(text, Syntax::Assembly, font.clone(), true);
+        let ctx = eframe::egui::Context::default();
+        let mut galley = None;
+        let mut output = ctx.run_ui(Default::default(), |ui| {
+            galley = Some(ui.fonts_mut(|f| f.layout_job(job.clone())));
+        });
+        output.textures_delta.clear();
+        let galley = galley.unwrap();
+        let x_of = |s: &str| {
+            let index = text[..text.find(s).unwrap()].chars().count();
+            galley
+                .pos_from_cursor(eframe::egui::text::CCursor::new(index))
+                .min
+                .x
+        };
+        // Positions are rounded to pixels: the width of a character measured
+        // over 13 of them.
+        let space = (x_of("2]") - x_of("lod c")) / 13.0;
+        let (one, two, three) = (x_of("; one"), x_of("; two"), x_of("; three"));
+        for x in [one, two, three] {
+            assert!((x - 20.0 * space).abs() < 1.5, "{x} vs {}", 20.0 * space);
+        }
+        assert_eq!((one, one), (two, three));
+    }
 
     fn kinds(line: &str) -> Vec<(&str, Kind)> {
         spans(line)

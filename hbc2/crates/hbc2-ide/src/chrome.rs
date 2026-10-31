@@ -405,10 +405,9 @@ pub fn status_bar(ui: &mut egui::Ui, state: &State) {
     let s = &state.snapshot;
     egui::Panel::bottom("status_bar").show(ui, |ui| {
         ui.horizontal(|ui| {
-            match &state.project {
-                Some(p) => ui.label(p.root.display().to_string()),
-                None => ui.weak("No project"),
-            };
+            if let Some(position) = cursor_position(ui.ctx(), state) {
+                ui.monospace(position);
+            }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                 ui.monospace(format!(
                     "{} cycles",
@@ -429,6 +428,25 @@ pub fn status_bar(ui: &mut egui::Ui, state: &State) {
             });
         });
     });
+}
+
+/// "Ln 12, Col 5" for the cursor of the editor shown, with the number of
+/// characters selected. Columns count a tab up to the next tab stop.
+fn cursor_position(ctx: &egui::Context, state: &State) -> Option<String> {
+    let path = state.active_editor.as_ref()?;
+    let doc = state.docs.iter().find(|d| &d.path == path)?;
+    let editor = egui::text_edit::TextEditState::load(ctx, crate::views::editor::editor_id(path))?;
+    let range = editor.cursor.char_range()?;
+    let (at, other) = (range.primary.index.0, range.secondary.index.0);
+    let before: String = doc.text.chars().take(at).collect();
+    let line_start = before.rfind('\n').map_or(0, |i| i + 1);
+    let line = before.matches('\n').count() + 1;
+    let column = crate::highlight::column(&before[line_start..]) + 1;
+    let mut text = format!("Ln {line}, Col {column}");
+    if at != other {
+        text += &format!(" ({} selected)", at.abs_diff(other));
+    }
+    Some(text)
 }
 
 pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
