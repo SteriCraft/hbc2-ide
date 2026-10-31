@@ -446,6 +446,10 @@ fn cursor_position(ctx: &egui::Context, state: &State) -> Option<String> {
     if at != other {
         text += &format!(" ({} selected)", at.abs_diff(other));
     }
+    let cursors = crate::views::editor::cursor_count(ctx, path);
+    if cursors > 1 {
+        text += &format!(" · {cursors} cursors");
+    }
     Some(text)
 }
 

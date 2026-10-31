@@ -17,6 +17,7 @@ use crate::document::{Document, shift_breakpoints};
 use crate::editing;
 use crate::find::{self, Options};
 use crate::highlight;
+use crate::multicursor::{self, Op};
 use crate::signatures::{Signature, Signatures};
 
 /// What the editor shows besides the text.
@@ -105,7 +106,28 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .max(1.0) as usize;
             let focused = ui.memory(|m| m.has_focus(editor_id));
             let before = focused.then(|| text.clone());
-            let auto_edited = focused && !marks.read_only && auto_edit(ui, editor_id, text);
+            // Extra cursors (Ctrl+click), dropped when the text changed
+            // some other way (undo, reload...).
+            let mut multi = MultiCursor::load(ui.ctx(), editor_id);
+            if multi.text_hash != text_hash(text) {
+                multi.cursors.clear();
+            }
+            let cursor_before = TextEditState::load(ui.ctx(), editor_id)
+                .and_then(|s| s.cursor.char_range())
+                .map(|r| r.primary.index.0);
+            // Escape: back to one cursor. egui has already taken the
+            // keyboard from the editor for it: give it back.
+            let refocus = !multi.cursors.is_empty() && ui.input(|i| i.key_pressed(Key::Escape));
+            if refocus {
+                multi.cursors.clear();
+            }
+            let auto_edited = focused
+                && !marks.read_only
+                && if multi.cursors.is_empty() {
+                    auto_edit(ui, editor_id, text)
+                } else {
+                    multi_edit(ui, editor_id, text, &mut multi.cursors)
+                };
             // A `&str` buffer can be selected and copied, not edited.
             let mut shown: &str;
             let buffer: &mut dyn egui::TextBuffer = if marks.read_only {
@@ -130,9 +152,41 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .layouter(&mut layouter)
                 .show(ui);
 
-            if std::mem::take(focus) {
+            if std::mem::take(focus) || refocus {
                 output.response.request_focus();
             }
+            // Ctrl+click adds a cursor where the main one was (egui moved it
+            // to the click), or removes the one clicked; a plain click
+            // leaves one cursor.
+            if ui.input(|i| i.pointer.primary_pressed()) && output.response.contains_pointer() {
+                let clicked = output.state.cursor.char_range().map(|r| r.primary.index.0);
+                if !ui.input(|i| i.modifiers.command) {
+                    multi.cursors.clear();
+                } else if let (Some(old), Some(new)) = (cursor_before, clicked) {
+                    if let Some(index) = multi.cursors.iter().position(|&c| c == new) {
+                        multi.cursors.remove(index);
+                        output
+                            .state
+                            .cursor
+                            .set_char_range(Some(CCursorRange::one(CCursor::new(old))));
+                        output.state.clone().store(ui.ctx(), editor_id);
+                    } else if old != new && !multi.cursors.contains(&old) {
+                        multi.cursors.push(old);
+                    }
+                }
+            }
+            if output.response.changed() {
+                multi.cursors.clear(); // egui edited: the cursors are not kept up to date
+            }
+            if output.response.has_focus() {
+                let stroke = ui.visuals().text_cursor.stroke;
+                for &at in &multi.cursors {
+                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at));
+                    ui.painter().vline(rect.min.x, rect.y_range(), stroke);
+                }
+            }
+            multi.text_hash = text_hash(text);
+            multi.store(ui.ctx(), editor_id);
             if output.response.dragged() {
                 drag_scroll(ui);
                 // egui's scroll area ignores the wheel during a drag: scroll
@@ -428,6 +482,8 @@ fn auto_edit(ui: &egui::Ui, id: Id, text: &mut String) -> bool {
                 (Key::Backspace, m) if m.is_none() => editing::backspace(text, anchor, cursor),
                 // Keys the text box acts on: editing, moving the cursor, Ctrl
                 // shortcuts (AltGr is Ctrl+Alt on Windows: it types characters).
+                // Shift, Ctrl, Alt themselves (egui repeats them while held).
+                (key, _) if is_modifier(*key) => continue,
                 (key, m) if edits_or_moves(*key) || (m.command && !m.alt) => None,
                 // A character key: its character comes in a Text event.
                 _ => continue,
@@ -603,6 +659,148 @@ fn signature_popup(
                 }
             });
         });
+}
+
+/// The cursors added with Ctrl+click, besides egui's own (the main one).
+#[derive(Clone, Default)]
+struct MultiCursor {
+    cursors: Vec<usize>,
+    /// Hash of the text they are positions in.
+    text_hash: u64,
+}
+
+impl MultiCursor {
+    fn id(editor: Id) -> Id {
+        editor.with("multi-cursor")
+    }
+
+    fn load(ctx: &egui::Context, editor: Id) -> MultiCursor {
+        ctx.data(|d| d.get_temp(Self::id(editor)))
+            .unwrap_or_default()
+    }
+
+    fn store(self, ctx: &egui::Context, editor: Id) {
+        ctx.data_mut(|d| d.insert_temp(Self::id(editor), self));
+    }
+}
+
+/// How many cursors the editor of `path` has (1 without Ctrl+click).
+pub fn cursor_count(ctx: &egui::Context, path: &Path) -> usize {
+    MultiCursor::load(ctx, editor_id(path)).cursors.len() + 1
+}
+
+fn text_hash(text: &str) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    text.hash(&mut hasher);
+    hasher.finish()
+}
+
+/// With extra cursors, the editor handles the keys itself: each one is
+/// applied at every cursor (see [`multicursor`]). A key it does not handle
+/// (Ctrl shortcuts, Shift+arrows, cut) goes back to one cursor and is left
+/// to the text box. Returns whether the text changed.
+fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<usize>) -> bool {
+    let Some(mut state) = TextEditState::load(ui.ctx(), id) else {
+        extra.clear();
+        return false;
+    };
+    let Some(range) = state.cursor.char_range() else {
+        extra.clear();
+        return false;
+    };
+    let mut main = range.primary.index.0;
+    let mut cursors = extra.clone();
+    cursors.push(main);
+    let events = ui.input(|i| i.events.clone());
+    let mut taken = Vec::new();
+    let mut changed = false;
+    let mut leave = false;
+    for (index, event) in events.iter().enumerate() {
+        let op = match event {
+            Event::Text(typed) if typed == "\n" || typed == "\r" => None,
+            Event::Text(typed) => Some(Op::Type(typed.clone())),
+            Event::Paste(pasted) => Some(Op::Paste(pasted.clone())),
+            Event::Cut => {
+                leave = true;
+                break;
+            }
+            Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } => {
+                if is_modifier(*key) {
+                    continue; // Ctrl itself, held for the next Ctrl+click
+                }
+                if modifiers.is_none() {
+                    match key {
+                        Key::Backspace => Some(Op::Backspace),
+                        Key::Delete => Some(Op::Delete),
+                        Key::Enter => Some(Op::Enter),
+                        Key::Tab => Some(Op::Tab),
+                        Key::ArrowLeft => Some(Op::Left),
+                        Key::ArrowRight => Some(Op::Right),
+                        Key::ArrowUp => Some(Op::Up),
+                        Key::ArrowDown => Some(Op::Down),
+                        Key::Home => Some(Op::Home),
+                        Key::End => Some(Op::End),
+                        Key::PageUp | Key::PageDown => {
+                            leave = true;
+                            break;
+                        }
+                        // A character key: its character comes in a Text event.
+                        _ => continue,
+                    }
+                } else if (modifiers.command && !modifiers.alt)
+                    || (modifiers.shift && edits_or_moves(*key))
+                {
+                    leave = true;
+                    break;
+                } else {
+                    continue; // Shift or AltGr + a character key
+                }
+            }
+            _ => continue,
+        };
+        taken.push(index);
+        if let Some(op) = op {
+            let outcome = multicursor::apply(text, &cursors, main, &op);
+            changed |= outcome.text != *text;
+            *text = outcome.text;
+            cursors = outcome.cursors;
+            main = outcome.main;
+        }
+    }
+    ui.ctx().input_mut(|i| {
+        let mut index = 0;
+        i.events.retain(|_| {
+            index += 1;
+            !taken.contains(&(index - 1))
+        });
+    });
+    cursors.retain(|&c| c != main);
+    *extra = if leave { Vec::new() } else { cursors };
+    state
+        .cursor
+        .set_char_range(Some(CCursorRange::one(CCursor::new(main))));
+    state.store(ui.ctx(), id);
+    changed
+}
+
+/// Shift, Ctrl, Alt and the Windows key: egui sends them as keys too.
+fn is_modifier(key: Key) -> bool {
+    matches!(
+        key,
+        Key::ShiftLeft
+            | Key::ShiftRight
+            | Key::ControlLeft
+            | Key::ControlRight
+            | Key::AltLeft
+            | Key::AltRight
+            | Key::SuperLeft
+            | Key::SuperRight
+    )
 }
 
 /// Keys that change the text or move the cursor in the text box.
