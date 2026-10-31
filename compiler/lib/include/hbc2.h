@@ -1,11 +1,12 @@
 /* hbc2.h - the HBC-2 hardware from C: I/O ports, interrupts, monitor,
-   terminal, real-time clock, keyboard. Assembly in compiler/lib/asm/hbc2.has.
+   terminal, real-time clock, keyboard, EEPROM. Assembly in compiler/lib/asm/hbc2.has.
 
    Functions returning "0, or 1" give 1 when the device is missing or the
    values are refused. */
 
 #ifndef __HBC2_H
 #define __HBC2_H
+
 
 /* --- Devices ---------------------------------------------------------
    The first port of each device, 0 when it is not plugged. Set at
@@ -15,6 +16,7 @@ extern unsigned char monitor_port;
 extern unsigned char rtc_port;
 extern unsigned char keyboard_port;
 extern unsigned char eeprom_port;
+
 
 /* --- I/O ports and interrupts --------------------------------------- */
 
@@ -36,6 +38,7 @@ void wait_interrupt(void);  /* hlt: sleeps until the next interrupt (enables the
    keys pressed, keyboard_port + 1 for keys released. The terminal and
    key_event install their own keyboard handlers. */
 int set_vector(unsigned char port, void (*handler)(void));
+
 
 /* --- Monitor ---------------------------------------------------------
    Text mode: 42 columns x 24 rows, characters 0x20 (space) to 0x7E (~).
@@ -87,6 +90,7 @@ int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color);
 int screen_get_pixel(unsigned char x, unsigned char y);   /* color, or -1 */
 int screen_fill(unsigned char color);           /* 0, or 1 */
 
+
 /* --- Terminal ---------------------------------------------------------
    The text console used by putchar, puts and printf (stdio.h): text at
    a cursor, a new row at the end of a row or on '\n', the screen scrolls
@@ -102,6 +106,7 @@ void term_prompt(void);             /* '>' at the start of the row, cursor after
 char *term_readline(void);
 void term_update(void);             /* cursor blink and keys; called by term_readline */
 
+
 /* --- Real-time clock -------------------------------------------------- */
 
 struct rtc_time {
@@ -115,6 +120,26 @@ struct rtc_time {
 
 int rtc_get(struct rtc_time *time);             /* 0, or 1 */
 int rtc_set(const struct rtc_time *time);       /* 0, or 1 (no RTC, invalid date) */
+
+
+/* --- EEPROM ------------------------------------------------------------
+   1 MiB that keeps its content when the power is off: addresses 0 to
+   0xFFFFF. Plugged when the program is built for the EEPROM (see
+   compiler/ABI.md, section 8): the program itself is at the start of
+   the EEPROM, at the same addresses as in RAM ($0x0000 to $0xFFFF), so
+   keep your data from EEPROM_FREE on. The functions return -1 or 1 when
+   there is no EEPROM or the addresses go past its end. */
+
+#define EEPROM_SIZE 0x100000L
+#define EEPROM_FREE 0x10000L        /* the first address after a program */
+
+int eeprom_read(unsigned long address);         /* the byte, or -1 */
+int eeprom_write(unsigned long address, unsigned char value);   /* 0, or 1 */
+/* Copies length bytes from the EEPROM to RAM, or from RAM to the EEPROM:
+   0, or 1 (nothing copied). */
+int eeprom_load(void *ram, unsigned long address, unsigned length);
+int eeprom_save(unsigned long address, const void *ram, unsigned length);
+
 
 /* --- Keyboard ----------------------------------------------------------
    Key events are kept (up to 15) from the first call to key_event or to

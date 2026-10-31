@@ -11,7 +11,9 @@
 //! * `.bss` variables are placed together, in source order, in one free gap
 //!   (after code and data). Nothing is written for them in the image.
 //!   `__bss_start` and `__bss_end` (one past the last byte) are defined for
-//!   the startup code that clears the area.
+//!   the startup code that clears the area. `__program_end` is the address
+//!   just after the last byte of code or data placed automatically (for a
+//!   boot loader that copies the program).
 //! * `.common` variables (C's `int n;`, which may be in several files) of
 //!   the same name are one `.bss` variable, as large as the largest. A
 //!   label, `.data` or `.bss` of that name is used instead of them.
@@ -86,9 +88,15 @@ struct Common {
     library: bool,
 }
 
-/// Names defined by the assembler for the `.bss` area.
+/// Names defined by the assembler: the `.bss` area, and the end of what
+/// automatic placement used.
 const BSS_START: &str = "__bss_start";
 const BSS_END: &str = "__bss_end";
+const PROGRAM_END: &str = "__program_end";
+
+fn assembler_name(name: &str) -> bool {
+    name == BSS_START || name == BSS_END || name == PROGRAM_END
+}
 
 pub(crate) struct Output {
     pub image: Vec<u8>,
@@ -133,11 +141,11 @@ pub(crate) fn assemble(
     } else {
         Vec::new()
     };
-    let bss_area = place(&mut blocks, &mut data, &mut bss, target, report);
+    let (bss_area, program_end) = place(&mut blocks, &mut data, &mut bss, target, report);
     if report.has_errors() {
         return None;
     }
-    let symbols = symbols(&blocks, &data, &bss, bss_area);
+    let symbols = symbols(&blocks, &data, &bss, bss_area, program_end);
     let mut output = write(&blocks, &data, symbols, target, report);
     output.removed = removed;
     if report.has_errors() {
@@ -318,10 +326,10 @@ impl Names<'_> {
         library: bool,
         report: &mut Report,
     ) -> Option<String> {
-        if name == BSS_START || name == BSS_END {
+        if assembler_name(&name) {
             report.error(
                 loc,
-                format!("'{name}' is defined by the assembler (bounds of the .bss area)"),
+                format!("'{name}' is defined by the assembler"),
             );
             return None;
         }
@@ -499,7 +507,7 @@ fn strip(
     for (p, piece) in pieces.iter().enumerate() {
         let mut use_name = |name: &str, loc: Loc| match by_name.get(name) {
             Some(&to) => uses[p].push(to),
-            None if name == BSS_START || name == BSS_END => {}
+            None if assembler_name(name) => {}
             None => report.error(loc, format!("unknown label or variable '{name}'")),
         };
         match *piece {
@@ -661,14 +669,15 @@ fn auto_regions(target: Target) -> Vec<Range<u32>> {
     }
 }
 
-/// Places everything; returns the `.bss` area.
+/// Places everything; returns the `.bss` area and the address after the
+/// last byte placed automatically (code and data).
 fn place(
     blocks: &mut [Block],
     data: &mut [Data],
     bss: &mut [Bss],
     target: Target,
     report: &mut Report,
-) -> Range<u32> {
+) -> (Range<u32>, u32) {
     // Fixed ranges: (range, name, location)
     let mut fixed: Vec<(Range<u32>, String, Loc)> = Vec::new();
     for b in blocks.iter() {
@@ -711,7 +720,7 @@ fn place(
         }
     }
     if report.has_errors() {
-        return 0..0;
+        return (0..0, 0);
     }
 
     let mut free = auto_regions(target);
@@ -719,6 +728,7 @@ fn place(
         subtract(&mut free, range);
     }
 
+    let mut program_end = 0;
     let mut allocate = |size: u32, name: &str, loc: Loc, report: &mut Report| -> Option<u32> {
         let Some(gap) = free.iter().position(|g| g.end - g.start >= size) else {
             report.error(
@@ -729,6 +739,7 @@ fn place(
         };
         let start = free[gap].start;
         subtract(&mut free, &(start..start + size));
+        program_end = program_end.max(start + size);
         Some(start)
     };
 
@@ -739,7 +750,7 @@ fn place(
         d.address = allocate(d.size(), &d.name, d.loc, report);
     }
     if report.has_errors() {
-        return 0..0;
+        return (0..0, 0);
     }
 
     // .bss is RAM only (nothing is in the image), so it may go anywhere in
@@ -757,13 +768,13 @@ fn place(
     let total: u32 = bss.iter().map(|b| b.size).sum();
     let Some(gap) = ram.iter().find(|g| g.end - g.start >= total) else {
         if bss.is_empty() {
-            return 0..0; // memory full, but nothing to place
+            return (0..0, 0); // memory full, but nothing to place
         }
         report.error(
             bss[0].loc,
             format!("not enough free memory to place the .bss variables ({total} bytes)"),
         );
-        return 0..0;
+        return (0..0, 0);
     };
     let start = gap.start;
     let mut a = start;
@@ -771,7 +782,7 @@ fn place(
         b.address = a;
         a += b.size;
     }
-    start..a
+    (start..a, program_end)
 }
 
 /// Removes `taken` from the list of free ranges (kept sorted).
@@ -797,7 +808,13 @@ fn subtract(free: &mut Vec<Range<u32>>, taken: &Range<u32>) {
 
 // ----- 3. Symbols
 
-fn symbols(blocks: &[Block], data: &[Data], bss: &[Bss], bss_area: Range<u32>) -> Vec<Symbol> {
+fn symbols(
+    blocks: &[Block],
+    data: &[Data],
+    bss: &[Bss],
+    bss_area: Range<u32>,
+    program_end: u32,
+) -> Vec<Symbol> {
     let mut symbols = Vec::new();
     for b in blocks {
         let start = b.address.expect("placed");
@@ -834,7 +851,11 @@ fn symbols(blocks: &[Block], data: &[Data], bss: &[Bss], bss_area: Range<u32>) -
         });
     }
     // Last, so that a variable at the same address is found first by address.
-    for (name, address) in [(BSS_START, bss_area.start), (BSS_END, bss_area.end)] {
+    for (name, address) in [
+        (BSS_START, bss_area.start),
+        (BSS_END, bss_area.end),
+        (PROGRAM_END, program_end),
+    ] {
         symbols.push(Symbol {
             name: name.to_string(),
             address,

@@ -778,6 +778,30 @@ fn bss_errors() {
     assert!(e("__bss_start:\n    nop").contains("defined by the assembler"));
     assert!(e(".data v 1\n.bss v 1").contains("already defined"));
     assert!(e(".bss v 65500").contains("not enough free memory"));
+    assert!(e(".data __program_end 1").contains("defined by the assembler"));
+}
+
+#[test]
+fn program_end_follows_what_is_placed_automatically() {
+    let p = asm("
+_start:
+    mov a, __program_end.msb
+    mov b, __program_end.lsb
+    hlt
+late: $0x8000                ; fixed: not counted
+    hlt
+.data table 1, 2, 3
+.bss buffer 16               ; not in the image: not counted
+.data16 vector $0xFE02 late
+");
+    assert_eq!(addr(&p, "table"), 12, "after the code");
+    assert_eq!(addr(&p, "__program_end"), 15);
+    let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.run(100);
+    assert_eq!((m.cpu.reg(Register::A), m.cpu.reg(Register::B)), (0x00, 15));
+
+    let only_start = asm("_start:\n    hlt\n");
+    assert_eq!(addr(&only_start, "__program_end"), 0, "_start is fixed");
 }
 
 #[test]

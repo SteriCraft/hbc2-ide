@@ -282,6 +282,180 @@ _rtc_set:
     mov a, 0
     ret
 
+; --- EEPROM --------------------------------------------------------------
+; Ports: CMD, DATA, ADDR_0 (bits 19-16), ADDR_1 (15-8), ADDR_2 (7-0).
+; Writing CMD runs it: 1 = READ (DATA = the byte), 2 = WRITE.
+; An unsigned long argument is 4 bytes, most significant first.
+
+; lib_eeprom_seek: b:a:c:d = address. C = 1 when there is no EEPROM or
+; the address is past $0xFFFFF; otherwise the address ports are set and
+; j = the CMD port. Changes i.
+lib_eeprom_seek:
+    lod j, _eeprom_port
+    cmp j, 0
+    jme lib_eeprom_refused
+    cmp b, 0
+    jme lib_eeprom_seek_high
+    jmp lib_eeprom_refused
+lib_eeprom_seek_high:
+    cmp a, 0x0F
+    jms lib_eeprom_refused      ; bits 23-20 not 0
+    mov i, j
+    add i, 2
+    out i, a                    ; ADDR_0
+    inc i
+    out i, c                    ; ADDR_1
+    inc i
+    out i, d                    ; ADDR_2
+    clc
+    ret
+lib_eeprom_refused:
+    stc
+    ret
+
+; lib_eeprom_range: like lib_eeprom_seek, and C = 1 too when the [x:y]
+; bytes from the address go past the end of the EEPROM.
+lib_eeprom_range:
+    psh a, c, d
+    add d, y
+    adc c, x
+    adc a, 0                    ; a:c:d = address + length (b = 0 if valid)
+    cmp a, 0x10
+    jmf lib_eeprom_range_ok     ; end below $0x100000
+    jms lib_eeprom_range_bad
+    cmp c, 0                    ; a = 0x10: only $0x100000 itself is valid
+    jme lib_eeprom_range_low
+    jmp lib_eeprom_range_bad
+lib_eeprom_range_low:
+    cmp d, 0
+    jme lib_eeprom_range_ok
+lib_eeprom_range_bad:
+    pop a, c, d
+    jmp lib_eeprom_refused
+lib_eeprom_range_ok:
+    pop a, c, d
+    jmp lib_eeprom_seek
+
+; lib_eeprom_next: the address ports + 1 (j = CMD port). Changes a, i.
+lib_eeprom_next:
+    mov i, j
+    add i, 4                    ; ADDR_2
+lib_eeprom_next_port:
+    in a, i
+    inc a
+    out i, a
+    cmp a, 0
+    jme lib_eeprom_next_carry
+    ret
+lib_eeprom_next_carry:
+    dec i                       ; ADDR_1, then ADDR_0
+    jmp lib_eeprom_next_port
+
+; int eeprom_read(unsigned long address): the byte, or -1
+_eeprom_read:
+    lod b, [sp + 2]
+    lod a, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    cal lib_eeprom_seek
+    jmc lib_minus_one
+    mov a, 1
+    out j, a                    ; READ
+    inc j
+    in b, j                     ; DATA
+    mov a, 0
+    ret
+
+; int eeprom_write(unsigned long address, unsigned char value)
+_eeprom_write:
+    lod b, [sp + 2]
+    lod a, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    cal lib_eeprom_seek
+    jmc lib_carry
+    lod a, [sp + 6]
+    inc j
+    out j, a                    ; DATA
+    dec j
+    mov a, 2
+    out j, a                    ; WRITE
+    clc
+    jmp lib_carry
+
+; int eeprom_load(void *ram, unsigned long address, unsigned length)
+_eeprom_load:
+    lod b, [sp + 4]
+    lod a, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+    lod x, [sp + 8]
+    lod y, [sp + 9]
+    cal lib_eeprom_range
+    jmc lib_carry
+    mov b, x                    ; [b:c] = bytes left
+    mov c, y
+    lod x, [sp + 2]             ; [x:y] = ram
+    lod y, [sp + 3]
+lib_eeprom_load_loop:
+    cmp c, 0
+    jme lib_eeprom_load_low
+    jmp lib_eeprom_load_byte
+lib_eeprom_load_low:
+    cmp b, 0
+    jme lib_eeprom_done
+lib_eeprom_load_byte:
+    mov a, 1
+    out j, a                    ; READ
+    inc j
+    in a, j                     ; DATA
+    dec j
+    str [x:y], a
+    add y, 1
+    adc x, 0
+    sub c, 1
+    sbb b, 0
+    cal lib_eeprom_next
+    jmp lib_eeprom_load_loop
+lib_eeprom_done:
+    clc
+    jmp lib_carry
+
+; int eeprom_save(unsigned long address, const void *ram, unsigned length)
+_eeprom_save:
+    lod b, [sp + 2]
+    lod a, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    lod x, [sp + 8]
+    lod y, [sp + 9]
+    cal lib_eeprom_range
+    jmc lib_carry
+    mov b, x                    ; [b:c] = bytes left
+    mov c, y
+    lod x, [sp + 6]             ; [x:y] = ram
+    lod y, [sp + 7]
+lib_eeprom_save_loop:
+    cmp c, 0
+    jme lib_eeprom_save_low
+    jmp lib_eeprom_save_byte
+lib_eeprom_save_low:
+    cmp b, 0
+    jme lib_eeprom_done
+lib_eeprom_save_byte:
+    lod a, [x:y]
+    inc j
+    out j, a                    ; DATA
+    dec j
+    mov a, 2
+    out j, a                    ; WRITE
+    add y, 1
+    adc x, 0
+    sub c, 1
+    sbb b, 0
+    cal lib_eeprom_next
+    jmp lib_eeprom_save_loop
+
 ; --- Keyboard ------------------------------------------------------------
 
 ; int key_event(void): the oldest event in the terminal's key queue

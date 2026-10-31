@@ -46,8 +46,8 @@ cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on t
   it stops at the next line, inside a called C function, or at the first
   instruction of an assembly file (runtime, library, interrupt handler),
   where F10 steps one instruction again. A line that never ends runs until
-  Pause. The startup code, runtime and library open read-only. C programs
-  run from RAM: no EEPROM target.
+  Pause. The startup code, runtime and library open read-only. For the
+  EEPROM target, a boot loader copies the C program into RAM at power-on.
 - **F7** assembles and loads the program (paused at power-on). **F5** runs,
   **F6** pauses, **F10** runs one instruction, **Ctrl+F5** power-cycles. Run
   assembles by itself when nothing is loaded yet, or when the sources changed

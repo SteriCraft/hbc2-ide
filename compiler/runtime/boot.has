@@ -1,0 +1,63 @@
+; C startup code for a program in the EEPROM, at $0x0000 (see
+; compiler/ABI.md, section 8). crt0.has is the RAM version.
+;
+; At power-on, the EEPROM copies only $0x0000-$0x01FF and the interrupt
+; vector table into RAM. This boot loader and the device detection
+; (devices.has) are there: they come first in the program, and hbc2-cc
+; checks that they end before the variables below. The loader waits for
+; the EEPROM's port, copies the rest of the program ($0x0200 to
+; __program_end) from the EEPROM to the same RAM addresses, then starts
+; the program like crt0.has.
+
+; Variables of devices.has, at fixed addresses in the first 512 bytes:
+; placed automatically, they would come after all the code, and the copy
+; would set the ports found back to 0.
+.data devices_second $0x01FA 0  ; 1 when the next interrupt is the ID
+.data devices_pending $0x01FB 0 ; first port, kept between the 2 interrupts
+.data _monitor_port $0x01FC 0
+.data _keyboard_port $0x01FD 0
+.data _rtc_port $0x01FE 0
+.data _eeprom_port $0x01FF 0
+
+_start:
+    lod a, _eeprom_port         ; interrupts are on at power-on: devices.has
+    cmp a, 0                    ; receives the plug-in interrupts
+    jme _start
+    mov b, a                    ; b = CMD
+    mov i, a
+    add i, 2                    ; i = ADDR_0
+    mov a, 0
+    out i, a                    ; EEPROM $0x0xxxx = RAM $0xxxx
+    inc i                       ; i = ADDR_1
+    mov j, i
+    inc j                       ; j = ADDR_2
+    mov x, 0x02                 ; [x:y] = $0x0200, the first byte not copied yet
+    mov y, 0x00
+    out i, x
+    mov c, __program_end.msb    ; [c:d] = the end
+    mov d, __program_end.lsb
+boot_loop:
+    cmp x, c
+    jmf boot_byte               ; [x:y] < [c:d]: one more byte
+    jms crt0_init               ; [x:y] past the end: done
+    cmp y, d
+    jmf boot_byte
+    jmp crt0_init
+boot_byte:
+    out j, y                    ; ADDR_2
+    mov a, 1
+    out b, a                    ; CMD = READ
+    inc b                       ; b = DATA
+    in a, b
+    dec b
+    str [x:y], a
+    inc y
+    jmc boot_next_page
+    jmp boot_loop
+boot_next_page:
+    inc x
+    out i, x                    ; ADDR_1
+    jmp boot_loop
+
+.include "devices.has"
+.include "init.has"

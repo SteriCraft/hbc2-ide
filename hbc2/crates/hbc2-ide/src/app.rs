@@ -158,8 +158,9 @@ pub enum Dialog {
     Keyboard,
 }
 
-/// A program and its warnings, or the errors (with the warnings).
-type BuildResult = Result<(Program, Vec<Diagnostic>), Vec<Diagnostic>>;
+/// A program, the image to load and the warnings, or the errors (with the
+/// warnings).
+type BuildResult = Result<(Program, Image, Vec<Diagnostic>), Vec<Diagnostic>>;
 
 /// A C build running in the background.
 pub struct PendingBuild {
@@ -1384,13 +1385,9 @@ impl State {
         true
     }
 
-    /// The program's target: always RAM for a C project (its startup code
-    /// runs from RAM).
+    /// The program's target.
     pub fn target(&self) -> Target {
-        match &self.project {
-            Some(p) if p.language == Language::C => Target::Ram,
-            _ => self.project_settings.target.into(),
-        }
+        self.project_settings.target.into()
     }
 
     /// Whether `path` is shown but not edited: the compiled files of a C
@@ -1428,10 +1425,16 @@ impl State {
             if !self.save(&self.dirty_paths()) {
                 return false;
             }
-            self.console.info(format!("Building {name}…"));
+            let target = self.target();
+            let target_name = match target {
+                Target::Ram => "RAM",
+                Target::Eeprom => "EEPROM",
+            };
+            self.console
+                .info(format!("Building {name} for {target_name}…"));
             let (send, result) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                let _ = send.send(build_c(&sources, &dir));
+                let _ = send.send(build_c(&sources, &dir, target));
             });
             self.building = Some(PendingBuild {
                 result,
@@ -1462,7 +1465,11 @@ impl State {
         };
         let result = hbc2_asm::assemble_with(&entry, &sources, options).map(|p| {
             let warnings = p.warnings.clone();
-            (p, warnings)
+            let image = match target {
+                Target::Ram => Image::Ram(p.image.clone().into()),
+                Target::Eeprom => Image::Eeprom(p.image.clone().into()),
+            };
+            (p, image, warnings)
         });
         self.finish_build(result, false, started, self.edits)
     }
@@ -1495,9 +1502,8 @@ impl State {
     /// program. `edits` is the edit count of the sources it was made from.
     fn finish_build(&mut self, result: BuildResult, c: bool, started: Instant, edits: u64) -> bool {
         let elapsed = started.elapsed();
-        let target = self.target();
         match result {
-            Ok((program, warnings)) => {
+            Ok((program, image, warnings)) => {
                 for warning in &warnings {
                     self.push_diagnostic(warning);
                 }
@@ -1526,10 +1532,6 @@ impl State {
                     }
                 }
                 let breakpoints = breakpoint_addresses(&program, &self.project_settings);
-                let image = match target {
-                    Target::Ram => Image::Ram(program.image.clone().into()),
-                    Target::Eeprom => Image::Eeprom(program.image.clone().into()),
-                };
                 self.build = Some(Build {
                     ok: true,
                     diagnostics: warnings,
@@ -1723,13 +1725,19 @@ fn history_step(
     }
 }
 
-/// Compiles and assembles a C project: the program and its warnings, or the
-/// errors (with the warnings). The library is compiled into `dir/lib` when
-/// it changed.
-fn build_c(sources: &[PathBuf], dir: &Path) -> BuildResult {
+/// Compiles and assembles a C project: the program, its image and its
+/// warnings, or the errors (with the warnings). The library is compiled
+/// into `dir/lib` when it changed. The program's addresses are RAM
+/// addresses for both targets: the EEPROM's boot loader copies the program
+/// to the same addresses.
+fn build_c(sources: &[PathBuf], dir: &Path, target: Target) -> BuildResult {
     let library = hbc2_cc::build_library(&dir.join("lib"))?;
-    let build = hbc2_cc::build_program(sources, &library, dir)?;
-    Ok((build.program, build.warnings))
+    let build = hbc2_cc::build_program(sources, &library, dir, target)?;
+    let image = match build.eeprom_image {
+        Some(eeprom) => Image::Eeprom(eeprom.into()),
+        None => Image::Ram(build.program.image.clone().into()),
+    };
+    Ok((build.program, image, build.warnings))
 }
 
 fn breakpoint_addresses(program: &Program, settings: &ProjectSettings) -> Vec<u16> {

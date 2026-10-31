@@ -17,7 +17,6 @@ fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
 }
 
 /// Why a C project has no EEPROM target.
-const C_RAM_ONLY: &str = "C programs are loaded into RAM";
 const C_STRIPS: &str = "C programs always leave out unused code";
 
 fn build_label(c_project: bool) -> &'static str {
@@ -148,27 +147,21 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 ui.separator();
                 ui.label(RichText::new("Memory target").weak());
                 let target = state.project_settings.target;
-                ui.add_enabled_ui(!c_project, |ui| {
-                    if ui
-                        .radio(
-                            target == TargetSetting::Ram || c_project,
-                            "RAM (64 KiB image)",
-                        )
-                        .clicked()
-                    {
-                        actions.push(Action::SetTarget(TargetSetting::Ram));
-                    }
-                    if ui
-                        .radio(
-                            target == TargetSetting::Eeprom && !c_project,
-                            "EEPROM (1 MiB image, boots into RAM)",
-                        )
-                        .on_disabled_hover_text(C_RAM_ONLY)
-                        .clicked()
-                    {
-                        actions.push(Action::SetTarget(TargetSetting::Eeprom));
-                    }
-                });
+                if ui
+                    .radio(target == TargetSetting::Ram, "RAM (64 KiB image)")
+                    .clicked()
+                {
+                    actions.push(Action::SetTarget(TargetSetting::Ram));
+                }
+                if ui
+                    .radio(
+                        target == TargetSetting::Eeprom,
+                        "EEPROM (1 MiB image, boots into RAM)",
+                    )
+                    .clicked()
+                {
+                    actions.push(Action::SetTarget(TargetSetting::Eeprom));
+                }
                 ui.separator();
                 let mut strip = state.project_settings.strip || c_project;
                 if ui
@@ -240,7 +233,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                         ),
                     )
                     .on_disabled_hover_text(
-                        "Plugged in when the program is assembled for the EEPROM target (assembly projects)",
+                        "Plugged in when the program is built for the EEPROM target",
                     );
                     ui.label(RichText::new("Changing them restarts the machine.").weak());
                     if changed {
@@ -350,25 +343,20 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                 });
             ui.label("Target");
             let target = state.project_settings.target;
-            let target = if c_project { TargetSetting::Ram } else { target };
-            ui.add_enabled_ui(!c_project, |ui| {
-                egui::ComboBox::from_id_salt("target")
-                    .selected_text(match target {
-                        TargetSetting::Ram => "RAM",
-                        TargetSetting::Eeprom => "EEPROM",
-                    })
-                    .width(80.0)
-                    .show_ui(ui, |ui| {
-                        if ui.selectable_label(target == TargetSetting::Ram, "RAM").clicked() {
-                            actions.push(Action::SetTarget(TargetSetting::Ram));
-                        }
-                        if ui.selectable_label(target == TargetSetting::Eeprom, "EEPROM").clicked() {
-                            actions.push(Action::SetTarget(TargetSetting::Eeprom));
-                        }
-                    });
-            })
-            .response
-            .on_disabled_hover_text(C_RAM_ONLY);
+            egui::ComboBox::from_id_salt("target")
+                .selected_text(match target {
+                    TargetSetting::Ram => "RAM",
+                    TargetSetting::Eeprom => "EEPROM",
+                })
+                .width(80.0)
+                .show_ui(ui, |ui| {
+                    if ui.selectable_label(target == TargetSetting::Ram, "RAM").clicked() {
+                        actions.push(Action::SetTarget(TargetSetting::Ram));
+                    }
+                    if ui.selectable_label(target == TargetSetting::Eeprom, "EEPROM").clicked() {
+                        actions.push(Action::SetTarget(TargetSetting::Eeprom));
+                    }
+                });
             ui.separator();
             if building {
                 ui.spinner();

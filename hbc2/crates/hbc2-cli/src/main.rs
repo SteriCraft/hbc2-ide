@@ -14,13 +14,15 @@ usage:
   hbc2 asm <main.has> [-o out.bin] [--eeprom] [--strip] [--symbols] [--map]
         assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom);
         --strip leaves out unreached code and data
-  hbc2 cc <file.c | file.has>... [-o out.bin] [--dir build] [--symbols] [--map]
+  hbc2 cc <file.c | file.has>... [-o out.bin] [--eeprom] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir
         (default: .build next to the first file); unreached code and data
-        are left out (--map lists what is kept and what is left out)
-  hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom <file.has | eeprom.bin>]
-        run headless, then print the CPU state (C files: built as with cc)
+        are left out (--map lists what is kept and what is left out);
+        --eeprom: a 1 MiB EEPROM image that boots the program
+  hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom [file.has | eeprom.bin]]
+        run headless, then print the CPU state (C files: built as with cc;
+        with --eeprom and no file, built for the EEPROM and started from it)
   hbc2 bench [--seconds N] [--hz N]
         measure emulation speed (flat out, or paced on the emulator thread)";
 
@@ -186,9 +188,15 @@ fn is_c(path: &str) -> bool {
         .is_some_and(|e| e.eq_ignore_ascii_case("c"))
 }
 
+/// `--eeprom` without a file after it: build the C program for the EEPROM.
+fn c_for_eeprom(args: &[String]) -> bool {
+    has(args, "--eeprom") && option(args, "--eeprom").is_none_or(|v| v.starts_with('-'))
+}
+
 /// Builds the C program of the files at the start of `args` (up to the
 /// first option), printing warnings; errors are returned as one message.
-fn build_c(args: &[String]) -> Result<Program, String> {
+/// Also gives the EEPROM image with `--eeprom` (see [`c_for_eeprom`]).
+fn build_c(args: &[String]) -> Result<(Program, Option<Vec<u8>>), String> {
     let sources: Vec<PathBuf> = args
         .iter()
         .take_while(|a| !a.starts_with('-'))
@@ -202,11 +210,16 @@ fn build_c(args: &[String]) -> Result<Program, String> {
             .join(hbc2_cc::BUILD_DIR)
     });
     let library = hbc2_cc::build_library(&dir.join("lib")).map_err(|e| failed(&e))?;
-    let build = hbc2_cc::build_program(&sources, &library, &dir).map_err(|e| failed(&e))?;
+    let target = if c_for_eeprom(args) {
+        Target::Eeprom
+    } else {
+        Target::Ram
+    };
+    let build = hbc2_cc::build_program(&sources, &library, &dir, target).map_err(|e| failed(&e))?;
     for warning in &build.warnings {
         eprintln!("{warning}");
     }
-    Ok(build.program)
+    Ok((build.program, build.eeprom_image))
 }
 
 /// The messages of a failed build, and how many errors.
@@ -224,8 +237,8 @@ build failed ({errors} error(s))",
 
 fn cc(args: &[String]) -> Result<(), String> {
     let first = input(args)?;
-    let program = build_c(args)?;
-    write_image(&program, first, args)
+    let (program, eeprom) = build_c(args)?;
+    write_image(&program, eeprom.as_deref(), first, args)
 }
 
 fn asm(args: &[String]) -> Result<(), String> {
@@ -236,16 +249,23 @@ fn asm(args: &[String]) -> Result<(), String> {
         Target::Ram
     };
     let program = assemble(path, target, has(args, "--strip"))?;
-    write_image(&program, path, args)
+    write_image(&program, None, path, args)
 }
 
 /// Writes the image (`-o`, or `source` with the extension `.bin`), the
 /// symbols with `--symbols` or `--map`, and what was left out with `--map`.
-fn write_image(program: &Program, source: &str, args: &[String]) -> Result<(), String> {
+/// Writes the image (`eeprom` when given, else the program's).
+fn write_image(
+    program: &Program,
+    eeprom: Option<&[u8]>,
+    source: &str,
+    args: &[String],
+) -> Result<(), String> {
     let output = option(args, "-o")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(source).with_extension("bin"));
-    std::fs::write(&output, &program.image).map_err(|e| format!("{}: {e}", output.display()))?;
+    let image = eeprom.unwrap_or(&program.image);
+    std::fs::write(&output, image).map_err(|e| format!("{}: {e}", output.display()))?;
     let removed = match program.bytes_removed() {
         0 => String::new(),
         n => format!(", {n} bytes left out"),
@@ -289,7 +309,9 @@ fn run(args: &[String]) -> Result<(), String> {
     let ticks: u64 = parse(args, "--ticks", 1_000_000)?;
 
     let mut config = MachineConfig::default();
-    if let Some(eeprom_path) = option(args, "--eeprom") {
+    if let Some(eeprom_path) =
+        option(args, "--eeprom").filter(|_| !(is_c(path) && c_for_eeprom(args)))
+    {
         let image = if is_source(eeprom_path) {
             assemble(eeprom_path, Target::Eeprom, false)?.image
         } else {
@@ -298,7 +320,10 @@ fn run(args: &[String]) -> Result<(), String> {
         config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
     }
     let (ram, program) = if is_c(path) {
-        let program = build_c(args)?;
+        let (program, eeprom) = build_c(args)?;
+        if let Some(image) = eeprom {
+            config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
+        }
         (program.image.clone(), Some(program))
     } else if is_source(path) {
         let program = assemble(path, Target::Ram, false)?;

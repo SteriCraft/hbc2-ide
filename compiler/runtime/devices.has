@@ -1,8 +1,11 @@
-; Device detection for C programs (included by crt0.has).
+; Device detection for C programs (included by crt0.has and boot.has).
 ; A copy of the port-0 handler of the project template
 ; (interruptHandler.has), with the port variables under C names:
 ;     extern unsigned char monitor_port, rtc_port, keyboard_port, eeprom_port;
 ; (declared in hbc2.h). 0 = the device is not plugged.
+; The file including this one declares the variables (.data, set to 0):
+; devices_second, devices_pending, _monitor_port, _keyboard_port,
+; _rtc_port, _eeprom_port. boot.has gives them fixed addresses.
 ;
 ; When a device is plugged (at power-on in the emulator), the IOD sends two
 ; interrupts on port 0: the device's first port, then its ID. The RTC and
@@ -15,13 +18,6 @@
 .define DEVICES_EEPROM_ID 0xE1
 
 .data devices_port0_vector $0xFE00 devices_handler.msb, devices_handler.lsb
-.data devices_second 0          ; 1 when the next interrupt is the ID
-.data devices_pending 0         ; first port, kept between the 2 interrupts
-; .data, not .bss: the handler may run before crt0 clears the .bss area
-.data _monitor_port 0
-.data _keyboard_port 0
-.data _rtc_port 0
-.data _eeprom_port 0
 
 ; The handler saves what it changes: an interrupt can happen anywhere.
 devices_handler:

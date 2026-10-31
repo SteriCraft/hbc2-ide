@@ -226,10 +226,12 @@ manual, "Leaving out unused code").
 
 ## 8. Startup and exit
 
-The startup code is at `$0x0000` (`compiler/runtime/crt0.has`):
+The startup code is at `$0x0000`: `compiler/runtime/crt0.has` for a program
+loaded into RAM, `boot.has` for the EEPROM target (see below). Both jump to
+`crt0_init` (`init.has`):
 
 ```
-_start:
+crt0_init:
     wsp $0xFE00                 ; stack (the reset value, set again for a restart)
     ...                         ; clears the .bss area (__bss_start to __bss_end)
     ...                         ; waits for the devices to be detected
@@ -240,7 +242,7 @@ __exit:                         ; [a:b] = main's return value, or exit's argumen
 ```
 
 * Interrupts stay as the reset leaves them: enabled.
-* **Device detection:** `crt0.has` includes `devices.has`, a copy of the
+* **Device detection:** the startup code includes `devices.has`, a copy of the
   port-0 handler of the project template, with its vector at `$0xFE00`. It
   stores each device's first port in `monitor_port`, `rtc_port`,
   `keyboard_port`, `eeprom_port` (`hbc2.h`; 0 = not plugged), and points the
@@ -250,6 +252,20 @@ __exit:                         ; [a:b] = main's return value, or exit's argumen
   loop turns (one was enough in tests; it waits 32) before calling `main`.
   A C program therefore must not set the port-0 vector itself (no
   `interruptHandler.has` of the project template).
+* **EEPROM target** (`build_program(…, Target::Eeprom)`, `hbc2 cc --eeprom`,
+  the EEPROM target of the IDE): the program is assembled as for RAM, and
+  the 1 MiB EEPROM image is the RAM image followed by zeros, so the program
+  is in the EEPROM at its RAM addresses. At power-on the EEPROM copies only
+  `$0x0000-$0x01FF` and the interrupt vector table; `boot.has` and
+  `devices.has` come first in the program and fit there (the build checks
+  it). The boot loader waits for the EEPROM's port, copies `$0x0200` to
+  `__program_end` (the end of the code and data, defined by the assembler)
+  from the EEPROM into RAM, then jumps to `crt0_init`. The device
+  variables have fixed addresses, `$0x01FA-$0x01FF`, so the copy can't
+  set them back to 0. Code or data at a fixed address past the end of the
+  program (from a `.has` file) is not copied: the build warns. The
+  program can use the rest of the EEPROM (`EEPROM_FREE` = `0x10000` on)
+  with the `eeprom_*` functions of `hbc2.h`.
 * **Other interrupt vectors** are set by the program while it runs, with
   `set_vector(port, handler)` (`hbc2.h`), from `main`. The RTC and keyboard
   vectors can't be fixed in an assembly file (`.data` at `$0xFE00 + 2n`):

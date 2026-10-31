@@ -10,11 +10,16 @@
 //! - `name.keys`: text typed on the keyboard once the program reads keys
 //!   (letters as on the keys, without Shift; a new line is Enter).
 //!
+//! A program whose first line says "built for the EEPROM" is built for the
+//! EEPROM and started from it (boot loader), with no RAM image.
+//!
 //! Needs the compiler tools (compiler/build.cmd).
 
 use std::path::{Path, PathBuf};
 
+use hbc2_asm::Target;
 use hbc2_cc::{Library, build_library, build_program, compiler_dir, report};
+use hbc2_core::peripherals::Eeprom;
 use hbc2_core::peripherals::monitor::{TEXT_COLUMNS, TEXT_ROWS};
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
 
@@ -96,7 +101,12 @@ fn scan_code(c: char) -> u8 {
 
 /// Runs one program: `sources` (C and assembly files); `source` is the file
 /// that says what is expected, `name.keys` and `name.screen` are next to it.
-fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, String> {
+fn run(
+    sources: &[PathBuf],
+    source: &Path,
+    target: Target,
+    library: &Library,
+) -> Result<Run, String> {
     let stem = source.file_stem().unwrap().to_string_lossy().to_string();
     let parent = source
         .parent()
@@ -107,7 +117,7 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
     let dir = std::env::temp_dir()
         .join("hbc2-cc-programs")
         .join(format!("{parent}_{stem}"));
-    let build = build_program(sources, library, &dir).map_err(|e| report(&e))?;
+    let build = build_program(sources, library, &dir, target).map_err(|e| report(&e))?;
     let program = &build.program;
     let exit = program.symbol("__exit").expect("__exit").address as u16;
     // Absent when the program never reads the keyboard (left out as unreached).
@@ -116,7 +126,17 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
         .map(|t| t.replace('\r', "").chars().collect())
         .unwrap_or_default();
     keys.reverse();
-    let mut m = Machine::new(MachineConfig::default(), Some(&program.image)).unwrap();
+    let mut m = match &build.eeprom_image {
+        None => Machine::new(MachineConfig::default(), Some(&program.image)),
+        Some(image) => {
+            let config = MachineConfig {
+                eeprom: Some(Eeprom::from_image(image.clone()).unwrap()),
+                ..MachineConfig::default()
+            };
+            Machine::new(config, None)
+        }
+    }
+    .unwrap();
     m.breakpoints.set(exit, true);
     let mut ticks = 0;
     loop {
@@ -199,13 +219,19 @@ fn programs() {
     for (sources, file) in &programs {
         let source = std::fs::read_to_string(file).unwrap();
         let want = expected(&source);
+        let first_line = source.lines().next().unwrap_or_default();
+        let target = if first_line.contains("built for the EEPROM") {
+            Target::Eeprom
+        } else {
+            Target::Ram
+        };
         let name = file
             .strip_prefix(&dir)
             .unwrap_or(file)
             .display()
             .to_string()
             .replace('\\', "/");
-        match run(sources, file, &library) {
+        match run(sources, file, target, &library) {
             Ok(run) if run.result == want => println!(
                 "{name}: ok ({} bytes of code, {} bytes in all, {} ticks)",
                 run.code_bytes, run.program_bytes, run.ticks

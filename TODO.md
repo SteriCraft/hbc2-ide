@@ -68,8 +68,11 @@ allows a second name.
 
 ## C compiler (`compiler/`, tracking file `compiler/ROADMAP.md`)
 
-- **EEPROM:** C programs run from RAM only (ROADMAP decision 8); a boot
-  path would let the HBC-2 start a program by itself.
+- **EEPROM with a RAM program:** the EEPROM is only plugged in for the
+  EEPROM target, so a program loaded into RAM can't use it for storage
+  (`eeprom_*` return -1 / 1). An IDE option could plug a blank or saved
+  EEPROM in next to a RAM image (the machine would then load the RAM image
+  and skip the EEPROM's power-on copy).
 - **float:** not supported; using it stops the build with an error.
 - **Backend:** carry what the registers hold across loop labels (a dataflow
   version of `reloads.rs`; in bench.c's loops the paths into a loop label

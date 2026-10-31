@@ -6,8 +6,9 @@
 //! `compiler/fcc/rules.hbc2`), removes loads of values the registers already
 //! hold (`reloads.rs`), gives its `static` names their own prefix and writes
 //! the assembly. [`build_program`] compiles the files of a program
-//! and assembles them with `compiler/runtime/crt0.has`,
-//! `compiler/runtime/runtime.has` and the C library (see `compiler/ABI.md`).
+//! and assembles them with the startup code (`compiler/runtime/crt0.has`,
+//! or `boot.has` for the EEPROM), `compiler/runtime/runtime.has` and the C
+//! library (see `compiler/ABI.md`).
 //! The library is `compiler/lib`: headers in `include` (always on the
 //! include path), assembly in `lib.has`, C files in `src` that
 //! [`build_library`] compiles.
@@ -27,7 +28,7 @@ use std::process::{Command, Stdio};
 use std::time::SystemTime;
 
 pub use hbc2_asm::{Diagnostic, Severity};
-use hbc2_asm::{FileSystem, Options, Program, Target, assemble_with};
+use hbc2_asm::{FileSystem, Options, Program, SymbolKind, Target, assemble_with};
 
 use lines::LineMaps;
 use messages::{c_diagnostic, plain, tool_messages};
@@ -40,7 +41,7 @@ pub fn compiler_dir() -> PathBuf {
     }
 }
 
-/// `compiler/runtime`: crt0.has and runtime.has.
+/// `compiler/runtime`: the startup code and runtime.has.
 pub fn runtime_dir() -> PathBuf {
     compiler_dir().join("runtime")
 }
@@ -163,7 +164,12 @@ fn newest_tool() -> SystemTime {
 
 /// A program built by [`build_program`].
 pub struct Build {
+    /// The program as it is in RAM once started: its addresses are RAM
+    /// addresses, also when it is built for the EEPROM.
     pub program: Program,
+    /// The 1 MiB EEPROM image, when built for the EEPROM: the program at
+    /// the start, the rest zeros.
+    pub eeprom_image: Option<Vec<u8>>,
     /// The assembly of each source, in order (a `.has` source is itself).
     pub compiled: Vec<PathBuf>,
     /// The compiler's and the assembler's warnings.
@@ -177,17 +183,26 @@ pub struct Build {
 /// compiled even when one fails, so that all their errors are given; the
 /// errors come with the warnings. Messages of the assembler about compiled
 /// files name the C files, and C names without their `_`.
+///
+/// For [`Target::Eeprom`], the program starts with `boot.has`, which copies
+/// the program from the EEPROM into RAM at power-on (see
+/// [`Build::eeprom_image`]).
 pub fn build_program(
     sources: &[PathBuf],
     library: &Library,
     dir: &Path,
+    target: Target,
 ) -> Result<Build, Vec<Diagnostic>> {
     let dir = &absolute(dir)?;
     fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
     let rt = runtime_dir();
+    let startup = match target {
+        Target::Ram => "crt0.has",
+        Target::Eeprom => "boot.has",
+    };
     let mut main = String::new();
     for file in [
-        rt.join("crt0.has"),
+        rt.join(startup),
         rt.join("runtime.has"),
         library.path.clone(),
     ] {
@@ -231,6 +246,7 @@ pub fn build_program(
     let lines = LineMaps::read(&c_files);
     let in_c = |d: &Diagnostic| c_diagnostic(d.clone(), &c_files, &lines);
     // Unreached code and data (most of the library and runtime) is left out.
+    // Assembled for RAM in both cases: the EEPROM image is the RAM image.
     let options = Options {
         target: Target::Ram,
         strip: true,
@@ -239,8 +255,19 @@ pub fn build_program(
         Ok(mut program) => {
             lines.apply(&mut program);
             diagnostics.extend(program.warnings.iter().map(in_c));
+            let eeprom_image = match target {
+                Target::Ram => None,
+                Target::Eeprom => {
+                    check_boot(&program)?;
+                    diagnostics.extend(not_copied(&program).iter().map(in_c));
+                    let mut image = program.image.clone();
+                    image.resize(Target::Eeprom.memory_size() as usize, 0);
+                    Some(image)
+                }
+            };
             Ok(Build {
                 program,
+                eeprom_image,
                 compiled,
                 warnings: diagnostics,
             })
@@ -250,6 +277,52 @@ pub fn build_program(
             Err(diagnostics)
         }
     }
+}
+
+/// First address of the variables boot.has keeps in the first 512 bytes.
+const BOOT_VARIABLES: u32 = 0x01FA;
+
+/// The boot loader and the device detection have to be in what the EEPROM
+/// copies at power-on, before boot.has's variables.
+fn check_boot(program: &Program) -> Result<(), Vec<Diagnostic>> {
+    let past = program.symbols.iter().find(|s| {
+        s.kind == SymbolKind::Label
+            && (s.name == "_start" || s.name.starts_with("boot_") || s.name.starts_with("devices_"))
+            && s.address + s.size > BOOT_VARIABLES
+    });
+    match past {
+        Some(s) => Err(vec![plain(format!(
+            "the boot loader does not fit in the first 512 bytes ('{}' ends at ${:#06x})",
+            s.name,
+            s.address + s.size
+        ))]),
+        None => Ok(()),
+    }
+}
+
+/// Warnings for code and data at a fixed address that the boot loader
+/// doesn't copy (it copies $0x0200 to `__program_end`).
+fn not_copied(program: &Program) -> Vec<Diagnostic> {
+    let address = |name: &str| program.symbol(name).map_or(0, |s| s.address);
+    let end = address("__program_end").max(0x0200);
+    let bss = address("__bss_start")..address("__bss_end");
+    program
+        .symbols
+        .iter()
+        .filter(|s| s.size > 0 && !bss.contains(&s.address))
+        .filter(|s| s.address >= end && s.address < hbc2_core::isa::IVT_START as u32)
+        .map(|s| Diagnostic {
+            severity: Severity::Warning,
+            file: program.files.get(s.file).cloned(),
+            line: s.line,
+            col: 1,
+            message: format!(
+                "'{}' (${:#06x}) is not copied from the EEPROM by the boot loader: \
+                 it is past the end of the program",
+                s.name, s.address
+            ),
+        })
+        .collect()
 }
 
 /// The names a compiled file defines without a `; export` line: its C

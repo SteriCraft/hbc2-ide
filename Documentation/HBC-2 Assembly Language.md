@@ -257,7 +257,11 @@ two names for the area:
 * `__bss_end`: the address just after its last byte (equal to `__bss_start`
   when there is no `.bss`).
 
-These names cannot be defined by the program. A startup loop clears the area:
+A third name, `__program_end`, is the address just after the last byte of
+code or data placed automatically (fixed blocks and data are not counted):
+a boot loader copies the program up to there (the C compiler's EEPROM
+startup does). These names cannot be defined by the program. A startup
+loop clears the area:
 
 ```
     mov x, __bss_start.msb         ; [x:y] = first byte

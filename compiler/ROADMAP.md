@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 65 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
-- **Next:** nothing planned (math plan done 2026-10-31: faster helpers, then math.h). Ask the user what comes next; the candidates (EEPROM, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
+- **Phase:** steps 1-13 done (step 13 = EEPROM, 2026-10-31) (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 65 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
+- **Next:** nothing planned. Ask the user what comes next; the candidates (EEPROM next to a RAM program in the IDE, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 
 ## Notes files (read only when needed)
 
@@ -51,7 +51,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 5. **Asm library from C:** compiler helpers get their own entry points matching what the backend emits (built from the math library code); user-facing drivers (screen, terminal, keyboard) keep their register interface and get thin C wrappers.
 6. **Types:** `char` unsigned by default (already FCC's default: `__castuc_`). `int`/`short` 16, `long` 32, pointers 16. No `float` for now: the compiler must STOP with a clear error at the C line (plan: `error()` in `target_sizeof` of `target-hbc2.c` for FLOAT/DOUBLE).
 7. **Frames > 255 bytes:** compute the address with `rsp` (see notes), no compile error.
-8. **EEPROM:** not handled now; the IDE loads the program into RAM. The user writes custom boot code later (C or asm) if needed.
+8. **EEPROM (step 13, user 2026-10-31):** `eeprom_read/write/load/save` in hbc2.h (asm in `lib/asm/hbc2.has`), and an EEPROM target for C: `runtime/boot.has` replaces crt0's start (see ABI.md 8 and `notes/library.md`).
 9. **Interrupt handlers:** hand-written asm only (they may call C functions). No compiler support.
 10. **Zeroed variables (BSS):** `.bss name size` in hbc2-asm (DONE 2026-10-30): all `.bss` placed together after code and data, nothing in the image, `__bss_start` / `__bss_end` defined; `crt0` clears the area (loop example in the assembly manual).
 11. **Licence/packaging:** not a concern (single user). Repo is GPLv3 like the kit.
@@ -94,5 +94,6 @@ Details moved out of this file to keep it short. Open the one for the part you t
   - [x] 10d. C highlighting; compiled files and the compiler's own files open read-only.
   - [x] 10e. asm→C line map (`;#line n` markers through FCC, `lines.rs` remaps the Program).
 - [x] 12. Speed-ups (user, 2026-10-31): one-byte bit tests (`x & 0x8000`) in conditions / ?: / 0-1 values; `<<=` `>>=` by a constant in place; reload removal after copt (`hbc2-cc/src/reloads.rs`, volatile-aware; copt's store-then-load rules removed); string.h in asm (`lib/asm/string.has`, 2.7 KB → 1.1 KB). tests/bits.c, tests/reloads.c, build.rs volatile_reloads; all mutation-checked. See notes/reloads.md.
+- [x] 13. EEPROM (decision 8): hbc2-asm `__program_end`; runtime split into crt0.has (RAM) / boot.has (EEPROM) + init.has (shared) + devices.has (no variables now); `build_program(…, target)` → `Build::eeprom_image`; `hbc2 cc --eeprom`, `hbc2 run main.c --eeprom`; IDE target menu enabled for C. tests/eeprom.c (first line "built for the EEPROM"), hardware.c checks the refusals, build.rs eeprom_image; mutation-checked.
 - [x] 11. Linker (decision 15) — see `LINKER.md`: `Options::strip` in hbc2-asm (on for C builds), `.keep`, `.library` (program names replace the library's), `hbc2 cc --map`.
 

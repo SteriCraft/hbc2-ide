@@ -225,6 +225,18 @@ their vectors in the image if their ports are known.
     out d, a
 ```
 
+## From C
+
+`hbc2.h` has `eeprom_read`, `eeprom_write`, `eeprom_load` (EEPROM to RAM)
+and `eeprom_save` (RAM to EEPROM), with 32-bit addresses
+(`unsigned long`). They return -1 or 1 when there is no EEPROM or the
+addresses go past `$0xFFFFF`. A C program built for the EEPROM target
+starts with a boot loader like the one above (`compiler/runtime/boot.has`):
+it copies the whole program into RAM, so `main` and the interrupt
+handlers set with `set_vector` work as with a RAM image. The program takes
+the start of the EEPROM, at its RAM addresses: keep data from
+`EEPROM_FREE` (`$0x10000`) on. See `compiler/ABI.md`, section 8.
+
 ## In the IDE
 
 The EEPROM's memory can be viewed in the **Memory** view, and saved to a file

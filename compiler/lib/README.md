@@ -9,7 +9,7 @@ definition is used everywhere, the library's left out.
 
 | Header | Content | Code |
 |---|---|---|
-| `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard | `asm/hbc2.has` (wrappers) |
+| `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
 | `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `src/stdio.c`, `src/printf.c` |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
 | `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr memcpy memmove memset memcmp memchr` | `asm/string.has` |
@@ -50,7 +50,8 @@ for floating point one day.
   labels and `static` names don't clash with the program's files (1, 2, …).
 
 Device detection (`monitor_port`, …) is in the startup code:
-`../runtime/devices.has`, included by `../runtime/crt0.has`.
+`../runtime/devices.has`, included by `../runtime/crt0.has` (RAM) and
+`../runtime/boot.has` (EEPROM; see `../ABI.md`, section 8).
 
 `printf` has the minimal set: `%d %u %x %X %c %s %%`, `l` for `long`
 (`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`, `%-5d` is not
@@ -75,7 +76,7 @@ with `puts` 1.7 KB (the terminal and screen drivers), with `printf`
 
 ## Tests
 
-`compiler/tests/hardware.c`, `stdio.c`, `strings.c`, `printf.c`,
+`compiler/tests/hardware.c`, `eeprom.c`, `stdio.c`, `strings.c`, `printf.c`,
 `random.c`, `convert.c`, `math.c` (some
 with `.screen` / `.keys` files) check the library on the emulator: see
 `../tests/README.md`.

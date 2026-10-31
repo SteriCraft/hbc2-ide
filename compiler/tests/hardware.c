@@ -62,6 +62,11 @@ int ports(void)
     out(monitor_port + 2, 17);                  /* the monitor's POS_X */
     if (in(monitor_port + 2) != 17)
         return 21;
+    /* no EEPROM (a RAM program): everything refused */
+    if (eeprom_read(0) != -1 || eeprom_write(EEPROM_FREE, 1) != 1)
+        return 22;
+    if (eeprom_load(&monitor_port, 0, 1) != 1 || eeprom_save(0, &monitor_port, 1) != 1)
+        return 23;
     return 0;
 }
 

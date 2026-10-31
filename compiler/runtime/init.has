@@ -1,0 +1,42 @@
+; C startup, shared by crt0.has (RAM) and boot.has (EEPROM), which jump
+; to crt0_init (see compiler/ABI.md, section 8).
+; Clears the .bss area, waits for the devices to be detected, calls main,
+; then waits at __exit with main's result in [a:b]. Interrupt handlers
+; keep running there.
+
+.define CRT0_DEVICE_WAIT 32         ; turns of the wait loop (see below)
+
+crt0_init:
+    wsp $0xFE00                 ; the reset value, set again for a restart
+    mov x, __bss_start.msb      ; [x:y] = first byte of the .bss area
+    mov y, __bss_start.lsb
+    mov a, 0
+crt0_clear:
+    cmp x, __bss_end.msb
+    jme crt0_clear_low
+    jmp crt0_clear_byte
+crt0_clear_low:
+    cmp y, __bss_end.lsb
+    jme crt0_cleared
+crt0_clear_byte:
+    str [x:y], a
+    inc y
+    jmc crt0_clear_carry
+    jmp crt0_clear
+crt0_clear_carry:
+    inc x
+    jmp crt0_clear
+crt0_cleared:
+    ; The devices plugged at power-on are announced by interrupts that are
+    ; already waiting in the IOD queue (devices.has handles them). They
+    ; are taken between two instructions, so a short wait is enough.
+    mov a, CRT0_DEVICE_WAIT
+crt0_wait:
+    dec a
+    jmz crt0_ready
+    jmp crt0_wait
+crt0_ready:
+    cal _main
+__exit:                         ; [a:b] = main's result, or exit's argument
+    hlt
+    jmp __exit
