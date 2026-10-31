@@ -17,8 +17,8 @@ codeLinesNumbers.sh
 # LibreOffice lock files
 .~lock.*#
 
-# assembled images of the design projects
-design_projects/**/*.bin
+# the user's own projects (not in git)
+design_projects/
 
 # C compiler build output
 compiler/bin/
