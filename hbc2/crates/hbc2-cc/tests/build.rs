@@ -109,6 +109,22 @@ fn errors() {
     )
     .unwrap();
 
+    // an array is not assignable, with = or a compound assignment
+    // (buf = p used to store the low byte of p into buf[0])
+    let e = build(
+        "array",
+        &[(
+            "main.c",
+            "char *f(char *p) { return p; }\nint main(void)\n{\n  char buf[4];\n  buf = f(buf);\n  buf += 1;\n  buf[0] = 1;\n  return 0;\n}\n",
+        )],
+        library,
+    )
+    .unwrap_err();
+    assert!(e.contains("main.c:5:"), "{e}");
+    assert!(e.contains("main.c:6:"), "{e}");
+    assert!(e.contains("cannot assign to an array"), "{e}");
+    assert!(!e.contains("main.c:7:"), "{e}");
+
     // neither .c nor .has
     let e = build("kind", &[("notes.txt", "")], library).unwrap_err();
     assert!(e.contains("not a .c or .has file"), "{e}");

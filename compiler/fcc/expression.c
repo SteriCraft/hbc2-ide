@@ -691,6 +691,10 @@ static struct node *hier1(void)
 	if (match(T_EQ)) {
 		if ((l->flags & LVAL) == 0)
 			needlval();
+		/* An array is not assignable (C: "char buf[4]; buf = p;" is an
+		   error); without this it would store into its first element */
+		if (IS_ARRAY(l->type))
+			error("cannot assign to an array");
 		r = make_rval(hier1());
 		/* You can't assign to an array/offset, you assign to
 		   the underlying type */
@@ -714,6 +718,10 @@ static struct node *hier1(void)
 		    match(T_ANDEQ) || match(T_HATEQ) || match(T_OREQ)) {
 			if ((l->flags & LVAL) == 0) {
 				needlval();
+				return l;
+			}
+			if (IS_ARRAY(l->type)) {
+				error("cannot assign to an array");
 				return l;
 			}
 			/* TODO: review - fix things like float ^= and fold
