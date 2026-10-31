@@ -7,3 +7,177 @@ _exit:
     lod b, [sp + 3]
     wsp $0xFE00                 ; the stack as main left it
     jmp __exit
+
+; int abs(int n), long labs(long n)
+_abs:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    jmp abs16
+
+_labs:
+    rsp [x:y]
+    add y, 2                    ; [x:y] -> n (changed in place)
+    adc x, 0
+    cal abs32
+    jmp lib_math_load           ; asm/math.has
+
+; --- Random numbers (asm/mathlib/misc/random.has, random_range.has) ------
+
+; int rand(void): 0 to RAND_MAX (32767)
+_rand:
+    cal rand16
+    and a, 0x7F
+    ret
+
+; void srand(unsigned seed): state = seed : ~seed (never 0), mixed by 8
+; steps so that seeds next to each other give unrelated numbers.
+_srand:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    mov c, a
+    mov d, b
+    not c
+    not d
+    str rand_s, a
+    str rand_s + 1, b
+    str rand_s + 2, c
+    str rand_s + 3, d
+    mov i, 8
+lib_srand_mix:
+    cal rand_step               ; keeps i
+    dec i
+    jmz lib_srand_end
+    jmp lib_srand_mix
+lib_srand_end:
+    ret
+
+; int srand_rtc(void): seeds from the real-time clock; 0, or 1 (no RTC)
+_srand_rtc:
+    lod d, _rtc_port
+    mov a, 0
+    mov b, 1
+    cmp d, 0
+    jme lib_srand_rtc_end
+    cal srand_rtc
+    mov b, 0
+lib_srand_rtc_end:
+    ret
+
+; int rand_range(int lo, int hi): lo to hi (included), signed; lo when
+; hi < lo. Flipping the sign bit turns signed order into unsigned order,
+; so randr16 (unsigned) does the work.
+_rand_range:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    xor a, 0x80
+    xor c, 0x80
+    cal randr16
+    xor a, 0x80
+    ret
+
+; --- Number <-> text (asm/mathlib/misc/text.has) -------------------------
+
+; int atoi(const char *s), long atol(const char *s): spaces (' ', \t \n
+; \v \f \r) first, then an optional sign and decimal digits. 0 when there
+; is no digit or the number does not fit in a long. atoi is the low half
+; of atol's result ([a:b]).
+_atoi:
+_atol:
+    lod i, [sp + 2]
+    lod j, [sp + 3]
+lib_atol_space:
+    lod a, [i:j]
+    cmp a, ' '
+    jme lib_atol_skip
+    sub a, 9                    ; \t .. \r -> 0 .. 4
+    cmp a, 5
+    jmf lib_atol_skip
+    ssp 4                       ; the result, [sp] = most significant byte
+    rsp [x:y]
+    cal atoi
+    jmc lib_atol_error
+    lod c, [sp]
+    lod d, [sp + 1]
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    asp 4
+    ret
+lib_atol_skip:
+    add j, 1
+    adc i, 0
+    jmp lib_atol_space
+lib_atol_error:
+    asp 4
+    mov a, 0
+    mov b, 0
+    mov c, 0
+    mov d, 0
+    ret
+
+; Number to text: char *itoa(int value, char *buf) and the others below
+; write value at buf, 0-terminated, and return the end of the text (the
+; 0): the length is end - buf.
+
+; char *itoa(int value, char *buf): signed decimal, buf of 7 bytes
+_itoa:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+    cal itoa16
+lib_text_end:                   ; returns [x:y], on the 0
+    mov a, x
+    mov b, y
+    ret
+
+; char *utoa(unsigned value, char *buf): decimal, buf of 6 bytes
+_utoa:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+    cal utoa16
+    jmp lib_text_end
+
+; char *htoa(unsigned value, char *buf): 4 hexadecimal digits (upper
+; case, leading zeros kept), buf of 5 bytes
+_htoa:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+    cal htoa16
+    jmp lib_text_end
+
+; The long ones read the value where it is, on the stack: [i:j] -> value.
+
+; char *ltoa(long value, char *buf): signed decimal, buf of 12 bytes
+_ltoa:
+    cal lib_text_long
+    cal itoa32
+    jmp lib_text_end
+
+; char *ultoa(unsigned long value, char *buf): decimal, buf of 11 bytes
+_ultoa:
+    cal lib_text_long
+    cal utoa32
+    jmp lib_text_end
+
+; char *lhtoa(unsigned long value, char *buf): 8 hexadecimal digits,
+; buf of 9 bytes
+_lhtoa:
+    cal lib_text_long
+    cal htoa32
+    jmp lib_text_end
+
+; [i:j] -> value, [x:y] = buf, for the long ones (called by them: the
+; value is at [sp + 4] here)
+lib_text_long:
+    lod x, [sp + 8]
+    lod y, [sp + 9]
+    rsp [i:j]
+    add j, 4
+    adc i, 0
+    ret

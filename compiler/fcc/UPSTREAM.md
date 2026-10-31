@@ -21,6 +21,9 @@ through `../msvc/compat.h`, a forced include):
   lines keep what follows the last `\` as well as the last `/` (Windows
   paths), and cc1 now reads the end marker of a 32-character name (it used
   to lose its place in the token stream: "useless declaration" errors).
+* `expression.c` (`get_sizeof`): `sizeof` without a bracket takes a unary
+  expression (`hier10`), not a whole expression: `sizeof a / sizeof a[0]`
+  was read as `sizeof (a / sizeof a[0])` ("bad type").
 * `tree.c` (`make_symbol` node): the node of a volatile variable (global
   or static: the ones `add_volatile` records) gets `SIDEEFFECT`, so the
   HBC-2 backend sees every use (reads, stores, `++`, `+=`) and lists the

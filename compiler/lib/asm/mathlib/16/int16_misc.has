@@ -1,0 +1,73 @@
+; ------------------------------------------------------------
+; neg16: [a:b] = -[a:b] (two's complement)
+; flags: C = overflow (the input was -32768, which stays -32768),
+;        Z = result is 0
+; ------------------------------------------------------------
+neg16:
+    not a                   ; [a:b] = NOT [a:b] + 1
+    not b
+    add b, 1
+    adc a, 0
+    clc                     ; overflow only for 0x8000
+    cmp a, 0x80
+    jme neg16_lsb
+neg16_z:
+    psh a
+    or a, b                 ; Z = (a | b) == 0, C untouched
+    pop a
+    ret
+neg16_lsb:
+    cmp b, 0
+    jme neg16_ovf
+    jmp neg16_z
+neg16_ovf:
+    stc                     ; Z = 0 (from adc: a = 0x80)
+    ret
+
+; ------------------------------------------------------------
+; abs16: [a:b] = |[a:b]| ([a:b] is signed)
+; flags: C = overflow (the input was -32768, which stays 0x8000),
+;        Z = result is 0
+; ------------------------------------------------------------
+abs16:
+    or a, 0                 ; N = sign bit
+    jmn neg16               ; negative: neg16 returns to our caller
+    psh a
+    or a, b                 ; Z
+    pop a
+    clc
+    ret
+
+; ------------------------------------------------------------
+; min16s: [a:b] = the smaller of [a:b] and [c:d] (signed)
+; max16s: [a:b] = the larger of [a:b] and [c:d] (signed)
+; ------------------------------------------------------------
+; Flipping the sign bit maps -32768..32767 onto 0..65535 in the same
+; order, so the unsigned routine gives the signed answer. Flipping back
+; afterwards restores [c:d] and corrects the result.
+min16s:
+    xor a, 0x80
+    xor c, 0x80
+    cal min16
+    xor a, 0x80
+    xor c, 0x80
+    ret
+
+max16s:
+    xor a, 0x80
+    xor c, 0x80
+    cal max16
+    xor a, 0x80
+    xor c, 0x80
+    ret
+
+; ------------------------------------------------------------
+; sext8: [a:b] = b sign-extended to 16 bits (0x80 -> 0xFF80)
+; ------------------------------------------------------------
+sext8:
+    mov a, b
+    and a, 0x80
+    jmz sext8_end           ; positive: a = 0
+    mov a, 0xFF
+sext8_end:
+    ret

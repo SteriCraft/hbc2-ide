@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 62 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
-- **Next:** nothing planned. Ask the user what comes next; the candidates (EEPROM, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
+- **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 65 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
+- **Next:** nothing planned (math plan done 2026-10-31: faster helpers, then math.h). Ask the user what comes next; the candidates (EEPROM, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 
 ## Notes files (read only when needed)
 
@@ -57,7 +57,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 11. **Licence/packaging:** not a concern (single user). Repo is GPLv3 like the kit.
 12. **Library location (step 8):** `compiler/lib/` holds COPIES of the user's drivers (monitor driver, terminal) + the C library (`include/` headers, sources). The user's originals in design_projects stay untouched.
 13. **Device detection (step 8):** `crt0` handles it: installs the port-0 interrupt handler (copy of the user's interruptHandler.has logic) and waits for the devices before calling `main`, so C code can print straight away.
-14. **printf (step 8):** minimal set: `%d %u %x %c %s %%`, `l` for long, width + `0` padding. No float.
+14. **printf (step 8):** minimal set: `%d %u %x %c %s %%`, `l` for long (`%X` added 2026-10-31), width + `0` padding. No float.
 16. **IDE integration (user, 2026-10-31, step 10):** a C project = a folder with `main.c` (wins over `main.has`); every `.c` and `.has` file of the folder is built (main.c first = unit 1, then name order); Build (F7) saves all open files first; tools stay in the repo's `compiler/bin` (`HBC2_COMPILER_DIR` overrides); an asm project cannot call C files; no interrupt handler template for C (crt0 + set_vector are enough); the asm→C line map is part of step 10.
 15. **Linker (user, 2026-10-31; replaces the object-file plan):** no object files. hbc2-asm drops every piece of the program that can't be reached from `_start` / fixed addresses / `.keep` (piece = from a label to the next label, or one `.data`/`.bss`; fall-through counts as a use). On for C builds only; assembly projects keep everything (a per-project option may come later). Library names give way to the program's own (a program may define `puts`). Plan and progress: `LINKER.md`.
 

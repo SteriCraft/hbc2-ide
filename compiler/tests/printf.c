@@ -26,6 +26,8 @@ int main(void)
         return 9;
     if (printf("[%s][%1s]\n", "", "long") != 9)
         return 10;
+    if (printf("%X %lX %04X|\n", 0xBEEFu, 0xABCDEF0UL, 0xa) != 19)
+        return 12;
     if (printf("end%") != 3)                /* a % at the end is dropped */
         return 11;
     return 0;

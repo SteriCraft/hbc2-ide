@@ -1,0 +1,317 @@
+; ------------------------------------------------------------
+; add32: 32-bit value at [x:y] += 32-bit value at [i:j]
+; flags: C = unsigned overflow, Z = result is 0
+; ------------------------------------------------------------
+; Byte by byte from the LSB: the ALU reads the 2nd operand straight from
+; memory, and lod / str / mov / or leave C alone between the bytes.
+add32:
+    psh a, b
+    lod a, [x:y + 3]        ; byte 3 (LSB)
+    add a, [i:j + 3]
+    str [x:y + 3], a
+    mov b, a                ; b = OR of the result bytes, for Z
+    lod a, [x:y + 2]        ; byte 2
+    adc a, [i:j + 2]
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]        ; byte 1
+    adc a, [i:j + 1]
+    str [x:y + 1], a
+    or b, a
+    lod a, [x:y]            ; byte 0 (MSB)
+    adc a, [i:j]            ; C = carry out
+    str [x:y], a
+    or b, a                 ; Z = result is 0, C untouched
+    pop a, b                ; pop leaves the flags alone
+    ret
+
+; ------------------------------------------------------------
+; sub32: 32-bit value at [x:y] -= 32-bit value at [i:j]
+; flags: C = borrow (1st < 2nd unsigned), Z = result is 0
+; ------------------------------------------------------------
+sub32:
+    psh a, b
+    lod a, [x:y + 3]        ; byte 3 (LSB)
+    sub a, [i:j + 3]
+    str [x:y + 3], a
+    mov b, a
+    lod a, [x:y + 2]        ; byte 2
+    sbb a, [i:j + 2]
+    str [x:y + 2], a
+    or b, a
+    lod a, [x:y + 1]        ; byte 1
+    sbb a, [i:j + 1]
+    str [x:y + 1], a
+    or b, a
+    lod a, [x:y]            ; byte 0 (MSB)
+    sbb a, [i:j]            ; C = borrow
+    str [x:y], a
+    or b, a
+    pop a, b
+    ret
+
+; ------------------------------------------------------------
+; cmp32: compares the 32-bit values at [x:y] and [i:j] (unsigned), like cmp
+; flags: S = [x:y] > [i:j], E = equal, F = [x:y] < [i:j]
+; ------------------------------------------------------------
+cmp32:
+    psh a
+    lod a, [x:y]            ; byte 0 (MSB)
+    cmp a, [i:j]
+    jme cmp32_1
+    pop a                   ; pop leaves S, E and F alone
+    ret
+cmp32_1:
+    lod a, [x:y + 1]        ; byte 1
+    cmp a, [i:j + 1]
+    jme cmp32_2
+    pop a
+    ret
+cmp32_2:
+    lod a, [x:y + 2]        ; byte 2
+    cmp a, [i:j + 2]
+    jme cmp32_3
+    pop a
+    ret
+cmp32_3:
+    lod a, [x:y + 3]        ; byte 3 (LSB)
+    cmp a, [i:j + 3]
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; inc32: 32-bit value at [x:y] = value + 1
+; dec32: 32-bit value at [x:y] = value - 1
+; flags: C = wrap-around, Z = result is 0
+; ------------------------------------------------------------
+; The bytes are changed in memory from the LSB, and it stops as soon as
+; one does not wrap around: most of the time only the LSB changes.
+inc32:
+    inc [x:y + 3]           ; byte 3 (LSB)
+    jmc inc32_2
+    ret                     ; Z = 0: the byte did not wrap to 0
+inc32_2:
+    inc [x:y + 2]           ; byte 2
+    jmc inc32_1
+    ret
+inc32_1:
+    inc [x:y + 1]           ; byte 1
+    jmc inc32_0
+    ret
+inc32_0:
+    inc [x:y]               ; byte 0 (MSB): C and Z = it wrapped to 0
+    ret
+
+dec32:
+    dec [x:y + 3]           ; byte 3 (LSB)
+    jmc dec32_2
+    jmz dec32_lsb0          ; LSB now 0: the result may be 0
+    ret
+dec32_2:
+    dec [x:y + 2]           ; byte 2
+    jmc dec32_1
+    clz                     ; the bytes below are now 0xFF: not 0
+    ret
+dec32_1:
+    dec [x:y + 1]           ; byte 1
+    jmc dec32_0
+    clz
+    ret
+dec32_0:
+    dec [x:y]               ; byte 0 (MSB): C = wrap-around
+    clz
+    ret
+dec32_lsb0:                 ; C = 0
+    psh a
+    lod a, [x:y]
+    or a, [x:y + 1]
+    or a, [x:y + 2]         ; Z = bytes 0 to 2 are 0 too, C untouched
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; clr32: 32-bit value at [x:y] = 0
+; ------------------------------------------------------------
+clr32:
+    psh a
+    mov a, 0
+    str [x:y], a
+    str [x:y + 1], a
+    str [x:y + 2], a
+    str [x:y + 3], a
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; tst32: tests the 32-bit value at [x:y]
+; flags: Z = value is 0
+; ------------------------------------------------------------
+tst32:
+    psh a
+    lod a, [x:y]
+    or a, [x:y + 1]
+    or a, [x:y + 2]
+    or a, [x:y + 3]         ; Z = all 4 bytes are 0
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; min32: value at [x:y] = the smaller of the values at [x:y] and [i:j]
+; max32: value at [x:y] = the larger of the values at [x:y] and [i:j]
+; (unsigned)
+; ------------------------------------------------------------
+min32:
+    cal cmp32
+    jmf min32_keep          ; [x:y] < [i:j]: keep [x:y]
+    cal copy32
+min32_keep:
+    ret
+
+max32:
+    cal cmp32
+    jms max32_keep          ; [x:y] > [i:j]: keep [x:y]
+    cal copy32
+max32_keep:
+    ret
+
+; ------------------------------------------------------------
+; gcd32: value at [x:y] = greatest common divisor of the values at
+;        [x:y] and [i:j] (unsigned)
+; ------------------------------------------------------------
+; Same method as gcd16. The value at [i:j] does not change: the work is
+; done on 2 copies on the stack.
+;   [sp]     = n: the 2nd number of each step
+;   [sp + 4] = t: copy of n before a division
+gcd32:
+    psh a, i, j
+    ssp 8                   ; room for n and t
+    lod a, [i:j]            ; n = value at [i:j]
+    str [sp], a
+    lod a, [i:j + 1]
+    str [sp + 1], a
+    lod a, [i:j + 2]
+    str [sp + 2], a
+    lod a, [i:j + 3]
+    str [sp + 3], a
+    rsp [i:j]               ; [i:j] -> n from now on
+gcd32_loop:
+    lod a, [sp]
+    or a, [sp + 1]
+    or a, [sp + 2]
+    or a, [sp + 3]
+    jmz gcd32_done          ; n = 0: the answer is at [x:y]
+    lod a, [sp]             ; t = n
+    str [sp + 4], a
+    lod a, [sp + 1]
+    str [sp + 5], a
+    lod a, [sp + 2]
+    str [sp + 6], a
+    lod a, [sp + 3]
+    str [sp + 7], a
+    cal div32               ; n = [x:y] mod n
+    lod a, [sp + 4]         ; [x:y] = t (the old n)
+    str [x:y], a
+    lod a, [sp + 5]
+    str [x:y + 1], a
+    lod a, [sp + 6]
+    str [x:y + 2], a
+    lod a, [sp + 7]
+    str [x:y + 3], a
+    jmp gcd32_loop
+gcd32_done:
+    asp 8
+    pop a, i, j
+    ret
+
+; ------------------------------------------------------------
+; isqrt32: value at [x:y] = square root of the value, rounded down
+;          (0 to 65535), and the value at [i:j] = remainder
+;          (value - root * root, 0 to 131070)
+; flags: Z = the input was a perfect square (remainder 0)
+; ------------------------------------------------------------
+; Same method as isqrt16, with 16 rounds: 4 per input byte. The input
+; bytes are pushed on the stack, MSB on top; each round shifts 2 bits
+; out of the top one. The remainder is [a:b:c] (24 bits), the root is
+; [i:j], and root * 2 + 1 is [d:x:y]. [x:y] and [i:j] must not be the
+; same address.
+isqrt32:
+    psh a, b, c, d, i, j, x, y
+    lod a, [x:y + 3]        ; input bytes on the stack, LSB first
+    psh a
+    lod a, [x:y + 2]
+    psh a
+    lod a, [x:y + 1]
+    psh a
+    lod a, [x:y]
+    psh a                   ; [sp] = MSB
+    mov a, 0                ; [a:b:c] = remainder
+    mov b, 0
+    mov c, 0
+    mov i, 0                ; [i:j] = root
+    mov j, 0
+    cal isqrt32_byte        ; byte 0 (MSB)
+    asp 1
+    cal isqrt32_byte        ; byte 1
+    asp 1
+    cal isqrt32_byte        ; byte 2
+    asp 1
+    cal isqrt32_byte        ; byte 3 (LSB)
+    asp 1
+    lod x, [sp + 1]         ; [x:y] = root
+    lod y, [sp]
+    mov d, 0
+    str [x:y], d
+    str [x:y + 1], d
+    str [x:y + 2], i
+    str [x:y + 3], j
+    lod i, [sp + 3]         ; [i:j] = remainder
+    lod j, [sp + 2]
+    str [i:j], d
+    str [i:j + 1], a
+    str [i:j + 2], b
+    str [i:j + 3], c
+    or a, b                 ; Z = remainder is 0
+    or a, c
+    pop a, b, c, d, i, j, x, y   ; pop leaves Z alone
+    ret
+
+; 4 rounds on the input byte at [sp + 2].
+isqrt32_byte:
+    cal isqrt32_round
+    cal isqrt32_round
+    cal isqrt32_round
+    cal isqrt32_round
+    ret
+
+; One round: the input byte is at [sp + 4] (under 2 return addresses).
+isqrt32_round:
+    lod d, [sp + 4]         ; [a:b:c : input byte] <<= 2
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    str [sp + 4], d
+    add j, j                ; root *= 2
+    adc i, i
+    mov d, 0                ; [d:x:y] = root * 2 + 1
+    mov x, i
+    mov y, j
+    add y, y
+    adc x, x
+    adc d, 0
+    or y, 1
+    sub c, y                ; remainder -= root * 2 + 1
+    sbb b, x
+    sbb a, d
+    jmc isqrt32_undo        ; it was smaller: undo
+    or j, 1                 ; root bit = 1
+    ret
+isqrt32_undo:
+    add c, y
+    adc b, x
+    adc a, d
+    ret

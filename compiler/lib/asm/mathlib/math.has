@@ -1,0 +1,90 @@
+; ============================================================
+; math.has - integer library
+;
+; Conventions
+;   * 16-bit values in registers: [a:b] = 1st operand / result,
+;     [c:d] = 2nd operand (first register = MSB).
+;   * Values in memory are big-endian (MSB at the lowest address).
+;   * [x:y] = 1st address (destination), [i:j] = 2nd address (source).
+;   * Routines restore every register except their outputs.
+;   * Flags: C = carry/borrow, Z = result is 0. Not listed = undefined.
+; ============================================================
+
+.include "16/uint16_arithmetic.has"
+.include "16/uint16_mul_div.has"
+
+.include "16/int16_misc.has"
+
+.include "32/uint32_arithmetic.has"
+.include "32/uint32_mul_div.has"
+
+.include "32/int32_misc.has"
+
+.include "misc/bit_counting.has"
+.include "misc/random.has"
+.include "misc/random_range.has"
+.include "misc/text.has"
+
+; ------------------------------------------------------------
+; load16: [a:b] = 16-bit value at [x:y]
+; ------------------------------------------------------------
+load16:
+    lod a, [x:y]            ; MSB
+    lod b, [x:y + 1]        ; LSB
+    ret
+
+; ------------------------------------------------------------
+; store16: 16-bit value at [x:y] = [a:b]
+; ------------------------------------------------------------
+store16:
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+
+; ------------------------------------------------------------
+; copy16: 16-bit value at [x:y] = 16-bit value at [i:j]
+; ------------------------------------------------------------
+copy16:
+    psh a
+    lod a, [i:j]
+    str [x:y], a
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; load32: [a:b:c:d] = 32-bit value at [x:y]
+; ------------------------------------------------------------
+load32:
+    lod a, [x:y]            ; MSB
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]        ; LSB
+    ret
+
+; ------------------------------------------------------------
+; store32: 32-bit value at [x:y] = [a:b:c:d]
+; ------------------------------------------------------------
+store32:
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    ret
+
+; ------------------------------------------------------------
+; copy32: 32-bit value at [x:y] = 32-bit value at [i:j]
+; ------------------------------------------------------------
+copy32:
+    psh a
+    lod a, [i:j]
+    str [x:y], a
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    lod a, [i:j + 2]
+    str [x:y + 2], a
+    lod a, [i:j + 3]
+    str [x:y + 3], a
+    pop a
+    ret

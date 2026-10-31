@@ -18,6 +18,9 @@ of each program's code and the number of instructions it ran.
 * `stdio.c`: `putchar`, `puts`, `getchar`, `gets`, scrolling.
 * `strings.c`: `string.h`, with lengths over 255 and overlapping moves.
 * `printf.c`: every `printf` format, widths and padding, the counts.
+* `random.c`, `convert.c`: `stdlib.h` random numbers and number <-> text.
+* `math.c`: `math.h`, `abs`, `labs`, each against plain C on edge and
+  pseudo-random values (also `sizeof a / sizeof a[0]`).
 * `peephole.c`: code shapes for the peephole rules (`../fcc/rules.hbc2`)
   that the other programs reach rarely.
 * `multi/<name>/`: a program of several files: its `.c` and `.has` files,

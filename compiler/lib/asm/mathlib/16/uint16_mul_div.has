@@ -1,0 +1,515 @@
+; ------------------------------------------------------------
+; mul16: [a:b:c:d] = [a:b] * [c:d] (unsigned, full 32-bit product)
+; ------------------------------------------------------------
+; Shift-and-add from the multiplier's MSB. The multiplier starts in the
+; high half of [a:b:c:d] and the product grows in the low half: each shift
+; pushes out the next multiplier bit while making room for one more bit
+; of product, so the two never overlap.
+; Speed: the 8 steps of a byte are written out (no loop counter), and a
+; multiplier below 256 takes 8 steps instead of 16. When only [c:d] is
+; below 256, the two operands are swapped first.
+mul16:
+    psh i, j
+    or a, 0
+    jmz mul16_go
+    or c, 0
+    jmz mul16_swap
+mul16_go:
+    mov i, c                ; [i:j] = multiplicand
+    mov j, d
+    mov c, 0                ; [a:b:c:d] = [multiplier : 0]
+    mov d, 0
+    or a, 0
+    jmz mul16_short
+    cal mul16_8             ; multiplier MSB
+    cal mul16_8             ; multiplier LSB
+    pop i, j
+    ret
+mul16_short:                ; multiplier < 256: [a:b:c:d] = [LSB : 0 : 0 : 0]
+    mov a, b
+    mov b, 0
+    cal mul16_8
+    pop i, j
+    ret
+mul16_swap:                 ; [c:d] < 256 but not [a:b]: swap them
+    mov i, a
+    mov a, c
+    mov c, i
+    mov i, b
+    mov b, d
+    mov d, i
+    jmp mul16_go
+
+; 8 steps: the next 8 multiplier bits.
+mul16_8:
+    add d, d                ; step 1: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add1
+    jmp mul16_next1
+mul16_add1:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next1:
+    add d, d                ; step 2: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add2
+    jmp mul16_next2
+mul16_add2:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next2:
+    add d, d                ; step 3: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add3
+    jmp mul16_next3
+mul16_add3:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next3:
+    add d, d                ; step 4: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add4
+    jmp mul16_next4
+mul16_add4:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next4:
+    add d, d                ; step 5: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add5
+    jmp mul16_next5
+mul16_add5:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next5:
+    add d, d                ; step 6: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add6
+    jmp mul16_next6
+mul16_add6:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next6:
+    add d, d                ; step 7: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add7
+    jmp mul16_next7
+mul16_add7:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next7:
+    add d, d                ; step 8: [a:b:c:d] <<= 1, C = multiplier bit
+    adc c, c
+    adc b, b
+    adc a, a
+    jmc mul16_add8
+    jmp mul16_next8
+mul16_add8:
+    add d, j                ; product += multiplicand
+    adc c, i
+    adc b, 0
+    adc a, 0
+mul16_next8:
+    ret
+
+; ------------------------------------------------------------
+; div16: [a:b] = [a:b] / [c:d], [c:d] = remainder (unsigned)
+; flags: C = division by zero (then nothing changes)
+; ------------------------------------------------------------
+; Shift-and-subtract: the dividend's bits move one by one from [a:b] into
+; the remainder [i:j]. Each time the remainder reaches the divisor, the
+; divisor is subtracted and a 1 goes into the quotient, which takes the
+; place of the dividend in [a:b].
+; Speed: the 8 steps of a byte are written out; a dividend below 256
+; takes 8 steps instead of 16 (its zero MSB would only bring zeros into
+; the remainder); a divisor below 256 uses a 1-byte remainder.
+div16:
+    psh i, j, x
+    mov x, c
+    or x, d
+    jmz div16_zero
+    mov i, 0                ; [i:j] = remainder
+    mov j, 0
+    mov x, 2                ; x = dividend bytes to do
+    or a, 0
+    jmz div16_short
+div16_go:
+    or c, 0
+    jmz div16_small
+div16_loop:
+    cal div16_8
+    dec x
+    jmz div16_done
+    jmp div16_loop
+div16_small:                ; divisor < 256: the remainder fits in j
+    cal div16s_8
+    dec x
+    jmz div16_done
+    jmp div16_small
+div16_short:                ; dividend < 256: [a:b] = [LSB : 0]
+    mov a, b
+    mov b, 0
+    mov x, 1
+    jmp div16_go
+div16_done:
+    mov c, i                ; [c:d] = remainder
+    mov d, j
+    pop i, j, x
+    clc
+    ret
+div16_zero:
+    pop i, j, x
+    stc
+    ret
+
+; 8 steps: the next 8 dividend bits, any divisor.
+div16_8:
+    add b, b                ; step 1: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big1
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo1       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next1
+div16_big1:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next1
+div16_undo1:
+    add j, d
+    adc i, c
+div16_next1:
+    add b, b                ; step 2: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big2
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo2       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next2
+div16_big2:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next2
+div16_undo2:
+    add j, d
+    adc i, c
+div16_next2:
+    add b, b                ; step 3: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big3
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo3       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next3
+div16_big3:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next3
+div16_undo3:
+    add j, d
+    adc i, c
+div16_next3:
+    add b, b                ; step 4: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big4
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo4       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next4
+div16_big4:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next4
+div16_undo4:
+    add j, d
+    adc i, c
+div16_next4:
+    add b, b                ; step 5: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big5
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo5       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next5
+div16_big5:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next5
+div16_undo5:
+    add j, d
+    adc i, c
+div16_next5:
+    add b, b                ; step 6: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big6
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo6       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next6
+div16_big6:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next6
+div16_undo6:
+    add j, d
+    adc i, c
+div16_next6:
+    add b, b                ; step 7: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big7
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo7       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next7
+div16_big7:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next7
+div16_undo7:
+    add j, d
+    adc i, c
+div16_next7:
+    add b, b                ; step 8: [i:j:a:b] <<= 1
+    adc a, a
+    adc j, j
+    adc i, i                ; C = bit 16 of the remainder
+    jmc div16_big8
+    sub j, d                ; remainder -= divisor
+    sbb i, c
+    jmc div16_undo8       ; it was smaller: undo
+    inc b                   ; quotient bit = 1
+    jmp div16_next8
+div16_big8:                ; 17-bit remainder: always >= divisor
+    sub j, d
+    sbb i, c
+    inc b
+    jmp div16_next8
+div16_undo8:
+    add j, d
+    adc i, c
+div16_next8:
+    ret
+
+; 8 steps with a divisor below 256 (c = 0): remainder in j, i stays 0.
+div16s_8:
+    add b, b                ; step 1: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big1
+    cmp j, d
+    jmf div16s_next1      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next1
+div16s_big1:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next1:
+    add b, b                ; step 2: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big2
+    cmp j, d
+    jmf div16s_next2      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next2
+div16s_big2:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next2:
+    add b, b                ; step 3: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big3
+    cmp j, d
+    jmf div16s_next3      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next3
+div16s_big3:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next3:
+    add b, b                ; step 4: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big4
+    cmp j, d
+    jmf div16s_next4      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next4
+div16s_big4:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next4:
+    add b, b                ; step 5: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big5
+    cmp j, d
+    jmf div16s_next5      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next5
+div16s_big5:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next5:
+    add b, b                ; step 6: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big6
+    cmp j, d
+    jmf div16s_next6      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next6
+div16s_big6:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next6:
+    add b, b                ; step 7: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big7
+    cmp j, d
+    jmf div16s_next7      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next7
+div16s_big7:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next7:
+    add b, b                ; step 8: [j:a:b] <<= 1
+    adc a, a
+    adc j, j                ; C = bit 8 of the remainder
+    jmc div16s_big8
+    cmp j, d
+    jmf div16s_next8      ; remainder < divisor: quotient bit = 0
+    sub j, d
+    inc b                   ; quotient bit = 1
+    jmp div16s_next8
+div16s_big8:               ; 9-bit remainder: always >= divisor
+    sub j, d
+    inc b
+div16s_next8:
+    ret
+
+; ------------------------------------------------------------
+; pow16: [a:b] = [a:b] ^ c (unsigned; c = exponent, 0 to 255)
+; flags: C = overflow (the result needs more than 16 bits; its low
+;        16 bits are stored)
+; ------------------------------------------------------------
+; Square and multiply: the exponent is read bit by bit from bit 0. The
+; base is squared each round (base, base^2, base^4...) and multiplied into
+; the result when the exponent bit is 1. 0^0 = 1.
+;
+; Overflow: if a multiplication overflows, so does the final result,
+; because it only grows. The base is squared only if more exponent bits
+; remain, so a squared base is always used later.
+pow16:
+    psh c, d, i, j, x, y
+    mov i, a                ; [i:j] = base
+    mov j, b
+    mov x, c                ; x = exponent bits not used yet
+    mov y, 0                ; y = 1 after an overflow
+    mov a, 0                ; result = 1
+    mov b, 1
+pow16_loop:
+    mov c, x
+    and c, 1
+    jmz pow16_square
+    mov c, i                ; result *= base
+    mov d, j
+    cal mul16
+    or a, b                 ; high half not 0: overflow
+    jmz pow16_mul_ok
+    mov y, 1
+pow16_mul_ok:
+    mov a, c
+    mov b, d
+pow16_square:
+    shr x
+    cmp x, 0
+    jme pow16_done          ; no more bits
+    psh a, b
+    mov a, i                ; base *= base
+    mov b, j
+    mov c, i
+    mov d, j
+    cal mul16
+    or a, b
+    jmz pow16_square_ok
+    mov y, 1
+pow16_square_ok:
+    mov i, c
+    mov j, d
+    pop a, b
+    jmp pow16_loop
+pow16_done:
+    clc
+    cmp y, 0
+    jme pow16_end
+    stc
+pow16_end:
+    pop c, d, i, j, x, y
+    ret

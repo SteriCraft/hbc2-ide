@@ -187,6 +187,8 @@ static struct node *badsizeof(void)
  *	sizeof() is a strange C thing that is sort of
  *	a function call but magic.
  */
+static struct node *hier10(void);
+
 struct node *get_sizeof(void)
 {
 	unsigned name;
@@ -210,7 +212,9 @@ struct node *get_sizeof(void)
 	   we can optimize some of the symbol table tracking for constanrt strings
 	   to keep memory usage a bit more controlled. See primary.c */
 	in_sizeof++;
-	n = hier0(0);
+	/* Without a bracket the operand is a unary expression: sizeof a / 2
+	   is (sizeof a) / 2 (HBC-2 fix) */
+	n = want_paren ? hier0(0) : hier10();
 	r = make_constant(type_sizeof(n->type), UINT);
 	free_tree(n);
 	if (want_paren)

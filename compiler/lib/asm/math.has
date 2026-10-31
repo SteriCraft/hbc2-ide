@@ -1,0 +1,147 @@
+; math.h functions: wrappers of the math library (asm/mathlib, a copy of
+; design_projects/ASM_p/lib/math). They read the C arguments from the
+; stack (ABI.md section 9). The 32-bit routines work on a value in memory
+; at [x:y]: they work on the argument itself, on the stack (a C function
+; may change its arguments).
+
+; [x:y] -> the first argument, for a wrapper called directly from C
+; (called by it: the argument is at [sp + 4] here)
+lib_math_arg:
+    rsp [x:y]
+    add y, 4
+    adc x, 0
+    ret
+
+; [c:d]:[a:b] = the long at [x:y]
+lib_math_load:
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    ret
+
+; --- Square root, power, greatest common divisor -------------------------
+
+; unsigned isqrt(unsigned n)
+_isqrt:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    cal isqrt16                 ; [a:b] = root (0 to 255)
+    ret
+
+; unsigned lsqrt(unsigned long n): the root fits in 16 bits
+_lsqrt:
+    ssp 4                       ; room for the remainder, at [i:j]
+    rsp [i:j]
+    rsp [x:y]
+    add y, 6                    ; [x:y] -> n
+    adc x, 0
+    cal isqrt32
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    asp 4
+    ret
+
+; int ipow(int base, unsigned char exp): the low 16 bits, which are right
+; for a negative base too
+_ipow:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod c, [sp + 4]
+    cal pow16
+    ret
+
+; long lpow(long base, unsigned char exp)
+_lpow:
+    cal lib_math_arg
+    lod c, [sp + 6]
+    cal pow32
+    jmp lib_math_load
+
+; unsigned gcd(unsigned a, unsigned b)
+_gcd:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod c, [sp + 4]
+    lod d, [sp + 5]
+    cal gcd16
+    ret
+
+; unsigned long lgcd(unsigned long a, unsigned long b)
+_lgcd:
+    cal lib_math_arg
+    mov i, x                    ; [i:j] -> b
+    mov j, y
+    add j, 4
+    adc i, 0
+    cal gcd32
+    jmp lib_math_load
+
+; --- Bit counting: the count goes from a to [a:b] ------------------------
+
+; int popcount(unsigned n), clz(unsigned n), ctz(unsigned n)
+_popcount:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    cal popcnt16
+    jmp lib_math_count
+
+_clz:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    cal lzcnt16
+    jmp lib_math_count
+
+_ctz:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    cal tzcnt16
+    jmp lib_math_count
+
+; int lpopcount(unsigned long n), lclz(unsigned long n), lctz(unsigned long n)
+_lpopcount:
+    cal lib_math_arg
+    cal popcnt32
+    jmp lib_math_count
+
+_lclz:
+    cal lib_math_arg
+    cal lzcnt32
+    jmp lib_math_count
+
+_lctz:
+    cal lib_math_arg
+    cal tzcnt32
+lib_math_count:
+    mov b, a
+    mov a, 0
+    ret
+
+; --- Smaller, larger -----------------------------------------------------
+
+; int min(int a, int b), max(int a, int b)
+; unsigned umin(unsigned a, unsigned b), umax(unsigned a, unsigned b)
+_min:
+    cal lib_math_two
+    jmp min16s
+
+_max:
+    cal lib_math_two
+    jmp max16s
+
+_umin:
+    cal lib_math_two
+    jmp min16
+
+_umax:
+    cal lib_math_two
+    jmp max16
+
+; [a:b] = first int, [c:d] = second (called by the wrapper: the arguments
+; are at [sp + 4] here)
+lib_math_two:
+    lod a, [sp + 4]
+    lod b, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+    ret

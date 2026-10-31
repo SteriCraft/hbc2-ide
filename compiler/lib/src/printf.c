@@ -1,8 +1,10 @@
-/* printf: the minimal set (ROADMAP decision 14): %d %u %x %c %s %%,
-   l for long, a width, 0 for zero padding. */
+/* printf: the minimal set (ROADMAP decision 14): %d %u %x %X %c %s %%,
+   l for long, a width, 0 for zero padding. The digits come from utoa,
+   ultoa, htoa and lhtoa (stdlib.h). */
 
 #include <stdio.h>
 #include <stdarg.h>
+#include <stdlib.h>
 
 /* Prints s (len characters) after its sign, padded to width. Returns
    the number of characters printed. */
@@ -24,15 +26,14 @@ static int field(const char *s, int len, char neg, int width, char pad)
 int printf(const char *fmt, ...)
 {
     va_list ap;
-    char digits[11];                        /* a long: 10 digits at most */
-    char *end = digits + sizeof(digits);
+    char digits[11];                        /* ultoa: 10 digits and the 0 */
     char *s;
+    char *e;
     int count = 0;
     int width;
-    unsigned base;
     unsigned u;
     unsigned long lu;
-    char c, pad, is_long, neg;
+    char c, pad, is_long, neg, hex;
 
     va_start(ap, fmt);
     while ((c = *fmt++) != 0) {
@@ -56,37 +57,41 @@ int printf(const char *fmt, ...)
         }
         c = *fmt++;
         neg = 0;
-        s = end;                            /* digits go backwards from the end */
+        s = digits;
         switch (c) {
         case 'd':
         case 'u':
         case 'x':
-            base = c == 'x' ? 16 : 10;
+        case 'X':
+            hex = c == 'x' || c == 'X';
+            /* The sign is printed by field (before or after the padding):
+               the digits are those of the value without it. */
             if (is_long) {
                 lu = va_arg(ap, unsigned long);
                 if (c == 'd' && (long)lu < 0) {
                     neg = 1;
                     lu = -lu;
                 }
-                do {
-                    *--s = "0123456789abcdef"[(int)(lu % base)];
-                    lu /= base;
-                } while (lu);
+                e = hex ? lhtoa(lu, digits) : ultoa(lu, digits);
             } else {
                 u = va_arg(ap, unsigned);
                 if (c == 'd' && (int)u < 0) {
                     neg = 1;
                     u = -u;
                 }
-                do {
-                    *--s = "0123456789abcdef"[u % base];
-                    u /= base;
-                } while (u);
+                e = hex ? htoa(u, digits) : utoa(u, digits);
             }
-            count += field(s, end - s, neg, width, pad);
+            if (hex) {
+                while (*s == '0' && s + 1 < e)  /* htoa keeps the leading zeros */
+                    s++;
+                if (c == 'x')
+                    for (u = 0; s + u < e; u++)
+                        s[u] |= 0x20;       /* lower case; digits already have the bit */
+            }
+            count += field(s, e - s, neg, width, pad);
             break;
         case 'c':
-            *--s = va_arg(ap, int);
+            *s = va_arg(ap, int);
             count += field(s, 1, 0, width, ' ');
             break;
         case 's':
