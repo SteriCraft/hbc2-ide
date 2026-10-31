@@ -25,6 +25,7 @@ use crate::emulator::{Emulator, Image, Peripherals, ram_address};
 use crate::find::{Find, FindMode};
 use crate::project::{self, Language, Project};
 use crate::settings::{ProjectSettings, Settings, TargetSetting};
+use crate::signatures::Signatures;
 use crate::tabs::Tab;
 use crate::views::disasm::DisasmView;
 use crate::views::editor::{char_index_of_line, editor_id};
@@ -194,6 +195,8 @@ pub struct State {
     pub edits: u64,
     /// Value of `edits` when the loaded image was assembled (`None`: not assembled here).
     pub loaded_edits: Option<u64>,
+    /// The C functions the editor shows the parameters of (C projects).
+    pub signatures: Signatures,
     /// Latest emulator state, read once per frame.
     pub snapshot: Arc<Snapshot>,
     pub dialog: Option<Dialog>,
@@ -310,6 +313,7 @@ impl Ide {
                 building: None,
                 edits: 0,
                 loaded_edits: None,
+                signatures: Signatures::default(),
                 snapshot,
                 dialog: None,
                 actions: Vec::new(),
@@ -573,6 +577,7 @@ impl Ide {
         if let Some(project) = &mut self.state.project {
             project.rescan();
         }
+        self.state.refresh_signatures();
     }
 
     /// Gives the right-hand group exactly the width the "CPU & I/O" tab
@@ -1018,6 +1023,7 @@ impl Ide {
                 self.open_file(&path, None);
             }
         }
+        self.state.refresh_signatures();
     }
 
     fn close_project(&mut self) {
@@ -1034,6 +1040,7 @@ impl Ide {
         state.emulator.peripherals = Peripherals::default();
         state.emulator.unload();
         state.followed = None;
+        state.signatures = Signatures::default();
         self.remove_editor_tabs(|_| true);
     }
 
@@ -1383,6 +1390,38 @@ impl State {
             return false;
         }
         true
+    }
+
+    /// Re-reads the C functions the editor shows the parameters of: the
+    /// library's headers, then the project's `.c` and `.h` files (with the
+    /// unsaved changes of the open ones).
+    pub fn refresh_signatures(&mut self) {
+        let mut signatures = Signatures::default();
+        if let Some(project) = self.project.as_ref().filter(|p| p.language == Language::C) {
+            let mut files: Vec<PathBuf> = std::fs::read_dir(hbc2_cc::lib_dir().join("include"))
+                .map(|entries| entries.flatten().map(|e| e.path()).collect())
+                .unwrap_or_default();
+            files.retain(|p| project::has_extension(p, &["h"]));
+            files.sort();
+            files.extend(
+                project
+                    .files
+                    .iter()
+                    .filter(|p| project::has_extension(p, &["c", "h"]))
+                    .cloned(),
+            );
+            for path in files {
+                match self.docs.iter().find(|d| d.path == path) {
+                    Some(doc) => signatures.add_source(&doc.text),
+                    None => {
+                        if let Ok(text) = std::fs::read_to_string(&path) {
+                            signatures.add_source(&text);
+                        }
+                    }
+                }
+            }
+        }
+        self.signatures = signatures;
     }
 
     /// The program's target.

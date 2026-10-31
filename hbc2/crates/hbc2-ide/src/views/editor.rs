@@ -6,7 +6,7 @@ use std::hash::{Hash, Hasher};
 use std::path::Path;
 use std::sync::Arc;
 
-use eframe::egui::text::{CCursor, CCursorRange};
+use eframe::egui::text::{CCursor, CCursorRange, LayoutJob, TextFormat};
 use eframe::egui::text_edit::TextEditState;
 use eframe::egui::{
     self, Align, Align2, Color32, Event, FontId, Frame, Galley, Id, Key, Margin, Modifiers, Rect,
@@ -17,6 +17,7 @@ use crate::document::{Document, shift_breakpoints};
 use crate::editing;
 use crate::find::{self, Options};
 use crate::highlight;
+use crate::signatures::{Signature, Signatures};
 
 /// What the editor shows besides the text.
 pub struct Marks<'a> {
@@ -33,6 +34,8 @@ pub struct Marks<'a> {
     pub search: Option<(&'a str, Options)>,
     /// The find bar's current match (else the selection, if it is a match).
     pub current_match: Option<std::ops::Range<usize>>,
+    /// Known C functions: their parameters are shown while typing a call.
+    pub signatures: Option<&'a Signatures>,
     pub font_size: f32,
 }
 
@@ -132,6 +135,24 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if output.response.dragged() {
                 drag_scroll(ui);
+            }
+            if output.response.clicked()
+                && let Some(pointer) = output.response.interact_pointer_pos()
+                && click_count(ui, editor_id, pointer) < 3
+                && output.response.triple_clicked()
+            {
+                // egui took this double click for a triple one: select the word.
+                let at = output
+                    .galley
+                    .cursor_from_pos(pointer - output.galley_pos)
+                    .index
+                    .0;
+                let (start, end) = word_at(text, at);
+                output.state.cursor.set_char_range(Some(CCursorRange::two(
+                    CCursor::new(start),
+                    CCursor::new(end),
+                )));
+                output.state.clone().store(ui.ctx(), editor_id);
             }
             if auto_edited {
                 // The text box did not see the change: bring the cursor into view.
@@ -290,6 +311,19 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 }
             }
 
+            // Inside the brackets of a known function's call: its parameters.
+            if let Some(signatures) = marks.signatures
+                && output.response.has_focus()
+                && let Some(range) = output.state.cursor.char_range()
+                && range.is_empty()
+            {
+                let at = range.primary.index.0;
+                if let Some((call, signature)) = signatures.call_at(text, at) {
+                    let cursor = text_rect(&output.galley, output.galley_pos, &(at..at));
+                    signature_popup(ui, editor_id, signature, call.arg, cursor, marks.font_size);
+                }
+            }
+
             // Go to a line: scroll there and put the cursor at its start. Only
             // the start of the row is brought into view, so a long line does
             // not scroll the view to the right.
@@ -401,6 +435,140 @@ fn auto_edit(ui: &egui::Ui, id: Id, text: &mut String) -> bool {
     )));
     state.store(ui.ctx(), id);
     changed
+}
+
+/// Counts the clicks in a row on the editor, at the same place, each one
+/// soon after the one before: 1, 2 (double click), 3 (triple click)...
+/// egui takes a double click that comes soon after another click for a
+/// triple click (it does not check that the clicks before were a double
+/// click), which selected the line instead of the word.
+fn click_count(ui: &egui::Ui, id: Id, pointer: egui::Pos2) -> u32 {
+    let id = id.with("clicks");
+    let now = ui.input(|i| i.time);
+    let (delay, distance) = ui.ctx().options(|o| {
+        (
+            o.input_options.max_double_click_delay,
+            o.input_options.max_click_dist,
+        )
+    });
+    let last: Option<(f64, egui::Pos2, u32)> = ui.data(|d| d.get_temp(id));
+    let count = match last {
+        Some((time, position, count))
+            if now - time < delay && position.distance(pointer) < distance =>
+        {
+            count + 1
+        }
+        _ => 1,
+    };
+    ui.data_mut(|d| d.insert_temp(id, (now, pointer, count)));
+    count
+}
+
+/// The word (letters, digits, `_`) at the character position `at`, or
+/// just before it (a click on the right half of its last letter); an
+/// empty range elsewhere.
+fn word_at(text: &str, at: usize) -> (usize, usize) {
+    let chars: Vec<char> = text.chars().collect();
+    let is_word = |i: usize| {
+        chars
+            .get(i)
+            .is_some_and(|&c| c.is_alphanumeric() || c == '_')
+    };
+    let at = if is_word(at) || at == 0 || !is_word(at - 1) {
+        at
+    } else {
+        at - 1
+    };
+    if !is_word(at) {
+        return (at, at);
+    }
+    let start = (0..at)
+        .rev()
+        .take_while(|&i| is_word(i))
+        .last()
+        .unwrap_or(at);
+    let end = (at..chars.len())
+        .find(|&i| !is_word(i))
+        .unwrap_or(chars.len());
+    (start, end)
+}
+
+/// The box under the cursor with the signature of the function being
+/// called, the parameter of the argument typed (`arg`) stressed, and the
+/// function's comment.
+fn signature_popup(
+    ui: &egui::Ui,
+    id: Id,
+    signature: &Signature,
+    arg: usize,
+    cursor: Rect,
+    font_size: f32,
+) {
+    const WIDTH: f32 = 520.0;
+    let visuals = ui.visuals();
+    let font = FontId::monospace(font_size * 0.9);
+    let plain = TextFormat::simple(font.clone(), visuals.text_color());
+    let weak = TextFormat::simple(font.clone(), visuals.weak_text_color());
+    let current = TextFormat {
+        color: visuals.strong_text_color(),
+        background: visuals.selection.bg_fill.gamma_multiply(0.6),
+        ..TextFormat::simple(font, visuals.strong_text_color())
+    };
+
+    let mut job = LayoutJob::default();
+    job.wrap.max_width = WIDTH;
+    let head = if signature.is_macro() {
+        format!("#define {}(", signature.name)
+    } else if signature.returns.ends_with('*') {
+        format!("{}{}(", signature.returns, signature.name)
+    } else {
+        format!("{} {}(", signature.returns, signature.name)
+    };
+    job.append(&head, 0.0, plain.clone());
+    if signature.params.is_empty() && !signature.is_macro() {
+        job.append("void", 0.0, weak.clone());
+    }
+    let stressed = signature.param_for(arg);
+    for (index, param) in signature.params.iter().enumerate() {
+        if index > 0 {
+            job.append(", ", 0.0, plain.clone());
+        }
+        let format = if stressed == Some(index) {
+            &current
+        } else {
+            &plain
+        };
+        job.append(param, 0.0, format.clone());
+    }
+    job.append(")", 0.0, plain);
+
+    // Below the cursor's row, or above it near the bottom of the view.
+    let below = cursor.max.y + 160.0 < ui.clip_rect().bottom();
+    let (position, pivot) = if below {
+        (pos2(cursor.min.x, cursor.max.y + 4.0), Align2::LEFT_TOP)
+    } else {
+        (pos2(cursor.min.x, cursor.min.y - 4.0), Align2::LEFT_BOTTOM)
+    };
+    egui::Area::new(id.with("signature"))
+        .order(egui::Order::Tooltip)
+        .interactable(false)
+        .fixed_pos(position)
+        .pivot(pivot)
+        .constrain(true)
+        .show(ui.ctx(), |ui| {
+            Frame::popup(ui.style()).show(ui, |ui| {
+                ui.set_max_width(WIDTH);
+                ui.label(job);
+                if !signature.doc.is_empty() {
+                    ui.add_space(2.0);
+                    ui.label(
+                        egui::RichText::new(&signature.doc)
+                            .size(font_size * 0.85)
+                            .color(ui.visuals().weak_text_color()),
+                    );
+                }
+            });
+        });
 }
 
 /// Keys that change the text or move the cursor in the text box.
@@ -531,5 +699,17 @@ mod tests {
         assert_eq!(char_index_of_line(text, 2), 3);
         assert_eq!(char_index_of_line(text, 4), 7);
         assert_eq!(char_index_of_line(text, 9), 8);
+    }
+
+    #[test]
+    fn words() {
+        let text = "f(rand_range, x2);";
+        assert_eq!(word_at(text, 4), (2, 12)); // inside
+        assert_eq!(word_at(text, 2), (2, 12)); // its start
+        assert_eq!(word_at(text, 12), (2, 12)); // just after its end
+        assert_eq!(word_at(text, 15), (14, 16));
+        assert_eq!(word_at(text, 13), (13, 13)); // on a space
+        assert_eq!(word_at(text, 0), (0, 1));
+        assert_eq!(word_at(text, 99), (99, 99));
     }
 }

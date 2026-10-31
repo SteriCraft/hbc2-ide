@@ -17,6 +17,7 @@ pub mod highlight;
 pub mod keymap;
 pub mod project;
 pub mod settings;
+pub mod signatures;
 pub mod tabs;
 pub mod views;
 
