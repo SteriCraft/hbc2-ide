@@ -14,11 +14,13 @@ You can also gather information about the computer on the official blog [here](h
 
 
 ## Integrated Development Environment
-![project_demo](https://github.com/SteriCraft/hbc2-ide/blob/main/docs/documentation/html/demo.png?raw=true)
+![project_demo](hbc2/screenshot.png)
 
-The IDE allows you to create projects, write code with syntax highlighting, check binary output of your code, and run an emulator of the computer easily reaching the 2 MHz target frequency of the CPU.
+The IDE (written in Rust, in [hbc2/](hbc2/)) lets you write programs in HBC-2 assembly or in C, build them, and run them on an emulator of the computer, from 1 Hz to 100 MHz (the real CPU's target is 2 MHz). While a program runs or is paused you can see the CPU, the memory, the disassembly, the peripherals and the monitor, set breakpoints and step through the assembly or C lines.
 
-The IDE has been rewritten in Rust: see [hbc2/](hbc2/). The previous Qt version is in the git history.
+The C compiler is based on the [Fuzix Compiler Kit](https://github.com/EtchedPixels/Fuzix-Compiler-Kit): see [compiler/](compiler/).
+
+The previous Qt version of the IDE is in the git history.
 
 ### Documentation
-The IDE project's documentation is available [here](https://stericraft.github.io/hbc2-ide/)
+How to build and use the IDE: [hbc2/README.md](hbc2/README.md). The assembly language: [HBC-2 Assembly Language](Documentation/HBC-2%20Assembly%20Language.md). Planned work: [TODO.md](TODO.md).

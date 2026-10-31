@@ -5,9 +5,10 @@ history keeps them).
 
 ## Documentation
 
-- **`docs/`** (the GitHub Pages site linked from README.md) is the Doxygen
-  output of the old Qt IDE (2023). Replace it with a user guide for the Rust
-  IDE (from `hbc2/README.md`), or remove it and the README link.
+- **`docs/`** (the GitHub Pages site) is the Doxygen output of the old Qt
+  IDE (2023); README.md no longer links to it, but still takes its logo from
+  `docs/documentation/html/logo.png`. Remove it (move the logo first) or
+  replace it with a user guide for the Rust IDE.
 
 ## Terminal (`lib/monitor/terminal.has`)
 
