@@ -339,6 +339,20 @@ struct Stage {
     messages: String,
 }
 
+/// A command for one of the compiler tools. On Windows it gets no console
+/// window: the IDE has no console, so each tool would open (and close) one.
+fn tool_command(program: &Path) -> Command {
+    #[allow(unused_mut)] // changed on Windows only
+    let mut command = Command::new(program);
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+        command.creation_flags(CREATE_NO_WINDOW);
+    }
+    command
+}
+
 /// Runs one stage: stdin from `input`, stdout to `output`.
 fn stage(program: &Path, args: &[&str], input: &Path, output: &Path) -> Result<Stage, String> {
     let stdin = File::open(input).map_err(|e| format!("{}: {e}", input.display()))?;
@@ -350,7 +364,7 @@ fn stage(program: &Path, args: &[&str], input: &Path, output: &Path) -> Result<S
         .truncate(true)
         .open(output)
         .map_err(|e| format!("{}: {e}", output.display()))?;
-    let result = Command::new(program)
+    let result = tool_command(program)
         .args(args)
         .stdin(stdin)
         .stdout(stdout)
@@ -398,7 +412,7 @@ pub fn compile(
         stage.ok
     };
     let result = (|| -> Result<bool, String> {
-        let cpp = Command::new(tool("cpp")?)
+        let cpp = tool_command(&tool("cpp")?)
             .args(["-E", "-D__hbc2__"])
             // #include "x.h": next to the C file first
             .arg(format!("-I{}", folder.display()))
