@@ -17,7 +17,7 @@ use crate::document::{Document, shift_breakpoints};
 use crate::editing;
 use crate::find::{self, Options};
 use crate::highlight;
-use crate::multicursor::{self, Op};
+use crate::multicursor::{self, Cursor, Motion, Op, word_at};
 use crate::signatures::{Signature, Signatures};
 
 /// What the editor shows besides the text.
@@ -114,20 +114,25 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             let cursor_before = TextEditState::load(ui.ctx(), editor_id)
                 .and_then(|s| s.cursor.char_range())
-                .map(|r| r.primary.index.0);
+                .map(main_cursor);
             // Escape: back to one cursor. egui has already taken the
             // keyboard from the editor for it: give it back.
             let refocus = !multi.cursors.is_empty() && ui.input(|i| i.key_pressed(Key::Escape));
             if refocus {
                 multi.cursors.clear();
             }
-            let auto_edited = focused
-                && !marks.read_only
-                && if multi.cursors.is_empty() {
+            let (auto_edited, selected) = if focused && !marks.read_only {
+                let (duplicated, selected) =
+                    cursor_shortcuts(ui, editor_id, text, &mut multi.cursors);
+                let edited = if multi.cursors.is_empty() {
                     auto_edit(ui, editor_id, text)
                 } else {
                     multi_edit(ui, editor_id, text, &mut multi.cursors)
                 };
+                (edited || duplicated, selected)
+            } else {
+                (false, false)
+            };
             // A `&str` buffer can be selected and copied, not edited.
             let mut shown: &str;
             let buffer: &mut dyn egui::TextBuffer = if marks.read_only {
@@ -155,22 +160,20 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             if std::mem::take(focus) || refocus {
                 output.response.request_focus();
             }
-            // Ctrl+click adds a cursor where the main one was (egui moved it
-            // to the click), or removes the one clicked; a plain click
-            // leaves one cursor.
+            // Ctrl+click (or Ctrl+drag) adds a cursor: the main one (with its
+            // selection) is kept, egui moved it to the click. Ctrl+click on
+            // another cursor removes it; a plain click leaves one cursor.
             if ui.input(|i| i.pointer.primary_pressed()) && output.response.contains_pointer() {
                 let clicked = output.state.cursor.char_range().map(|r| r.primary.index.0);
                 if !ui.input(|i| i.modifiers.command) {
                     multi.cursors.clear();
                 } else if let (Some(old), Some(new)) = (cursor_before, clicked) {
-                    if let Some(index) = multi.cursors.iter().position(|&c| c == new) {
+                    let on = |c: &Cursor| c.start() <= new && new <= c.end();
+                    if let Some(index) = multi.cursors.iter().position(on) {
                         multi.cursors.remove(index);
-                        output
-                            .state
-                            .cursor
-                            .set_char_range(Some(CCursorRange::one(CCursor::new(old))));
+                        output.state.cursor.set_char_range(Some(egui_range(old)));
                         output.state.clone().store(ui.ctx(), editor_id);
-                    } else if old != new && !multi.cursors.contains(&old) {
+                    } else if old != Cursor::at(new) && !multi.cursors.contains(&old) {
                         multi.cursors.push(old);
                     }
                 }
@@ -180,11 +183,20 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if output.response.has_focus() {
                 let stroke = ui.visuals().text_cursor.stroke;
-                for &at in &multi.cursors {
-                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at));
+                for c in &multi.cursors {
+                    let rect = text_rect(&output.galley, output.galley_pos, &(c.head..c.head));
                     ui.painter().vline(rect.min.x, rect.y_range(), stroke);
                 }
             }
+            if selected {
+                // Ctrl+L: show the selection it added (the main one).
+                if let Some(range) = output.state.cursor.char_range() {
+                    let at = range.primary.index.0;
+                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at));
+                    ui.scroll_to_rect(rect.expand2(vec2(48.0, rect.height() * 2.0)), None);
+                }
+            }
+            let extra_cursors = multi.cursors.clone();
             multi.text_hash = text_hash(text);
             multi.store(ui.ctx(), editor_id);
             if output.response.dragged() {
@@ -285,6 +297,17 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if let Some(rect) = marks.pc_line.and_then(row_rect) {
                 shapes.push(Shape::rect_filled(rect, 0.0, pc_color(dark)));
+            }
+            // The selections of the extra cursors (egui draws the main one).
+            if output.response.has_focus() {
+                let fill = visuals.selection.bg_fill;
+                for c in extra_cursors.iter().filter(|c| !c.is_empty()) {
+                    for rect in
+                        selection_rects(text, &output.galley, output.galley_pos, c, digit_width)
+                    {
+                        shapes.push(Shape::rect_filled(rect, 0.0, fill));
+                    }
+                }
             }
             // Find matches; the selected one stands out.
             if let Some((query, options)) = marks.search {
@@ -554,35 +577,6 @@ fn click_count(ui: &egui::Ui, id: Id, pointer: egui::Pos2) -> u32 {
     count
 }
 
-/// The word (letters, digits, `_`) at the character position `at`, or
-/// just before it (a click on the right half of its last letter); an
-/// empty range elsewhere.
-fn word_at(text: &str, at: usize) -> (usize, usize) {
-    let chars: Vec<char> = text.chars().collect();
-    let is_word = |i: usize| {
-        chars
-            .get(i)
-            .is_some_and(|&c| c.is_alphanumeric() || c == '_')
-    };
-    let at = if is_word(at) || at == 0 || !is_word(at - 1) {
-        at
-    } else {
-        at - 1
-    };
-    if !is_word(at) {
-        return (at, at);
-    }
-    let start = (0..at)
-        .rev()
-        .take_while(|&i| is_word(i))
-        .last()
-        .unwrap_or(at);
-    let end = (at..chars.len())
-        .find(|&i| !is_word(i))
-        .unwrap_or(chars.len());
-    (start, end)
-}
-
 /// The box under the cursor with the signature of the function being
 /// called, the parameter of the argument typed (`arg`) stressed, and the
 /// function's comment.
@@ -661,10 +655,11 @@ fn signature_popup(
         });
 }
 
-/// The cursors added with Ctrl+click, besides egui's own (the main one).
+/// The cursors added with Ctrl+click and Ctrl+L, besides egui's own (the
+/// main one).
 #[derive(Clone, Default)]
 struct MultiCursor {
-    cursors: Vec<usize>,
+    cursors: Vec<Cursor>,
     /// Hash of the text they are positions in.
     text_hash: u64,
 }
@@ -695,11 +690,108 @@ fn text_hash(text: &str) -> u64 {
     hasher.finish()
 }
 
+/// egui's cursor as a [`Cursor`]: `secondary` is where the selection
+/// started, `primary` the end that moves.
+fn main_cursor(range: CCursorRange) -> Cursor {
+    Cursor {
+        anchor: range.secondary.index.0,
+        head: range.primary.index.0,
+    }
+}
+
+fn egui_range(cursor: Cursor) -> CCursorRange {
+    CCursorRange::two(CCursor::new(cursor.anchor), CCursor::new(cursor.head))
+}
+
+/// Screen rectangles of a selection, one per line; a selected line break
+/// shows as a little more width.
+fn selection_rects(
+    text: &str,
+    galley: &Galley,
+    origin: egui::Pos2,
+    cursor: &Cursor,
+    newline_width: f32,
+) -> Vec<Rect> {
+    let chars: Vec<char> = text.chars().collect();
+    let end = cursor.end().min(chars.len());
+    let mut rects = Vec::new();
+    let mut start = cursor.start();
+    while start < end {
+        let line_end = chars[start..end]
+            .iter()
+            .position(|&c| c == '\n')
+            .map_or(end, |p| start + p);
+        let mut rect = text_rect(galley, origin, &(start..line_end));
+        if line_end < end {
+            rect.max.x += newline_width;
+        }
+        rects.push(rect);
+        start = line_end + 1;
+    }
+    rects
+}
+
+/// The shortcuts of the cursors, with one cursor or several:
+/// - Ctrl+L selects the word at the cursor, then the next place with the
+///   same text; Ctrl+Shift+L every place at once. Each one is a cursor
+///   with its selection.
+/// - Ctrl+D copies the lines holding a cursor below themselves.
+///
+/// Returns (the text changed, a selection was added: to show).
+fn cursor_shortcuts(
+    ui: &egui::Ui,
+    id: Id,
+    text: &mut String,
+    extra: &mut Vec<Cursor>,
+) -> (bool, bool) {
+    let (all, next, duplicate) = ui.ctx().input_mut(|i| {
+        let all = i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::L);
+        let next = i.consume_key(Modifiers::COMMAND, Key::L);
+        (all, next, i.consume_key(Modifiers::COMMAND, Key::D))
+    });
+    if !all && !next && !duplicate {
+        return (false, false);
+    }
+    let Some(mut state) = TextEditState::load(ui.ctx(), id) else {
+        return (false, false);
+    };
+    let Some(range) = state.cursor.char_range() else {
+        return (false, false);
+    };
+    let main = main_cursor(range);
+    let mut cursors = extra.clone();
+    cursors.push(main);
+    let main_index = cursors.len() - 1;
+    let mut changed = false;
+    let found = if duplicate {
+        let outcome = multicursor::duplicate_lines(text, &cursors, main_index);
+        *text = outcome.text;
+        changed = true;
+        Some((outcome.cursors, outcome.main))
+    } else {
+        let whole_word = multicursor::is_whole_word(text, main);
+        if all {
+            multicursor::select_all(text, &cursors, main_index, whole_word)
+        } else {
+            multicursor::select_next(text, &cursors, main_index, whole_word)
+        }
+    };
+    let Some((mut cursors, main)) = found else {
+        return (false, false);
+    };
+    let main = cursors.remove(main);
+    *extra = cursors;
+    state.cursor.set_char_range(Some(egui_range(main)));
+    state.store(ui.ctx(), id);
+    (changed, !duplicate)
+}
+
 /// With extra cursors, the editor handles the keys itself: each one is
-/// applied at every cursor (see [`multicursor`]). A key it does not handle
-/// (Ctrl shortcuts, Shift+arrows, cut) goes back to one cursor and is left
-/// to the text box. Returns whether the text changed.
-fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<usize>) -> bool {
+/// applied at every cursor (see [`multicursor`]). Copy and cut take every
+/// selection, one per line. A key it does not handle (Ctrl shortcuts,
+/// Page Up/Down) goes back to one cursor and is left to the text box.
+/// Returns whether the text changed.
+fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<Cursor>) -> bool {
     let Some(mut state) = TextEditState::load(ui.ctx(), id) else {
         extra.clear();
         return false;
@@ -708,21 +800,30 @@ fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<usize>) 
         extra.clear();
         return false;
     };
-    let mut main = range.primary.index.0;
     let mut cursors = extra.clone();
-    cursors.push(main);
+    cursors.push(main_cursor(range));
+    let mut main = cursors.len() - 1;
     let events = ui.input(|i| i.events.clone());
     let mut taken = Vec::new();
     let mut changed = false;
     let mut leave = false;
+    let copy = |cursors: &[Cursor], text: &str| {
+        let parts = multicursor::selected(text, cursors);
+        ui.ctx().copy_text(parts.join("\n"));
+    };
     for (index, event) in events.iter().enumerate() {
         let op = match event {
             Event::Text(typed) if typed == "\n" || typed == "\r" => None,
             Event::Text(typed) => Some(Op::Type(typed.clone())),
             Event::Paste(pasted) => Some(Op::Paste(pasted.clone())),
+            Event::Copy | Event::Cut if cursors.iter().all(Cursor::is_empty) => continue,
+            Event::Copy => {
+                copy(&cursors, text);
+                None
+            }
             Event::Cut => {
-                leave = true;
-                break;
+                copy(&cursors, text);
+                Some(Op::Cut)
             }
             Event::Key {
                 key,
@@ -733,18 +834,29 @@ fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<usize>) 
                 if is_modifier(*key) {
                     continue; // Ctrl itself, held for the next Ctrl+click
                 }
-                if modifiers.is_none() {
+                let motion = match key {
+                    Key::ArrowLeft => Some(Motion::Left),
+                    Key::ArrowRight => Some(Motion::Right),
+                    Key::ArrowUp => Some(Motion::Up),
+                    Key::ArrowDown => Some(Motion::Down),
+                    Key::Home => Some(Motion::Home),
+                    Key::End => Some(Motion::End),
+                    _ => None,
+                };
+                if let Some(motion) = motion
+                    && !modifiers.command
+                    && !modifiers.alt
+                {
+                    Some(Op::Move {
+                        motion,
+                        extend: modifiers.shift,
+                    })
+                } else if modifiers.is_none() {
                     match key {
                         Key::Backspace => Some(Op::Backspace),
                         Key::Delete => Some(Op::Delete),
                         Key::Enter => Some(Op::Enter),
                         Key::Tab => Some(Op::Tab),
-                        Key::ArrowLeft => Some(Op::Left),
-                        Key::ArrowRight => Some(Op::Right),
-                        Key::ArrowUp => Some(Op::Up),
-                        Key::ArrowDown => Some(Op::Down),
-                        Key::Home => Some(Op::Home),
-                        Key::End => Some(Op::End),
                         Key::PageUp | Key::PageDown => {
                             leave = true;
                             break;
@@ -779,11 +891,9 @@ fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<usize>) 
             !taken.contains(&(index - 1))
         });
     });
-    cursors.retain(|&c| c != main);
+    let main_cursor = cursors.remove(main);
     *extra = if leave { Vec::new() } else { cursors };
-    state
-        .cursor
-        .set_char_range(Some(CCursorRange::one(CCursor::new(main))));
+    state.cursor.set_char_range(Some(egui_range(main_cursor)));
     state.store(ui.ctx(), id);
     changed
 }

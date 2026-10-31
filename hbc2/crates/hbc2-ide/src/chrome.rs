@@ -492,6 +492,11 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
             ("Ctrl+W+K", "Close all tabs"),
             ("Ctrl+F", "Find in the file"),
             ("Ctrl+Shift+F", "Find in the project's files"),
+            ("Ctrl+click", "Add a cursor (Ctrl+drag: a selection)"),
+            ("Ctrl+L", "Select the word, then its next occurrence"),
+            ("Ctrl+Shift+L", "Select every occurrence"),
+            ("Ctrl+D", "Duplicate the lines of the cursors"),
+            ("Escape", "Back to one cursor"),
         ] {
             ui.monospace(key);
             ui.label(what);
