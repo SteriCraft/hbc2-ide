@@ -130,6 +130,8 @@ pub struct Settings {
     pub editor_font_size: f32,
     /// The monitor window is open.
     pub monitor_window: bool,
+    /// The CPU & I/O, Disassembly and Memory tabs are hidden.
+    pub tools_hidden: bool,
     pub projects: HashMap<PathBuf, ProjectSettings>,
 }
 
@@ -142,6 +144,7 @@ impl Default for Settings {
             follow_pc: true,
             editor_font_size: 14.0,
             monitor_window: true,
+            tools_hidden: false,
             projects: HashMap::new(),
         }
     }

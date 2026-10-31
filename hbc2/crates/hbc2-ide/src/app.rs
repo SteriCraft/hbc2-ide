@@ -13,7 +13,7 @@ use std::sync::Arc;
 use std::time::Instant;
 
 use eframe::egui;
-use egui_dock::{DockState, Node, NodeIndex};
+use egui_dock::{DockState, Node, NodeIndex, TabIndex};
 use hbc2_asm::source::normalize;
 use hbc2_asm::{Diagnostic, Program, Severity, SourceProvider, Target};
 use hbc2_runner::{RunState, Snapshot, Speed};
@@ -228,6 +228,9 @@ pub struct Ide {
     pub state: State,
     /// Ctrl+W is held: true once R or K made it Ctrl+W+R or Ctrl+W+K.
     close_chord: Option<bool>,
+    /// While the right-hand group is hidden: its split fraction and open
+    /// tab, to put it back as it was.
+    tools_stash: Option<(f32, TabIndex)>,
 }
 
 /// Open editor buffers first, files on disk otherwise: assembling uses
@@ -258,6 +261,47 @@ pub fn default_layout() -> DockState<Tab> {
 pub const FOLLOW_MAX_HZ: u64 = 100;
 
 pub const TOOL_TABS: [Tab; 3] = [Tab::Cpu, Tab::Disassembly, Tab::Memory];
+
+/// Takes the right-hand group out of the layout. Gives back its split
+/// fraction and open tab, for [`show_tools`].
+fn hide_tools(dock: &mut DockState<Tab>) -> Option<(f32, TabIndex)> {
+    let (node, _) = dock.find_main_surface_tab(&TOOL_TABS[0])?;
+    let surface = dock.main_surface_mut();
+    let active = surface[node].get_leaf()?.active;
+    let Node::Horizontal(split) = &surface[node.parent()?] else {
+        return None;
+    };
+    let fraction = split.fraction;
+    surface.remove_leaf(node);
+    Some((fraction, active))
+}
+
+/// Puts the right-hand group back right of the editors and console.
+fn show_tools(dock: &mut DockState<Tab>, (fraction, active): (f32, TabIndex)) {
+    let Some(parent) = dock
+        .find_main_surface_tab(&Tab::Console)
+        .and_then(|(node, _)| node.parent())
+    else {
+        return;
+    };
+    let surface = dock.main_surface_mut();
+    let [_, tools] = surface.split_right(parent, fraction, TOOL_TABS.to_vec());
+    if let Node::Leaf(leaf) = &mut surface[tools] {
+        leaf.active = active;
+    }
+}
+
+/// The button that hides or shows the right-hand group.
+fn tools_button(ui: &mut egui::Ui, rect: egui::Rect, hidden: bool) -> bool {
+    let (text, hint) = if hidden {
+        ("«", "Show the CPU & I/O, Disassembly and Memory tabs")
+    } else {
+        ("»", "Hide the CPU & I/O, Disassembly and Memory tabs")
+    };
+    ui.put(rect, egui::Button::new(text).frame(false))
+        .on_hover_text(hint)
+        .clicked()
+}
 
 /// Fractions of the splits (the sizes the user set with the mouse).
 fn split_fractions(dock: &DockState<Tab>) -> Vec<f32> {
@@ -306,6 +350,7 @@ impl Ide {
         let mut ide = Ide {
             dock,
             close_chord: None,
+            tools_stash: None,
             state: State {
                 settings,
                 project: None,
@@ -352,7 +397,15 @@ impl Ide {
         self.store_project_settings();
         Saved {
             settings: self.state.settings.clone(),
-            splits: split_fractions(&self.dock),
+            splits: match self.tools_stash {
+                // Saved as if shown, so that the layout fits on the next start.
+                Some(stash) => {
+                    let mut dock = self.dock.clone();
+                    show_tools(&mut dock, stash);
+                    split_fractions(&dock)
+                }
+                None => split_fractions(&self.dock),
+            },
         }
     }
 
@@ -399,13 +452,36 @@ impl Ide {
         egui::CentralPanel::default()
             .frame(egui::Frame::central_panel(ui.style()).inner_margin(0.0))
             .show(ui, |ui| {
+                self.sync_tools();
+                let dock_style = egui_dock::Style::from_egui(ui.style().as_ref());
+                let bar = dock_style.tab_bar.height;
+                // Hidden, the right-hand group leaves a strip with the button
+                // that shows it again.
+                if self.state.settings.tools_hidden {
+                    egui::Panel::right("tools_strip")
+                        .resizable(false)
+                        .exact_size(bar)
+                        .frame(egui::Frame::new().fill(ui.visuals().panel_fill))
+                        .show(ui, |ui| {
+                            let rect =
+                                egui::Rect::from_min_size(ui.max_rect().min, egui::vec2(bar, bar));
+                            ui.painter()
+                                .rect_filled(rect, 0.0, dock_style.tab_bar.bg_fill);
+                            if tools_button(ui, rect, true) {
+                                self.state.settings.tools_hidden = false;
+                            }
+                        });
+                }
                 self.fix_tools_width();
-                // Width of the right-hand group, as laid out last frame.
-                let tools_width = self
-                    .dock
-                    .find_tab(&TOOL_TABS[0])
-                    .and_then(|path| self.dock.leaf(path.node_path()).ok())
-                    .map_or(0.0, |leaf| leaf.rect.width());
+                let tools_rect = |dock: &DockState<Tab>| {
+                    dock.find_tab(&TOOL_TABS[0])
+                        .and_then(|path| dock.leaf(path.node_path()).ok())
+                        .map(|leaf| leaf.rect)
+                };
+                // Width of the right-hand group, as laid out last frame, less
+                // the hide button at the right of its tab bar.
+                let tools_width =
+                    tools_rect(&self.dock).map_or(0.0, |rect| (rect.width() - bar).max(0.0));
                 let mut viewer = crate::tabs::Viewer {
                     state: &mut self.state,
                     tools_width,
@@ -413,12 +489,21 @@ impl Ide {
                 // Tabs cannot be moved, and only editor tabs can be closed;
                 // the separators still resize the groups.
                 egui_dock::DockArea::new(&mut self.dock)
-                    .style(egui_dock::Style::from_egui(ui.style().as_ref()))
+                    .style(dock_style)
                     .draggable_tabs(false)
                     .tab_context_menus(false)
                     .show_leaf_collapse_buttons(false)
                     .show_leaf_close_all_buttons(false)
                     .show_inside(ui, &mut viewer);
+                if let Some(rect) = tools_rect(&self.dock) {
+                    let button = egui::Rect::from_min_size(
+                        egui::pos2(rect.right() - bar, rect.top()),
+                        egui::vec2(bar, bar),
+                    );
+                    if tools_button(ui, button, false) {
+                        self.state.settings.tools_hidden = true;
+                    }
+                }
             });
         self.hide_fixed_separator_cursor(&ctx);
         crate::chrome::dialogs(&ctx, &mut self.state);
@@ -582,6 +667,19 @@ impl Ide {
             project.rescan();
         }
         self.state.refresh_signatures();
+    }
+
+    /// Takes the right-hand group out of the layout or puts it back, as
+    /// the setting asks.
+    fn sync_tools(&mut self) {
+        match (self.state.settings.tools_hidden, self.tools_stash) {
+            (true, None) => self.tools_stash = hide_tools(&mut self.dock),
+            (false, Some(stash)) => {
+                show_tools(&mut self.dock, stash);
+                self.tools_stash = None;
+            }
+            _ => {}
+        }
     }
 
     /// Gives the right-hand group exactly the width the "CPU & I/O" tab
