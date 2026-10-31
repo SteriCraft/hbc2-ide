@@ -642,11 +642,19 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     }
                 });
             }
-            Dialog::NewFile { dir, name, error } => {
+            Dialog::NewFile {
+                dir,
+                name,
+                error,
+                select_stem,
+            } => {
                 ui.heading("New file");
                 ui.label(format!("In {}", dir.display()));
                 let edit = ui.text_edit_singleline(name);
                 edit.request_focus();
+                if std::mem::take(select_stem) {
+                    select_name_stem(ui.ctx(), edit.id, name);
+                }
                 if let Some(error) = error {
                     ui.colored_label(ui.visuals().error_fg_color, error.as_str());
                 }
@@ -723,10 +731,18 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     }
                 });
             }
-            Dialog::Rename { path, name, error } => {
+            Dialog::Rename {
+                path,
+                name,
+                error,
+                select_stem,
+            } => {
                 ui.heading("Rename");
                 let edit = ui.text_edit_singleline(name);
                 edit.request_focus();
+                if std::mem::take(select_stem) {
+                    select_name_stem(ui.ctx(), edit.id, name);
+                }
                 if let Some(error) = error {
                     ui.colored_label(ui.visuals().error_fg_color, error.as_str());
                 }
@@ -884,4 +900,17 @@ impl State {
         self.actions.push(Action::RefreshFiles);
         self.edits += 1;
     }
+}
+
+/// Selects `name` in the text field `id` up to its last '.', so typing
+/// replaces the name and keeps the extension.
+fn select_name_stem(ctx: &egui::Context, id: egui::Id, name: &str) {
+    use egui::text::{CCursor, CCursorRange};
+    let stem = name.rfind('.').map_or(name, |dot| &name[..dot]);
+    let mut state = egui::TextEdit::load_state(ctx, id).unwrap_or_default();
+    state.cursor.set_char_range(Some(CCursorRange::two(
+        CCursor::new(0),
+        CCursor::new(stem.chars().count()),
+    )));
+    egui::TextEdit::store_state(ctx, id, state);
 }

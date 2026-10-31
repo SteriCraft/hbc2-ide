@@ -137,6 +137,8 @@ pub enum Dialog {
         dir: PathBuf,
         name: String,
         error: Option<String>,
+        /// Select the name without its extension (first frame only).
+        select_stem: bool,
     },
     NewFolder {
         dir: PathBuf,
@@ -147,6 +149,8 @@ pub enum Dialog {
         path: PathBuf,
         name: String,
         error: Option<String>,
+        /// Select the name without its extension (first frame only).
+        select_stem: bool,
     },
     Delete {
         path: PathBuf,
@@ -758,6 +762,7 @@ impl Ide {
                     dir,
                     name: if c { "newFile.c" } else { "newFile.has" }.into(),
                     error: None,
+                    select_stem: true,
                 })
             }
             Action::NewFolder(dir) => {
@@ -777,6 +782,7 @@ impl Ide {
                     path,
                     name,
                     error: None,
+                    select_stem: true,
                 });
             }
             Action::DeleteFile(path) => state.dialog = Some(Dialog::Delete { path }),
