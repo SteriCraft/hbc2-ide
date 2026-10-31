@@ -1,6 +1,10 @@
 ; The C library: assembly part (the drivers and the wrappers of hbc2.h).
 ; A C program is assembled with ../runtime/crt0.has, ../runtime/runtime.has,
 ; this file, the compiled library files (src/*.c) and its own files.
+; .library: a program may define a name of the library (puts, putchar...):
+; its own definition is used, everywhere, and the library's is left out.
+
+.library
 
 .include "asm/screen.has"
 .include "asm/terminal.has"

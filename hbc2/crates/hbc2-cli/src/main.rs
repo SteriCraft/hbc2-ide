@@ -13,10 +13,11 @@ const USAGE: &str = "\
 usage:
   hbc2 asm <main.has> [-o out.bin] [--eeprom] [--symbols]
         assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom)
-  hbc2 cc <file.c | file.has>... [-o out.bin] [--dir build] [--symbols]
+  hbc2 cc <file.c | file.has>... [-o out.bin] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir
-        (default: .build next to the first file)
+        (default: .build next to the first file); unreached code and data
+        are left out (--map lists what is kept and what is left out)
   hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom <file.has | eeprom.bin>]
         run headless, then print the CPU state (C files: built as with cc)
   hbc2 bench [--seconds N] [--hz N]
@@ -235,22 +236,27 @@ fn asm(args: &[String]) -> Result<(), String> {
     write_image(&program, path, args)
 }
 
-/// Writes the image (`-o`, or `source` with the extension `.bin`), and the
-/// symbols with `--symbols`.
+/// Writes the image (`-o`, or `source` with the extension `.bin`), the
+/// symbols with `--symbols` or `--map`, and what was left out with `--map`.
 fn write_image(program: &Program, source: &str, args: &[String]) -> Result<(), String> {
     let output = option(args, "-o")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(source).with_extension("bin"));
     std::fs::write(&output, &program.image).map_err(|e| format!("{}: {e}", output.display()))?;
+    let removed = match program.bytes_removed() {
+        0 => String::new(),
+        n => format!(", {n} bytes left out"),
+    };
     println!(
-        "{} -> {} ({} bytes used, {} files)",
+        "{} -> {} ({} bytes used{removed}, {} files)",
         source,
         output.display(),
         program.bytes_used,
         program.files.len()
     );
 
-    if has(args, "--symbols") {
+    let map = has(args, "--map");
+    if has(args, "--symbols") || map {
         for s in &program.symbols {
             let kind = match s.kind {
                 hbc2_asm::SymbolKind::Label => "label",
@@ -259,6 +265,16 @@ fn write_image(program: &Program, source: &str, args: &[String]) -> Result<(), S
             println!(
                 "  ${:#07x}  {kind}  {:>5} bytes  {}",
                 s.address, s.size, s.name
+            );
+        }
+    }
+    if map && !program.removed.is_empty() {
+        println!("left out (nothing reaches them):");
+        for r in &program.removed {
+            let file = program.files[r.file].display();
+            println!(
+                "  {:>5} bytes  {}  ({file}, line {})",
+                r.size, r.name, r.line
             );
         }
     }

@@ -12,6 +12,12 @@
 //!   (after code and data). Nothing is written for them in the image.
 //!   `__bss_start` and `__bss_end` (one past the last byte) are defined for
 //!   the startup code that clears the area.
+//!
+//! A program's own definition of a name replaces the library's (`.library`):
+//! the library's definition gets a name nothing can refer to.
+//!
+//! With [`Options::strip`], what can't be reached is left out before
+//! placement (see [`strip`]).
 
 use std::collections::HashMap;
 use std::ops::Range;
@@ -24,10 +30,11 @@ use hbc2_core::peripherals::eeprom::BOOT_RANGES;
 use crate::diagnostic::{Loc, Report};
 use crate::encode::{Resolved, encode_instruction, usage};
 use crate::parser::{Address, DataValue, Located, Op, Operand, Stmt, Value8};
-use crate::{SourceLine, Symbol, SymbolKind, Target};
+use crate::{Options, Removed, SourceLine, Symbol, SymbolKind, Target};
 
 pub(crate) enum Item {
-    Stmt(Located),
+    /// A statement, and whether it comes after `.library`.
+    Stmt(Located, bool),
     BlockBreak,
 }
 
@@ -75,25 +82,51 @@ pub(crate) struct Output {
     pub symbols: Vec<Symbol>,
     pub lines: Vec<SourceLine>,
     pub bytes_used: usize,
+    pub removed: Vec<Removed>,
+}
+
+/// What [`group`] collects.
+struct Grouped {
+    blocks: Vec<Block>,
+    data: Vec<Data>,
+    bss: Vec<Bss>,
+    /// `.keep` names.
+    keeps: Vec<(String, Loc)>,
 }
 
 /// `files`: the source files, for messages that name another file.
 pub(crate) fn assemble(
     items: Vec<Item>,
     files: &[PathBuf],
-    target: Target,
+    options: Options,
     report: &mut Report,
 ) -> Option<Output> {
-    let (mut blocks, mut data, mut bss) = group(items, files, report);
+    let target = options.target;
+    let Grouped {
+        mut blocks,
+        mut data,
+        mut bss,
+        keeps,
+    } = group(items, files, report);
     if report.has_errors() {
         return None;
     }
+    let removed = if options.strip {
+        let removed = strip(&mut blocks, &mut data, &mut bss, &keeps, report);
+        if report.has_errors() {
+            return None;
+        }
+        removed
+    } else {
+        Vec::new()
+    };
     let bss_area = place(&mut blocks, &mut data, &mut bss, target, report);
     if report.has_errors() {
         return None;
     }
     let symbols = symbols(&blocks, &data, &bss, bss_area);
-    let output = write(&blocks, &data, symbols, target, report);
+    let mut output = write(&blocks, &data, symbols, target, report);
+    output.removed = removed;
     if report.has_errors() {
         None
     } else {
@@ -103,54 +136,29 @@ pub(crate) fn assemble(
 
 // ----- 1. Group statements into blocks and data
 
-fn group(
-    items: Vec<Item>,
-    files: &[PathBuf],
-    report: &mut Report,
-) -> (Vec<Block>, Vec<Data>, Vec<Bss>) {
-    let mut blocks: Vec<Block> = Vec::new();
-    let mut data: Vec<Data> = Vec::new();
-    let mut bss: Vec<Bss> = Vec::new();
-    let mut names: HashMap<String, Loc> = HashMap::new();
+fn group(items: Vec<Item>, files: &[PathBuf], report: &mut Report) -> Grouped {
+    let mut out = Grouped {
+        blocks: Vec::new(),
+        data: Vec::new(),
+        bss: Vec::new(),
+        keeps: Vec::new(),
+    };
+    let mut names = Names {
+        owners: HashMap::new(),
+        files,
+    };
     let mut open: Option<usize> = None;
 
-    let mut claim = |name: &str, loc: Loc, report: &mut Report| -> bool {
-        if name == BSS_START || name == BSS_END {
-            report.error(
-                loc,
-                format!("'{name}' is defined by the assembler (bounds of the .bss area)"),
-            );
-            return false;
-        }
-        if let Some(first) = names.get(name) {
-            let message = match files.get(first.file) {
-                Some(file) if first.file != loc.file => format!(
-                    "'{name}' is already defined ({}, line {})",
-                    file.display(),
-                    first.line
-                ),
-                _ => format!("'{name}' is already defined (line {})", first.line),
-            };
-            report.error(loc, message);
-            return false;
-        }
-        names.insert(name.to_string(), loc);
-        true
-    };
-
     for item in items {
-        let Located { loc, stmt } = match item {
+        let (Located { loc, stmt }, library) = match item {
             Item::BlockBreak => {
                 open = None;
                 continue;
             }
-            Item::Stmt(s) => s,
+            Item::Stmt(s, library) => (s, library),
         };
         match stmt {
             Stmt::Label { name, mut address } => {
-                if !claim(&name, loc, report) {
-                    continue;
-                }
                 if name == "_start" {
                     if address.is_some_and(|a| a != PROGRAM_START as u32) {
                         report.error(
@@ -162,24 +170,33 @@ fn group(
                     }
                     address = Some(PROGRAM_START as u32);
                 }
-                match (address, open) {
-                    (None, Some(b)) => {
-                        let offset = blocks[b].size();
-                        blocks[b].labels.push((name, offset, loc));
+                // A label without an address continues the open block.
+                let continued = open.filter(|_| address.is_none());
+                let at = match continued {
+                    Some(b) => At::Label(b, out.blocks[b].labels.len()),
+                    None => At::Label(out.blocks.len(), 0),
+                };
+                let Some(name) = names.define(&mut out, at, name, loc, library, report) else {
+                    continue;
+                };
+                match continued {
+                    Some(b) => {
+                        let offset = out.blocks[b].size();
+                        out.blocks[b].labels.push((name, offset, loc));
                     }
-                    _ => {
-                        blocks.push(Block {
+                    None => {
+                        out.blocks.push(Block {
                             address,
                             loc,
                             labels: vec![(name, 0, loc)],
                             instructions: Vec::new(),
                         });
-                        open = Some(blocks.len() - 1);
+                        open = Some(out.blocks.len() - 1);
                     }
                 }
             }
             Stmt::Instr { opcode, operands } => match open {
-                Some(b) => blocks[b].instructions.push((opcode, operands, loc)),
+                Some(b) => out.blocks[b].instructions.push((opcode, operands, loc)),
                 None => report.error(
                     loc,
                     "this instruction has no label above it (add one, e.g. _start:)",
@@ -190,8 +207,9 @@ fn group(
                 address,
                 values,
             } => {
-                if claim(&name, loc, report) {
-                    data.push(Data {
+                let at = At::Data(out.data.len());
+                if let Some(name) = names.define(&mut out, at, name, loc, library, report) {
+                    out.data.push(Data {
                         name,
                         address,
                         values,
@@ -200,8 +218,9 @@ fn group(
                 }
             }
             Stmt::Bss { name, size } => {
-                if claim(&name, loc, report) {
-                    bss.push(Bss {
+                let at = At::Bss(out.bss.len());
+                if let Some(name) = names.define(&mut out, at, name, loc, library, report) {
+                    out.bss.push(Bss {
                         name,
                         size,
                         address: 0,
@@ -209,13 +228,341 @@ fn group(
                     });
                 }
             }
+            Stmt::Keep { name } => out.keeps.push((name, loc)),
         }
     }
 
-    if !names.contains_key("_start") {
+    if !names.owners.contains_key("_start") {
         report.global_error("the program has no _start: label");
     }
-    (blocks, data, bss)
+    for (name, loc) in &out.keeps {
+        if !names.owners.contains_key(name) {
+            report.error(*loc, format!(".keep: '{name}' is not defined"));
+        }
+    }
+    out
+}
+
+/// Where a definition is (or will be) in [`Grouped`].
+#[derive(Clone, Copy)]
+enum At {
+    /// `blocks[.0].labels[.1]`
+    Label(usize, usize),
+    Data(usize),
+    Bss(usize),
+}
+
+/// The definition that owns a name.
+#[derive(Clone, Copy)]
+struct Definition {
+    loc: Loc,
+    library: bool,
+    at: At,
+}
+
+/// Every name defined so far.
+struct Names<'a> {
+    owners: HashMap<String, Definition>,
+    /// The source files, for messages that name another file.
+    files: &'a [PathBuf],
+}
+
+/// A name nothing can refer to (names never hold a space), for a library
+/// definition replaced by the program's.
+fn hidden(name: &str) -> String {
+    format!("{name} (library, replaced)")
+}
+
+impl Names<'_> {
+    /// Records a definition of `name` that will be put `at` and returns the
+    /// name to give it (`None` on an error). A duplicate is an error, unless
+    /// exactly one of the two is a library definition: that one gives way
+    /// and gets a hidden name (renamed in `out` if it came first).
+    fn define(
+        &mut self,
+        out: &mut Grouped,
+        at: At,
+        name: String,
+        loc: Loc,
+        library: bool,
+        report: &mut Report,
+    ) -> Option<String> {
+        if name == BSS_START || name == BSS_END {
+            report.error(
+                loc,
+                format!("'{name}' is defined by the assembler (bounds of the .bss area)"),
+            );
+            return None;
+        }
+        let new = Definition { loc, library, at };
+        let Some(first) = self.owners.get(&name).copied() else {
+            self.owners.insert(name.clone(), new);
+            return Some(name);
+        };
+        match (first.library, library) {
+            (false, true) => Some(hidden(&name)),
+            (true, false) => {
+                let renamed = hidden(&name);
+                match first.at {
+                    At::Label(b, l) => out.blocks[b].labels[l].0 = renamed,
+                    At::Data(i) => out.data[i].name = renamed,
+                    At::Bss(i) => out.bss[i].name = renamed,
+                }
+                self.owners.insert(name.clone(), new);
+                Some(name)
+            }
+            _ => {
+                let first = first.loc;
+                let message = match self.files.get(first.file) {
+                    Some(file) if first.file != loc.file => format!(
+                        "'{name}' is already defined ({}, line {})",
+                        file.display(),
+                        first.line
+                    ),
+                    _ => format!("'{name}' is already defined (line {})", first.line),
+                };
+                report.error(loc, message);
+                None
+            }
+        }
+    }
+}
+
+// ----- 1b. Removal of what can't be reached (Options::strip)
+
+/// One piece of the program, kept or left out as a whole.
+#[derive(Clone, Copy)]
+enum Piece {
+    /// From label `label` of block `block` up to the block's next label.
+    Code {
+        block: usize,
+        label: usize,
+    },
+    Data(usize),
+    Bss(usize),
+}
+
+/// Instructions after which execution never goes on to the next one.
+fn ends_flow(opcode: Opcode) -> bool {
+    matches!(opcode, Opcode::Jmp | Opcode::Ret | Opcode::Irt)
+}
+
+/// The name an 8-bit value refers to, if any.
+fn value8_name(value: &Value8) -> Option<&str> {
+    match value {
+        Value8::Number(_) => None,
+        Value8::Msb(name) | Value8::Lsb(name) => Some(name),
+    }
+}
+
+/// The name an operand refers to, if any.
+fn operand_name(operand: &Operand) -> Option<&str> {
+    match operand {
+        Operand::Reg(_) | Operand::Wide(_) | Operand::Mem(Address::Absolute(_)) => None,
+        Operand::Pair(_, _, v) | Operand::Stack(v) | Operand::Imm(v) => value8_name(v),
+        Operand::Mem(Address::Symbol { name, .. }) => Some(name),
+    }
+}
+
+/// Instructions of the code piece starting at label `label`.
+fn piece_range(block: &Block, label: usize) -> Range<usize> {
+    let start = block.labels[label].1 as usize / 4;
+    let end = block
+        .labels
+        .get(label + 1)
+        .map_or(block.instructions.len(), |l| l.1 as usize / 4);
+    start..end
+}
+
+/// Leaves out every piece that can't be reached and returns what was left out.
+///
+/// A piece is the code from one label up to the next label, one `.data` or
+/// one `.bss` variable. A piece uses the names it refers to, and a code piece
+/// that doesn't end with `jmp`, `ret` or `irt` (an empty one too) also uses
+/// the piece after it. The walk starts from `_start`, everything at a fixed
+/// address (a block at a fixed address is kept whole, except `_start`'s) and
+/// the `.keep` names. Kept pieces of a block stay together, in
+/// order.
+///
+/// Names that aren't defined are reported here, in removed pieces too (a typo
+/// in unused code still fails the build).
+fn strip(
+    blocks: &mut Vec<Block>,
+    data: &mut Vec<Data>,
+    bss: &mut Vec<Bss>,
+    keeps: &[(String, Loc)],
+    report: &mut Report,
+) -> Vec<Removed> {
+    let mut pieces: Vec<Piece> = Vec::new();
+    let mut by_name: HashMap<&str, usize> = HashMap::new();
+    for (b, block) in blocks.iter().enumerate() {
+        for (l, (name, _, _)) in block.labels.iter().enumerate() {
+            by_name.insert(name, pieces.len());
+            pieces.push(Piece::Code { block: b, label: l });
+        }
+    }
+    let data_start = pieces.len();
+    for (i, d) in data.iter().enumerate() {
+        by_name.insert(&d.name, pieces.len());
+        pieces.push(Piece::Data(i));
+    }
+    let bss_start = pieces.len();
+    for (i, v) in bss.iter().enumerate() {
+        by_name.insert(&v.name, pieces.len());
+        pieces.push(Piece::Bss(i));
+    }
+
+    // What each piece uses.
+    let mut uses: Vec<Vec<usize>> = vec![Vec::new(); pieces.len()];
+    for (p, piece) in pieces.iter().enumerate() {
+        let mut use_name = |name: &str, loc: Loc| match by_name.get(name) {
+            Some(&to) => uses[p].push(to),
+            None if name == BSS_START || name == BSS_END => {}
+            None => report.error(loc, format!("unknown label or variable '{name}'")),
+        };
+        match *piece {
+            Piece::Code { block, label } => {
+                let block = &blocks[block];
+                let instructions = &block.instructions[piece_range(block, label)];
+                for (_, operands, loc) in instructions {
+                    for op in operands {
+                        if let Some(name) = operand_name(&op.operand) {
+                            use_name(
+                                name,
+                                Loc {
+                                    col: op.col,
+                                    ..*loc
+                                },
+                            );
+                        }
+                    }
+                }
+                let falls = instructions.last().is_none_or(|(o, _, _)| !ends_flow(*o));
+                if falls && label + 1 < block.labels.len() {
+                    uses[p].push(p + 1);
+                }
+            }
+            Piece::Data(i) => {
+                let d = &data[i];
+                for value in &d.values {
+                    let (name, col) = match value {
+                        DataValue::Byte(v, col) => (value8_name(v), *col),
+                        DataValue::Address(Address::Symbol { name, .. }, _, col) => {
+                            (Some(name.as_str()), *col)
+                        }
+                        DataValue::Bytes(_) | DataValue::Address(Address::Absolute(_), _, _) => {
+                            continue;
+                        }
+                    };
+                    if let Some(name) = name {
+                        use_name(name, Loc { col, ..d.loc });
+                    }
+                }
+            }
+            Piece::Bss(_) => {}
+        }
+    }
+    if report.has_errors() {
+        return Vec::new();
+    }
+
+    // Walk from the roots.
+    let mut todo: Vec<usize> = Vec::new();
+    for (p, piece) in pieces.iter().enumerate() {
+        let fixed = match *piece {
+            // `_start` is always at $0x0000 but its block isn't kept whole:
+            // only `_start` itself is a root (below).
+            Piece::Code { block, .. } => {
+                blocks[block].address.is_some() && blocks[block].labels[0].0 != "_start"
+            }
+            Piece::Data(i) => data[i].address.is_some(),
+            Piece::Bss(_) => false,
+        };
+        if fixed {
+            todo.push(p);
+        }
+    }
+    todo.extend(by_name.get("_start"));
+    todo.extend(
+        keeps
+            .iter()
+            .filter_map(|(name, _)| by_name.get(name.as_str())),
+    );
+    let mut kept = vec![false; pieces.len()];
+    while let Some(p) = todo.pop() {
+        if !kept[p] {
+            kept[p] = true;
+            todo.extend(&uses[p]);
+        }
+    }
+
+    // What is left out, in source order.
+    let mut removed: Vec<Removed> = Vec::new();
+    for (p, piece) in pieces.iter().enumerate() {
+        if kept[p] {
+            continue;
+        }
+        let (name, size, kind, loc) = match *piece {
+            Piece::Code { block, label } => {
+                let b = &blocks[block];
+                let (name, _, loc) = &b.labels[label];
+                let size = piece_range(b, label).len() as u32 * 4;
+                (name, size, SymbolKind::Label, *loc)
+            }
+            Piece::Data(i) => (&data[i].name, data[i].size(), SymbolKind::Data, data[i].loc),
+            Piece::Bss(i) => (&bss[i].name, bss[i].size, SymbolKind::Data, bss[i].loc),
+        };
+        removed.push(Removed {
+            name: name.clone(),
+            size,
+            kind,
+            file: loc.file,
+            line: loc.line,
+        });
+    }
+    removed.sort_by_key(|r| (r.file, r.line));
+
+    // Rebuild with the kept pieces. Pieces of block b are numbered from
+    // `first`, in label order.
+    let mut first = 0;
+    let mut rebuilt = Vec::with_capacity(blocks.len());
+    for block in std::mem::take(blocks) {
+        let ranges: Vec<Range<usize>> = (0..block.labels.len())
+            .map(|l| piece_range(&block, l))
+            .collect();
+        let mut labels = Vec::new();
+        let mut instructions = Vec::new();
+        let mut source = block.instructions.into_iter();
+        for (l, (name, _, loc)) in block.labels.into_iter().enumerate() {
+            let piece: Vec<_> = source.by_ref().take(ranges[l].len()).collect();
+            if kept[first + l] {
+                labels.push((name, instructions.len() as u32 * 4, loc));
+                instructions.extend(piece);
+            }
+        }
+        first += ranges.len();
+        if let Some(&(_, _, loc)) = labels.first() {
+            rebuilt.push(Block {
+                address: block.address,
+                loc,
+                labels,
+                instructions,
+            });
+        }
+    }
+    *blocks = rebuilt;
+    let mut n = data_start;
+    data.retain(|_| {
+        n += 1;
+        kept[n - 1]
+    });
+    let mut n = bss_start;
+    bss.retain(|_| {
+        n += 1;
+        kept[n - 1]
+    });
+
+    removed
 }
 
 // ----- 2. Placement
@@ -575,6 +922,7 @@ fn write(
         symbols,
         lines,
         bytes_used,
+        removed: Vec::new(),
     }
 }
 

@@ -49,7 +49,7 @@ fn errors() {
     );
     assert!(e.contains("a.c, line 1)"), "{e}");
 
-    // a global variable too, and a library name
+    // a global variable too
     let e = build(
         "variable",
         &[
@@ -65,7 +65,8 @@ fn errors() {
     .unwrap_err();
     assert!(e.contains("b.c: error: 'n' is already defined ("), "{e}");
     assert!(e.contains("a.c, line 2)"), "{e}");
-    assert!(e.contains("error: 'puts' is already defined ("), "{e}");
+    // a library name is not a duplicate: the program's puts replaces it
+    assert!(!e.contains("'puts'"), "{e}");
 
     // used, defined nowhere
     let e = build("missing", &[main], library).unwrap_err();
@@ -222,4 +223,81 @@ fn c_lines() {
     // the startup code keeps its own file
     let start = program.symbol("_start").unwrap();
     assert!(program.files[start.file].ends_with("crt0.has"));
+}
+
+/// Builds one `main.c` and returns the program.
+fn program(test: &str, main: &str) -> hbc2_asm::Program {
+    let dir = std::env::temp_dir().join("hbc2-cc-build").join(test);
+    std::fs::create_dir_all(&dir).unwrap();
+    let path = dir.join("main.c");
+    std::fs::write(&path, main).unwrap();
+    build_program(&[path], library(), &dir.join("out"))
+        .unwrap_or_else(|e| panic!("{}", report(&e)))
+        .program
+}
+
+/// Unreached code and data are left out (linker, step 11).
+#[test]
+fn sizes() {
+    let has = |p: &hbc2_asm::Program, name: &str| p.symbol(name).is_some();
+    let empty = program("empty", "int main(void) { return 0; }\n");
+    let hello = program(
+        "hello",
+        "#include <stdio.h>\nint main(void) { puts(\"hello\"); return 0; }\n",
+    );
+    let formatted = program(
+        "printf",
+        "#include <stdio.h>\nint main(void) { printf(\"%d\n\", 42); return 0; }\n",
+    );
+    let unused = program(
+        "unused",
+        "static int table[50];\nstatic int count = 3;\n\
+         int helper(void) { return table[count]; }\nint main(void) { return 0; }\n",
+    );
+    for (name, p) in [
+        ("empty", &empty),
+        ("hello", &hello),
+        ("printf", &formatted),
+        ("unused", &unused),
+    ] {
+        println!(
+            "{name}: {} bytes, {} removed",
+            p.bytes_used,
+            p.bytes_removed()
+        );
+        assert!(has(p, "_start") && has(p, "_main") && has(p, "__exit"));
+        let kept: Vec<_> = p
+            .symbols
+            .iter()
+            .filter(|s| s.name.starts_with("__cc"))
+            .map(|s| &s.name)
+            .collect();
+        assert!(kept.is_empty(), "{name}: compare helpers kept: {kept:?}");
+    }
+    // crt0, device detection, exit and main only
+    assert!(empty.bytes_used < 400, "{}", empty.bytes_used);
+    assert!(!has(&empty, "_puts") && !has(&empty, "_printf"));
+    assert!(has(&hello, "_puts") && !has(&hello, "_printf"));
+    assert!(has(&formatted, "_printf") && !has(&formatted, "_puts"));
+    assert!(!has(&unused, "_helper"));
+    assert_eq!(
+        empty.bytes_used, unused.bytes_used,
+        "helper and its statics gone"
+    );
+    assert!(empty.bytes_used < hello.bytes_used && hello.bytes_used < formatted.bytes_used);
+}
+
+/// A name defined nowhere fails the build even in a function nothing calls.
+#[test]
+fn undefined_in_unused_function() {
+    let e = build(
+        "dead_missing",
+        &[(
+            "main.c",
+            "int g(void);\nint unused(void) { return g(); }\nint main(void) { return 0; }\n",
+        )],
+        library(),
+    )
+    .unwrap_err();
+    assert!(e.contains("not defined: 'g'"), "{e}");
 }

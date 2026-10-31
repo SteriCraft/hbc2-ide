@@ -2,8 +2,10 @@
 
 What C programs can `#include`, and the code behind it. The compiler puts
 `include/` on the include path; every program is assembled with `lib.has`
-and the compiled `src/*.c` files (until the linker, all of it is in every
-program, used or not).
+and the compiled `src/*.c` files; only what the program uses is kept (see
+"Size"). `lib.has` and the generated `library.has` start with `.library`:
+a program may define a library name (`puts`, `putchar`…) and its own
+definition is used everywhere, the library's left out.
 
 | Header | Content | Code |
 |---|---|---|
@@ -40,11 +42,16 @@ there). No floating point.
 
 ## Size
 
-Every program carries all of it until the linker (about 9.3 KB of code
-and data): the drivers and wrappers ≈ 3.9 KB (terminal 1.6 KB, screen
-1.3 KB, wrappers 0.7 KB), the compiled C files ≈ 5.5 KB (`string.c`
-2.7 KB, `printf.c` 2.5 KB, `stdio.c` 0.3 KB). The runtime helpers add
-≈ 3.9 KB more.
+In all, about 9.3 KB of code and data: the drivers and wrappers ≈ 3.9 KB
+(terminal 1.6 KB, screen 1.3 KB, wrappers 0.7 KB), the compiled C files
+≈ 5.5 KB (`string.c` 2.7 KB, `printf.c` 2.5 KB, `stdio.c` 0.3 KB). The
+runtime helpers add ≈ 3.9 KB more.
+
+The assembler leaves out what a program can't reach (assembly manual,
+"Leaving out unused code"), so a program carries only what it uses: an
+empty `main` is 340 bytes (startup, device detection, `exit`), hello world
+with `puts` 1.7 KB (the terminal and screen drivers), with `printf`
+4.8 KB. `hbc2 cc … --map` shows what was kept.
 
 ## Tests
 

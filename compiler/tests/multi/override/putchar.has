@@ -1,0 +1,15 @@
+; putchar.has - replaces the library's putchar (int putchar(int c)):
+; stores c in out[out_len++] (main.c) instead of printing it.
+
+_putchar:
+    lod b, [sp + 3]             ; c: its low byte
+    mov x, _out.msb
+    mov y, _out.lsb
+    lod c, _out_len
+    add y, c
+    adc x, 0
+    str [x:y], b
+    inc c
+    str _out_len, c
+    mov a, 0
+    ret

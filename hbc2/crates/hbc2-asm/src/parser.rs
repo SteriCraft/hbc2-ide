@@ -82,6 +82,11 @@ pub(crate) enum Stmt {
         name: String,
         size: u32,
     },
+    /// `.keep name`: never removed by the removal of unreached code (for
+    /// code reached only through a computed address).
+    Keep {
+        name: String,
+    },
 }
 
 #[derive(Clone, Debug)]
@@ -179,6 +184,14 @@ fn statement(c: &mut Cursor, file: usize, line: u32, out: &mut Vec<Located>) -> 
         Some(Tok::Directive(d)) if d == "bss" => {
             c.next();
             out.push(Located { loc, stmt: bss(c)? });
+            Ok(())
+        }
+        Some(Tok::Directive(d)) if d == "keep" => {
+            c.next();
+            out.push(Located {
+                loc,
+                stmt: keep(c)?,
+            });
             Ok(())
         }
         Some(Tok::Directive(d)) => c.error(format!("unknown directive '.{d}'")),
@@ -586,6 +599,19 @@ fn bss(c: &mut Cursor) -> ParseResult<Stmt> {
         name,
         size: size as u32,
     })
+}
+
+/// `.keep name`: `name` is kept even when nothing uses it.
+fn keep(c: &mut Cursor) -> ParseResult<Stmt> {
+    const USAGE: &str = ".keep expects a label or variable name: .keep handler";
+    let Some(Tok::Ident(name)) = c.peek() else {
+        return c.error(USAGE);
+    };
+    let name = reference_name(c, name)?;
+    if !c.at_end() {
+        return c.error(format!("unexpected {} after the name", c.found()));
+    }
+    Ok(Stmt::Keep { name })
 }
 
 /// A `.data16` / `.data32` value: a number, a character, `$address`, or a

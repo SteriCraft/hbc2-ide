@@ -25,7 +25,7 @@ use std::process::{Command, Stdio};
 use std::time::SystemTime;
 
 pub use hbc2_asm::{Diagnostic, Severity};
-use hbc2_asm::{Program, Target, assemble_file};
+use hbc2_asm::{FileSystem, Options, Program, Target, assemble_with};
 
 use lines::LineMaps;
 use messages::{c_diagnostic, plain, tool_messages};
@@ -90,8 +90,9 @@ pub fn build_library(dir: &Path) -> Result<Library, Vec<Diagnostic>> {
     let src = lib_dir().join("src");
     let mut sources = files_in(&src, "c").map_err(|e| io_error(&src, e))?;
     sources.sort();
+    // .library: the program's own definitions replace the library's.
     let mut text = format!(
-        ".include \"{}\"\n",
+        ".library\n.include \"{}\"\n",
         include_path(&lib_dir().join("lib.has"))
     );
     let tools = newest_tool();
@@ -219,7 +220,12 @@ pub fn build_program(
     fs::write(&main_path, main).map_err(|e| io_error(&main_path, e))?;
     let lines = LineMaps::read(&c_files);
     let in_c = |d: &Diagnostic| c_diagnostic(d.clone(), &c_files, &lines);
-    match assemble_file(&main_path, Target::Ram) {
+    // Unreached code and data (most of the library and runtime) is left out.
+    let options = Options {
+        target: Target::Ram,
+        strip: true,
+    };
+    match assemble_with(&main_path, &FileSystem, options) {
         Ok(mut program) => {
             lines.apply(&mut program);
             diagnostics.extend(program.warnings.iter().map(in_c));

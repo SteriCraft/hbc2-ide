@@ -1485,10 +1485,14 @@ impl State {
                 self.console.push(
                     Level::Success,
                     format!(
-                        "{} in {:.0} ms: {} bytes used, {} warning(s). Loaded, paused at power-on.",
+                        "{} in {:.0} ms: {} bytes used{}, {} warning(s). Loaded, paused at power-on.",
                         if c { "Built" } else { "Assembled" },
                         elapsed.as_secs_f64() * 1000.0,
                         program.bytes_used,
+                        match program.bytes_removed() {
+                            0 => String::new(),
+                            n => format!(" ({n} unused bytes left out)"),
+                        },
                         warnings.len()
                     ),
                     None,

@@ -1,7 +1,9 @@
 use std::path::Path;
 
 use hbc2_asm::encode::{Kind, forms};
-use hbc2_asm::{MemoryFiles, Program, SymbolKind, Target, assemble, disassemble};
+use hbc2_asm::{
+    MemoryFiles, Options, Program, SymbolKind, Target, assemble, assemble_with, disassemble,
+};
 use hbc2_core::isa::{Instruction, STACK_RESET, encode};
 use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
@@ -795,4 +797,264 @@ _start:
     assert_eq!(p.symbol("ptrs").unwrap().size, 10);
     assert!(errors(".data v nowhere\n_start:\n    jmp _start\n")[0].contains("unknown"));
     assert!(errors(".data v 1, mov\n_start:\n    jmp _start\n")[0].contains("instruction"));
+}
+
+// ----- Removal of what can't be reached (Options::strip)
+
+fn stripped_build(source: &str) -> Result<Program, Vec<String>> {
+    let files = MemoryFiles::new().with("main.has", source);
+    let options = Options {
+        target: Target::Ram,
+        strip: true,
+    };
+    assemble_with(Path::new("main.has"), &files, options)
+        .map_err(|errors| errors.iter().map(ToString::to_string).collect())
+}
+
+fn stripped(source: &str) -> Program {
+    stripped_build(source).unwrap_or_else(|e| panic!("{}", e.join("\n")))
+}
+
+fn removed(p: &Program) -> Vec<&str> {
+    p.removed.iter().map(|r| r.name.as_str()).collect()
+}
+
+#[test]
+fn strip_removes_what_nothing_reaches() {
+    let source = "
+_start:
+    cal used
+    hlt              ; falls through: loop is kept
+loop:
+    jmp loop
+dead:            ; after a jmp, nothing reaches it
+    mov a, 1
+    ret
+used:
+    lod a, counter
+    ret
+unused:
+    lod a, table
+    cal dead
+    ret
+.data counter 0
+.data table 1, 2, 3
+.bss buffer 64
+.bss kept_buffer 2
+.data ptr kept_buffer
+.data vector $0x9000 handler.msb, handler.lsb
+handler:
+    irt
+";
+    let p = stripped(source);
+    assert_eq!(
+        removed(&p),
+        ["dead", "unused", "table", "buffer", "kept_buffer", "ptr"]
+    );
+    assert_eq!(
+        p.removed.iter().map(|r| r.size).collect::<Vec<_>>(),
+        [8, 12, 3, 64, 2, 2]
+    );
+    assert_eq!(p.bytes_removed(), 91);
+    assert!(p.symbol("dead").is_none() && p.symbol("table").is_none());
+    // used moved up to where dead was
+    assert_eq!(addr(&p, "loop"), 0x0008);
+    assert_eq!(addr(&p, "used"), 0x000C);
+    assert_eq!(word(&p, 0x0000), encode::imm16(O::Cal, 0x000C));
+    // handler is reached only from data at a fixed address
+    assert!(p.symbol("handler").is_some() && p.symbol("vector").is_some());
+    // A variable used only from data that is kept
+    let p = stripped(&source.replace("lod a, counter", "lod a, ptr"));
+    assert_eq!(
+        removed(&p),
+        ["dead", "unused", "counter", "table", "buffer"]
+    );
+    assert_eq!(addr(&p, "kept_buffer"), addr(&p, "__bss_start"));
+    assert_eq!(addr(&p, "__bss_end"), addr(&p, "__bss_start") + 2);
+
+    // Without strip: nothing removed.
+    let all = asm(source);
+    assert!(all.removed.is_empty());
+    assert!(all.symbol("dead").is_some());
+    assert_eq!(all.bytes_used, p.bytes_used + 8 + 12 + 1 + 3);
+}
+
+#[test]
+fn strip_keeps_fall_through() {
+    let p = stripped(
+        "
+_start:
+    cal first
+    hlt
+first:
+second:          ; empty piece above: falls into this one
+    cmp a, 0
+    jmz first    ; conditional: falls into third
+third:
+    ret
+fourth:
+    ret
+",
+    );
+    assert_eq!(removed(&p), ["fourth"]);
+    assert_eq!(addr(&p, "first"), addr(&p, "second"));
+}
+
+#[test]
+fn strip_keeps_fixed_blocks_whole_and_kept_names() {
+    let p = stripped(
+        "
+_start:
+    jmp _start
+computed2:
+    ret
+helper:
+    ret
+fixed: $0x8000
+    irt
+fixed_tail:      ; same fixed block: kept
+    ret
+computed:        ; still in the fixed block
+    ret
+.keep computed2
+.data msb_only 0
+.data user _start, msb_only.msb
+",
+    );
+    assert_eq!(removed(&p), ["helper", "msb_only", "user"]);
+    assert_eq!(addr(&p, "fixed_tail"), 0x8004);
+    assert!(p.symbol("computed").is_some() && p.symbol("computed2").is_some());
+    // msb / lsb count as uses
+    let p = stripped("_start:\n    mov a, v.msb\n    hlt\n.data v 1\n");
+    assert!(p.removed.is_empty());
+}
+
+#[test]
+fn strip_reports_undefined_names_in_removed_code() {
+    let e = stripped_build("_start:\n    hlt\nunused:\n    cal nowhere\n.data v missing\n")
+        .expect_err("should fail");
+    assert_eq!(e.len(), 2, "{e:?}");
+    assert!(e[0].contains("unknown label or variable 'nowhere'"));
+    assert!(e[1].contains("'missing'"));
+    let e = errors("_start:\n    hlt\n.keep nothing\n");
+    assert!(e[0].contains(".keep: 'nothing' is not defined"), "{e:?}");
+    assert!(errors("_start:\n    hlt\n.keep\n")[0].contains("expects a label"));
+    assert!(errors("_start:\n    hlt\n.keep a b\n")[0].contains("after the name"));
+}
+
+// ----- Library names give way to the program's (.library)
+
+#[test]
+fn library_names_give_way_to_the_program() {
+    let files = MemoryFiles::new()
+        .with(
+            "main.has",
+            ".include \"lib.has\"
+_start:
+    cal put
+    cal print
+    lod a, buffer
+    hlt
+put:             ; replaces the library's put
+    mov a, 1
+    ret
+.data buffer 7   ; replaces the library's .bss buffer
+",
+        )
+        .with(
+            "lib.has",
+            ".library
+.include \"lib/more.has\"
+print:
+    cal put      ; binds to the program's put
+    ret
+put:
+    mov a, 2
+    ret
+.bss buffer 16
+",
+        )
+        .with("lib/more.has", "spare:\n    ret\n.data counter 0\n");
+    let options = Options {
+        target: Target::Ram,
+        strip: true,
+    };
+    let p = assemble_with(Path::new("main.has"), &files, options).unwrap();
+    let put = addr(&p, "put");
+    assert_eq!(p.symbol("put").unwrap().file, 0, "the program's put");
+    assert_eq!(
+        word(&p, addr(&p, "print")),
+        encode::imm16(O::Cal, put as u16)
+    );
+    assert_eq!(p.symbol("buffer").unwrap().kind, SymbolKind::Data);
+    assert_eq!(p.image[addr(&p, "buffer") as usize], 7);
+    let names: Vec<_> = p.removed.iter().map(|r| r.name.as_str()).collect();
+    assert_eq!(
+        names,
+        [
+            "put (library, replaced)",
+            "buffer (library, replaced)",
+            "spare",
+            "counter"
+        ]
+    );
+
+    // The program's definition first: the same.
+    let files = files.with(
+        "main.has",
+        "_start:\n    cal put\n    hlt\nput:\n    ret\n.include \"lib.has\"\n",
+    );
+    let p = assemble_with(Path::new("main.has"), &files, options).unwrap();
+    assert_eq!(p.symbol("put").unwrap().file, 0);
+
+    // Without strip the library's definitions stay, under their hidden names.
+    let p = build(files, Target::Ram).unwrap();
+    assert!(p.symbol("put (library, replaced)").is_some());
+}
+
+#[test]
+fn library_duplicates_and_scope() {
+    let lib = |main: &str, lib: &str| {
+        let files = MemoryFiles::new()
+            .with("main.has", main)
+            .with("lib.has", lib)
+            .with("other.has", "dup:\n    ret\n");
+        build(files, Target::Ram)
+    };
+    // two library definitions
+    let e = lib(
+        "_start:\n    hlt\n.include \"lib.has\"\n",
+        ".library\ntwice:\n    ret\ntwice:\n    ret\n",
+    )
+    .unwrap_err();
+    assert!(e[0].contains("'twice' is already defined"), "{e:?}");
+    // two program definitions
+    let e = lib("_start:\n    hlt\ntwice:\n    ret\ntwice:\n    ret\n", "").unwrap_err();
+    assert!(e[0].contains("'twice' is already defined"), "{e:?}");
+    // .library covers the rest of its file and its includes, not the
+    // including file: other.has is included after lib.has by main.has.
+    let e = lib(
+        "_start:\n    hlt\ndup:\n    ret\n.include \"lib.has\"\n.include \"other.has\"\n",
+        ".library\n",
+    )
+    .unwrap_err();
+    assert!(e[0].contains("'dup' is already defined"), "{e:?}");
+    // names before .library are program names
+    let e = lib(
+        "_start:\n    hlt\ntwice:\n    ret\n.include \"lib.has\"\n",
+        "twice:\n    ret\n.library\n",
+    )
+    .unwrap_err();
+    assert!(e[0].contains("'twice' is already defined"), "{e:?}");
+    // a library piece falling into a replaced one keeps the library's code
+    let p = lib(
+        "_start:\n    cal first\n    hlt\nsecond:\n    ret\n.include \"lib.has\"\n",
+        ".library\nfirst:\n    nop\nsecond:\n    ret\n",
+    )
+    .unwrap();
+    assert_eq!(
+        addr(&p, "second (library, replaced)"),
+        addr(&p, "first") + 4
+    );
+    assert!(errors("_start:\n    hlt\n.library now\n")[0].contains("takes nothing"));
 }

@@ -6,8 +6,8 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-10 done (last commit for step 10: 093ec55). 57 C programs pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Library + runtime ≈ 13.2 KB in every program until the linker (lib/README.md "Size").
-- **Next:** step 11 linker — follow **`compiler/LINKER.md`** (its own roadmap, plan agreed 2026-10-31). The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
+- **Phase:** steps 1-11 done (step 11 = linker, 2026-10-31, details in `LINKER.md`). 58 C programs pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
+- **Next:** nothing planned. Ask the user what comes next; candidates: the backend work below, string.h in asm, the per-project removal option for asm projects (`LINKER.md` "Later"), EEPROM, float. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 - Possible later backend work (bigger gains than copt): keep track of what [a:b] / [x:y] hold to drop reloads across statements; `x << 1` assignment forms inline (`crc <<= 1` calls `__shleq`); `x & 0x8000` tests the top byte only. string.h in asm would save ≈ 1.8 KB (offered to the user).
 
 ## Notes files (read only when needed)
@@ -31,7 +31,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 ## Decisions (agreed 2026-10-30)
 
 1. **Linking:** (a) the driver joins every generated `.has` + the runtime into one program.
-   (b): unused code dropped by hbc2-asm: step 11, decision 15.
+   (b): unused code dropped by hbc2-asm: step 11, decision 15 (done).
 2. **Names:**
    - C `foo` → `_foo` (so asm `screen_putc` and C wrapper `_screen_putc` coexist).
    - Runtime helpers: `__name` (Fuzix's names where they exist: `__mul`, `__cceq`…).
@@ -94,7 +94,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
   - [x] 10c. C projects in the IDE (project language, template `hbc2/templates/main.c`, Build saves then compiles into `<project>/.build`, RAM only).
   - [x] 10d. C highlighting; compiled files and the compiler's own files open read-only.
   - [x] 10e. asm→C line map (`;#line n` markers through FCC, `lines.rs` remaps the Program).
-- [ ] 11. Linker (decision 15) — see `LINKER.md`.
+- [x] 11. Linker (decision 15) — see `LINKER.md`: `Options::strip` in hbc2-asm (on for C builds), `.keep`, `.library` (program names replace the library's), `hbc2 cc --map`.
 
 Later: EEPROM, float.
 

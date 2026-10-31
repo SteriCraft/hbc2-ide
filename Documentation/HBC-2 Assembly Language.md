@@ -42,7 +42,7 @@ Each line holds one of:
 
 * an instruction: `mnemonic operand, operand`
 * a label: `name:`, optionally followed by an address (`handler: $0xF000`) or by an instruction (`loop: inc a`)
-* a directive: `.data`, `.data16`, `.data32`, `.bss`, `.define` or `.include`
+* a directive: `.data`, `.data16`, `.data32`, `.bss`, `.define`, `.include`, `.keep` or `.library`
 
 Comments start with `;` and run to the end of the line.
 
@@ -295,6 +295,68 @@ Fixed blocks and data are never moved; the assembler reports any overlap.
 The stack grows down from `$0xFE00` and nothing stops it from reaching your
 code or data: keep the top of memory free, or move the stack with `wsp`.
 
+## Leaving out unused code
+
+C programs are assembled with this on (the C library and the runtime are
+large, and a program uses a small part of them). Assembly projects keep
+everything: an unused routine may be there on purpose, to call it from the
+debugger.
+
+The program is cut into **pieces**: the code from one label up to the next
+label, one `.data` variable, one `.bss` variable. A piece is kept when it is
+used by a kept piece, starting from:
+
+* `_start`,
+* every block and `.data` at a fixed address (interrupt vectors, handlers);
+  a block at a fixed address is kept whole,
+* the names given to `.keep`.
+
+A piece uses every name it refers to (`cal f`, `jmp loop`, `lod a, count`,
+`mov x, table.msb`, `.data16 vector handler`…). A piece whose last
+instruction is not `jmp`, `ret` or `irt` goes on into the next one (`hlt`
+does too, and so does a label with no instruction), so it uses the piece
+after it. Kept pieces of a block stay in the same order, one after the
+other; the rest is gone, and so is its name. `__bss_start` and `__bss_end`
+surround the kept `.bss` variables.
+
+A name used but defined nowhere is an error even in a piece that is left
+out: a typo in an unused routine still fails the build.
+
+`hbc2 cc … --map` lists what was kept and what was left out, with sizes.
+
+**Known limit.** Code that relies on where an unnamed spot is, past the next
+label (`jmp table + 8` landing after the label that follows `table`), may
+find something else there. Jump to a name instead.
+
+### `.keep`
+
+```
+.keep handler
+```
+
+Keeps `handler` (and what it uses) even when no piece refers to it: for code
+reached only through an address computed at run time. The name must be
+defined somewhere.
+
+### `.library`
+
+```
+.library
+```
+
+The names defined in the rest of the file, and in the files it includes, are
+**library names**. When the program defines the same name, that is not an
+error: the program's definition is used everywhere (in the library too), and
+the library's is left out. A program can so write its own `putchar`, and the
+library's `printf` calls it. Two library definitions of one name, or two
+program definitions, are still an error. The C library starts with
+`.library`; the runtime does not (its names start with `__`, which C
+programs can't use, and `_start` can't be replaced).
+
+A library piece that goes on into a replaced one (no `jmp`/`ret` between
+them) still goes on into the library's code: only the name moves to the
+program's definition.
+
 ## `.define`
 
 ```
@@ -342,7 +404,7 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss` |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.keep`, `.library`, leaving out unused code (C builds) |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
 | | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

@@ -195,8 +195,10 @@ A program is a list of C files (`.c`) and assembly files (`.has`)
 with its unit number (1, 2, … in the order of the list). One `main.has`
 then includes, in this order: the startup code, the runtime, the C library
 (`compiler/lib`, section 13) and the files of the list (the assembly files
-as they are), and is assembled as one program. Unused functions are kept:
-a linker that removes them comes later.
+as they are), and is assembled as one program. What can't be reached from
+`_start` (or a fixed address, or `.keep`) is left out by the assembler:
+unused functions, variables, library code and runtime helpers (assembly
+manual, "Leaving out unused code").
 
 * **`static` names.** The compiler writes a `; export _name` line before
   each name that is not `static`. After compiling a file, the driver
@@ -213,8 +215,10 @@ a linker that removes them comes later.
   `b.c: error: 'n' is already defined (a.c)`,
   `main.c: error: not defined: 'f'`. Two `int n;` without a value in two
   files are a duplicate too (no "common" variables).
-* Defining a library function in the program (`puts`) is a duplicate for
-  now (the linker could let the program's function replace the library's).
+* **Library names.** A program may define a function or variable of the
+  library (`puts`, `putchar`…): its definition is used everywhere, the
+  library's too calls it, and the library's is left out (`.library` in
+  `lib.has` and `library.has`).
 
 ## 8. Startup and exit
 

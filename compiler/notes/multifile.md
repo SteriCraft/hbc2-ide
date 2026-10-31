@@ -6,6 +6,6 @@
 - Static renaming at the end of `compile()` (`rename_statics`; same code in hbc2cc.py): names defined (`_x:` label, `.data _x`, `.bss _x`, single `_`) without a `; export _x` line → `__S<unit>_x` on every identifier token, not in quotes/comments. Local statics are already `__T<unit>_n`.
 - cpp gets `-I<source folder>` first (cpp finds the folder itself by the last `/`, which fails on the Rust driver's mixed `\`/`/` paths).
 - Errors: hbc2-asm "already defined" now names the other file when it differs (`(file, line n)`); `c_message` swaps compiled paths for C files (drops the meaningless line), `'_x'`/`'__S2_x'` → `'x'`, "unknown label or variable" → "not defined:".
-- Known: a program defining a library name (`puts`) is a duplicate until the linker; tentative `int n;` in two files is a duplicate (no common symbols); a `static` declared, never defined, but used would bind to another file's global (not checked).
+- Known: tentative `int n;` in two files is a duplicate (no common symbols); a `static` declared, never defined, but used would bind to another file's global (not checked).
 - programs.rs: every folder in `tests/multi` is one program (sorted `.c`/`.has`, `main.c` holds "Expected", `main.screen`/`main.keys`).
 

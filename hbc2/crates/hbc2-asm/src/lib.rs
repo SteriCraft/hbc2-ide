@@ -65,6 +65,37 @@ pub struct Symbol {
     pub line: u32,
 }
 
+/// A label or variable left out because nothing can reach it
+/// ([`Options::strip`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct Removed {
+    pub name: String,
+    /// Bytes until the next label (labels) or bytes of the variable.
+    pub size: u32,
+    pub kind: SymbolKind,
+    /// Index in [`Program::files`].
+    pub file: usize,
+    pub line: u32,
+}
+
+/// How to assemble.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Options {
+    pub target: Target,
+    /// Leave out every label and variable that can't be reached from
+    /// `_start`, fixed addresses or `.keep` (used for C programs).
+    pub strip: bool,
+}
+
+impl Options {
+    pub const fn new(target: Target) -> Self {
+        Options {
+            target,
+            strip: false,
+        }
+    }
+}
+
 /// Where an instruction comes from.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct SourceLine {
@@ -88,6 +119,15 @@ pub struct Program {
     pub lines: Vec<SourceLine>,
     pub warnings: Vec<Diagnostic>,
     pub bytes_used: usize,
+    /// What [`Options::strip`] left out, in source order (empty without it).
+    pub removed: Vec<Removed>,
+}
+
+impl Program {
+    /// Bytes left out by [`Options::strip`] (`.bss` variables included).
+    pub fn bytes_removed(&self) -> usize {
+        self.removed.iter().map(|r| r.size as usize).sum()
+    }
 }
 
 impl Program {
@@ -123,6 +163,16 @@ pub fn assemble(
     provider: &dyn SourceProvider,
     target: Target,
 ) -> Result<Program, Vec<Diagnostic>> {
+    assemble_with(entry, provider, Options::new(target))
+}
+
+/// [`assemble`] with options.
+pub fn assemble_with(
+    entry: &Path,
+    provider: &dyn SourceProvider,
+    options: Options,
+) -> Result<Program, Vec<Diagnostic>> {
+    let target = options.target;
     let mut report = Report::default();
     let loaded = preprocess::load(entry, provider, &mut report);
 
@@ -132,7 +182,8 @@ pub fn assemble(
             preprocess::Event::BlockBreak => items.push(assembler::Item::BlockBreak),
             preprocess::Event::Line(line) => {
                 let stmts = parser::parse_line(line.file, line.line, &line.tokens, &mut report);
-                items.extend(stmts.into_iter().map(assembler::Item::Stmt));
+                let library = line.library;
+                items.extend(stmts.into_iter().map(|s| assembler::Item::Stmt(s, library)));
             }
         }
     }
@@ -140,7 +191,7 @@ pub fn assemble(
     let output = if report.has_errors() {
         None
     } else {
-        assembler::assemble(items, &loaded.files, target, &mut report)
+        assembler::assemble(items, &loaded.files, options, &mut report)
     };
     let diagnostics = report.into_diagnostics(&loaded.files);
     match output {
@@ -152,6 +203,7 @@ pub fn assemble(
             lines: output.lines,
             warnings: diagnostics,
             bytes_used: output.bytes_used,
+            removed: output.removed,
         }),
         None => Err(diagnostics),
     }

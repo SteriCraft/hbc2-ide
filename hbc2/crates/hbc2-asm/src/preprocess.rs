@@ -4,6 +4,8 @@
 //!   is included the first time only; later includes of it are skipped.
 //! * `.define NAME value…`: global. Every `NAME` word in the project is
 //!   replaced by the value's tokens. Defines may use other defines.
+//! * `.library`: the names defined in the rest of the file and in the files
+//!   it includes are library names (a program's own definition replaces them).
 
 use std::collections::{HashMap, HashSet};
 use std::path::{Path, PathBuf};
@@ -18,6 +20,8 @@ pub(crate) struct Line {
     pub file: usize,
     pub line: u32,
     pub tokens: Vec<Token>,
+    /// After a `.library` line (in this file or a file including it).
+    pub library: bool,
 }
 
 pub(crate) enum Event {
@@ -47,7 +51,7 @@ pub(crate) fn load(entry: &Path, provider: &dyn SourceProvider, report: &mut Rep
         events: Vec::new(),
         defines: HashMap::new(),
     };
-    loader.load_file(entry.to_path_buf(), None);
+    loader.load_file(entry.to_path_buf(), None, false);
 
     let Loader {
         files,
@@ -83,7 +87,8 @@ struct Loader<'a> {
 }
 
 impl Loader<'_> {
-    fn load_file(&mut self, path: PathBuf, included_from: Option<Loc>) {
+    /// `library`: the including file is after a `.library` line.
+    fn load_file(&mut self, path: PathBuf, included_from: Option<Loc>, mut library: bool) {
         let path = normalize(&path);
         if !self.seen.insert(same_file_key(&path)) {
             return; // already included
@@ -125,7 +130,7 @@ impl Loader<'_> {
                         let name = String::from_utf8_lossy(name).into_owned();
                         let target = path.parent().unwrap_or(Path::new("")).join(name);
                         self.events.push(Event::BlockBreak);
-                        self.load_file(target, Some(loc));
+                        self.load_file(target, Some(loc), library);
                         self.events.push(Event::BlockBreak);
                     }
                     _ => self.report.error(
@@ -134,7 +139,19 @@ impl Loader<'_> {
                     ),
                 },
                 Tok::Directive(d) if d == "define" => self.define(loc, &tokens),
-                _ => self.events.push(Event::Line(Line { file, line, tokens })),
+                Tok::Directive(d) if d == "library" => {
+                    if tokens.len() == 1 {
+                        library = true;
+                    } else {
+                        self.report.error(loc, ".library takes nothing after it");
+                    }
+                }
+                _ => self.events.push(Event::Line(Line {
+                    file,
+                    line,
+                    tokens,
+                    library,
+                })),
             }
         }
     }

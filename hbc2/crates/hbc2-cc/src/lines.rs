@@ -75,6 +75,9 @@ impl LineMaps {
         for s in &mut program.symbols {
             remap(&mut s.file, &mut s.line);
         }
+        for r in &mut program.removed {
+            remap(&mut r.file, &mut r.line);
+        }
         program.files = files;
     }
 }

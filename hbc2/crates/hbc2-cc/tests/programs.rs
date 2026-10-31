@@ -33,10 +33,13 @@ fn expected(source: &str) -> u16 {
     n.parse::<i32>().unwrap() as u16
 }
 
-/// What a run gives: main's result, the size of the compiled code, the time.
+/// What a run gives: main's result, the size of the compiled code (the
+/// program's own files, before removal of unreached code), the size of the
+/// whole program (code and data, library and runtime included), the time.
 struct Run {
     result: u16,
     code_bytes: usize,
+    program_bytes: usize,
     ticks: u64,
 }
 
@@ -107,10 +110,8 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
     let build = build_program(sources, library, &dir).map_err(|e| report(&e))?;
     let program = &build.program;
     let exit = program.symbol("__exit").expect("__exit").address as u16;
-    let kbd_ready = program
-        .symbol("term_kbd_ready")
-        .expect("term_kbd_ready")
-        .address as u16;
+    // Absent when the program never reads the keyboard (left out as unreached).
+    let kbd_ready = program.symbol("term_kbd_ready").map(|s| s.address as u16);
     let mut keys: Vec<char> = std::fs::read_to_string(source.with_extension("keys"))
         .map(|t| t.replace('\r', "").chars().collect())
         .unwrap_or_default();
@@ -128,7 +129,8 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
             return Err("main did not return".into());
         }
         // Keys typed once the terminal takes them, one per wait
-        if m.board.ram.read(kbd_ready) == 1
+        if let Some(kbd_ready) = kbd_ready
+            && m.board.ram.read(kbd_ready) == 1
             && let Some(c) = keys.pop()
         {
             m.key_event(scan_code(c), true);
@@ -155,6 +157,7 @@ fn run(sources: &[PathBuf], source: &Path, library: &Library) -> Result<Run, Str
             .iter()
             .map(|f| code_bytes(&std::fs::read_to_string(f).unwrap()))
             .sum(),
+        program_bytes: build.program.bytes_used,
         ticks,
     })
 }
@@ -204,8 +207,8 @@ fn programs() {
             .replace('\\', "/");
         match run(sources, file, &library) {
             Ok(run) if run.result == want => println!(
-                "{name}: ok ({} bytes of code, {} ticks)",
-                run.code_bytes, run.ticks
+                "{name}: ok ({} bytes of code, {} bytes in all, {} ticks)",
+                run.code_bytes, run.program_bytes, run.ticks
             ),
             Ok(Run { result: got, .. }) => failures.push(format!(
                 "{name}: main returned {got} ({:#06x}), expected {want}",
