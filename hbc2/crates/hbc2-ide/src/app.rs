@@ -93,7 +93,13 @@ pub enum Action {
     Assemble,
     Run,
     Pause,
-    Step,
+    /// F10: the current line (C) or instruction (assembly), running the
+    /// routines it calls.
+    StepOver,
+    /// F11: the current line or instruction, stopping in the routines called.
+    StepInto,
+    /// Shift+F11: until the current routine returns.
+    StepOut,
     Reset,
     ExportImage,
     LoadImage,
@@ -563,7 +569,11 @@ impl Ide {
             (K::new(M::COMMAND, Key::B), Action::Assemble),
             (K::new(M::NONE, Key::F5), Action::Run),
             (K::new(M::NONE, Key::F6), Action::Pause),
-            (K::new(M::NONE, Key::F10), Action::Step),
+            // Shift first: a shortcut without it also matches with it.
+            (K::new(M::SHIFT, Key::F10), Action::StepOut),
+            (K::new(M::SHIFT, Key::F11), Action::StepOut),
+            (K::new(M::NONE, Key::F10), Action::StepOver),
+            (K::new(M::NONE, Key::F11), Action::StepInto),
             (K::new(M::COMMAND, Key::F5), Action::Reset),
             (K::new(M::COMMAND | M::SHIFT, Key::S), Action::SaveAll),
             (K::new(M::COMMAND, Key::S), Action::Save),
@@ -1089,13 +1099,26 @@ impl Ide {
                 }
             }
             Action::Pause => state.emulator.pause(),
-            Action::Step => {
-                if state.prepare_to_run(Action::Step) {
+            Action::StepInto => {
+                if state.prepare_to_run(Action::StepInto) {
                     let pc = state.emulator.runner.sync().cpu.pc;
                     match state.c_line_addresses(pc) {
                         Some(addresses) => state.emulator.step_within(addresses),
                         None => state.emulator.step(1),
                     }
+                }
+            }
+            Action::StepOver => {
+                if state.prepare_to_run(Action::StepOver) {
+                    let pc = state.emulator.runner.sync().cpu.pc;
+                    // Assembly: one instruction (with the routine it calls).
+                    let addresses = state.c_line_addresses(pc).unwrap_or_default();
+                    state.emulator.step_over(addresses);
+                }
+            }
+            Action::StepOut => {
+                if state.prepare_to_run(Action::StepOut) {
+                    state.emulator.step_out();
                 }
             }
             Action::Reset => {
@@ -1813,7 +1836,7 @@ impl State {
         }
     }
 
-    /// F10: in a C file, the addresses of the instructions of the line the
+    /// F10 / F11: in a C file, the addresses of the instructions of the line the
     /// CPU is on (at `pc`), so that the whole line runs; `None` elsewhere
     /// (one instruction). The line stops at the first instruction of
     /// another line or of an assembly file (a runtime routine, an

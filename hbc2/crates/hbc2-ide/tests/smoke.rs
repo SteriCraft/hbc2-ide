@@ -170,7 +170,7 @@ fn assemble_run_and_break() {
     );
 
     // Step once: the jump goes back to itself, the CPU view sees the change.
-    h.act(Action::Step);
+    h.act(Action::StepOver);
     h.wait("the step", |ide| ide.state.snapshot.ticks > s.ticks);
     assert_eq!(h.ide.state.snapshot.state, RunState::Paused);
 
@@ -882,11 +882,11 @@ fn c_project_builds_and_runs() {
     let code_lines = &h.ide.state.build.as_ref().unwrap().code_lines;
     assert!(code_lines.get(&main).is_some_and(|l| l.contains(&6)));
 
-    // F10: the whole line, into a C function, out of it, then into puts,
+    // F11: the whole line, into a C function, out of it, then into puts,
     // which is assembly: one instruction at a time there.
     let step = |h: &mut Harness| {
         let ticks = h.ide.state.snapshot.ticks;
-        h.act(Action::Step);
+        h.act(Action::StepInto);
         h.wait("the step", |ide| {
             let s = &ide.state.snapshot;
             s.state == RunState::Paused && s.ticks > ticks
@@ -907,6 +907,32 @@ fn c_project_builds_and_runs() {
     assert!(file.ends_with("stdio.has"), "in puts: {}", file.display());
     let ticks = step(&mut h);
     assert!(ticks <= 4, "one instruction in assembly ({ticks} cycles)");
+
+    // Shift+F11: puts began with a CAL, so out of that routine first, then
+    // out of puts, back on line 8 (after the call); F10 ends the line.
+    let act_and_wait = |h: &mut Harness, action: Action| {
+        let ticks = h.ide.state.snapshot.ticks;
+        h.act(action);
+        h.wait("the step", |ide| {
+            let s = &ide.state.snapshot;
+            s.state == RunState::Paused && s.ticks > ticks
+        });
+    };
+    act_and_wait(&mut h, Action::StepOut);
+    let (file, _) = h
+        .ide
+        .state
+        .source_location(h.ide.state.snapshot.cpu.pc)
+        .unwrap();
+    assert!(
+        file.ends_with("stdio.has"),
+        "back in puts: {}",
+        file.display()
+    );
+    act_and_wait(&mut h, Action::StepOut);
+    assert_eq!(h.ide.state.pc_line(&main), Some(8), "out of puts");
+    act_and_wait(&mut h, Action::StepOver);
+    assert_eq!(h.ide.state.pc_line(&main), Some(9));
 
     h.act(Action::Run);
     h.wait("the text on the monitor", |ide| {

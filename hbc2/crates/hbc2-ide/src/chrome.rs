@@ -202,10 +202,22 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::Pause);
                 }
                 if ui
-                    .add_enabled(!running, shortcut_button("Step", "F10"))
+                    .add_enabled(!running, shortcut_button("Step over", "F10"))
                     .clicked()
                 {
-                    actions.push(Action::Step);
+                    actions.push(Action::StepOver);
+                }
+                if ui
+                    .add_enabled(!running, shortcut_button("Step into", "F11"))
+                    .clicked()
+                {
+                    actions.push(Action::StepInto);
+                }
+                if ui
+                    .add_enabled(!running, shortcut_button("Step out", "Shift+F11"))
+                    .clicked()
+                {
+                    actions.push(Action::StepOut);
                 }
                 ui.checkbox(&mut state.settings.monitor_window, "Monitor window");
                 if ui.add(shortcut_button("Restart", "Ctrl+F5")).clicked() {
@@ -313,10 +325,10 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             }
             if ui
                 .add_enabled(!running, Button::new("⏭ Step"))
-                .on_hover_text("Run one instruction (F10)")
+                .on_hover_text("Step over (F10): the current line or instruction, with the routines it calls. Step into and out: Emulator menu")
                 .clicked()
             {
-                actions.push(Action::Step);
+                actions.push(Action::StepOver);
             }
             if ui
                 .button("⟲ Restart")
@@ -484,7 +496,15 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
             ("F7", "Assemble (or build a C project) and load"),
             ("F5", "Run / continue"),
             ("F6", "Pause"),
-            ("F10", "Step one instruction"),
+            (
+                "F10",
+                "Step over: the line or instruction, with the routines it calls",
+            ),
+            ("F11", "Step into: stop in the routines called"),
+            (
+                "Shift+F11",
+                "Step out: until the routine returns (Shift+F10 too)",
+            ),
             ("Ctrl+F5", "Restart"),
             ("Ctrl+S", "Save"),
             ("Ctrl+W", "Close the tab"),

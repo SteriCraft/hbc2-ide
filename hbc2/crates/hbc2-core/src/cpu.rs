@@ -55,6 +55,10 @@ pub struct Cpu {
     pub ir: Instruction,
     /// Address of the last executed instruction.
     pub last_pc: u16,
+    /// Not part of the HBC-2: for the debugger's step over / step out.
+    /// Counts up on CAL and on entering an interrupt handler, down on RET
+    /// and IRT (wrapping; only differences matter).
+    pub call_depth: u32,
     pub state: CpuState,
     /// Software interrupt (port, data) raised by `INT`, waiting for the Interrupt flag.
     pending_software_interrupt: Option<(u8, u8)>,
@@ -75,6 +79,7 @@ impl Cpu {
             sp: STACK_RESET,
             ir: Instruction(0),
             last_pc: PROGRAM_START,
+            call_depth: 0,
             state: CpuState::Executing,
             pending_software_interrupt: None,
         };
@@ -91,6 +96,7 @@ impl Cpu {
         self.sp = STACK_RESET;
         self.ir = Instruction(0);
         self.last_pc = PROGRAM_START;
+        self.call_depth = 0;
         self.state = CpuState::Executing;
         self.pending_software_interrupt = None;
     }
@@ -168,6 +174,7 @@ impl Cpu {
         self.flags.set(Flag::Interrupt, false);
         self.flags.set(Flag::Halt, false);
         self.pc = board.ram.read_u16(IVT_START + port as u16 * 2);
+        self.call_depth = self.call_depth.wrapping_add(1);
         self.state = CpuState::Executing;
     }
 
@@ -487,16 +494,19 @@ impl Cpu {
                     // Return address = the instruction after CAL.
                     self.push_address(board, self.pc);
                     self.pc = target;
+                    self.call_depth = self.call_depth.wrapping_add(1);
                 }
             }
             O::Ret => {
                 if mode == M::None {
                     self.pc = self.pop_address(board);
+                    self.call_depth = self.call_depth.wrapping_sub(1);
                 }
             }
             O::Irt => {
                 if mode == M::None {
                     self.pc = self.pop_address(board);
+                    self.call_depth = self.call_depth.wrapping_sub(1);
                     let i_register = self.pop(board);
                     self.set_reg(Register::I, i_register);
                     self.flags.set(Flag::Interrupt, true);

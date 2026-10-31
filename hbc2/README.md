@@ -42,14 +42,19 @@ cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on t
   the background (the toolbar shows "Building…"; Run or Step pressed
   meanwhile start once it is loaded). Compiled files go to `.build/` (hidden
   in the project view). Errors point at the C lines; breakpoints and the
-  current line work on the C source. In a C file, F10 runs the whole line:
-  it stops at the next line, inside a called C function, or at the first
-  instruction of an assembly file (runtime, library, interrupt handler),
-  where F10 steps one instruction again. A line that never ends runs until
+  current line work on the C source. In a C file, F11 (step into) runs the
+  whole line: it stops at the next line, inside a called C function, or at
+  the first instruction of an assembly file (runtime, library, interrupt
+  handler), where F11 steps one instruction again. F10 (step over) runs the
+  whole line with the functions it calls. A line that never ends runs until
   Pause. The startup code, runtime and library open read-only. For the
   EEPROM target, a boot loader copies the C program into RAM at power-on.
 - **F7** assembles and loads the program (paused at power-on). **F5** runs,
-  **F6** pauses, **F10** runs one instruction, **Ctrl+F5** power-cycles. Run
+  **F6** pauses, **Ctrl+F5** power-cycles. Stepping (one instruction in
+  assembly, one line in C): **F10** steps over (the routines called with CAL,
+  and the interrupt handlers entered, run until they return; a breakpoint in
+  them stops it), **F11** steps into them, **Shift+F11** (or Shift+F10) steps
+  out (runs until the current routine or interrupt handler returns). Run
   assembles by itself when nothing is loaded yet, or when the sources changed
   and the program has not started. A failed assembly never runs.
 - Assembling uses the editors' text, saved or not.

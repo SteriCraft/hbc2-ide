@@ -287,3 +287,111 @@ fn step_within_runs_until_the_pc_leaves_the_addresses() {
     runner.run();
     assert_eq!(runner.sync().state, RunState::Running);
 }
+
+/// Nested calls, a push, and a breakpoint in a routine.
+const CALLS: &str = "
+_start:
+    cli
+    mov a, 0
+    cal outer
+after:
+    psh a
+    pop a
+    cal deep
+back:
+    nop
+forever:
+    jmp forever
+outer:
+    cal inner
+    cal inner
+    ret
+inner:
+    add a, 1
+    ret
+deep:
+    cal inner
+marked:
+    nop
+    ret
+";
+
+#[test]
+fn step_over_runs_the_routines_called() {
+    let p = program(CALLS);
+    let at = |name: &str| p.symbol(name).unwrap().address as u16;
+    let runner = Runner::new(machine(CALLS, no_peripherals()));
+    runner.set_speed(Speed::Fastest);
+    runner.step(2); // cli, mov a, 0
+
+    // Over a CAL: the whole routine (and the ones it calls) runs.
+    runner.step_over(vec![]);
+    let s = wait_until(&runner, |s| {
+        s.state == RunState::Paused && s.cpu.pc != at("after") - 4
+    });
+    assert_eq!(s.cpu.pc, at("after"));
+    assert_eq!(s.cpu.reg(Register::A), 2);
+    assert_eq!(s.stop, None);
+
+    // Over a PSH: a plain step, though the stack grew.
+    runner.step_over(vec![]);
+    let s = runner.sync();
+    assert_eq!((s.state, s.cpu.pc), (RunState::Paused, at("after") + 4));
+    runner.step(1); // pop a
+
+    // A breakpoint in a routine called stops the step there.
+    runner.set_breakpoint(at("marked"), true);
+    runner.step_over(vec![]);
+    let s = wait_until(&runner, |s| {
+        s.state == RunState::Paused && s.cpu.pc != at("back") - 4
+    });
+    assert_eq!(s.cpu.pc, at("marked"));
+    assert_eq!(s.stop, Some(StopReason::Breakpoint(at("marked"))));
+    assert_eq!(s.cpu.reg(Register::A), 3);
+
+    // Over the routine's RET: back in the caller.
+    runner.step_over(vec![]);
+    runner.step_over(vec![]);
+    let s = wait_until(&runner, |s| {
+        s.state == RunState::Paused && s.cpu.pc == at("back")
+    });
+    assert_eq!(s.stop, None);
+
+    // A line jumping to itself: over it, one instruction at a time.
+    runner.step(1); // nop
+    runner.step_over(vec![]);
+    let s = runner.sync();
+    assert_eq!((s.state, s.cpu.pc), (RunState::Paused, at("forever")));
+
+    // The addresses of a line: it runs while the PC stays on them.
+    runner.step_over(vec![at("forever")]);
+    let s = wait_until(&runner, |s| s.ticks > 10_000);
+    assert_eq!(s.state, RunState::Running);
+    runner.pause();
+}
+
+#[test]
+fn step_out_runs_until_the_routine_returns() {
+    let p = program(CALLS);
+    let at = |name: &str| p.symbol(name).unwrap().address as u16;
+    let runner = Runner::new(machine(CALLS, no_peripherals()));
+    runner.set_speed(Speed::Fastest);
+    runner.step(4); // cli, mov a, 0, cal outer, cal inner
+    assert_eq!(runner.sync().cpu.pc, at("inner"));
+
+    // Out of inner: back in outer, after its first CAL.
+    runner.step_out();
+    let s = wait_until(&runner, |s| {
+        s.state == RunState::Paused && s.cpu.pc != at("inner")
+    });
+    assert_eq!(s.cpu.pc, at("outer") + 4);
+    assert_eq!(s.cpu.reg(Register::A), 1);
+
+    // Out of outer: its second call to inner runs on the way.
+    runner.step_out();
+    let s = wait_until(&runner, |s| {
+        s.state == RunState::Paused && s.cpu.pc == at("after")
+    });
+    assert_eq!(s.cpu.reg(Register::A), 2);
+    assert_eq!(s.stop, None);
+}

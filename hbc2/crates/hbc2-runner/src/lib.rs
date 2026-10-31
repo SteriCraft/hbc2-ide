@@ -100,6 +100,11 @@ enum Command {
     /// Executes one instruction, then runs while the PC is one of these
     /// addresses (sorted), then pauses.
     StepWithin(Vec<u16>),
+    /// Executes one instruction, then runs while the PC is one of these
+    /// addresses (sorted) or deeper in calls, then pauses.
+    StepOver(Vec<u16>),
+    /// Runs until the current routine or interrupt handler returns.
+    StepOut,
     PowerCycle,
     Load(Box<Machine>),
     SetSpeed(Speed),
@@ -216,7 +221,6 @@ impl Runner {
         self.send(Command::Step(instructions));
     }
 
-    /// Power cycle (see [`Machine::power_on`]). Keeps running if it was.
     /// Runs one instruction, then goes on while the PC stays on one of
     /// `addresses` (the instructions of one source line, for example), at
     /// the current speed, then pauses. The state is Running meanwhile:
@@ -225,6 +229,25 @@ impl Runner {
         addresses.sort_unstable();
         addresses.dedup();
         self.send(Command::StepWithin(addresses));
+    }
+
+    /// Like `step_within`, but the routines called (CAL) and the interrupt
+    /// handlers entered meanwhile run too, until they return: the step
+    /// stops at the first instruction that is not one of `addresses`, at
+    /// the same call depth or above (after a RET out of the current
+    /// routine). Breakpoints in the routines called stop it. With no
+    /// addresses, one instruction: a CAL runs until it returns.
+    pub fn step_over(&self, mut addresses: Vec<u16>) {
+        addresses.sort_unstable();
+        addresses.dedup();
+        self.send(Command::StepOver(addresses));
+    }
+
+    /// Runs until the current routine (or interrupt handler) returns: the
+    /// first RET or IRT that leaves it. The state is Running meanwhile.
+    /// Breakpoints stop it.
+    pub fn step_out(&self) {
+        self.send(Command::StepOut);
     }
 
     /// Restarts the machine from its image. The runner pauses.

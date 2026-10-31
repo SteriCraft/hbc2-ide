@@ -5,9 +5,9 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
 use chrono::{Datelike, Timelike};
-use hbc2_core::Machine;
 use hbc2_core::peripherals::rtc::DateTime;
 use hbc2_core::peripherals::{Eeprom, Monitor};
+use hbc2_core::{Machine, RunResult, StopReason};
 
 use crate::{Command, RunState, Shared, Snapshot, Speed};
 
@@ -36,8 +36,8 @@ pub(crate) struct Worker {
     state: RunState,
     stop: Option<hbc2_core::StopReason>,
     speed: Speed,
-    /// While running a `StepWithin`: the addresses it stays on.
-    within: Option<Vec<u16>>,
+    /// While running a step into / over / out: where it stops.
+    goal: Option<Goal>,
 
     /// Pace keeping: cycles run since `epoch`.
     epoch: Instant,
@@ -75,7 +75,7 @@ impl Worker {
             state: RunState::Paused,
             stop: None,
             speed: Speed::default(),
-            within: None,
+            goal: None,
             epoch: now,
             paced_ticks: 0,
             rtc_synced: now,
@@ -145,7 +145,7 @@ impl Worker {
         match command {
             Command::Run => {
                 self.stop = None;
-                self.within = None;
+                self.goal = None;
                 self.resume();
             }
             Command::Pause => self.pause(),
@@ -156,14 +156,14 @@ impl Worker {
                     self.machine.step();
                 }
             }
-            Command::StepWithin(addresses) => {
-                self.pause();
-                self.stop = None;
-                self.machine.step();
-                if addresses.binary_search(&self.machine.cpu.pc).is_ok() {
-                    self.within = Some(addresses);
-                    self.resume();
-                }
+            Command::StepWithin(addresses) => self.step_to(Goal::Within(addresses)),
+            Command::StepOver(addresses) => {
+                let depth = self.machine.cpu.call_depth;
+                self.step_to(Goal::Over { addresses, depth });
+            }
+            Command::StepOut => {
+                let depth = self.machine.cpu.call_depth;
+                self.step_to(Goal::Out { depth });
             }
             Command::PowerCycle => {
                 self.pause();
@@ -208,6 +208,21 @@ impl Worker {
         Flow::Continue
     }
 
+    /// Runs one instruction, then goes on (at the current speed) until `goal`.
+    fn step_to(&mut self, goal: Goal) {
+        self.pause();
+        self.stop = None;
+        self.machine.step();
+        match goal.next(&self.machine) {
+            Next::Go => {
+                self.goal = Some(goal);
+                self.resume();
+            }
+            Next::Done => {}
+            Next::Breakpoint => self.stop = Some(StopReason::Breakpoint(self.machine.cpu.pc)),
+        }
+    }
+
     fn resume(&mut self) {
         if self.state == RunState::Paused {
             self.state = RunState::Running;
@@ -216,7 +231,7 @@ impl Worker {
     }
 
     fn pause(&mut self) {
-        self.within = None;
+        self.goal = None;
         if self.state == RunState::Running {
             self.report_host_time();
             self.state = RunState::Paused;
@@ -273,14 +288,10 @@ impl Worker {
             }
         };
 
-        let result = match &self.within {
-            Some(addresses) => run_within(&mut self.machine, budget, addresses),
-            None => self.machine.run(budget),
+        let (result, reached) = match &self.goal {
+            Some(goal) => run_to(&mut self.machine, budget, goal),
+            None => (self.machine.run(budget), false),
         };
-        let left = self
-            .within
-            .as_ref()
-            .is_some_and(|a| a.binary_search(&self.machine.cpu.pc).is_err());
         self.paced_ticks += result.ticks;
         self.meter_ticks += result.ticks;
         self.report_host_time();
@@ -289,7 +300,7 @@ impl Worker {
             self.pause();
             self.stop = Some(stop);
             self.dirty = true;
-        } else if left {
+        } else if reached {
             self.pause();
             self.dirty = true;
         }
@@ -352,14 +363,68 @@ impl Worker {
     }
 }
 
-/// Runs about `budget` cycles, one instruction at a time, stopping as soon
-/// as the PC is not one of `addresses` (sorted).
-fn run_within(machine: &mut Machine, budget: u64, addresses: &[u16]) -> hbc2_core::RunResult {
-    let mut ticks = 0;
-    while ticks < budget && addresses.binary_search(&machine.cpu.pc).is_ok() {
-        ticks += machine.step();
+/// Where a step into / over / out stops. Depths are the CPU's
+/// `call_depth` when the step started.
+pub(crate) enum Goal {
+    /// Step into: runs while the PC is on one of these addresses (sorted).
+    /// Breakpoints are not checked.
+    Within(Vec<u16>),
+    /// Step over: runs while the PC is on one of these addresses (sorted)
+    /// at the same depth, or while deeper (in a call or an interrupt
+    /// handler). Breakpoints stop it only when deeper.
+    Over { addresses: Vec<u16>, depth: u32 },
+    /// Step out: runs until a RET or IRT returns from the current depth.
+    /// Breakpoints stop it.
+    Out { depth: u32 },
+}
+
+enum Next {
+    Go,
+    Done,
+    Breakpoint,
+}
+
+impl Goal {
+    /// What to do after an instruction.
+    fn next(&self, machine: &Machine) -> Next {
+        let cpu = &machine.cpu;
+        // How much deeper than at the start (negative: returned).
+        let deeper = |depth: u32| cpu.call_depth.wrapping_sub(depth) as i32;
+        let on = |addresses: &[u16]| addresses.binary_search(&cpu.pc).is_ok();
+        let (go, check_breakpoints) = match self {
+            Goal::Within(addresses) => (on(addresses), false),
+            Goal::Over { addresses, depth } => {
+                let deeper = deeper(*depth);
+                (deeper > 0 || (deeper == 0 && on(addresses)), deeper > 0)
+            }
+            Goal::Out { depth } => (deeper(*depth) >= 0, true),
+        };
+        if !go {
+            Next::Done
+        } else if check_breakpoints && machine.breakpoints.contains(cpu.pc) {
+            Next::Breakpoint
+        } else {
+            Next::Go
+        }
     }
-    hbc2_core::RunResult { ticks, stop: None }
+}
+
+/// Runs about `budget` cycles, one instruction at a time, until `goal` is
+/// reached (then returns true) or a breakpoint stops it.
+fn run_to(machine: &mut Machine, budget: u64, goal: &Goal) -> (RunResult, bool) {
+    let mut ticks = 0;
+    while ticks < budget {
+        ticks += machine.step();
+        match goal.next(machine) {
+            Next::Go => {}
+            Next::Done => return (RunResult { ticks, stop: None }, true),
+            Next::Breakpoint => {
+                let stop = Some(StopReason::Breakpoint(machine.cpu.pc));
+                return (RunResult { ticks, stop }, true);
+            }
+        }
+    }
+    (RunResult { ticks, stop: None }, false)
 }
 
 /// The host's local date and time (its time zone, daylight saving included).

@@ -183,6 +183,18 @@ impl Emulator {
         self.runner.step_within(addresses);
     }
 
+    /// Like `step_within`, but the routines called run until they return.
+    pub fn step_over(&mut self, addresses: Vec<u16>) {
+        self.baseline = Some(self.runner.sync());
+        self.runner.step_over(addresses);
+    }
+
+    /// Runs until the current routine returns.
+    pub fn step_out(&mut self) {
+        self.baseline = Some(self.runner.sync());
+        self.runner.step_out();
+    }
+
     /// Restarts the machine from its image, paused.
     pub fn reset(&mut self) {
         self.runner.power_cycle();
