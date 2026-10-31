@@ -30,6 +30,10 @@ pub struct Document {
     pub focus: bool,
     /// Highlighted layout of `text`, keyed by a hash of the text and the style.
     pub layout_cache: Option<(u64, LayoutJob)>,
+    /// Characters taken out by the last save (blank lines emptied), as
+    /// (position, count) in the text before: the editor moves its cursor
+    /// accordingly when it is next drawn.
+    pub emptied: Option<Vec<(usize, usize)>>,
 }
 
 impl Document {
@@ -46,6 +50,7 @@ impl Document {
             select: None,
             focus: false,
             layout_cache: None,
+            emptied: None,
         })
     }
 
@@ -60,7 +65,14 @@ impl Document {
         self.text != self.saved
     }
 
+    /// Writes the file, after emptying its lines that hold only spaces and
+    /// tabs (the lines stay).
     pub fn save(&mut self) -> io::Result<()> {
+        let (text, removed) = empty_blank_lines(&self.text);
+        if !removed.is_empty() {
+            self.text = text;
+            self.emptied = Some(removed);
+        }
         std::fs::write(&self.path, &self.text)?;
         self.saved = self.text.clone();
         self.disk_time = modified(&self.path);
@@ -149,8 +161,58 @@ pub fn shift_breakpoints(breakpoints: &mut BTreeSet<u32>, old: &str, new: &str) 
         .collect();
 }
 
+/// The text with its lines that hold only spaces and tabs emptied (a `\r`
+/// before the line break stays), and what was taken out: (position,
+/// count) in characters, in order.
+pub fn empty_blank_lines(text: &str) -> (String, Vec<(usize, usize)>) {
+    let mut out = String::with_capacity(text.len());
+    let mut removed = Vec::new();
+    let mut position = 0;
+    for line in text.split_inclusive('\n') {
+        let content = line.trim_end_matches(['\n', '\r']);
+        let count = content.chars().count();
+        if count > 0 && content.chars().all(|c| c == ' ' || c == '\t') {
+            removed.push((position, count));
+            out.push_str(&line[content.len()..]);
+        } else {
+            out.push_str(line);
+        }
+        position += line.chars().count();
+    }
+    (out, removed)
+}
+
+/// Where a position goes once `removed` (from [`empty_blank_lines`]) is
+/// taken out: one inside a removed part goes to its start.
+pub fn position_after(position: usize, removed: &[(usize, usize)]) -> usize {
+    let mut taken = 0;
+    for &(start, count) in removed {
+        if position >= start + count {
+            taken += count;
+        } else if position > start {
+            taken += position - start;
+        }
+    }
+    position - taken
+}
+
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn blank_lines_are_emptied() {
+        use super::{empty_blank_lines, position_after};
+        let text = "a\n  \t\nb \n\t\r\n\n  ";
+        let (out, removed) = empty_blank_lines(text);
+        // Lines with text keep their spaces; "\r" and empty lines stay.
+        assert_eq!(out, "a\n\nb \n\r\n\n");
+        assert_eq!(removed, [(2, 3), (9, 1), (13, 2)]);
+        assert_eq!(position_after(1, &removed), 1); // before
+        assert_eq!(position_after(4, &removed), 2); // inside: line start
+        assert_eq!(position_after(6, &removed), 3); // after: 3 fewer
+        assert_eq!(position_after(15, &removed), 9); // the end
+        assert_eq!(empty_blank_lines("x\ny").1, []);
+    }
+
     use super::*;
 
     fn shifted(lines: &[u32], old: &str, new: &str) -> Vec<u32> {

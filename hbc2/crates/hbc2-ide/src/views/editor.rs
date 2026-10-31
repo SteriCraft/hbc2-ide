@@ -72,8 +72,22 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
         scroll_gently,
         select,
         focus,
+        emptied,
         ..
     } = doc;
+
+    // Saving emptied blank lines: the cursor keeps its place in the text.
+    if let Some(removed) = emptied.take()
+        && let Some(mut state) = TextEditState::load(ui.ctx(), editor_id)
+        && let Some(range) = state.cursor.char_range()
+    {
+        let moved = |c: CCursor| CCursor::new(crate::document::position_after(c.index.0, &removed));
+        state.cursor.set_char_range(Some(CCursorRange::two(
+            moved(range.secondary),
+            moved(range.primary),
+        )));
+        state.store(ui.ctx(), editor_id);
+    }
 
     egui::ScrollArea::both()
         .id_salt(("editor-scroll", editor_id))
