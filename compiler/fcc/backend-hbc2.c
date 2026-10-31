@@ -279,6 +279,9 @@ struct node *gen_rewrite_node(struct node *n)
 			return r;
 		}
 	}
+	/* c ? a : b only jumps on c: like an if, only the flags are needed */
+	if (op == T_QUESTION && l->op == T_BOOL)
+		l->flags |= CCONLY;
 	/* Call of a function by name */
 	if (op == T_FUNCCALL && r->op == T_NAME && PTR(r->type) == 1) {
 		n->op = T_CALLNAME;
@@ -1319,6 +1322,69 @@ static void gen_compare(struct node *n)
 	}
 }
 
+/* "x & k" as a condition, k with one non-zero byte (0x8000, 0x80...):
+   only that byte of x is loaded and tested. Sets cc. */
+static unsigned test_bits(struct node *n)
+{
+	struct node *x = n->left;
+	struct node *k = n->right;
+	struct opbyte o;
+	unsigned long mask, v;
+	unsigned s, i, byte = 0, count = 0;
+	const char *reg = "b";
+
+	if (n->op != T_AND || !simple_size(n->type))
+		return 0;
+	if (k->op != T_CONSTANT) {
+		x = n->right;
+		k = n->left;
+	}
+	s = get_size(n->type);
+	if (k->op != T_CONSTANT || !simple_size(x->type) || get_size(x->type) != s)
+		return 0;
+	mask = (s == 4) ? 0xFFFFFFFFUL : (1UL << (8 * s)) - 1;
+	v = k->value & mask;
+	for (i = 0; i < s; i++) {
+		if (BYTE(v >> (8 * (s - 1 - i)))) {
+			byte = i;
+			count++;
+		}
+	}
+	if (count != 1)
+		return 0;
+	v = BYTE(v >> (8 * (s - 1 - byte)));
+	if (operand_ok(x, s)) {
+		operand_byte(x, s, byte, &o);
+		if (o.is_const)
+			return 0;	/* the high byte of a zero extended char */
+		load_byte(reg, &o);
+	} else {
+		codegen_lr(x);
+		reg = regs_of(s)[byte];
+	}
+	if (v == 0xFF)
+		printf("\tor %s, 0\n", reg);
+	else
+		printf("\tand %s, %lu\n", reg, v);
+	cc = CC_NZ;
+	cc_reg = reg;
+	return 1;
+}
+
+/* x & k, (x & k) != 0, (x & k) == 0 with test_bits: sets cc */
+static unsigned bit_cond(struct node *n)
+{
+	if (test_bits(n))
+		return 1;
+	if ((n->op == T_BANGEQ || n->op == T_EQEQ) && n->right->op == T_CONSTANT &&
+	    n->right->value == 0 && test_bits(n->left)) {
+		if (n->op == T_EQEQ)
+			cc = cc_invert(cc);
+		return 1;
+	}
+	return 0;
+}
+
 /* Evaluates n as a condition: leaves cc set */
 static void cond(struct node *n)
 {
@@ -1339,6 +1405,8 @@ static void cond(struct node *n)
 			error("cond chain");
 		return;
 	}
+	if (bit_cond(n))
+		return;
 	if (is_compare(n->op) && simple_size(n->left->type)) {
 		gen_compare(n);
 		return;
@@ -1642,6 +1710,91 @@ static unsigned direct_store(struct node *n)
  *	constant: done in memory
  */
 
+/* m = the variable changed by the assignment operator n (size s): a
+   local, a global, a local static, or through a pointer when allow_ptr
+   ([x:y] is loaded then). 0 when it can't be done in memory. */
+static unsigned eq_target(struct node *n, unsigned s, unsigned allow_ptr, struct node *m)
+{
+	struct node *l = n->left;
+	memset(m, 0, sizeof(*m));
+	m->type = n->type;
+	m->value = l->value;
+	switch (l->op) {
+	case T_LOCAL:
+		m->op = T_LREF;
+		break;
+	case T_ARGUMENT:
+		m->op = T_LREF;
+		m->value += argbase + frame_len;
+		break;
+	case T_NAME:
+		m->op = T_NREF;
+		m->snum = l->snum;
+		break;
+	case T_LABEL:
+		m->op = T_LBREF;
+		m->val2 = l->val2;
+		break;
+	default:
+		m->op = T_XREF;
+		break;
+	}
+	if (m->op == T_LREF && m->value + sp + s - 1 > 255)
+		return 0;
+	if (m->op == T_XREF) {
+		unsigned off;
+		struct node *base;
+		if (!allow_ptr)
+			return 0;
+		base = ptr_split(l, s, &off);
+		ptr_load(base);
+		m->value = off;
+	}
+	return 1;
+}
+
+/* x <<= k, x >>= k (k constant): load, shift, store */
+static unsigned direct_shifteq(struct node *n)
+{
+	struct node *r = n->right;
+	struct node m;
+	const char **w;
+	char buf[64];
+	unsigned s, k, i;
+
+	if (r->op != T_CONSTANT || !simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	if (r->value >= 8 * s)
+		return 0;
+	k = r->value;
+	if (s == 4 && k % 8 && !(k == 1 && n->op == T_SHLEQ))
+		return 0;
+	if (!eq_target(n, s, 1, &m))
+		return 0;
+	w = regs_of(s);
+	for (i = 0; i < s; i++) {
+		mem_text(buf, sizeof(buf), &m, i);
+		printf("\tlod %s, %s\n", w[i], buf);
+	}
+	if (s == 1) {
+		const char *op = n->op == T_SHLEQ ? "shl" : is_signed(n->type) ? "asr" : "shr";
+		for (i = 0; i < k; i++)
+			printf("\t%s b\n", op);
+	} else if (k) {
+		if (n->op == T_SHLEQ)
+			shift_left(s, k);
+		else
+			shift_right(s, k, is_signed(n->type));
+	}
+	for (i = 0; i < s; i++) {
+		mem_text(buf, sizeof(buf), &m, i);
+		printf("\tstr %s, %s\n", buf, w[i]);
+	}
+	finish(s);
+	return 1;
+}
+
 static unsigned direct_eqop(struct node *n)
 {
 	struct node *l = n->left;
@@ -1685,40 +1838,9 @@ static unsigned direct_eqop(struct node *n)
 	if (r->op != T_CONSTANT && (!simple_size(r->type) || get_size(r->type) != s))
 		return 0;
 
-	memset(&m, 0, sizeof(m));
-	m.type = n->type;
-	m.value = l->value;
-	switch (l->op) {
-	case T_LOCAL:
-		m.op = T_LREF;
-		break;
-	case T_ARGUMENT:
-		m.op = T_LREF;
-		m.value += argbase + frame_len;
-		break;
-	case T_NAME:
-		m.op = T_NREF;
-		m.snum = l->snum;
-		break;
-	case T_LABEL:
-		m.op = T_LBREF;
-		m.val2 = l->val2;
-		break;
-	default:
-		m.op = T_XREF;
-		break;
-	}
-	if (m.op == T_LREF && m.value + sp + s - 1 > 255)
+	if (!eq_target(n, s, r->op == T_CONSTANT, &m))
 		return 0;
-	if (m.op == T_XREF) {
-		unsigned off;
-		struct node *base;
-		if (r->op != T_CONSTANT)
-			return 0;
-		base = ptr_split(l, s, &off);
-		ptr_load(base);
-		m.value = off;
-	} else if (r->op != T_CONSTANT)
+	if (m.op != T_XREF && r->op != T_CONSTANT)
 		codegen_lr(r);
 
 	if (r->op != T_CONSTANT) {
@@ -1835,8 +1957,14 @@ unsigned gen_shortcut(struct node *n)
 		return 1;
 	case T_BOOL:
 		/* A condition: only the flags are needed */
-		if (!(n->flags & CCONLY))
-			return 0;
+		if (!(n->flags & CCONLY)) {
+			/* a value: (x & 0x8000) as 0 / 1 */
+			if (!bit_cond(r))
+				return 0;
+			cc_value();
+			n->flags |= ISBOOL;
+			return 1;
+		}
 		cond(r);
 		if (n->flags & CCFIXED)
 			cc_fix();
@@ -1851,7 +1979,8 @@ unsigned gen_shortcut(struct node *n)
 	case T_GTEQ:
 		if (!simple_size(l->type))
 			return 0;
-		gen_compare(n);
+		if (!bit_cond(n))
+			gen_compare(n);
 		cc_value();
 		n->flags |= ISBOOL;
 		return 1;
@@ -1881,6 +2010,9 @@ unsigned gen_shortcut(struct node *n)
 	case T_OREQ:
 	case T_HATEQ:
 		return direct_eqop(n);
+	case T_SHLEQ:
+	case T_SHREQ:
+		return direct_shifteq(n);
 	case T_DEREF:
 		return direct_deref(n);
 	case T_EQ:
