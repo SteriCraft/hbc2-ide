@@ -26,3 +26,6 @@ compiler/build/
 
 # swap file left by the Fuzix preprocessor (it unlinks it while open: fails on Windows)
 .cppswap
+
+# Claude Code local settings
+.claude/
