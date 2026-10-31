@@ -64,6 +64,11 @@ int compares(void)
         return 26;
     if (memcmp("\xff", "\x01", 1) <= 0 || memcmp("x", "y", 0))
         return 27;
+    /* the difference of the first different chars */
+    if (strcmp("a", "c") != -2 || strcmp("\xff", "") != 255 || strncmp("ab", "a", 5) != 'b')
+        return 28;
+    if (memcmp("\x01", "\xff", 1) != -254)
+        return 29;
     return 0;
 }
 
@@ -112,6 +117,13 @@ int blocks(void)
     memcpy(a, b, 0);
     if (a[0] != 1)
         return 45;
+    /* dest after src, not overlapping: dest = src + n, and further */
+    for (i = 0; i < 400; i++)
+        a[i] = i;
+    if (memmove(a + 10, a, 10) != a + 10 || a[10] != 0 || a[19] != 9 || a[20] != 20)
+        return 46;
+    if (memmove(a + 200, a + 50, 30) != a + 200 || a[200] != 50 || a[229] != 79 || a[230] != (char)230)
+        return 47;
     return 0;
 }
 

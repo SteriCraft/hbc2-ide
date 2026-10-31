@@ -12,7 +12,7 @@ definition is used everywhere, the library's left out.
 | `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard | `asm/hbc2.has` (wrappers) |
 | `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `src/stdio.c`, `src/printf.c` |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
-| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr memcpy memmove memset memcmp memchr` | `src/string.c` |
+| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr memcpy memmove memset memcmp memchr` | `asm/string.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
 | `stdlib.h` | `exit` | `asm/stdlib.has` |
 
@@ -42,10 +42,11 @@ there). No floating point.
 
 ## Size
 
-In all, about 9.3 KB of code and data: the drivers and wrappers ≈ 3.9 KB
-(terminal 1.6 KB, screen 1.3 KB, wrappers 0.7 KB), the compiled C files
-≈ 5.5 KB (`string.c` 2.7 KB, `printf.c` 2.5 KB, `stdio.c` 0.3 KB). The
-runtime helpers add ≈ 3.9 KB more.
+In all, about 7.7 KB of code and data: the drivers and wrappers ≈ 5 KB
+(terminal 1.6 KB, screen 1.3 KB, `string.h` 1.1 KB, wrappers 0.7 KB), the
+compiled C files ≈ 2.8 KB (`printf.c` 2.5 KB, `stdio.c` 0.3 KB). The
+runtime helpers add ≈ 3.9 KB more. `string.h` was in C until 2026-10-31
+(2.7 KB, 2-4 times slower).
 
 The assembler leaves out what a program can't reach (assembly manual,
 "Leaving out unused code"), so a program carries only what it uses: an

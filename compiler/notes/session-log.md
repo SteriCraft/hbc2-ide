@@ -2,6 +2,7 @@
 
 (Moved out of ROADMAP.md 2026-10-31. Read only when working on this part.)
 
+- 2026-10-31: console windows hidden for the compiler tools (CREATE_NO_WINDOW), pushed. Step 12 (user: "all backend speed-ups + string.h"): bit tests, <<= >>= in place, reload removal pass with volatile markers (copt store-load rules removed), string.h in asm. All tests pass; committed and pushed.
 - 2026-10-31: step 11 (linker) done in one session, 11a-11e: strip pass, `.keep`, report (`--map`, IDE message), on for C builds, `.library`. Two choices made on the way (in LINKER.md "How it works"): `_start`'s block is not kept whole; a library piece falling into a replaced one is not an error. All tests pass, clippy clean; committed.
 - 2026-10-31 (after step 10): linker planned with the user (decision 15 replaced: removal pass in hbc2-asm, no object files; asm projects off; library names give way). `LINKER.md` written; ROADMAP.md split into `notes/*.md`.
 - 2026-10-31: step 10 (plan + choices told to the user first, decision 16). 10a-10e done, then C line stepping and background C builds (user's request). All workspace tests pass, clippy clean. Committed and pushed (093ec55).

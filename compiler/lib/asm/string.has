@@ -1,0 +1,364 @@
+; string.h functions written in assembly (they replace src/string.c: about
+; half the size, 2-4 times faster). C convention (ABI.md): arguments at
+; [sp + 2] on, most significant byte first, result in [a:b], every
+; register may change. Characters are compared as unsigned char.
+;
+; In the loops: [x:y] = the first pointer (dest), [i:j] = the second (src),
+; [c:d] = the count. A count is tested by taking 1 away first: a borrow
+; (C) means it was 0.
+
+; size_t strlen(const char *s)
+_strlen:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+lib_strlen_loop:
+    lod a, [x:y]
+    or a, 0
+    jmz lib_strlen_end
+    add y, 1
+    adc x, 0
+    jmp lib_strlen_loop
+lib_strlen_end:                 ; [a:b] = end - s
+    mov b, y
+    sub b, [sp + 3]
+    mov a, x
+    sbb a, [sp + 2]
+    ret
+
+; char *strcpy(char *dest, const char *src)
+_strcpy:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+lib_strcpy_loop:                ; copies up to the 0, included
+    lod a, [i:j]
+    str [x:y], a
+    or a, 0
+    jmz lib_str_dest
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    jmp lib_strcpy_loop
+
+; Returns dest (the first argument)
+lib_str_dest:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    ret
+
+; char *strncpy(char *dest, const char *src, size_t n): at most n
+; characters; the rest of the n is filled with zeros.
+_strncpy:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_strncpy_copy:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_dest
+    lod a, [i:j]
+    str [x:y], a
+    add y, 1
+    adc x, 0
+    or a, 0
+    jmz lib_strncpy_pad
+    add j, 1
+    adc i, 0
+    jmp lib_strncpy_copy
+lib_strncpy_pad:                ; a = 0
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_dest
+    str [x:y], a
+    add y, 1
+    adc x, 0
+    jmp lib_strncpy_pad
+
+; [x:y] = the end (the 0) of the string at [sp + 2] (called: + 2)
+lib_str_end:
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+lib_str_end_loop:
+    lod a, [x:y]
+    or a, 0
+    jmz lib_str_end_done
+    add y, 1
+    adc x, 0
+    jmp lib_str_end_loop
+lib_str_end_done:
+    ret
+
+; char *strcat(char *dest, const char *src)
+_strcat:
+    cal lib_str_end
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    jmp lib_strcpy_loop
+
+; char *strncat(char *dest, const char *src, size_t n): appends at most
+; n characters, then a 0.
+_strncat:
+    cal lib_str_end
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_strncat_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_strncat_end
+    lod a, [i:j]
+    or a, 0
+    jmz lib_strncat_end
+    str [x:y], a
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    jmp lib_strncat_loop
+lib_strncat_end:
+    mov a, 0
+    str [x:y], a
+    jmp lib_str_dest
+
+; int strcmp(const char *a, const char *b)
+_strcmp:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+lib_strcmp_loop:
+    lod a, [x:y]
+    lod b, [i:j]
+    cmp a, b
+    jme lib_strcmp_same
+    jmp lib_str_diff
+lib_strcmp_same:
+    or a, 0
+    jmz lib_str_zero
+    add y, 1
+    adc x, 0
+    add j, 1
+    adc i, 0
+    jmp lib_strcmp_loop
+
+; [a:b] = a - b, the two bytes as ints (-255 to 255)
+lib_str_diff:
+    sub a, b
+    mov b, a
+    mov a, 0
+    sbb a, 0
+    ret
+
+lib_str_zero:
+    mov a, 0
+    mov b, 0
+    ret
+
+; int strncmp(const char *a, const char *b, size_t n)
+_strncmp:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_strncmp_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_zero
+    lod a, [x:y]
+    lod b, [i:j]
+    cmp a, b
+    jme lib_strncmp_same
+    jmp lib_str_diff
+lib_strncmp_same:
+    or a, 0
+    jmz lib_str_zero
+    add y, 1
+    adc x, 0
+    add j, 1
+    adc i, 0
+    jmp lib_strncmp_loop
+
+; char *strchr(const char *s, int c): the terminating 0 counts,
+; strchr(s, 0) is the end of s.
+_strchr:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod c, [sp + 5]
+lib_strchr_loop:
+    lod a, [x:y]
+    cmp a, c
+    jme lib_str_found
+    or a, 0
+    jmz lib_str_null
+    add y, 1
+    adc x, 0
+    jmp lib_strchr_loop
+
+; Returns [x:y]
+lib_str_found:
+    mov a, x
+    mov b, y
+    ret
+
+lib_str_null:
+    mov a, 0
+    mov b, 0
+    ret
+
+; char *strrchr(const char *s, int c): the last one ([i:j], NULL at first)
+_strrchr:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod c, [sp + 5]
+    mov i, 0
+    mov j, 0
+lib_strrchr_loop:
+    lod a, [x:y]
+    cmp a, c
+    jme lib_strrchr_hit
+lib_strrchr_next:
+    or a, 0
+    jmz lib_strrchr_end
+    add y, 1
+    adc x, 0
+    jmp lib_strrchr_loop
+lib_strrchr_hit:
+    mov i, x
+    mov j, y
+    jmp lib_strrchr_next
+lib_strrchr_end:
+    mov a, i
+    mov b, j
+    ret
+
+; void *memcpy(void *dest, const void *src, size_t n)
+_memcpy:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_memcpy_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_dest
+    lod a, [i:j]
+    str [x:y], a
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    jmp lib_memcpy_loop
+
+; void *memmove(void *dest, const void *src, size_t n): like memcpy, also
+; when the areas overlap. Copies from the end when dest is inside
+; src .. src + n.
+_memmove:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    mov b, j                    ; C = src < dest
+    sub b, y
+    mov a, i
+    sbb a, x
+    jmc lib_memmove_after
+    jmp _memcpy
+lib_memmove_after:
+    lod c, [sp + 6]             ; [c:d] = src + n
+    lod d, [sp + 7]
+    add d, j
+    adc c, i
+    mov b, y                    ; C = dest < src + n: they overlap
+    sub b, d
+    mov a, x
+    sbb a, c
+    jmc lib_memmove_back
+    jmp _memcpy
+lib_memmove_back:               ; n > 0 here
+    mov i, c                    ; [i:j] = src + n
+    mov j, d
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+    add y, d                    ; [x:y] = dest + n
+    adc x, c
+lib_memmove_loop:
+    sub y, 1
+    sbb x, 0
+    sub j, 1
+    sbb i, 0
+    lod a, [i:j]
+    str [x:y], a
+    sub d, 1
+    sbb c, 0
+    mov a, c
+    or a, d
+    jmz lib_str_dest
+    jmp lib_memmove_loop
+
+; void *memset(void *s, int c, size_t n)
+_memset:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod b, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_memset_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_dest
+    str [x:y], b
+    add y, 1
+    adc x, 0
+    jmp lib_memset_loop
+
+; int memcmp(const void *a, const void *b, size_t n)
+_memcmp:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_memcmp_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_zero
+    lod a, [x:y]
+    lod b, [i:j]
+    cmp a, b
+    jme lib_memcmp_same
+    jmp lib_str_diff
+lib_memcmp_same:
+    add y, 1
+    adc x, 0
+    add j, 1
+    adc i, 0
+    jmp lib_memcmp_loop
+
+; void *memchr(const void *s, int c, size_t n)
+_memchr:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod b, [sp + 5]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+lib_memchr_loop:
+    sub d, 1
+    sbb c, 0
+    jmc lib_str_null
+    lod a, [x:y]
+    cmp a, b
+    jme lib_str_found
+    add y, 1
+    adc x, 0
+    jmp lib_memchr_loop

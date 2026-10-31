@@ -11,3 +11,4 @@
 .include "asm/hbc2.has"
 .include "asm/stdlib.has"
 .include "asm/stdio.has"
+.include "asm/string.has"

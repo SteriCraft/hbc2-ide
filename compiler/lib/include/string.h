@@ -1,4 +1,4 @@
-/* string.h - HBC-2 C library (code in compiler/lib/src/string.c) */
+/* string.h - HBC-2 C library (code in compiler/lib/asm/string.has) */
 
 #ifndef __STRING_H
 #define __STRING_H

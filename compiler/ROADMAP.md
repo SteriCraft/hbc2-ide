@@ -6,9 +6,9 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-11 done (step 11 = linker, 2026-10-31, details in `LINKER.md`). 58 C programs pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
-- **Next:** nothing planned. Ask the user what comes next; candidates: the backend work below, string.h in asm, the per-project removal option for asm projects (`LINKER.md` "Later"), EEPROM, float. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
-- Possible later backend work (bigger gains than copt): keep track of what [a:b] / [x:y] hold to drop reloads across statements; `x << 1` assignment forms inline (`crc <<= 1` calls `__shleq`); `x & 0x8000` tests the top byte only. string.h in asm would save ≈ 1.8 KB (offered to the user).
+- **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 62 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
+- **Next:** nothing planned. Ask the user what comes next; candidates: the per-project removal option for asm projects (`LINKER.md` "Later"), EEPROM, float, the backend ideas below. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
+- Possible later backend work: carry what the registers hold across loop labels (a dataflow version of reloads.rs; looked at bench.c's loops: the paths into a loop label rarely agree, small gain expected); `x *= k` / `x /= k` in place like `<<=`.
 
 ## Notes files (read only when needed)
 
@@ -26,6 +26,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 | `notes/multifile.md` | build_program, static renaming, error messages |
 | `notes/ide.md` | diagnostics, line markers, asm→C line map, line step, background build |
 | `notes/misc.md` | CPU facts, FCC quirks, stack/frame tricks, math library location |
+| `notes/reloads.md` | step 12: reload removal pass (reloads.rs), volatile markers |
 | `notes/session-log.md` | what each session did |
 
 ## Decisions (agreed 2026-10-30)
@@ -85,7 +86,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 - [x] 8. Library: `hbc2.h` (monitor/keyboard/RTC wrappers, in/out), `putchar`/`puts` on `term_putc`, `string.h`, small `printf`.
   - [x] 8a. `hbc2.h` + `asm/hbc2.has` wrappers, driver copies in `lib/asm`, device detection in crt0 (`runtime/devices.has`), `exit` (stdlib.h), `-I lib/include` in both drivers, `build_library()`, tests/hardware.c (+ `.screen` / `.keys` support in programs.rs, all tests now run with monitor + RTC + keyboard).
   - [x] 8b. stdio.h: `putchar`/`puts` in asm (`asm/stdio.has`, first output clears the screen: `lib_term_start`), `getchar`/`gets` in C (`src/stdio.c`, line-buffered on term_readline). tests/stdio.c.
-  - [x] 8c. string.h (14 functions, in C: `src/string.c`) + stddef.h. tests/strings.c (mutation-checked). Possible later: memcpy/memset in asm if they show up as slow.
+  - [x] 8c. string.h (14 functions, in C: `src/string.c`; in asm since step 12: `asm/string.has`) + stddef.h. tests/strings.c (mutation-checked).
   - [x] 8d. printf (decision 14, `src/printf.c`) + stdarg.h. tests/printf.c (mutation-checked).
 - [x] 9. Multi-file builds: `hbc2_cc::build_program(sources, library, dir)` (`.c` + `.has`), static renaming in `compile()` (both drivers), `-I` source folder, C-level error messages, library statics (`next`, `field`). Tests: `tests/multi/files`, `tests/build.rs` (mutation-checked).
 - [x] 10. IDE (decision 16, see "IDE integration (step 10)" below):
@@ -94,6 +95,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
   - [x] 10c. C projects in the IDE (project language, template `hbc2/templates/main.c`, Build saves then compiles into `<project>/.build`, RAM only).
   - [x] 10d. C highlighting; compiled files and the compiler's own files open read-only.
   - [x] 10e. asm→C line map (`;#line n` markers through FCC, `lines.rs` remaps the Program).
+- [x] 12. Speed-ups (user, 2026-10-31): one-byte bit tests (`x & 0x8000`) in conditions / ?: / 0-1 values; `<<=` `>>=` by a constant in place; reload removal after copt (`hbc2-cc/src/reloads.rs`, volatile-aware; copt's store-then-load rules removed); string.h in asm (`lib/asm/string.has`, 2.7 KB → 1.1 KB). tests/bits.c, tests/reloads.c, build.rs volatile_reloads; all mutation-checked. See notes/reloads.md.
 - [x] 11. Linker (decision 15) — see `LINKER.md`: `Options::strip` in hbc2-asm (on for C builds), `.keep`, `.library` (program names replace the library's), `hbc2 cc --map`.
 
 Later: EEPROM, float.
