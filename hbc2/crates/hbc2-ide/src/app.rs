@@ -1475,6 +1475,8 @@ impl State {
                 Target::Ram => "RAM",
                 Target::Eeprom => "EEPROM",
             };
+            // Only the last build stays in the console.
+            self.console.clear();
             self.console
                 .info(format!("Building {name} for {target_name}…"));
             let (send, result) = std::sync::mpsc::channel();
@@ -1501,6 +1503,8 @@ impl State {
             Target::Ram => "RAM",
             Target::Eeprom => "EEPROM",
         };
+        // Only the last build stays in the console.
+        self.console.clear();
         self.console
             .info(format!("Assembling {name} for {target_name}…"));
         let started = Instant::now();
@@ -1555,13 +1559,14 @@ impl State {
                 self.console.push(
                     Level::Success,
                     format!(
-                        "{} in {:.0} ms: {} bytes used{}, {} warning(s). Loaded, paused at power-on.",
+                        "{} in {:.0} ms: {} bytes used ({:.1}% of the {}), {} warning(s). Loaded, paused at power-on.",
                         if c { "Built" } else { "Assembled" },
                         elapsed.as_secs_f64() * 1000.0,
                         program.bytes_used,
-                        match program.bytes_removed() {
-                            0 => String::new(),
-                            n => format!(" ({n} unused bytes left out)"),
+                        program.bytes_used as f64 * 100.0 / program.target.memory_size() as f64,
+                        match program.target {
+                            hbc2_asm::Target::Ram => "RAM",
+                            hbc2_asm::Target::Eeprom => "EEPROM",
                         },
                         warnings.len()
                     ),
