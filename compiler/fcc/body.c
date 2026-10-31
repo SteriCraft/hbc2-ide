@@ -347,6 +347,8 @@ void statement_block(unsigned need_brack)
 	while (token != T_RCURLY) {
 		/* statements */
 		statement_block(0);
+		/* HBC-2: C99, declarations may follow statements */
+		declaration_block();
 	}
 	pop_local_symbols(ltop);
 	/* HBC-2: the end of the function (its return) is on the line of } */

@@ -50,6 +50,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
    - Every register except SP may be changed by a function (caller-saved). No register variables: dropped (user, 2026-10-31); `register` stays accepted and ignored.
 5. **Asm library from C:** compiler helpers get their own entry points matching what the backend emits (built from the math library code); user-facing drivers (screen, terminal, keyboard) keep their register interface and get thin C wrappers.
 6. **Types:** `char` unsigned by default (already FCC's default: `__castuc_`). `int`/`short` 16, `long` 32, pointers 16. No `float` for now: the compiler must STOP with a clear error at the C line (plan: `error()` in `target_sizeof` of `target-hbc2.c` for FLOAT/DOUBLE).
+6b. **C99 declarations after statements (user, 2026-10-31):** allowed in any `{ }` block (`declaration_block()` called again in the block loop of `fcc/body.c`). `for (int i = ...)` is NOT supported. tests/c99decl.c (mutation-checked).
 7. **Frames > 255 bytes:** compute the address with `rsp` (see notes), no compile error.
 8. **EEPROM (step 13, user 2026-10-31):** `eeprom_read/write/load/save` in hbc2.h (asm in `lib/asm/hbc2.has`), and an EEPROM target for C: `runtime/boot.has` replaces crt0's start (see ABI.md 8 and `notes/library.md`).
 9. **Interrupt handlers:** hand-written asm only (they may call C functions). No compiler support.
