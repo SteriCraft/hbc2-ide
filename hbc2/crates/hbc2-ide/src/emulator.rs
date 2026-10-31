@@ -183,6 +183,7 @@ impl Emulator {
         self.runner.step_within(addresses);
     }
 
+    /// Restarts the machine from its image, paused.
     pub fn reset(&mut self) {
         self.runner.power_cycle();
         self.baseline = None;

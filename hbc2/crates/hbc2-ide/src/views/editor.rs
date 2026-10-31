@@ -7,12 +7,14 @@ use std::path::Path;
 use std::sync::Arc;
 
 use eframe::egui::text::{CCursor, CCursorRange};
+use eframe::egui::text_edit::TextEditState;
 use eframe::egui::{
-    self, Align, Align2, Color32, FontId, Frame, Galley, Id, Margin, Rect, Sense, Shape, Stroke,
-    TextEdit, pos2, vec2,
+    self, Align, Align2, Color32, Event, FontId, Frame, Galley, Id, Key, Margin, Modifiers, Rect,
+    Sense, Shape, Stroke, TextEdit, pos2, vec2,
 };
 
 use crate::document::{Document, shift_breakpoints};
+use crate::editing;
 use crate::find::{self, Options};
 use crate::highlight;
 
@@ -100,6 +102,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .max(1.0) as usize;
             let focused = ui.memory(|m| m.has_focus(editor_id));
             let before = focused.then(|| text.clone());
+            let auto_edited = focused && !marks.read_only && auto_edit(ui, editor_id, text);
             // A `&str` buffer can be selected and copied, not edited.
             let mut shown: &str;
             let buffer: &mut dyn egui::TextBuffer = if marks.read_only {
@@ -130,7 +133,15 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             if output.response.dragged() {
                 drag_scroll(ui);
             }
-            if output.response.changed() {
+            if auto_edited {
+                // The text box did not see the change: bring the cursor into view.
+                if let Some(range) = output.state.cursor.char_range() {
+                    let at = range.primary.index.0;
+                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at));
+                    ui.scroll_to_rect(rect.expand2(vec2(8.0, 0.0)), None);
+                }
+            }
+            if output.response.changed() || auto_edited {
                 result.changed = true;
                 if let Some(before) = before {
                     let count = marks.breakpoints.len();
@@ -314,6 +325,101 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
         });
     result
+}
+
+/// Keys the editor handles before the text box (see [`editing`]): Tab on
+/// several lines, Shift+Tab, brackets, Backspace between brackets, Enter.
+/// They are taken from the input in the order they came, up to the first
+/// key left to the text box. Returns whether the text changed.
+fn auto_edit(ui: &egui::Ui, id: Id, text: &mut String) -> bool {
+    let Some(mut state) = TextEditState::load(ui.ctx(), id) else {
+        return false;
+    };
+    let Some(range) = state.cursor.char_range() else {
+        return false;
+    };
+    let (mut anchor, mut cursor) = (range.secondary.index.0, range.primary.index.0);
+    let events = ui.input(|i| i.events.clone());
+    let mut taken = Vec::new();
+    let mut changed = false;
+    for (index, event) in events.iter().enumerate() {
+        let edit = match event {
+            Event::Key {
+                key,
+                pressed: true,
+                modifiers,
+                ..
+            } => match (key, modifiers) {
+                (Key::Tab, m) if m.is_none() && editing::spans_lines(text, anchor, cursor) => {
+                    Some(editing::indent(text, anchor, cursor, false))
+                }
+                (Key::Tab, m) if m.matches_exact(Modifiers::SHIFT) => {
+                    Some(editing::indent(text, anchor, cursor, true))
+                }
+                (Key::Enter, m) if m.is_none() => Some(editing::newline(text, anchor, cursor)),
+                (Key::Backspace, m) if m.is_none() => editing::backspace(text, anchor, cursor),
+                // Keys the text box acts on: editing, moving the cursor, Ctrl
+                // shortcuts (AltGr is Ctrl+Alt on Windows: it types characters).
+                (key, m) if edits_or_moves(*key) || (m.command && !m.alt) => None,
+                // A character key: its character comes in a Text event.
+                _ => continue,
+            },
+            Event::Text(typed) => {
+                let mut typed_chars = typed.chars();
+                match (typed_chars.next(), typed_chars.next()) {
+                    (Some(c), None) => editing::open_bracket(text, anchor, cursor, c)
+                        .or_else(|| editing::close_bracket(text, anchor, cursor, c))
+                        .or_else(|| editing::close_brace(text, anchor, cursor, c)),
+                    _ => None,
+                }
+            }
+            // Pointer moves, key releases...: no change to the text.
+            Event::Paste(_) | Event::Cut | Event::Ime(_) => None,
+            _ => continue,
+        };
+        let Some(edit) = edit else {
+            break; // the text box handles this one, and the ones after it
+        };
+        taken.push(index);
+        changed |= edit.text != *text;
+        *text = edit.text;
+        (anchor, cursor) = (edit.anchor, edit.cursor);
+    }
+    if taken.is_empty() {
+        return false;
+    }
+    ui.ctx().input_mut(|i| {
+        let mut index = 0;
+        i.events.retain(|_| {
+            index += 1;
+            !taken.contains(&(index - 1))
+        });
+    });
+    state.cursor.set_char_range(Some(CCursorRange::two(
+        CCursor::new(anchor),
+        CCursor::new(cursor),
+    )));
+    state.store(ui.ctx(), id);
+    changed
+}
+
+/// Keys that change the text or move the cursor in the text box.
+fn edits_or_moves(key: Key) -> bool {
+    matches!(
+        key,
+        Key::Backspace
+            | Key::Delete
+            | Key::Enter
+            | Key::Tab
+            | Key::ArrowLeft
+            | Key::ArrowRight
+            | Key::ArrowUp
+            | Key::ArrowDown
+            | Key::Home
+            | Key::End
+            | Key::PageUp
+            | Key::PageDown
+    )
 }
 
 /// While text is selected with the mouse, a pointer past an edge of the

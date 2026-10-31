@@ -207,10 +207,11 @@ fn load_exec_and_power_cycle() {
     runner.exec(|m| m.board.ram.write(0x8000, 0x42));
     assert_eq!(runner.sync().board.ram.read(0x8000), 0x42);
 
-    runner.step(1);
+    runner.run();
     runner.power_cycle();
     let s = runner.sync();
     assert_eq!(s.ticks, 0);
+    assert_eq!(s.state, RunState::Paused, "a restart pauses");
     assert_eq!(s.board.ram.read(0x8000), 0, "RAM image reloaded");
 }
 

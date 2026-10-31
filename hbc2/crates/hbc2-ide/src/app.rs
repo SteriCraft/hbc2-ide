@@ -897,6 +897,7 @@ impl Ide {
                 }
             }
             Action::Reset => {
+                // Paused at the first instruction: no tab opens until a run or a step.
                 state.emulator.reset();
                 state.followed = None;
                 state.console.info("The machine restarted.");
@@ -1427,9 +1428,7 @@ impl State {
             if !self.save(&self.dirty_paths()) {
                 return false;
             }
-            self.console.info(format!(
-                "Building {name}… (in progress, the IDE stays usable)"
-            ));
+            self.console.info(format!("Building {name}…"));
             let (send, result) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
                 let _ = send.send(build_c(&sources, &dir));

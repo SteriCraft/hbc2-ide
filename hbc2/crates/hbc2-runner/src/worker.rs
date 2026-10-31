@@ -166,7 +166,8 @@ impl Worker {
                 }
             }
             Command::PowerCycle => {
-                self.within = None;
+                self.pause();
+                self.stop = None;
                 self.machine.power_on();
                 self.sync_rtc(false);
                 self.forget_copies();

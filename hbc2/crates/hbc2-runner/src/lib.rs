@@ -227,6 +227,7 @@ impl Runner {
         self.send(Command::StepWithin(addresses));
     }
 
+    /// Restarts the machine from its image. The runner pauses.
     pub fn power_cycle(&self) {
         self.send(Command::PowerCycle);
     }
