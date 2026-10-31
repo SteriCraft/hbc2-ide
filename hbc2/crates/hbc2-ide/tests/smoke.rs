@@ -205,6 +205,45 @@ fn assemble_run_and_break() {
 }
 
 #[test]
+fn unused_code_is_left_out_when_asked() {
+    let dir = temp_project("strip");
+    let main = dir.join("main.has");
+    let text = format!(
+        "{PROGRAM}unused:
+    mov a, 1
+    ret
+"
+    );
+    std::fs::write(&main, &text).unwrap();
+    let line = line_of(&text, "mov a, 1");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    let has_line = |h: &Harness| {
+        let build = h.ide.state.build.as_ref().unwrap();
+        assert!(build.ok);
+        build
+            .code_lines
+            .get(&main)
+            .is_some_and(|l| l.contains(&line))
+    };
+
+    h.act(Action::Assemble);
+    assert!(has_line(&h), "kept by default");
+
+    h.act(Action::SetStrip(true));
+    assert!(h.ide.state.is_stale(), "the loaded build no longer matches");
+    h.act(Action::Assemble);
+    assert!(!has_line(&h), "left out");
+    let saved = h.ide.state.project_settings.clone();
+    assert!(saved.strip);
+
+    h.act(Action::SetStrip(false));
+    h.act(Action::Assemble);
+    assert!(has_line(&h), "kept again");
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
 fn the_editor_follows_a_slow_run() {
     let dir = temp_project("slowrun");
     let main = dir.join("main.has");

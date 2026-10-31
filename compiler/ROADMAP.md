@@ -7,7 +7,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 ## Status
 
 - **Phase:** steps 1-12 done (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 62 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 4.8 KB (lib/README.md "Size").
-- **Next:** nothing planned. Ask the user what comes next; candidates: the per-project removal option for asm projects (`LINKER.md` "Later"), EEPROM, float, the backend ideas below. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
+- **Next:** nothing planned. Ask the user what comes next; candidates: EEPROM, float, the backend ideas below. The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 - Possible later backend work: carry what the registers hold across loop labels (a dataflow version of reloads.rs; looked at bench.c's loops: the paths into a loop label rarely agree, small gain expected); `x *= k` / `x /= k` in place like `<<=`.
 
 ## Notes files (read only when needed)

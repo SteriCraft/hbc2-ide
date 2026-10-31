@@ -96,6 +96,9 @@ impl From<TargetSetting> for Target {
 #[serde(default)]
 pub struct ProjectSettings {
     pub target: TargetSetting,
+    /// Assembly projects: leave out the code and data nothing reaches
+    /// (always on for C projects).
+    pub strip: bool,
     pub peripherals: Peripherals,
     /// Breakpoint lines (1-based) of each file.
     pub breakpoints: BTreeMap<PathBuf, BTreeSet<u32>>,
@@ -107,6 +110,7 @@ impl Default for ProjectSettings {
     fn default() -> Self {
         ProjectSettings {
             target: TargetSetting::Ram,
+            strip: false,
             peripherals: Peripherals::default(),
             breakpoints: BTreeMap::new(),
             open_files: Vec::new(),

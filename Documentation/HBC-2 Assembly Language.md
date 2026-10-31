@@ -299,8 +299,11 @@ code or data: keep the top of memory free, or move the stack with `wsp`.
 
 C programs are assembled with this on (the C library and the runtime are
 large, and a program uses a small part of them). Assembly projects keep
-everything: an unused routine may be there on purpose, to call it from the
-debugger.
+everything unless you turn it on: an unused routine may be there on
+purpose, to call it from the debugger. In the IDE: Build menu, "Leave out
+unused code" (saved with the project). On the command line:
+`hbc2 asm main.has --strip`. With it, a project can include a whole library
+(`.include "lib/math/math.has"`) and carry only the routines it calls.
 
 The program is cut into **pieces**: the code from one label up to the next
 label, one `.data` variable, one `.bss` variable. A piece is kept when it is
@@ -322,7 +325,9 @@ surround the kept `.bss` variables.
 A name used but defined nowhere is an error even in a piece that is left
 out: a typo in an unused routine still fails the build.
 
-`hbc2 cc … --map` lists what was kept and what was left out, with sizes.
+`hbc2 cc … --map` (or `hbc2 asm … --strip --map`) lists what was kept and
+what was left out, with sizes. The IDE's build message gives the number of
+bytes left out.
 
 **Known limit.** Code that relies on where an unnamed spot is, past the next
 label (`jmp table + 8` landing after the label that follows `table`), may
@@ -404,7 +409,7 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | `[xy]` | `[x:y]` |
 | operands separated by spaces or commas | operands and `.data` values separated by commas |
 | including a file twice was an error | it is included once |
-| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.keep`, `.library`, leaving out unused code (C builds) |
+| | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.keep`, `.library`, leaving out unused code (C builds; asm projects when asked) |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
 | | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

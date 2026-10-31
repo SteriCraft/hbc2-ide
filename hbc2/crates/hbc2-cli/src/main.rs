@@ -11,8 +11,9 @@ use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
 const USAGE: &str = "\
 usage:
-  hbc2 asm <main.has> [-o out.bin] [--eeprom] [--symbols]
-        assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom)
+  hbc2 asm <main.has> [-o out.bin] [--eeprom] [--strip] [--symbols] [--map]
+        assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom);
+        --strip leaves out unreached code and data
   hbc2 cc <file.c | file.has>... [-o out.bin] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir
@@ -152,8 +153,10 @@ fn input(args: &[String]) -> Result<&str, String> {
 }
 
 /// Assembles a file, printing warnings; errors are returned as one message.
-fn assemble(path: &str, target: Target) -> Result<Program, String> {
-    match hbc2_asm::assemble_file(path, target) {
+/// `strip`: leave out what nothing reaches.
+fn assemble(path: &str, target: Target, strip: bool) -> Result<Program, String> {
+    let options = hbc2_asm::Options { target, strip };
+    match hbc2_asm::assemble_with(Path::new(path), &hbc2_asm::FileSystem, options) {
         Ok(program) => {
             for warning in &program.warnings {
                 eprintln!("{warning}");
@@ -232,7 +235,7 @@ fn asm(args: &[String]) -> Result<(), String> {
     } else {
         Target::Ram
     };
-    let program = assemble(path, target)?;
+    let program = assemble(path, target, has(args, "--strip"))?;
     write_image(&program, path, args)
 }
 
@@ -288,7 +291,7 @@ fn run(args: &[String]) -> Result<(), String> {
     let mut config = MachineConfig::default();
     if let Some(eeprom_path) = option(args, "--eeprom") {
         let image = if is_source(eeprom_path) {
-            assemble(eeprom_path, Target::Eeprom)?.image
+            assemble(eeprom_path, Target::Eeprom, false)?.image
         } else {
             std::fs::read(eeprom_path).map_err(|e| format!("{eeprom_path}: {e}"))?
         };
@@ -298,7 +301,7 @@ fn run(args: &[String]) -> Result<(), String> {
         let program = build_c(args)?;
         (program.image.clone(), Some(program))
     } else if is_source(path) {
-        let program = assemble(path, Target::Ram)?;
+        let program = assemble(path, Target::Ram, false)?;
         (program.image.clone(), Some(program))
     } else {
         (

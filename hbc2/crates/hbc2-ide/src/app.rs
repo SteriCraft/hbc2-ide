@@ -92,6 +92,8 @@ pub enum Action {
     LoadImage,
     SaveEeprom,
     SetTarget(TargetSetting),
+    /// Leave out unused code in an assembly project, or keep everything.
+    SetStrip(bool),
     SetPeripherals(Peripherals),
     SetSpeed(Speed),
     /// Breakpoint lines changed: send the new addresses to the emulator.
@@ -915,6 +917,20 @@ impl Ide {
                         .info(format!("Target: {name}. Assemble (F7) to rebuild."));
                 }
             }
+            Action::SetStrip(strip) => {
+                if state.project_settings.strip != strip {
+                    state.project_settings.strip = strip;
+                    state.edits += 1; // the loaded build no longer matches
+                    let what = if strip {
+                        "Unused code is left out"
+                    } else {
+                        "Unused code is kept"
+                    };
+                    state
+                        .console
+                        .info(format!("{what}. Assemble (F7) to rebuild."));
+                }
+            }
             Action::SetPeripherals(peripherals) => {
                 state.project_settings.peripherals = peripherals;
                 state.emulator.peripherals = peripherals;
@@ -1441,7 +1457,11 @@ impl State {
         self.console
             .info(format!("Assembling {name} for {target_name}…"));
         let started = Instant::now();
-        let result = hbc2_asm::assemble(&entry, &sources, target).map(|p| {
+        let options = hbc2_asm::Options {
+            target,
+            strip: self.project_settings.strip,
+        };
+        let result = hbc2_asm::assemble_with(&entry, &sources, options).map(|p| {
             let warnings = p.warnings.clone();
             (p, warnings)
         });

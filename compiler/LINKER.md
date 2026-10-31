@@ -16,7 +16,7 @@ Continue at **Next**, tick the boxes, and add notes under "How it works" as the 
 - **Roots:** `_start`, every block or `.data` at a fixed address (the interrupt vectors at $0xFE00 in `runtime/devices.has`), names listed with the new `.keep name` directive (code reached only through a computed address).
 - `__bss_start` / `__bss_end` are always defined (crt0 uses them); the `.bss` area holds only the kept variables.
 - **Undefined names** are still reported in the whole program, removed pieces included, before removal: a typo in an unused function fails the build (like a C compiler).
-- **On for C builds only.** Assembly projects keep everything (off by default in hbc2-asm).
+- **On for C builds.** Assembly projects keep everything unless the project turns it on (IDE: Build menu "Leave out unused code", `ProjectSettings::strip`; CLI: `hbc2 asm --strip`). Off by default in hbc2-asm.
 - **Library names give way** (11d): when the program defines a name the library also defines, the library's piece is left out and every use binds to the program's.
 - Known limit (to write in the manual): code that relies on two labels being next to each other in memory without naming the second one.
 
@@ -49,7 +49,7 @@ Continue at **Next**, tick the boxes, and add notes under "How it works" as the 
 
 ## Later (not in step 11)
 
-- **Per-project option for assembly projects** (user, 2026-10-31): a project setting to turn the removal on for asm projects (off by default: unused routines may be kept on purpose to call them from the debugger).
+- ~~Per-project option for assembly projects~~ done 2026-10-31: `ProjectSettings::strip` (off by default: unused routines may be kept on purpose to call them from the debugger), `Action::SetStrip`, checkbox in the Build menu, `hbc2 asm --strip`; smoke test `unused_code_is_left_out_when_asked`. ASM_p (then test_project): 15021 → 2497 bytes.
 - Common symbols (tentative `int n;` in two files is a duplicate today).
 
 ## How it works
