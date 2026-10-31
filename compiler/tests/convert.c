@@ -1,4 +1,4 @@
-/* Expected: main returns 0 (atoi, atol, itoa, utoa, ltoa, ultoa, htoa, lhtoa) */
+/* Expected: main returns 0 (atoi, atol (decimal and 0x hex), itoa, utoa, ltoa, ultoa, htoa, lhtoa) */
 /* Returns the number of the first failed check. */
 
 #include <stdlib.h>
@@ -49,5 +49,17 @@ int main(void)
         return 16;
     if (atol(ltoa(-98765L, buf) - 6) != -98765L)    /* back and forth */
         return 17;
+    if (atoi("0x1F") != 31 || atoi("0Xff") != 255 || atoi(" -0x10") != -16)
+        return 18;
+    if (atoi("0xFFFF") != -1 || atoi("+0xaBcD") != (int)0xABCD || atoi("0x12g") != 0x12)
+        return 19;
+    if (atoi("0x") != 0 || atoi("0xg") != 0 || atoi("0 x1") != 0 || atoi("x1F") != 0)
+        return 20;                              /* no digit after 0x: the 0 */
+    if (atol("0xDEADBEEF") != (long)0xDEADBEEFUL || atol("0xFFFFFFFF") != -1L)
+        return 21;
+    if (atol("0x000000012345678") != 0x12345678L || atol("0x100000000") != 0)
+        return 22;                              /* past 32 bits: 0 */
+    if (atoi("0x09") != 9 || atoi("0x@") != 0 || atoi("0x:") != 0 || atoi("0x`G") != 0)
+        return 23;                              /* the characters around the digits */
     return 0;
 }

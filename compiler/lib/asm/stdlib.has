@@ -80,9 +80,10 @@ _rand_range:
 ; --- Number <-> text (asm/mathlib/misc/text.has) -------------------------
 
 ; int atoi(const char *s), long atol(const char *s): spaces (' ', \t \n
-; \v \f \r) first, then an optional sign and decimal digits. 0 when there
-; is no digit or the number does not fit in a long. atoi is the low half
-; of atol's result ([a:b]).
+; \v \f \r) first, then an optional sign and decimal digits, or "0x" /
+; "0X" and hexadecimal digits (any case; up to 32 bits, 0xFFFFFFFF is -1).
+; 0 when there is no digit or the number does not fit in a long. atoi is
+; the low half of atol's result ([a:b]).
 _atoi:
 _atol:
     lod i, [sp + 2]
@@ -94,6 +95,28 @@ lib_atol_space:
     sub a, 9                    ; \t .. \r -> 0 .. 4
     cmp a, 5
     jmf lib_atol_skip
+    mov x, i                    ; [x:y] = after the sign
+    mov y, j
+    lod a, [x:y]                ; a = the sign, if any
+    cmp a, '-'
+    jme lib_atol_sign
+    cmp a, '+'
+    jme lib_atol_sign
+    jmp lib_atol_prefix
+lib_atol_sign:
+    inc y
+    adc x, 0
+lib_atol_prefix:
+    lod b, [x:y]
+    cmp b, '0'
+    jme lib_atol_x
+    jmp lib_atol_dec
+lib_atol_x:
+    lod b, [x:y + 1]
+    or b, 0x20                  ; 'X' -> 'x'
+    cmp b, 'x'
+    jme lib_atol_hex
+lib_atol_dec:
     ssp 4                       ; the result, [sp] = most significant byte
     rsp [x:y]
     cal atoi
@@ -110,10 +133,68 @@ lib_atol_skip:
     jmp lib_atol_space
 lib_atol_error:
     asp 4
+lib_atol_zero:
     mov a, 0
     mov b, 0
     mov c, 0
     mov d, 0
+    ret
+
+; Hexadecimal: [x:y] on the '0' of "0x", a = the sign. The value builds up
+; in [c:d:a:b] (each digit: shifted left 4 times, then or'ed in). No digit
+; after "0x" gives 0, like C reading just the "0".
+lib_atol_hex:
+    psh a
+    add y, 2
+    adc x, 0
+    mov c, 0
+    mov d, 0
+    mov a, 0
+    mov b, 0
+lib_atol_hex_loop:
+    lod i, [x:y]
+    sub i, '0'
+    cmp i, 10
+    jmf lib_atol_hex_digit      ; '0' .. '9'
+    or i, 0x20                  ; 'A' .. 'F' -> 'a' .. 'f' (17 .. 22 -> 49 .. 54)
+    sub i, 0x31                 ; 'a' - '0'
+    cmp i, 6
+    jmf lib_atol_hex_letter
+    pop i                       ; not a digit: the end
+    cmp i, '-'
+    jme lib_atol_hex_neg
+    ret
+lib_atol_hex_letter:
+    add i, 10
+lib_atol_hex_digit:
+    cmp c, 0x10                 ; the top 4 bits are about to go out
+    jmf lib_atol_hex_shift
+    pop i
+    jmp lib_atol_zero
+lib_atol_hex_shift:
+    mov j, 4
+lib_atol_hex_shift_loop:
+    add b, b
+    adc a, a
+    adc d, d
+    adc c, c
+    dec j
+    jmz lib_atol_hex_shift_end
+    jmp lib_atol_hex_shift_loop
+lib_atol_hex_shift_end:
+    or b, i
+    inc y
+    adc x, 0
+    jmp lib_atol_hex_loop
+lib_atol_hex_neg:
+    not c
+    not d
+    not a
+    not b
+    add b, 1
+    adc a, 0
+    adc d, 0
+    adc c, 0
     ret
 
 ; Number to text: char *itoa(int value, char *buf) and the others below

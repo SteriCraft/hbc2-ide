@@ -33,9 +33,11 @@ int rand_range(int lo, int hi);
 /* --- Number <-> text --------------------------------------------------
    Assembly in asm/mathlib/misc/text.has (the math library). */
 
-/* Spaces first, then an optional sign and decimal digits. 0 when there
-   is no digit or the number does not fit in a long; atoi gives the low
-   16 bits of atol's result. */
+/* Spaces first, then an optional sign and decimal digits, or "0x" and
+   hexadecimal digits (not standard C; any case, up to 32 bits:
+   atoi("0xFFFF") and atol("0xFFFFFFFF") are -1). 0 when there is no
+   digit or the number does not fit in a long; atoi gives the low 16 bits
+   of atol's result. */
 int atoi(const char *s);
 long atol(const char *s);
 
