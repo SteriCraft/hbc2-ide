@@ -916,7 +916,7 @@ impl Ide {
         let state = &mut self.state;
         let snapshot = &state.snapshot;
         let mut builder = egui::ViewportBuilder::default()
-            .with_title("HBC-2 Monitor")
+            .with_title(crate::owner::MONITOR_TITLE)
             .with_inner_size(size)
             .with_min_inner_size([300.0, 250.0])
             .with_icon(crate::icon());
@@ -949,18 +949,28 @@ impl Ide {
             });
         });
 
-        // Above the IDE while the IDE (or the monitor) has focus; an
-        // ordinary window when another program has it.
-        let ide_focused = ctx.input(|i| i.viewport().focused.unwrap_or(false));
-        let on_top = ide_focused || monitor_focused;
-        if on_top != self.monitor_on_top {
-            self.monitor_on_top = on_top;
-            let level = if on_top {
-                egui::WindowLevel::AlwaysOnTop
-            } else {
-                egui::WindowLevel::Normal
-            };
-            ctx.send_viewport_cmd_to(id, egui::ViewportCommand::WindowLevel(level));
+        // Above the IDE: owned by it on Windows (`monitor_on_top` then means
+        // "owned"), elsewhere on top while the IDE or the monitor has focus.
+        #[cfg(windows)]
+        {
+            let _ = (id, monitor_focused);
+            if !self.monitor_on_top {
+                self.monitor_on_top = crate::owner::own_monitor();
+            }
+        }
+        #[cfg(not(windows))]
+        {
+            let ide_focused = ctx.input(|i| i.viewport().focused.unwrap_or(false));
+            let on_top = ide_focused || monitor_focused;
+            if on_top != self.monitor_on_top {
+                self.monitor_on_top = on_top;
+                let level = if on_top {
+                    egui::WindowLevel::AlwaysOnTop
+                } else {
+                    egui::WindowLevel::Normal
+                };
+                ctx.send_viewport_cmd_to(id, egui::ViewportCommand::WindowLevel(level));
+            }
         }
     }
 
