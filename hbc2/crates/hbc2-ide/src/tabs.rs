@@ -307,6 +307,8 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
             signatures: (crate::highlight::Syntax::of(path) == crate::highlight::Syntax::C)
                 .then_some(&state.signatures),
             font_size: state.settings.editor_font_size,
+            line_numbers: state.settings.editor.line_numbers,
+            highlight_line: state.settings.editor.highlight_line,
             read_only: state.snapshot.state == RunState::Running || generated,
         },
     );

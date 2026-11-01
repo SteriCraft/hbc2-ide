@@ -7,10 +7,10 @@ use hbc2_asm::Target;
 use hbc2_runner::Speed;
 use serde::{Deserialize, Serialize};
 
+use crate::editor_groups::EditorLayout;
 use crate::emulator::Peripherals;
 
 pub const STORAGE_KEY: &str = "hbc2-ide";
-const MAX_RECENT: usize = 10;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub enum SpeedSetting {
@@ -104,6 +104,8 @@ pub struct ProjectSettings {
     pub breakpoints: BTreeMap<PathBuf, BTreeSet<u32>>,
     /// Files open in editor tabs.
     pub open_files: Vec<PathBuf>,
+    /// How the editor tabs were split into groups.
+    pub editor_layout: Option<EditorLayout>,
 }
 
 impl Default for ProjectSettings {
@@ -114,8 +116,159 @@ impl Default for ProjectSettings {
             peripherals: Peripherals::default(),
             breakpoints: BTreeMap::new(),
             open_files: Vec::new(),
+            editor_layout: None,
         }
     }
+}
+
+/// Where the monitor window opens on the screen.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Placement {
+    TopLeft,
+    Top,
+    #[default]
+    TopRight,
+    Left,
+    Center,
+    Right,
+    BottomLeft,
+    Bottom,
+    BottomRight,
+}
+
+impl Placement {
+    /// Row by row, from the top left.
+    pub const ALL: [Placement; 9] = [
+        Placement::TopLeft,
+        Placement::Top,
+        Placement::TopRight,
+        Placement::Left,
+        Placement::Center,
+        Placement::Right,
+        Placement::BottomLeft,
+        Placement::Bottom,
+        Placement::BottomRight,
+    ];
+
+    /// Where the window goes in the free space, from 0 (left, top) to 1
+    /// (right, bottom).
+    pub fn anchor(self) -> (f32, f32) {
+        let index = Placement::ALL.iter().position(|&p| p == self).unwrap_or(4);
+        ((index % 3) as f32 / 2.0, (index / 3) as f32 / 2.0)
+    }
+
+    pub fn label(self) -> &'static str {
+        match self {
+            Placement::TopLeft => "Top left",
+            Placement::Top => "Top",
+            Placement::TopRight => "Top right",
+            Placement::Left => "Left",
+            Placement::Center => "Center",
+            Placement::Right => "Right",
+            Placement::BottomLeft => "Bottom left",
+            Placement::Bottom => "Bottom",
+            Placement::BottomRight => "Bottom right",
+        }
+    }
+}
+
+/// Settings dialog, Monitor page.
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct MonitorSettings {
+    /// The monitor window opens when the IDE starts.
+    pub open_on_startup: bool,
+    /// "Sharp scaling" is ticked when the IDE starts.
+    pub sharp_scaling: bool,
+    /// With sharp scaling, the size of an HBC-2 pixel when the window opens.
+    pub pixel_size: u32,
+    pub placement: Placement,
+    /// Open where it was last closed (`placement` and `pixel_size` are used
+    /// the first time only).
+    pub remember_position: bool,
+}
+
+impl Default for MonitorSettings {
+    fn default() -> Self {
+        MonitorSettings {
+            open_on_startup: true,
+            sharp_scaling: true,
+            pixel_size: 2,
+            placement: Placement::default(),
+            remember_position: false,
+        }
+    }
+}
+
+/// Settings dialog, General page.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct GeneralSettings {
+    /// The project open when the IDE closed opens again when it starts.
+    pub reopen_last_project: bool,
+    /// Where new projects go (`None`: Documents/hbc2_projects).
+    pub projects_folder: Option<PathBuf>,
+    /// How many projects File > Recent projects lists.
+    pub recent_count: usize,
+    /// "New project" makes a folder named after the project, by default.
+    pub project_folder: bool,
+}
+
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        GeneralSettings {
+            reopen_last_project: true,
+            projects_folder: None,
+            recent_count: 10,
+            project_folder: true,
+        }
+    }
+}
+
+/// Settings dialog, Editor page (the font size is [`Settings::editor_font_size`]).
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EditorSettings {
+    /// Tab and Shift+Tab put and take spaces, not tab characters.
+    pub indent_with_spaces: bool,
+    /// Columns between tab stops: how wide a tab is, and how many spaces
+    /// make one indentation level.
+    pub tab_width: usize,
+    pub line_numbers: bool,
+    /// The line of the cursor gets a lighter background.
+    pub highlight_line: bool,
+}
+
+impl Default for EditorSettings {
+    fn default() -> Self {
+        EditorSettings {
+            indent_with_spaces: false,
+            tab_width: 4,
+            line_numbers: true,
+            highlight_line: true,
+        }
+    }
+}
+
+/// Settings dialog, Build page.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct BuildSettings {
+    /// Assembly projects save their files before assembling (C projects
+    /// always do).
+    pub save_before_build: bool,
+    /// Build (F7) runs the program when it succeeds.
+    pub run_after_build: bool,
+}
+
+/// Settings dialog, Emulator page (Follow PC is [`Settings::follow_pc`]).
+#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[serde(default)]
+pub struct EmulatorSettings {
+    /// Clock when the IDE starts (`None`: as it was left).
+    pub startup_speed: Option<SpeedSetting>,
+    /// Peripherals plugged in a new project.
+    pub new_project_peripherals: Peripherals,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
@@ -132,6 +285,14 @@ pub struct Settings {
     pub monitor_window: bool,
     /// The CPU & I/O, Disassembly and Memory tabs are hidden.
     pub tools_hidden: bool,
+    pub general: GeneralSettings,
+    pub editor: EditorSettings,
+    pub build: BuildSettings,
+    pub emulator: EmulatorSettings,
+    pub monitor: MonitorSettings,
+    /// Where the monitor window was last closed: outside position and
+    /// inside size.
+    pub monitor_geometry: Option<[f32; 4]>,
     pub projects: HashMap<PathBuf, ProjectSettings>,
 }
 
@@ -145,6 +306,12 @@ impl Default for Settings {
             editor_font_size: 14.0,
             monitor_window: true,
             tools_hidden: false,
+            general: GeneralSettings::default(),
+            editor: EditorSettings::default(),
+            build: BuildSettings::default(),
+            emulator: EmulatorSettings::default(),
+            monitor: MonitorSettings::default(),
+            monitor_geometry: None,
             projects: HashMap::new(),
         }
     }
@@ -154,7 +321,29 @@ impl Settings {
     pub fn add_recent(&mut self, root: &Path) {
         self.recent_projects.retain(|p| p != root);
         self.recent_projects.insert(0, root.to_path_buf());
-        self.recent_projects.truncate(MAX_RECENT);
+        self.recent_projects
+            .truncate(self.general.recent_count.max(1));
+    }
+
+    /// Takes the settings of the settings dialog from `from`.
+    pub fn set_preferences(&mut self, from: &Settings) {
+        self.general = from.general.clone();
+        self.editor = from.editor;
+        self.editor_font_size = from.editor_font_size;
+        self.build = from.build;
+        self.emulator = from.emulator;
+        self.follow_pc = from.follow_pc;
+        self.monitor = from.monitor;
+        self.recent_projects
+            .truncate(self.general.recent_count.max(1));
+    }
+
+    /// The folder where new projects go.
+    pub fn projects_folder(&self) -> PathBuf {
+        match &self.general.projects_folder {
+            Some(dir) if dir.is_dir() => dir.clone(),
+            _ => crate::project::default_projects_parent(),
+        }
     }
 }
 
@@ -168,6 +357,14 @@ mod tests {
         assert_eq!(speed_label(Speed::Hz(100_000)), "100 kHz");
         assert_eq!(speed_label(Speed::Hz(2_000_000)), "2 MHz");
         assert_eq!(frequency_label(1_234_567.0), "1.23 MHz");
+    }
+
+    #[test]
+    fn placement_anchors() {
+        assert_eq!(Placement::TopLeft.anchor(), (0.0, 0.0));
+        assert_eq!(Placement::Center.anchor(), (0.5, 0.5));
+        assert_eq!(Placement::Right.anchor(), (1.0, 0.5));
+        assert_eq!(Placement::BottomRight.anchor(), (1.0, 1.0));
     }
 
     #[test]

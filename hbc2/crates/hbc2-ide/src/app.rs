@@ -138,8 +138,10 @@ pub enum Dialog {
         then: Box<Action>,
     },
     NewProject {
-        /// The project goes in `parent/name`.
+        /// The project goes in `parent/name`, or in `parent` itself
+        /// without `own_folder`.
         parent: PathBuf,
+        own_folder: bool,
         name: String,
         language: Language,
         interrupt_handler: bool,
@@ -173,6 +175,41 @@ pub enum Dialog {
     },
     About,
     Keyboard,
+    /// The settings being edited, taken by OK.
+    Settings {
+        page: SettingsPage,
+        draft: Box<Settings>,
+    },
+}
+
+/// A page of the settings dialog.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum SettingsPage {
+    General,
+    Editor,
+    Build,
+    Emulator,
+    Monitor,
+}
+
+impl SettingsPage {
+    pub const ALL: [SettingsPage; 5] = [
+        SettingsPage::General,
+        SettingsPage::Editor,
+        SettingsPage::Build,
+        SettingsPage::Emulator,
+        SettingsPage::Monitor,
+    ];
+
+    pub fn label(self) -> &'static str {
+        match self {
+            SettingsPage::General => "General",
+            SettingsPage::Editor => "Editor",
+            SettingsPage::Build => "Build",
+            SettingsPage::Emulator => "Emulator",
+            SettingsPage::Monitor => "Monitor",
+        }
+    }
 }
 
 /// A program, the image to load and the warnings, or the errors (with the
@@ -250,6 +287,10 @@ pub struct Ide {
     /// The file last shown in a focused editor group: [`Ide::active_editor`]
     /// is the tab shown in its group.
     last_editor: Option<PathBuf>,
+    /// Size and position the monitor window opened with, while it is open.
+    monitor_geometry: Option<(egui::Vec2, Option<egui::Pos2>)>,
+    /// The monitor window is kept above the others.
+    monitor_on_top: bool,
 }
 
 /// Open editor buffers first, files on disk otherwise: assembling uses
@@ -357,10 +398,13 @@ fn layout_with(splits: &[f32]) -> DockState<Tab> {
 
 impl Ide {
     pub fn new(ctx: &egui::Context, saved: Option<Saved>) -> Ide {
-        let (settings, dock) = match saved {
+        let (mut settings, dock) = match saved {
             Some(saved) => (saved.settings, layout_with(&saved.splits)),
             None => (Settings::default(), default_layout()),
         };
+        if let Some(speed) = settings.emulator.startup_speed {
+            settings.speed = speed;
+        }
         let repaint = ctx.clone();
         let emulator = Emulator::new(Peripherals::default(), settings.speed.into(), move || {
             repaint.request_repaint()
@@ -371,6 +415,8 @@ impl Ide {
             close_chord: None,
             tools_stash: None,
             last_editor: None,
+            monitor_geometry: None,
+            monitor_on_top: false,
             state: State {
                 settings,
                 project: None,
@@ -401,6 +447,9 @@ impl Ide {
                 tools_min_width: 0.0,
             },
         };
+        let monitor = ide.state.settings.monitor;
+        ide.state.settings.monitor_window = monitor.open_on_startup;
+        ide.state.monitor_view.integer_scale = monitor.sharp_scaling;
         ide.state.disasm_view.follow_pc = ide.state.settings.follow_pc;
         ide.state.memory_view.follow_pc = ide.state.settings.follow_pc;
         ide.state
@@ -408,7 +457,9 @@ impl Ide {
             .info("HBC-2 IDE ready. F7 assembles, F5 runs, F10 steps.");
 
         // Reopen the last project, with the files that were open in it.
-        if let Some(root) = ide.state.settings.last_project.clone() {
+        if ide.state.settings.general.reopen_last_project
+            && let Some(root) = ide.state.settings.last_project.clone()
+        {
             ide.open_project(&root, true);
         }
         ide
@@ -442,6 +493,7 @@ impl Ide {
             return;
         };
         self.state.project_settings.open_files = self.editor_paths();
+        self.state.project_settings.editor_layout = editor_groups::editor_layout(&self.dock);
         // Forget breakpoint sets that became empty.
         self.state
             .project_settings
@@ -476,6 +528,8 @@ impl Ide {
             self.last_editor = Some(path);
         }
         self.state.active_editor = self.active_editor();
+        crate::highlight::set_tab_width(self.state.settings.editor.tab_width);
+        crate::editing::set_indent_with_spaces(self.state.settings.editor.indent_with_spaces);
 
         crate::chrome::menu_bar(ui, &mut self.state);
         crate::chrome::toolbar(ui, &mut self.state);
@@ -818,32 +872,96 @@ impl Ide {
     /// The HBC-2 monitor, in a window of its own.
     fn monitor_window(&mut self, ctx: &egui::Context) {
         if !self.state.settings.monitor_window {
+            self.monitor_geometry = None;
+            self.monitor_on_top = false;
             return;
         }
+        // Chosen when the window opens, then kept: a change would move it.
+        let (size, position) = match self.monitor_geometry {
+            Some(geometry) => geometry,
+            None => {
+                let settings = self.state.settings.monitor;
+                let remembered = self
+                    .state
+                    .settings
+                    .monitor_geometry
+                    .filter(|_| settings.remember_position);
+                let (size, position) = match remembered {
+                    Some([x, y, width, height]) => {
+                        (egui::vec2(width, height), Some(egui::pos2(x, y)))
+                    }
+                    None => {
+                        let size = if settings.sharp_scaling {
+                            crate::views::monitor::window_size(settings.pixel_size)
+                        } else {
+                            egui::vec2(600.0, 480.0)
+                        };
+                        let position = ctx.input(|i| {
+                            crate::placement::window_position(
+                                i.viewport(),
+                                size,
+                                settings.placement,
+                            )
+                        });
+                        (size, position)
+                    }
+                };
+                // Without the screen size yet, tried again next frame.
+                if position.is_some() {
+                    self.monitor_geometry = Some((size, position));
+                }
+                (size, position)
+            }
+        };
         let state = &mut self.state;
         let snapshot = &state.snapshot;
-        let builder = egui::ViewportBuilder::default()
+        let mut builder = egui::ViewportBuilder::default()
             .with_title("HBC-2 Monitor")
-            .with_inner_size([600.0, 480.0])
+            .with_inner_size(size)
             .with_min_inner_size([300.0, 250.0])
             .with_icon(crate::icon());
-        ctx.show_viewport_immediate(
-            egui::ViewportId::from_hash_of("hbc2-monitor"),
-            builder,
-            |ui, _class| {
-                egui::CentralPanel::default().show(ui, |ui| {
-                    state.monitor_view.ui(
-                        ui,
-                        snapshot.monitor.as_ref(),
-                        snapshot.keyboard.is_some(),
-                        &state.emulator.runner,
-                    );
-                });
-                if ui.input(|i| i.viewport().close_requested()) {
+        if let Some(position) = position {
+            builder = builder.with_position(position);
+        }
+        let id = egui::ViewportId::from_hash_of("hbc2-monitor");
+        let mut monitor_focused = false;
+        ctx.show_viewport_immediate(id, builder, |ui, _class| {
+            egui::CentralPanel::default().show(ui, |ui| {
+                state.monitor_view.ui(
+                    ui,
+                    snapshot.monitor.as_ref(),
+                    snapshot.keyboard.is_some(),
+                    &state.emulator.runner,
+                );
+            });
+            ui.input(|i| {
+                let info = i.viewport();
+                monitor_focused = info.focused.unwrap_or(false);
+                if let (Some(outer), Some(inner), Some(false)) =
+                    (info.outer_rect, info.inner_rect, info.minimized)
+                {
+                    state.settings.monitor_geometry =
+                        Some([outer.min.x, outer.min.y, inner.width(), inner.height()]);
+                }
+                if info.close_requested() {
                     state.settings.monitor_window = false;
                 }
-            },
-        );
+            });
+        });
+
+        // Above the IDE while the IDE (or the monitor) has focus; an
+        // ordinary window when another program has it.
+        let ide_focused = ctx.input(|i| i.viewport().focused.unwrap_or(false));
+        let on_top = ide_focused || monitor_focused;
+        if on_top != self.monitor_on_top {
+            self.monitor_on_top = on_top;
+            let level = if on_top {
+                egui::WindowLevel::AlwaysOnTop
+            } else {
+                egui::WindowLevel::Normal
+            };
+            ctx.send_viewport_cmd_to(id, egui::ViewportCommand::WindowLevel(level));
+        }
     }
 
     fn handle_close_request(&mut self, ctx: &egui::Context) {
@@ -886,7 +1004,8 @@ impl Ide {
                     return;
                 }
                 state.dialog = Some(Dialog::NewProject {
-                    parent: project::default_projects_parent(),
+                    parent: state.settings.projects_folder(),
+                    own_folder: state.settings.general.project_folder,
                     name: "newProject".into(),
                     language: Language::Assembly,
                     interrupt_handler: true,
@@ -897,13 +1016,21 @@ impl Ide {
                 match Project::create(&dir, language, interrupt_handler) {
                     Ok(project) => {
                         let root = project.root.clone();
+                        let peripherals = state.settings.emulator.new_project_peripherals;
+                        state.settings.projects.insert(
+                            root.clone(),
+                            ProjectSettings {
+                                peripherals,
+                                ..ProjectSettings::default()
+                            },
+                        );
                         self.open_project(&root, true);
                     }
                     Err(e) => state.message("Cannot create the project", e.to_string()),
                 }
             }
             Action::OpenProjectDialog => {
-                if let Some(dir) = projects_dialog()
+                if let Some(dir) = projects_dialog(&state.settings)
                     .set_title("Open a project folder")
                     .pick_folder()
                 {
@@ -1091,7 +1218,14 @@ impl Ide {
                 }
             }
             Action::Assemble => {
-                state.assemble();
+                let loaded = state.assemble();
+                if state.settings.build.run_after_build {
+                    match &mut state.building {
+                        Some(pending) => pending.then = Some(Action::Run),
+                        None if loaded => state.actions.push(Action::Run),
+                        None => {}
+                    }
+                }
             }
             Action::Run => {
                 if state.prepare_to_run(Action::Run) {
@@ -1125,7 +1259,7 @@ impl Ide {
                 // Paused at the first instruction: no tab opens until a run or a step.
                 state.emulator.reset();
                 state.followed = None;
-                state.console.info("The machine restarted.");
+                state.console.info("The machine was reset.");
             }
             Action::ExportImage => state.export_image(),
             Action::LoadImage => state.load_image(),
@@ -1164,7 +1298,7 @@ impl Ide {
                 match state.emulator.rebuild(&breakpoints) {
                     Ok(()) => state
                         .console
-                        .info("Peripherals changed: the machine restarted."),
+                        .info("Peripherals changed: the machine was reset."),
                     Err(e) => state.console.error(e),
                 }
             }
@@ -1241,6 +1375,9 @@ impl Ide {
             if path.is_file() {
                 self.open_file(&path, None);
             }
+        }
+        if restore_files && let Some(layout) = self.state.project_settings.editor_layout.clone() {
+            editor_groups::restore_layout(&mut self.dock, layout);
         }
         self.state.refresh_signatures();
     }
@@ -1708,6 +1845,12 @@ impl State {
             });
             return false;
         }
+        if self.settings.build.save_before_build && !self.save(&self.dirty_paths()) {
+            return false;
+        }
+        let Some(project) = &self.project else {
+            return false;
+        };
         let target = self.target();
         let entry = project.entry();
         let sources = Sources(
@@ -2025,12 +2168,8 @@ fn breakpoint_addresses(program: &Program, settings: &ProjectSettings) -> Vec<u1
 }
 
 /// A folder dialog that opens in `Documents/hbc2_projects` when it exists.
-fn projects_dialog() -> rfd::FileDialog {
-    let dialog = rfd::FileDialog::new();
-    match project::projects_dir() {
-        Some(dir) if dir.is_dir() => dialog.set_directory(dir),
-        _ => dialog,
-    }
+fn projects_dialog(settings: &Settings) -> rfd::FileDialog {
+    rfd::FileDialog::new().set_directory(settings.projects_folder())
 }
 
 /// Opens the system's file manager on `path`: a folder is opened, a file is

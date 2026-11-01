@@ -1,10 +1,11 @@
 //! The editor groups: the file tabs can be split into several groups side by
 //! side, and moved between them by dragging. The other tabs stay in place.
 
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use eframe::egui::{Pos2, Rect};
-use egui_dock::{DockState, NodePath, SurfaceIndex, TabIndex};
+use egui_dock::{DockState, Node, NodeIndex, NodePath, SurfaceIndex, TabIndex, Tree};
+use serde::{Deserialize, Serialize};
 
 use crate::tabs::Tab;
 
@@ -127,6 +128,175 @@ pub fn merge_groups(dock: &mut DockState<Tab>) {
     }
     // Takes the emptied groups out of the layout.
     dock.retain_tabs(|_| true);
+}
+
+/// The editor groups as saved between sessions.
+#[derive(Clone, Debug, PartialEq, Serialize, Deserialize)]
+pub enum EditorLayout {
+    /// One group: its files, in tab order, and the file it shows.
+    Group {
+        files: Vec<PathBuf>,
+        shown: Option<PathBuf>,
+    },
+    /// Two parts side by side; `fraction` is the share of the left one.
+    Split {
+        fraction: f32,
+        left: Box<EditorLayout>,
+        right: Box<EditorLayout>,
+    },
+}
+
+impl EditorLayout {
+    fn files(&self) -> Vec<PathBuf> {
+        match self {
+            EditorLayout::Group { files, .. } => files.clone(),
+            EditorLayout::Split { left, right, .. } => {
+                let mut files = left.files();
+                files.extend(right.files());
+                files
+            }
+        }
+    }
+
+    /// Without the files that `keep` refuses; `None` if none is left.
+    fn retain(self, keep: &impl Fn(&Path) -> bool) -> Option<EditorLayout> {
+        match self {
+            EditorLayout::Group { mut files, shown } => {
+                files.retain(|f| keep(f));
+                let shown = shown.filter(|s| files.contains(s));
+                (!files.is_empty()).then_some(EditorLayout::Group { files, shown })
+            }
+            EditorLayout::Split {
+                fraction,
+                left,
+                right,
+            } => match (left.retain(keep), right.retain(keep)) {
+                (Some(left), Some(right)) => Some(EditorLayout::Split {
+                    fraction,
+                    left: Box::new(left),
+                    right: Box::new(right),
+                }),
+                (side, None) | (None, side) => side,
+            },
+        }
+    }
+}
+
+/// The editor groups of `dock`, `None` without file tabs.
+pub fn editor_layout(dock: &DockState<Tab>) -> Option<EditorLayout> {
+    // The part of the layout that holds every editor group.
+    let mut nodes = dock
+        .iter_leaves()
+        .filter(|(path, leaf)| {
+            path.surface.is_main() && leaf.tabs().iter().any(|t| matches!(t, Tab::Editor(_)))
+        })
+        .map(|(path, _)| path.node);
+    let first = nodes.next()?;
+    let root = nodes.fold(first, common_ancestor);
+    Some(layout_of(dock.main_surface(), root))
+}
+
+fn common_ancestor(mut a: NodeIndex, mut b: NodeIndex) -> NodeIndex {
+    while a != b {
+        if a.level() < b.level() {
+            std::mem::swap(&mut a, &mut b);
+        }
+        match a.parent() {
+            Some(parent) => a = parent,
+            None => return a,
+        }
+    }
+    a
+}
+
+fn layout_of(tree: &Tree<Tab>, node: NodeIndex) -> EditorLayout {
+    match &tree[node] {
+        Node::Horizontal(split) | Node::Vertical(split) => EditorLayout::Split {
+            fraction: split.fraction,
+            left: Box::new(layout_of(tree, node.left())),
+            right: Box::new(layout_of(tree, node.right())),
+        },
+        Node::Leaf(leaf) => {
+            let path = |t: &Tab| match t {
+                Tab::Editor(path) => Some(path.clone()),
+                _ => None,
+            };
+            EditorLayout::Group {
+                files: leaf.tabs().iter().filter_map(path).collect(),
+                shown: leaf.tabs().get(leaf.active.0).and_then(path),
+            }
+        }
+        Node::Empty => EditorLayout::Group {
+            files: Vec::new(),
+            shown: None,
+        },
+    }
+}
+
+/// Splits the file tabs, all in one group, as `layout` says. Files of
+/// `layout` without a tab are left out; tabs it does not name stay in the
+/// first group.
+pub fn restore_layout(dock: &mut DockState<Tab>, layout: EditorLayout) {
+    let open: Vec<PathBuf> = dock
+        .iter_all_tabs()
+        .filter_map(|(_, t)| match t {
+            Tab::Editor(path) => Some(path.clone()),
+            _ => None,
+        })
+        .collect();
+    let Some(layout) = layout.retain(&|f| open.iter().any(|o| o == f)) else {
+        return;
+    };
+    let Some(at) = dock.find_tab_from(|t| matches!(t, Tab::Editor(_))) else {
+        return;
+    };
+    if !at.surface.is_main() {
+        return;
+    }
+    build(dock.main_surface_mut(), at.node, &layout);
+}
+
+fn build(tree: &mut Tree<Tab>, node: NodeIndex, layout: &EditorLayout) {
+    let Node::Leaf(leaf) = &mut tree[node] else {
+        return;
+    };
+    match layout {
+        EditorLayout::Group { files, shown } => {
+            let place = |t: &Tab| match t {
+                Tab::Editor(path) => files.iter().position(|f| f == path),
+                _ => None,
+            };
+            leaf.tabs.sort_by_key(|t| place(t).unwrap_or(usize::MAX));
+            let shown = shown.as_ref().and_then(|s| {
+                leaf.tabs
+                    .iter()
+                    .position(|t| matches!(t, Tab::Editor(p) if p == s))
+            });
+            leaf.active = TabIndex(shown.unwrap_or(0));
+        }
+        EditorLayout::Split {
+            fraction,
+            left,
+            right,
+        } => {
+            let moved = right.files();
+            let (right_tabs, rest): (Vec<Tab>, Vec<Tab>) = leaf
+                .tabs
+                .drain(..)
+                .partition(|t| matches!(t, Tab::Editor(p) if moved.contains(p)));
+            leaf.tabs = rest;
+            leaf.active = TabIndex(0);
+            if leaf.tabs.is_empty() || right_tabs.is_empty() {
+                // An empty group is not allowed: keep them together.
+                leaf.tabs.extend(right_tabs);
+                return;
+            }
+            let fraction = fraction.clamp(0.05, 0.95);
+            let [left_node, right_node] = tree.split_right(node, fraction, right_tabs);
+            build(tree, left_node, left);
+            build(tree, right_node, right);
+        }
+    }
 }
 
 /// Where `dragged` would go if dropped at `pointer`, with the area to
@@ -298,6 +468,53 @@ mod tests {
         merge_groups(&mut dock);
         assert_eq!(groups(&dock)[0].0, files(&["a", "c", "b"]));
         assert_eq!(groups(&dock).len(), 1);
+    }
+
+    #[test]
+    fn the_editor_layout_comes_back() {
+        // a | b, c | d, with c shown, beside other tabs.
+        let mut dock = crate::app::default_layout();
+        for name in ["a", "b", "c", "d"] {
+            let welcome = dock.find_tab(&Tab::Welcome).unwrap();
+            dock.leaf_mut(welcome.node_path())
+                .unwrap()
+                .append_tab(file(name));
+        }
+        let welcome = dock.find_tab(&Tab::Welcome).unwrap();
+        dock.remove_tab(welcome);
+        move_tab(&mut dock, &file("b"), Drop::SplitRight(file("a")));
+        let drop = Drop::Beside {
+            anchor: file("b"),
+            after: true,
+        };
+        move_tab(&mut dock, &file("c"), drop);
+        move_tab(&mut dock, &file("d"), Drop::SplitRight(file("b")));
+        let at = dock.find_tab(&file("c")).unwrap();
+        dock.set_active_tab(at).unwrap();
+        let layout = editor_layout(&dock).unwrap();
+        let editors = |dock: &DockState<Tab>| {
+            groups(dock)
+                .into_iter()
+                .filter(|(tabs, _)| tabs.iter().all(|t| matches!(t, Tab::Editor(_))))
+                .collect::<Vec<_>>()
+        };
+
+        // Saved as one group, then split again.
+        let mut restored = dock.clone();
+        merge_groups(&mut restored);
+        assert_eq!(editors(&restored).len(), 1);
+        restore_layout(&mut restored, layout.clone());
+        assert_eq!(editor_layout(&restored), Some(layout.clone()));
+        assert_eq!(editors(&restored), editors(&dock));
+
+        // A file gone from the disk takes its group away.
+        let mut restored = dock.clone();
+        merge_groups(&mut restored);
+        let d = restored.find_tab(&file("d")).unwrap();
+        restored.remove_tab(d);
+        restore_layout(&mut restored, layout);
+        let expected = vec![(files(&["a"]), file("a")), (files(&["b", "c"]), file("c"))];
+        assert_eq!(editors(&restored), expected);
     }
 
     #[test]

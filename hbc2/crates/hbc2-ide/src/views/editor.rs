@@ -38,6 +38,9 @@ pub struct Marks<'a> {
     /// Known C functions: their parameters are shown while typing a call.
     pub signatures: Option<&'a Signatures>,
     pub font_size: f32,
+    pub line_numbers: bool,
+    /// The line of the cursor gets a lighter background.
+    pub highlight_line: bool,
 }
 
 #[derive(Default)]
@@ -61,7 +64,15 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
     let digit_width = ui.fonts_mut(|f| f.glyph_width(&font, '0'));
     let line_total = crate::document::line_count(&doc.text);
     let digits = line_total.to_string().len().max(3) as f32;
-    let gutter_width = (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0);
+    let gutter_width = if marks.line_numbers {
+        (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0)
+    } else {
+        MARKER_WIDTH + 6.0
+    };
+    let tabs = highlight::Tabs {
+        width: highlight::tab_width(),
+        char_width: digit_width,
+    };
     let editor_id = editor_id(&doc.path);
     let syntax = highlight::Syntax::of(&doc.path);
 
@@ -99,12 +110,13 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             let mut layouter = |ui: &egui::Ui, buffer: &dyn egui::TextBuffer, _wrap: f32| {
                 let source = buffer.as_str();
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                (source, dark, marks.font_size.to_bits()).hash(&mut hasher);
+                (source, dark, marks.font_size.to_bits(), tabs.width).hash(&mut hasher);
                 let key = hasher.finish();
                 let job = match layout_cache {
                     Some((k, job)) if *k == key => job.clone(),
                     _ => {
-                        let mut job = highlight::layout_job(source, syntax, font.clone(), dark);
+                        let mut job =
+                            highlight::layout_job(source, syntax, font.clone(), dark, tabs);
                         job.wrap.max_width = f32::INFINITY;
                         *layout_cache = Some((key, job.clone()));
                         job
@@ -306,6 +318,14 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             let visuals = ui.visuals();
             let mut shapes = vec![Shape::rect_filled(full, 0.0, visuals.extreme_bg_color)];
             shapes.push(Shape::rect_filled(gutter, 0.0, visuals.faint_bg_color));
+            if marks.highlight_line
+                && let Some(range) = output.state.cursor.char_range()
+            {
+                let at = range.primary.index.0;
+                let cursor = text_rect(&output.galley, output.galley_pos, &(at..at));
+                let row = Rect::from_x_y_ranges(full.x_range(), cursor.y_range());
+                shapes.push(Shape::rect_filled(row, 0.0, current_line_color(dark)));
+            }
             for (line, is_error, _) in marks.diagnostics {
                 if let Some(rect) = row_rect(*line) {
                     let color = if *is_error {
@@ -413,13 +433,15 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                         Color32::from_rgb(240, 200, 40),
                     );
                 }
-                painter.text(
-                    pos2(gutter.max.x - 8.0, y),
-                    Align2::RIGHT_CENTER,
-                    line.to_string(),
-                    font.clone(),
-                    number_color,
-                );
+                if marks.line_numbers {
+                    painter.text(
+                        pos2(gutter.max.x - 8.0, y),
+                        Align2::RIGHT_CENTER,
+                        line.to_string(),
+                        font.clone(),
+                        number_color,
+                    );
+                }
             }
 
             // Click in the gutter: toggle a breakpoint. Hover: show the line's diagnostics.
@@ -1095,6 +1117,14 @@ pub fn char_index_of_line(text: &str, line: u32) -> usize {
         }
     }
     text.chars().count()
+}
+
+fn current_line_color(dark: bool) -> Color32 {
+    if dark {
+        Color32::from_white_alpha(10)
+    } else {
+        Color32::from_black_alpha(12)
+    }
 }
 
 pub fn pc_color(dark: bool) -> Color32 {

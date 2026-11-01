@@ -239,7 +239,15 @@ fn replace(chars: &[char], cursor: Cursor, op: &Op, piece: &str) -> Option<Repla
     let c = cursor.head;
     match op {
         Op::Paste(_) => put(piece),
-        Op::Tab => put("\t"),
+        Op::Tab => {
+            let line = chars[..start]
+                .iter()
+                .rposition(|&ch| ch == '\n')
+                .map_or(0, |n| n + 1);
+            let before: String = chars[line..start].iter().collect();
+            let indentation = crate::editing::Indentation::current();
+            put(&indentation.tab_at(highlight::column(&before)))
+        }
         Op::Delete | Op::Cut if !cursor.is_empty() => put(""),
         Op::Cut => None,
         Op::Backspace if !cursor.is_empty() => put(""),

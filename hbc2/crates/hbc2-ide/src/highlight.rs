@@ -5,6 +5,7 @@
 //! is valid.
 
 use std::ops::Range;
+use std::sync::atomic::{AtomicUsize, Ordering};
 
 use eframe::egui::text::{LayoutJob, TextFormat};
 use eframe::egui::{Color32, FontId};
@@ -36,30 +37,64 @@ pub enum Kind {
     Function,
 }
 
-/// Columns between tab stops: a tab goes to the next multiple of 4, as in
-/// most editors.
-pub const TAB_WIDTH: usize = 4;
+/// Columns between tab stops (Settings > Editor): a tab goes to the next
+/// multiple of it.
+static TAB_WIDTH: AtomicUsize = AtomicUsize::new(4);
+
+pub fn tab_width() -> usize {
+    TAB_WIDTH.load(Ordering::Relaxed).max(1)
+}
+
+pub fn set_tab_width(width: usize) {
+    TAB_WIDTH.store(width.max(1), Ordering::Relaxed);
+}
+
+/// Columns egui gives a tab, wherever it is.
+const EGUI_TAB_COLUMNS: usize = 4;
 
 /// The column (from 0) after `line_start`, the start of a line, with each
 /// tab going to the next tab stop.
 pub fn column(line_start: &str) -> usize {
+    column_with(line_start, tab_width())
+}
+
+pub fn column_with(line_start: &str, tab_width: usize) -> usize {
     line_start.chars().fold(0, |column, c| match c {
-        '\t' => column + TAB_WIDTH - column % TAB_WIDTH,
+        '\t' => column + tab_width - column % tab_width,
         _ => column + 1,
     })
 }
 
+/// How tabs are laid out: columns between tab stops, and the width of a
+/// character of the (monospace) font.
+#[derive(Clone, Copy, Debug)]
+pub struct Tabs {
+    pub width: usize,
+    pub char_width: f32,
+}
+
 /// Appends `text`, which starts at `column` of its line, to the job and
-/// moves `column` past it. egui draws every tab 4 spaces wide wherever it
-/// is: each tab gets a smaller font size, so that it ends on the next tab
-/// stop (a tab has nothing to show, only its width changes).
-fn append_with_tabs(job: &mut LayoutJob, text: &str, format: &TextFormat, column: &mut usize) {
+/// moves `column` past it. egui draws every tab 4 characters wide: each tab
+/// is made narrower (smaller font) or wider (space before it), so
+/// that it ends on the next tab stop (a tab has nothing to show).
+fn append_with_tabs(
+    job: &mut LayoutJob,
+    text: &str,
+    format: &TextFormat,
+    column: &mut usize,
+    tabs: Tabs,
+) {
     for (index, piece) in text.split('\t').enumerate() {
         if index > 0 {
-            let width = TAB_WIDTH - *column % TAB_WIDTH;
+            let width = tabs.width - *column % tabs.width;
             let mut tab = format.clone();
-            tab.font_id.size *= width as f32 / TAB_WIDTH as f32;
-            job.append("\t", 0.0, tab);
+            let mut space_before = 0.0;
+            if width <= EGUI_TAB_COLUMNS {
+                tab.font_id.size *= width as f32 / EGUI_TAB_COLUMNS as f32;
+            } else {
+                space_before = (width - EGUI_TAB_COLUMNS) as f32 * tabs.char_width;
+            }
+            job.append("\t", space_before, tab);
             *column += width;
         }
         if !piece.is_empty() {
@@ -302,7 +337,7 @@ pub fn c_spans(line: &str, in_comment: &mut bool) -> Vec<(Range<usize>, Kind)> {
 }
 
 /// Lays out a whole file with highlighting.
-pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> LayoutJob {
+pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool, tabs: Tabs) -> LayoutJob {
     let mut job = LayoutJob::default();
     let mut offset = 0;
     let mut in_comment = false;
@@ -330,14 +365,14 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
             let mut from = 0;
             for (i, (byte, _)) in piece.char_indices().enumerate() {
                 if lonely.next_if_eq(&(index + i)).is_some() {
-                    append_with_tabs(&mut job, &piece[from..byte], &format, &mut column);
+                    append_with_tabs(&mut job, &piece[from..byte], &format, &mut column, tabs);
                     // Brackets are one byte long.
                     let bracket = &piece[byte..byte + 1];
-                    append_with_tabs(&mut job, bracket, &lonely_format, &mut column);
+                    append_with_tabs(&mut job, bracket, &lonely_format, &mut column, tabs);
                     from = byte + 1;
                 }
             }
-            append_with_tabs(&mut job, &piece[from..], &format, &mut column);
+            append_with_tabs(&mut job, &piece[from..], &format, &mut column, tabs);
             index += piece.chars().count();
         }
         let end = &line[content.len()..];
@@ -503,38 +538,51 @@ mod tests {
         assert_eq!(column("ab\t"), 4);
         assert_eq!(column("abcd\t"), 8);
         assert_eq!(column("\tlod c, [sp + 2]\t"), 20);
+        assert_eq!(column_with("ab\t", 8), 8);
+        assert_eq!(column_with("ab\t", 2), 4);
     }
 
-    /// Tabs end on the tab stops in the laid out text: the comments of
-    /// these lines start at the same x.
+    /// Tabs end on the tab stops in the laid out text, whatever the tab
+    /// width: each comment starts at the column its line puts it at.
     #[test]
     fn tabs_line_up() {
-        // Each comment starts at column 20.
         let text = "\tmov a, 1\t\t; one\n\tlod c, [sp + 2]\t; two\n\tret\t\t\t\t; three\n";
         let font = FontId::monospace(14.0);
-        let job = layout_job(text, Syntax::Assembly, font.clone(), true);
         let ctx = eframe::egui::Context::default();
-        let mut galley = None;
-        let mut output = ctx.run_ui(Default::default(), |ui| {
-            galley = Some(ui.fonts_mut(|f| f.layout_job(job.clone())));
-        });
-        output.textures_delta.clear();
-        let galley = galley.unwrap();
-        let x_of = |s: &str| {
-            let index = text[..text.find(s).unwrap()].chars().count();
-            galley
-                .pos_from_cursor(eframe::egui::text::CCursor::new(index))
-                .min
-                .x
-        };
-        // Positions are rounded to pixels: the width of a character measured
-        // over 13 of them.
-        let space = (x_of("2]") - x_of("lod c")) / 13.0;
-        let (one, two, three) = (x_of("; one"), x_of("; two"), x_of("; three"));
-        for x in [one, two, three] {
-            assert!((x - 20.0 * space).abs() < 1.5, "{x} vs {}", 20.0 * space);
+        for width in [2, 4, 8] {
+            let mut galley = None;
+            let mut output = ctx.run_ui(Default::default(), |ui| {
+                let char_width = ui.fonts_mut(|f| f.glyph_width(&font, '0'));
+                let tabs = Tabs { width, char_width };
+                let job = layout_job(text, Syntax::Assembly, font.clone(), true, tabs);
+                galley = Some(ui.fonts_mut(|f| f.layout_job(job)));
+            });
+            output.textures_delta.clear();
+            let galley = galley.unwrap();
+            let x_of = |s: &str| {
+                let index = text[..text.find(s).unwrap()].chars().count();
+                galley
+                    .pos_from_cursor(eframe::egui::text::CCursor::new(index))
+                    .min
+                    .x
+            };
+            // Positions are rounded to pixels: the width of a character
+            // measured over 13 of them.
+            let space = (x_of("2]") - x_of("lod c")) / 13.0;
+            for comment in ["; one", "; two", "; three"] {
+                let line_start = text[..text.find(comment).unwrap()]
+                    .rfind('\n')
+                    .map_or(0, |n| n + 1);
+                let before = &text[line_start..text.find(comment).unwrap()];
+                let expected = column_with(before, width) as f32 * space;
+                let x = x_of(comment);
+                // Within a third of a character (the measure of `space` drifts).
+                assert!(
+                    (x - expected).abs() < space / 3.0,
+                    "width {width}: {x} vs {expected}"
+                );
+            }
         }
-        assert_eq!((one, one), (two, three));
     }
 
     fn kinds(line: &str) -> Vec<(&str, Kind)> {

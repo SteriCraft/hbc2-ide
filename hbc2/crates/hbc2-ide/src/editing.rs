@@ -7,6 +7,8 @@
 //! The selection goes from `anchor` (where it started) to `cursor` (the end
 //! that moves); they are equal when nothing is selected.
 
+use std::sync::atomic::{AtomicBool, Ordering};
+
 /// The text and selection after an edit.
 #[derive(Clone, Debug, PartialEq, Eq)]
 pub struct Edit {
@@ -15,8 +17,40 @@ pub struct Edit {
     pub cursor: usize,
 }
 
-/// Spaces that make one indentation level, when a line is indented with spaces.
-const INDENT_SPACES: usize = 4;
+/// Tab puts spaces, not tab characters (Settings > Editor).
+static INDENT_WITH_SPACES: AtomicBool = AtomicBool::new(false);
+
+pub fn set_indent_with_spaces(spaces: bool) {
+    INDENT_WITH_SPACES.store(spaces, Ordering::Relaxed);
+}
+
+/// How the editor indents.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct Indentation {
+    /// Columns of one level: the tab width.
+    pub width: usize,
+    /// Levels are made of spaces, not tabs.
+    pub spaces: bool,
+}
+
+impl Indentation {
+    /// As the settings say.
+    pub fn current() -> Indentation {
+        Indentation {
+            width: crate::highlight::tab_width(),
+            spaces: INDENT_WITH_SPACES.load(Ordering::Relaxed),
+        }
+    }
+
+    /// What Tab types at `column`: a tab, or spaces up to the next tab stop.
+    pub fn tab_at(self, column: usize) -> String {
+        if self.spaces {
+            " ".repeat(self.width - column % self.width)
+        } else {
+            "\t".into()
+        }
+    }
+}
 
 const PAIRS: [(char, char); 3] = [('(', ')'), ('[', ']'), ('{', '}')];
 
@@ -68,9 +102,20 @@ fn line_starts(chars: &[char], start: usize, end: usize) -> Vec<usize> {
 }
 
 /// Tab (`outdent` false) or Shift+Tab (true) on the selected lines, or on
-/// the cursor's line. Tab adds a tab at the start of each line that is not
-/// empty; Shift+Tab takes away a tab or up to 4 spaces.
+/// the cursor's line. Tab adds a level (a tab, or spaces) at the start of
+/// each line that is not empty; Shift+Tab takes away a tab or up to a
+/// level of spaces.
 pub fn indent(text: &str, anchor: usize, cursor: usize, outdent: bool) -> Edit {
+    indent_with(text, anchor, cursor, outdent, Indentation::current())
+}
+
+pub fn indent_with(
+    text: &str,
+    anchor: usize,
+    cursor: usize,
+    outdent: bool,
+    indentation: Indentation,
+) -> Edit {
     let mut chars: Vec<char> = text.chars().collect();
     let (mut anchor, mut cursor) = (anchor.min(chars.len()), cursor.min(chars.len()));
     let starts = line_starts(&chars, anchor.min(cursor), anchor.max(cursor));
@@ -82,7 +127,7 @@ pub fn indent(text: &str, anchor: usize, cursor: usize, outdent: bool) -> Edit {
             } else {
                 chars[p..]
                     .iter()
-                    .take(INDENT_SPACES)
+                    .take(indentation.width)
                     .take_while(|&&c| c == ' ')
                     .count()
             };
@@ -94,9 +139,11 @@ pub fn indent(text: &str, anchor: usize, cursor: usize, outdent: bool) -> Edit {
             anchor = shift(anchor);
             cursor = shift(cursor);
         } else if chars.get(p).is_some_and(|&c| c != '\n') {
-            chars.insert(p, '\t');
-            // A selection starting at the start of the line keeps the new tab.
-            let shift = |pos: usize| if pos > p { pos + 1 } else { pos };
+            let level: Vec<char> = indentation.tab_at(0).chars().collect();
+            let n = level.len();
+            chars.splice(p..p, level);
+            // A selection starting at the start of the line keeps the new level.
+            let shift = |pos: usize| if pos > p { pos + n } else { pos };
             anchor = shift(anchor);
             cursor = shift(cursor);
         }
@@ -208,7 +255,7 @@ pub fn close_brace(text: &str, anchor: usize, cursor: usize, typed: char) -> Opt
                 let spaces = current
                     .iter()
                     .rev()
-                    .take(INDENT_SPACES)
+                    .take(Indentation::current().width)
                     .take_while(|&&c| c == ' ');
                 current.truncate(current.len() - spaces.count());
             }
@@ -330,6 +377,15 @@ mod tests {
         assert_eq!(show(&indent("    a", 2, 2, true)), "|a");
         // Nothing to take away: unchanged.
         assert_eq!(indent("a\nb", 0, 3, true).text, "a\nb");
+        // With spaces, two wide.
+        let two = Indentation {
+            width: 2,
+            spaces: true,
+        };
+        assert_eq!(show(&indent_with("a\nb", 0, 3, false, two)), "<  a\n  b>");
+        assert_eq!(show(&indent_with("   a", 3, 3, true, two)), " |a");
+        assert_eq!(two.tab_at(3), " ");
+        assert_eq!(two.tab_at(4), "  ");
     }
 
     #[test]

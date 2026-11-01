@@ -5,12 +5,14 @@ use hbc2_asm::Target;
 use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
-use crate::app::{Action, Dialog, State, can_undo};
+use crate::app::{Action, Dialog, SettingsPage, State, can_undo};
 use crate::find::FindMode;
 use crate::project::{
     Language, folder_name, new_file_content, project_folder_name, source_file_name,
 };
-use crate::settings::{SPEEDS, TargetSetting, frequency_label, speed_label};
+use crate::settings::{
+    MonitorSettings, Placement, SPEEDS, Settings, TargetSetting, frequency_label, speed_label,
+};
 
 fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
     Button::new(text.to_string()).shortcut_text(shortcut.to_string())
@@ -81,14 +83,12 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::SaveAll);
                 }
                 ui.separator();
-                ui.horizontal(|ui| {
-                    ui.label("Editor font");
-                    ui.add(
-                        egui::DragValue::new(&mut state.settings.editor_font_size)
-                            .range(8.0..=32.0)
-                            .suffix(" px"),
-                    );
-                });
+                if ui.button("Settings…").clicked() {
+                    actions.push(Action::ShowDialog(Dialog::Settings {
+                        page: SettingsPage::General,
+                        draft: Box::new(state.settings.clone()),
+                    }));
+                }
                 ui.separator();
                 if ui.button("Quit").clicked() {
                     ui.ctx().send_viewport_cmd(egui::ViewportCommand::Close);
@@ -220,7 +220,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::StepOut);
                 }
                 ui.checkbox(&mut state.settings.monitor_window, "Monitor window");
-                if ui.add(shortcut_button("Restart", "Ctrl+F5")).clicked() {
+                if ui.add(shortcut_button("Reset", "Ctrl+F5")).clicked() {
                     actions.push(Action::Reset);
                 }
                 ui.separator();
@@ -247,7 +247,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     .on_disabled_hover_text(
                         "Plugged in when the program is built for the EEPROM target",
                     );
-                    ui.label(RichText::new("Changing them restarts the machine.").weak());
+                    ui.label(RichText::new("Changing them resets the machine.").weak());
                     if changed {
                         actions.push(Action::SetPeripherals(p));
                     }
@@ -331,8 +331,8 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                 actions.push(Action::StepOver);
             }
             if ui
-                .button("⟲ Restart")
-                .on_hover_text("Restart the machine from its image (Ctrl+F5)")
+                .button("⟲ Reset")
+                .on_hover_text("Reset the machine: reload its image, paused (Ctrl+F5)")
                 .clicked()
             {
                 actions.push(Action::Reset);
@@ -505,7 +505,7 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
                 "Shift+F11",
                 "Step out: until the routine returns (Shift+F10 too)",
             ),
-            ("Ctrl+F5", "Restart"),
+            ("Ctrl+F5", "Reset"),
             ("Ctrl+S", "Save"),
             ("Ctrl+W", "Close the tab"),
             ("Ctrl+W+R", "Close the other tabs"),
@@ -570,6 +570,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
             }
             Dialog::NewProject {
                 parent,
+                own_folder,
                 name,
                 language,
                 interrupt_handler,
@@ -580,8 +581,14 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 ui.add_space(12.0);
 
                 ui.label("Name");
-                let edit = ui.add(egui::TextEdit::singleline(name).desired_width(380.0));
-                edit.request_focus();
+                let edit = ui.add_enabled(
+                    *own_folder,
+                    egui::TextEdit::singleline(name).desired_width(380.0),
+                );
+                if *own_folder {
+                    edit.request_focus();
+                }
+                ui.checkbox(own_folder, "Create a folder named after the project");
                 ui.add_space(10.0);
 
                 ui.label("Location");
@@ -621,7 +628,22 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 }
                 ui.add_space(10.0);
 
-                if let Ok(folder) = project_folder_name(name) {
+                let entry = match language {
+                    Language::Assembly => crate::project::ENTRY_FILE,
+                    Language::C => crate::project::C_ENTRY_FILE,
+                };
+                if !*own_folder {
+                    let project = parent
+                        .file_name()
+                        .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+                    ui.label(
+                        RichText::new(format!(
+                            "Creates the project {project} in {} (named after the folder).",
+                            parent.display()
+                        ))
+                        .weak(),
+                    );
+                } else if let Ok(folder) = project_folder_name(name) {
                     ui.label(
                         RichText::new(format!("Creates {}", parent.join(folder).display()))
                             .weak(),
@@ -633,7 +655,21 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 let enter = ui.input(|i| i.key_pressed(egui::Key::Enter));
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
-                    if ui.button("Create").clicked() || enter {
+                    let create = ui.button("Create").clicked() || enter;
+                    if create && !*own_folder {
+                        if !parent.is_dir() {
+                            *error = Some("The location folder does not exist.".into());
+                        } else if parent.join(entry).exists() {
+                            *error = Some(format!("This folder already holds a {entry}."));
+                        } else {
+                            keep = false;
+                            state.actions.push(Action::CreateProject(
+                                parent.clone(),
+                                *language,
+                                *interrupt_handler,
+                            ));
+                        }
+                    } else if create {
                         match project_folder_name(name) {
                             Err(e) => *error = Some(e.into()),
                             Ok(_) if !parent.is_dir() => {
@@ -836,6 +872,53 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     keep = false;
                 }
             }
+            Dialog::Settings { page, draft } => {
+                ui.set_max_width(620.0);
+                ui.heading("Settings");
+                ui.add_space(12.0);
+                // Categories on the left, the chosen one on the right, with
+                // a line between them as high as the content (a separator
+                // widget would take all the height it can).
+                let row = ui.horizontal_top(|ui| {
+                    ui.vertical(|ui| {
+                        ui.set_width(110.0);
+                        for choice in SettingsPage::ALL {
+                            ui.selectable_value(page, choice, choice.label());
+                        }
+                    });
+                    let line = ui.cursor().left() + 8.0;
+                    ui.add_space(17.0);
+                    ui.vertical(|ui| {
+                        // The same size for every page: the dialog does not jump.
+                        ui.set_min_size(egui::vec2(400.0, 280.0));
+                        match page {
+                            SettingsPage::General => general_settings(ui, draft),
+                            SettingsPage::Editor => editor_settings(ui, draft),
+                            SettingsPage::Build => build_settings(ui, draft),
+                            SettingsPage::Emulator => emulator_settings(ui, draft),
+                            SettingsPage::Monitor => monitor_settings(ui, &mut draft.monitor),
+                        }
+                    });
+                    line
+                });
+                ui.painter().vline(
+                    row.inner,
+                    row.response.rect.y_range(),
+                    ui.visuals().widgets.noninteractive.bg_stroke,
+                );
+                ui.add_space(12.0);
+                ui.horizontal(|ui| {
+                    if ui.button("OK").clicked() {
+                        keep = false;
+                        state.settings.set_preferences(draft);
+                        state.disasm_view.follow_pc = state.settings.follow_pc;
+                        state.memory_view.follow_pc = state.settings.follow_pc;
+                    }
+                    if ui.button("Cancel").clicked() {
+                        keep = false;
+                    }
+                });
+            }
         }
         });
     });
@@ -844,6 +927,222 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
     }
     if keep && state.dialog.is_none() {
         state.dialog = Some(dialog);
+    }
+}
+
+/// A title above a group of settings.
+fn settings_section(ui: &mut egui::Ui, title: &str) {
+    ui.add_space(6.0);
+    ui.label(RichText::new(title).strong());
+}
+
+fn general_settings(ui: &mut egui::Ui, settings: &mut Settings) {
+    let general = &mut settings.general;
+    settings_section(ui, "Startup");
+    ui.checkbox(
+        &mut general.reopen_last_project,
+        "Reopen the last project, with its files",
+    );
+    settings_section(ui, "New projects");
+    ui.checkbox(
+        &mut general.project_folder,
+        "Create a directory named after the project by default",
+    )
+    .on_hover_text(
+        "Unticked, the project goes right in the chosen folder, and takes the folder's name.",
+    );
+    ui.label("Folder for new projects");
+    ui.horizontal(|ui| {
+        let folder = settings.projects_folder();
+        ui.monospace(folder.display().to_string());
+        if ui.button("Browse…").clicked()
+            && let Some(dir) = rfd::FileDialog::new()
+                .set_title("Folder for new projects")
+                .set_directory(&folder)
+                .pick_folder()
+        {
+            settings.general.projects_folder = Some(dir);
+        }
+        if settings.general.projects_folder.is_some()
+            && ui
+                .button("Default")
+                .on_hover_text("Documents/hbc2_projects")
+                .clicked()
+        {
+            settings.general.projects_folder = None;
+        }
+    });
+    settings_section(ui, "Recent projects");
+    ui.horizontal(|ui| {
+        ui.label("File > Recent projects lists");
+        ui.add(
+            egui::DragValue::new(&mut settings.general.recent_count)
+                .range(1..=30)
+                .speed(0.1),
+        );
+        ui.label("projects");
+    });
+}
+
+fn editor_settings(ui: &mut egui::Ui, settings: &mut Settings) {
+    settings_section(ui, "Text");
+    ui.horizontal(|ui| {
+        ui.label("Font size");
+        ui.add(
+            egui::DragValue::new(&mut settings.editor_font_size)
+                .range(8.0..=32.0)
+                .suffix(" px"),
+        );
+    });
+    let editor = &mut settings.editor;
+    settings_section(ui, "Indentation");
+    ui.horizontal(|ui| {
+        ui.label("Tab key inserts");
+        ui.radio_value(&mut editor.indent_with_spaces, false, "Tabs");
+        ui.radio_value(&mut editor.indent_with_spaces, true, "Spaces");
+    });
+    ui.horizontal(|ui| {
+        ui.label("A tab is as wide as");
+        ui.add(
+            egui::DragValue::new(&mut editor.tab_width)
+                .range(1..=16)
+                .speed(0.05),
+        );
+        ui.label(if editor.tab_width == 1 {
+            "space"
+        } else {
+            "spaces"
+        });
+    })
+    .response
+    .on_hover_text("Also the number of spaces Tab inserts when it inserts spaces.");
+    settings_section(ui, "Display");
+    ui.checkbox(&mut editor.line_numbers, "Show line numbers");
+    ui.checkbox(
+        &mut editor.highlight_line,
+        "Highlight the line of the cursor",
+    );
+}
+
+fn build_settings(ui: &mut egui::Ui, settings: &mut Settings) {
+    let build = &mut settings.build;
+    ui.checkbox(
+        &mut build.save_before_build,
+        "Save the files before assembling",
+    )
+    .on_hover_text(
+        "Assembly projects are otherwise assembled from the editors, unsaved changes \
+         included. C projects are always saved before they are built.",
+    );
+    ui.checkbox(
+        &mut build.run_after_build,
+        "Run the program after a successful build",
+    );
+}
+
+fn emulator_settings(ui: &mut egui::Ui, settings: &mut Settings) {
+    settings_section(ui, "Startup");
+    ui.horizontal(|ui| {
+        ui.label("Clock");
+        let emulator = &mut settings.emulator;
+        let shown = match emulator.startup_speed {
+            Some(speed) => speed_label(speed.into()),
+            None => "As last used".into(),
+        };
+        egui::ComboBox::from_id_salt("startup_speed")
+            .selected_text(shown)
+            .show_ui(ui, |ui| {
+                ui.selectable_value(&mut emulator.startup_speed, None, "As last used");
+                for speed in SPEEDS {
+                    ui.selectable_value(
+                        &mut emulator.startup_speed,
+                        Some(speed.into()),
+                        speed_label(speed),
+                    );
+                }
+            });
+    });
+    settings_section(ui, "Debugging");
+    ui.checkbox(&mut settings.follow_pc, "Follow the current instruction")
+        .on_hover_text(
+            "When the emulator pauses, show the line, disassembly and memory of the next \
+             instruction.",
+        );
+    settings_section(ui, "Peripherals of new projects");
+    let peripherals = &mut settings.emulator.new_project_peripherals;
+    ui.checkbox(&mut peripherals.monitor, "Monitor");
+    ui.checkbox(&mut peripherals.rtc, "Real-time clock");
+    ui.checkbox(&mut peripherals.keyboard, "Keyboard");
+}
+
+fn monitor_settings(ui: &mut egui::Ui, monitor: &mut MonitorSettings) {
+    ui.checkbox(
+        &mut monitor.open_on_startup,
+        "Open the monitor window on startup",
+    );
+    ui.checkbox(&mut monitor.sharp_scaling, "Sharp scaling on startup")
+        .on_hover_text("Scale by whole numbers only, so every HBC-2 pixel has the same size.");
+    ui.add_enabled_ui(monitor.sharp_scaling, |ui| {
+        ui.horizontal(|ui| {
+            ui.add_space(24.0);
+            ui.label("Pixel size");
+            ui.add(
+                egui::DragValue::new(&mut monitor.pixel_size)
+                    .range(1..=8)
+                    .speed(0.05)
+                    .suffix(" px"),
+            );
+        })
+        .response
+        .on_hover_text("Size of an HBC-2 pixel when the monitor window opens.");
+    });
+    ui.add_space(10.0);
+    ui.checkbox(
+        &mut monitor.remember_position,
+        "Open the monitor window where it was last closed",
+    );
+    ui.add_enabled_ui(!monitor.remember_position, |ui| {
+        ui.label("Where the monitor window opens on the screen");
+        ui.horizontal(|ui| {
+            placement_picker(ui, &mut monitor.placement);
+            ui.label(RichText::new(monitor.placement.label()).weak());
+        });
+    });
+}
+
+/// The screen as 3×3 squares: a click picks where the window goes.
+fn placement_picker(ui: &mut egui::Ui, placement: &mut Placement) {
+    let cell = egui::vec2(36.0, 27.0);
+    let gap = 3.0;
+    let size = cell * 3.0 + egui::vec2(gap, gap) * 4.0;
+    let (rect, _) = ui.allocate_exact_size(size, egui::Sense::hover());
+    let visuals = ui.visuals().clone();
+    ui.painter().rect(
+        rect,
+        4.0,
+        visuals.extreme_bg_color,
+        visuals.widgets.noninteractive.bg_stroke,
+        egui::StrokeKind::Inside,
+    );
+    for (index, &choice) in Placement::ALL.iter().enumerate() {
+        let (column, row) = ((index % 3) as f32, (index / 3) as f32);
+        let min = rect.min + egui::vec2(gap + column * (cell.x + gap), gap + row * (cell.y + gap));
+        let square = egui::Rect::from_min_size(min, cell);
+        let id = ui.id().with(("placement", index));
+        let response = ui
+            .interact(square, id, egui::Sense::click())
+            .on_hover_text(choice.label());
+        if response.clicked() {
+            *placement = choice;
+        }
+        let fill = if *placement == choice {
+            visuals.selection.bg_fill
+        } else if response.hovered() {
+            visuals.widgets.hovered.weak_bg_fill
+        } else {
+            visuals.widgets.inactive.weak_bg_fill
+        };
+        ui.painter().rect_filled(square, 2.0, fill);
     }
 }
 

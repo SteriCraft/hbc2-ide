@@ -18,6 +18,33 @@ use crate::{font, keymap};
 /// Text mode is 252 pixels wide, pixel mode 256.
 const TEXT_WIDTH: usize = TEXT_COLUMNS * CHAR_WIDTH;
 
+/// Width of the stripe around the screen while it has focus (drawn
+/// outside, so that it hides no HBC-2 pixel).
+const FOCUS_STRIPE: f32 = 2.0;
+/// Space between the screen and the stripe, so that it does not touch the
+/// characters.
+const FOCUS_GAP: f32 = 1.0;
+/// Room kept on each side of the screen for the stripe.
+const FRAME: f32 = FOCUS_GAP + FOCUS_STRIPE;
+/// Room left under the screen for the keyboard hint.
+const HINT_HEIGHT: f32 = 22.0;
+/// Margin of the window's panel.
+const PANEL_MARGIN: f32 = 8.0;
+/// The "Sharp scaling" row above the screen, with the space under it.
+const HEADER_HEIGHT: f32 = 21.0;
+
+/// Inside size of a monitor window where each HBC-2 pixel is `pixel_size`
+/// points wide with sharp scaling.
+pub fn window_size(pixel_size: u32) -> egui::Vec2 {
+    let screen = vec2(WIDTH as f32, HEIGHT as f32) * pixel_size.max(1) as f32;
+    let around = vec2(
+        2.0 * (PANEL_MARGIN + FRAME),
+        2.0 * (PANEL_MARGIN + FRAME) + HEADER_HEIGHT + HINT_HEIGHT,
+    );
+    // A little more, so that rounding does not drop to the size below.
+    screen + around + vec2(2.0, 2.0)
+}
+
 pub struct MonitorView {
     texture: Option<TextureHandle>,
     /// The monitor state the texture shows.
@@ -121,23 +148,25 @@ impl MonitorView {
 
         // Keep the 4:3 shape (text mode keeps the same height, 4 pixels narrower).
         let size = texture.size_vec2();
-        let available = ui.available_size() - vec2(0.0, 22.0);
+        let stripes = vec2(2.0 * FRAME, 2.0 * FRAME);
+        let available = ui.available_size() - stripes - vec2(0.0, HINT_HEIGHT);
         let mut scale = (available.x / WIDTH as f32)
             .min(available.y / HEIGHT as f32)
             .max(0.25);
         if self.integer_scale && scale >= 1.0 {
             scale = scale.floor();
         }
-        let screen_size = vec2(WIDTH as f32, HEIGHT as f32) * scale;
-        let (outer, response) =
-            ui.allocate_exact_size(vec2(ui.available_width(), screen_size.y), Sense::click());
+        // The screen is the image: text mode is a little narrower.
+        let screen_size = size * scale;
+        let (outer, response) = ui.allocate_exact_size(
+            vec2(ui.available_width(), screen_size.y + stripes.y),
+            Sense::click(),
+        );
         let screen = Rect::from_center_size(outer.center(), screen_size);
-        let image_rect = Rect::from_center_size(screen.center(), size * scale);
         let painter = ui.painter_at(outer);
-        painter.rect_filled(screen, 0.0, Color32::BLACK);
         painter.image(
             texture.id(),
-            image_rect,
+            screen,
             Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
             Color32::WHITE,
         );
@@ -163,10 +192,10 @@ impl MonitorView {
                 self.forward_keys(ui, runner);
             }
             painter.rect_stroke(
-                screen,
+                screen.expand(FOCUS_GAP),
                 0.0,
-                Stroke::new(2.0, ui.visuals().selection.stroke.color),
-                StrokeKind::Inside,
+                Stroke::new(FOCUS_STRIPE, ui.visuals().selection.stroke.color),
+                StrokeKind::Outside,
             );
         } else {
             self.release_all(runner);

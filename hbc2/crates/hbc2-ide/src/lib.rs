@@ -17,6 +17,7 @@ pub mod font;
 pub mod highlight;
 pub mod keymap;
 pub mod multicursor;
+mod placement;
 pub mod project;
 pub mod settings;
 pub mod signatures;
