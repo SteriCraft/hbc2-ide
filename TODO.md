@@ -34,7 +34,7 @@ Must indicate the computer's name, shell version, memory capacity (RAM, EEPROM i
 |✔| `poke <addr> <val>` | Write one byte of memory |
 |✔| `peek <addr>` | Read one byte of memory |
 |✔| `date` | Read the RTC ports |
-|☐| `time` | Read the RTC ports |
+|✔| `time` | Read the RTC ports |
 |✔| `echo text` | Tests the word splitting |
 |✔| `hex n` / `dec n` | Number conversion: `hex 255` -> `0xFF` |
 |✔| `rand [min max]` | Uses `random_range` |
