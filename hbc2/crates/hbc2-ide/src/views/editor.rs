@@ -17,7 +17,7 @@ use crate::document::{Document, shift_breakpoints};
 use crate::editing;
 use crate::find::{self, Options};
 use crate::highlight;
-use crate::multicursor::{self, Cursor, Motion, Op, word_at};
+use crate::multicursor::{self, Cursor, Motion, Op};
 use crate::signatures::{Signature, Signatures};
 
 /// What the editor shows besides the text.
@@ -252,16 +252,23 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             if output.response.clicked()
                 && let Some(pointer) = output.response.interact_pointer_pos()
-                && click_count(ui, editor_id, pointer) < 3
-                && output.response.triple_clicked()
+                && let clicks = click_count(ui, editor_id, pointer)
+                // egui can take a double click for a triple one (see
+                // `click_count`), and its word ends are odd on symbols
+                // (`------`): the editor selects what was double clicked.
+                && (output.response.double_clicked()
+                    || (clicks < 3 && output.response.triple_clicked()))
             {
-                // egui took this double click for a triple one: select the word.
                 let at = output
                     .galley
                     .cursor_from_pos(pointer - output.galley_pos)
                     .index
                     .0;
-                let (start, end) = word_at(text, at);
+                // The character under the pointer: the one left of the
+                // cursor when the pointer is on its left half.
+                let x = text_rect(&output.galley, output.galley_pos, &(at..at)).min.x;
+                let at = if pointer.x < x { at.saturating_sub(1) } else { at };
+                let (start, end) = double_click_range(text, at);
                 output.state.cursor.set_char_range(Some(CCursorRange::two(
                     CCursor::new(start),
                     CCursor::new(end),
@@ -574,6 +581,36 @@ fn auto_edit(ui: &egui::Ui, id: Id, text: &mut String) -> bool {
     )));
     state.store(ui.ctx(), id);
     changed
+}
+
+/// What a double click on the character at `at` selects: its word, its
+/// run of blanks, or its run of the same symbol (`------`, `//`). Past the
+/// end of a line, what ends the line.
+fn double_click_range(text: &str, at: usize) -> (usize, usize) {
+    let chars: Vec<char> = text.chars().collect();
+    let line_end = |i: usize| chars.get(i).is_none_or(|&c| c == '\n' || c == '\r');
+    let at = if line_end(at) && at > 0 && !line_end(at - 1) {
+        at - 1
+    } else {
+        at
+    };
+    if line_end(at) {
+        return (at, at);
+    }
+    let c = chars[at];
+    let same = |i: usize| {
+        let d = chars[i];
+        if multicursor::is_word(c) {
+            multicursor::is_word(d)
+        } else if c.is_whitespace() {
+            d.is_whitespace() && d != '\n' && d != '\r'
+        } else {
+            d == c
+        }
+    };
+    let start = (0..at).rev().take_while(|&i| same(i)).last().unwrap_or(at);
+    let end = (at..chars.len()).find(|&i| !same(i)).unwrap_or(chars.len());
+    (start, end)
 }
 
 /// Counts the clicks in a row on the editor, at the same place, each one
@@ -1068,6 +1105,7 @@ pub fn pc_color(dark: bool) -> Color32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::multicursor::word_at;
 
     #[test]
     fn line_starts() {
@@ -1088,5 +1126,19 @@ mod tests {
         assert_eq!(word_at(text, 13), (13, 13)); // on a space
         assert_eq!(word_at(text, 0), (0, 1));
         assert_eq!(word_at(text, 99), (99, 99));
+    }
+
+    #[test]
+    fn double_clicks() {
+        let text = "// ------ TEST ------\nab  c";
+        assert_eq!(double_click_range(text, 4), (3, 9)); // dashes
+        assert_eq!(double_click_range(text, 0), (0, 2)); // slashes
+        assert_eq!(double_click_range(text, 11), (10, 14)); // word
+        assert_eq!(double_click_range(text, 9), (9, 10)); // blank
+        assert_eq!(double_click_range(text, 21), (15, 21)); // past the line: its end
+        assert_eq!(double_click_range(text, 24), (24, 26)); // blanks
+        assert_eq!(double_click_range(text, 27), (26, 27)); // past the text
+        assert_eq!(double_click_range("", 0), (0, 0));
+        assert_eq!(double_click_range("\n\n", 1), (1, 1)); // empty line
     }
 }

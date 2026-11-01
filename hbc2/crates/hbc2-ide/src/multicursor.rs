@@ -435,7 +435,7 @@ pub fn duplicate_lines(text: &str, cursors: &[Cursor], main: usize) -> Outcome {
     }
 }
 
-fn is_word(c: char) -> bool {
+pub fn is_word(c: char) -> bool {
     c.is_alphanumeric() || c == '_'
 }
 

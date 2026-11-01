@@ -164,8 +164,10 @@ impl egui_dock::TabViewer for Viewer<'_> {
         let baseline = state.emulator.baseline.clone();
         match tab {
             Tab::Welcome => {
-                // "Find in files" also works with no file open.
-                if state.find.mode == Some(FindMode::Files) {
+                // "Find in files" also works with no file open. One bar
+                // only: copies would share the query field, and each would
+                // take every key typed.
+                if state.find.mode == Some(FindMode::Files) && state.active_editor.is_none() {
                     find_bar(ui, state, None);
                 }
                 egui::ScrollArea::both()
@@ -245,7 +247,11 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
         ui.label(format!("{} is not loaded.", path.display()));
         return;
     };
-    find_bar(ui, state, Some(index));
+    // In the active editor only: two bars (tabs side by side) would share
+    // the query field, and each would take every key typed.
+    if state.active_editor.as_ref() == Some(path) {
+        find_bar(ui, state, Some(index));
+    }
 
     if state.docs[index].conflict {
         ui.horizontal(|ui| {
