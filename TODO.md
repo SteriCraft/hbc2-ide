@@ -38,7 +38,7 @@ Must indicate the computer's name, shell version, memory capacity (RAM, EEPROM i
 |✔| `echo text` | Tests the word splitting |
 |✔| `hex n` / `dec n` | Number conversion: `hex 255` -> `0xFF` |
 |✔| `rand [min max]` | Uses `random_range` |
-|☐| `devices` | Port of each peripheral (monitor, keyboard, RTC, EEPROM) |
+|✔| `devices` | Port of each peripheral (monitor, keyboard, RTC, EEPROM) |
 |✔| `run addr` | Calls code at an address, back to the prompt after |
 
 Naming to decide: shorter names (`color 14`, `bgcolor 1`, or DOS-like
