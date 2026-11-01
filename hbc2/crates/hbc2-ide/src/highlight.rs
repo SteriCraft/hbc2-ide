@@ -319,9 +319,100 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
     job
 }
 
+/// The bracket next to the cursor (`cursor` is a char index) and the one
+/// that matches it, as char indices. The bracket left of the cursor wins
+/// over the one right of it. Brackets in comments and strings are ignored.
+pub fn matching_bracket(text: &str, syntax: Syntax, cursor: usize) -> Option<(usize, usize)> {
+    let is_bracket = |c: char| "()[]{}".contains(c);
+    // Cheap check first: most of the time no bracket is next to the cursor.
+    let mut around = text.chars().skip(cursor.saturating_sub(1));
+    let left = if cursor > 0 { around.next() } else { None };
+    let right = around.next();
+    if !left.is_some_and(is_bracket) && !right.is_some_and(is_bracket) {
+        return None;
+    }
+
+    // The brackets of the code: (char index, bracket).
+    let mut brackets = Vec::new();
+    let mut index = 0;
+    let mut in_comment = false;
+    for line in text.split_inclusive('\n') {
+        let content = line.trim_end_matches(['\n', '\r']);
+        let spans = match syntax {
+            Syntax::Assembly => spans(content),
+            Syntax::C => c_spans(content, &mut in_comment),
+        };
+        let mut chars = content.char_indices().peekable();
+        for (range, kind) in spans {
+            let code = !matches!(kind, Kind::Comment | Kind::Text);
+            while let Some(&(at, c)) = chars.peek() {
+                if at >= range.end {
+                    break;
+                }
+                if code && is_bracket(c) {
+                    brackets.push((index, c));
+                }
+                chars.next();
+                index += 1;
+            }
+        }
+        index += line[content.len()..].chars().count();
+    }
+
+    let find = |at: usize| brackets.iter().position(|&(i, _)| i == at);
+    let start = cursor
+        .checked_sub(1)
+        .and_then(find)
+        .or_else(|| find(cursor))?;
+    let (at, bracket) = brackets[start];
+    let (partner, forward) = match bracket {
+        '(' => (')', true),
+        '[' => (']', true),
+        '{' => ('}', true),
+        ')' => ('(', false),
+        ']' => ('[', false),
+        _ => ('{', false),
+    };
+    // Walking away from the bracket, its kind opens a level, its partner
+    // closes one.
+    let mut depth = 0;
+    let mut visit = |&(i, c): &(usize, char)| {
+        if c == bracket {
+            depth += 1;
+        } else if c == partner {
+            depth -= 1;
+        }
+        (depth == 0).then_some(i)
+    };
+    let other = if forward {
+        brackets[start..].iter().find_map(&mut visit)
+    } else {
+        brackets[..=start].iter().rev().find_map(&mut visit)
+    }?;
+    Some((at, other))
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn brackets() {
+        let c = |text: &str, at| matching_bracket(text, Syntax::C, at);
+        let text = "f(a[1], {b})";
+        assert_eq!(c(text, 2), Some((1, 11))); // after `(`
+        assert_eq!(c(text, 1), Some((1, 11))); // before `(`
+        assert_eq!(c(text, 12), Some((11, 1))); // after `)`
+        assert_eq!(c(text, 4), Some((3, 5))); // `[` left wins over `1`
+        assert_eq!(c(text, 9), Some((8, 10))); // `{`
+        assert_eq!(c(text, 0), None);
+        assert_eq!(c("(()", 1), None); // unmatched
+        // Comments and strings are skipped, also across lines.
+        assert_eq!(c("(\")\" // )\n/* ) */ )", 1), Some((0, 18)));
+        let asm = |text: &str, at| matching_bracket(text, Syntax::Assembly, at);
+        assert_eq!(asm("mov a, [b] ; ]", 7), Some((7, 9)));
+        assert_eq!(asm("x ')' (", 4), None);
+    }
 
     #[test]
     fn columns_with_tab_stops() {

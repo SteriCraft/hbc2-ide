@@ -312,6 +312,18 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             if let Some(rect) = marks.pc_line.and_then(row_rect) {
                 shapes.push(Shape::rect_filled(rect, 0.0, pc_color(dark)));
             }
+            // The bracket next to the cursor and its match.
+            if output.response.has_focus()
+                && let Some(range) = output.state.cursor.char_range()
+                && let Some((a, b)) =
+                    highlight::matching_bracket(text, syntax, range.primary.index.0)
+            {
+                let fill = bracket_color(dark);
+                for at in [a, b] {
+                    let rect = text_rect(&output.galley, output.galley_pos, &(at..at + 1));
+                    shapes.push(Shape::rect_filled(rect, 2.0, fill));
+                }
+            }
             // The selections of the extra cursors (egui draws the main one).
             if output.response.has_focus() {
                 let fill = visuals.selection.bg_fill;
@@ -1002,6 +1014,15 @@ fn match_colors(dark: bool, current: bool) -> (Color32, Color32) {
     };
     let fill = Color32::from_rgba_unmultiplied(80, 140, 255, alpha);
     (fill, Color32::from_rgb(80, 140, 255))
+}
+
+/// Fill of a pair of matching brackets: a faint blue.
+fn bracket_color(dark: bool) -> Color32 {
+    if dark {
+        Color32::from_rgba_unmultiplied(100, 160, 255, 95)
+    } else {
+        Color32::from_rgba_unmultiplied(80, 140, 255, 45)
+    }
 }
 
 /// Screen y range (top, bottom) of each line of the text.
