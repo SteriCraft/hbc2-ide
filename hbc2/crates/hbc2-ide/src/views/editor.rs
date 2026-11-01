@@ -278,8 +278,14 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                     .0;
                 // The character under the pointer: the one left of the
                 // cursor when the pointer is on its left half.
-                let x = text_rect(&output.galley, output.galley_pos, &(at..at)).min.x;
-                let at = if pointer.x < x { at.saturating_sub(1) } else { at };
+                let x = text_rect(&output.galley, output.galley_pos, &(at..at))
+                    .min
+                    .x;
+                let at = if pointer.x < x {
+                    at.saturating_sub(1)
+                } else {
+                    at
+                };
                 let (start, end) = double_click_range(text, at);
                 output.state.cursor.set_char_range(Some(CCursorRange::two(
                     CCursor::new(start),
