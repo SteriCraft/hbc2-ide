@@ -151,7 +151,7 @@ int eeprom_save(unsigned long address, const void *ram, unsigned length);
 
 int srand_rtc(void);        /* seeds from the clock: 1, or 0 (no RTC) */
 /* lo to hi (both included), every value equally likely; lo when hi < lo */
-int rand_range(int lo, int hi);
+unsigned long rand_range(unsigned long lo, unsigned long hi);
 
 
 /* --- Keyboard ----------------------------------------------------------

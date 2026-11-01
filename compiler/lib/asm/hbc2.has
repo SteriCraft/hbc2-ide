@@ -488,18 +488,22 @@ _srand_rtc:
 lib_srand_rtc_end:
     ret
 
-; int rand_range(int lo, int hi): lo to hi (included), signed; lo when
-; hi < lo. Flipping the sign bit turns signed order into unsigned order,
-; so randr16 (unsigned) does the work.
+; unsigned long rand_range(unsigned long lo, unsigned long hi): lo to hi
+; (included); lo when hi < lo. randr32 takes the addresses of lo and hi
+; (the arguments on the stack) and writes the result over lo.
 _rand_range:
-    lod a, [sp + 2]
-    lod b, [sp + 3]
-    lod c, [sp + 4]
-    lod d, [sp + 5]
-    xor a, 0x80
-    xor c, 0x80
-    cal randr16
-    xor a, 0x80
+    rsp [x:y]
+    add y, 2                    ; [x:y] = &lo
+    adc x, 0
+    mov i, x
+    mov j, y
+    add j, 4                    ; [i:j] = &hi
+    adc i, 0
+    cal randr32                 ; hi < lo: lo stays as it is
+    lod c, [sp + 2]
+    lod d, [sp + 3]
+    lod a, [sp + 4]
+    lod b, [sp + 5]
     ret
 
 ; --- Keyboard ------------------------------------------------------------

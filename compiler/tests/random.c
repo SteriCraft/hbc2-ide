@@ -36,16 +36,17 @@ int sequences(void)
 
 int ranges(void)
 {
-    int i, n;
+    int i;
+    unsigned long n;
 
-    /* -3..3: every value comes out, nothing else */
+    /* 3..9: every value comes out, nothing else */
     for (i = 0; i < 16; i++)
         seen[i] = 0;
     for (i = 0; i < 300; i++) {
-        n = rand_range(-3, 3);
-        if (n < -3 || n > 3)
+        n = rand_range(3, 9);
+        if (n < 3 || n > 9)
             return 10;
-        seen[n + 3] = 1;
+        seen[n - 3] = 1;
     }
     for (i = 0; i < 7; i++)
         if (!seen[i])
@@ -54,20 +55,22 @@ int ranges(void)
         return 12;
     if (rand_range(9, 4) != 9)              /* hi < lo: lo */
         return 13;
-    seen[0] = seen[1] = 0;                  /* the whole int range */
+    if (rand_range(100000UL, 99999UL) != 100000UL)
+        return 14;
+    seen[0] = seen[1] = 0;                  /* the whole range: both halves */
     for (i = 0; i < 100; i++)
-        seen[rand_range(-32767 - 1, 32767) < 0] = 1;
+        seen[rand_range(0, 0xFFFFFFFFUL) >= 0x80000000UL] = 1;
     if (!seen[0] || !seen[1])
-        return 16;
-    for (i = 0; i < 100; i++) {
-        n = rand_range(1000, 1009);
-        if (n < 1000 || n > 1009)
-            return 14;
+        return 15;
+    for (i = 0; i < 100; i++) {             /* above 16 bits */
+        n = rand_range(3000000000UL, 3000000009UL);
+        if (n < 3000000000UL || n > 3000000009UL)
+            return 16;
     }
-    for (i = 0; i < 100; i++) {
-        n = rand_range(-20000, -19990);
-        if (n < -20000 || n > -19990)
-            return 15;
+    for (i = 0; i < 100; i++) {             /* across a 64 KiB boundary */
+        n = rand_range(65530UL, 65541UL);
+        if (n < 65530UL || n > 65541UL)
+            return 17;
     }
     return 0;
 }
