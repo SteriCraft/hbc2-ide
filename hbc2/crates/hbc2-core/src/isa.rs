@@ -1,7 +1,7 @@
 //! Instruction set of the HBC-2 CPU (see "Instruction format and addressing
 //! modes" and "Instruction set" in the HBC-2 Instruction Manual).
 //!
-//! Instruction format (32 bits, big-endian in memory):
+//! Instruction format (1 to 4 bytes, in this order in memory):
 //!
 //! ```text
 //! | Opcode (6b) | A.M. (4b) | R1 (3b) | R2 (3b) | V1 (8b) | V2 (8b) |
@@ -9,12 +9,20 @@
 //!
 //! R3 (RamReg / ImmReg / Offset mode) lives in the low 3 bits of V1, and Vx is V1:V2.
 //!
+//! An instruction is this format with the bytes it doesn't use left off. The
+//! CPU reads the first byte: an opcode without operands is 1 byte long (its 2
+//! addressing mode bits there must be 0). Otherwise it reads the second byte,
+//! and the addressing mode gives the length ([`AddrMode::length`]). See
+//! [`Instruction::size`] and [`Instruction::stops`] for invalid instructions.
+//!
+//! [`Instruction`] holds the 4-byte form; the bytes past the length are 0.
+//!
 //! [`INSTRUCTION_TABLE`] is the single source of truth for mnemonics, allowed
 //! addressing modes and affected flags. The CPU, the assembler, the
 //! disassembler and the GUI should all read it rather than repeat it.
 
-/// Instruction size in bytes.
-pub const INSTRUCTION_SIZE: u16 = 4;
+/// Size in bytes of the longest instruction.
+pub const MAX_INSTRUCTION_SIZE: u16 = 4;
 /// RAM size in bytes (16-bit address bus).
 pub const RAM_SIZE: usize = 0x1_0000;
 /// Stack pointer value at reset. The stack grows downward: the first push
@@ -155,6 +163,11 @@ impl AddrMode {
         }
     }
 
+    /// Length in bytes of an instruction in this mode.
+    pub const fn length(self) -> u16 {
+        [1, 2, 3, 4, 4, 3, 2, 4, 3][self as usize]
+    }
+
     /// Name as written in the manual.
     pub const fn name(self) -> &'static str {
         [
@@ -265,6 +278,51 @@ impl Opcode {
     pub fn accepts(self, mode: AddrMode) -> bool {
         self.info().modes.contains(&mode)
     }
+
+    /// False for the opcodes without operands (mode None only, 1 byte).
+    /// An opcode has operands in all its forms or in none.
+    pub const fn takes_operands(self) -> bool {
+        !matches!(self.info().modes[0], AddrMode::None)
+    }
+}
+
+/// How the CPU reads an instruction, by opcode bits and addressing mode bits:
+/// its size in bytes, plus [`STOPS`] when the CPU stops on it.
+static DECODE: [[u8; 16]; 64] = decode_table();
+const STOPS: u8 = 0x80;
+
+const fn decode_table() -> [[u8; 16]; 64] {
+    let mut table = [[1u8; 16]; 64]; // invalid opcodes: 1-byte NOP
+    let mut op = 0;
+    while op < OPCODE_COUNT {
+        let info = &INSTRUCTION_TABLE[op];
+        let mut mode = 0;
+        while mode < 16 {
+            table[op][mode] = if !info.opcode.takes_operands() {
+                // Only the 2 mode bits of the first byte are read.
+                if mode & 0b1100 == 0 { 1 } else { STOPS | 1 }
+            } else {
+                match AddrMode::from_bits(mode as u8) {
+                    Some(m) if mode_listed(info.modes, m) => m.length() as u8,
+                    _ => STOPS | 2,
+                }
+            };
+            mode += 1;
+        }
+        op += 1;
+    }
+    table
+}
+
+const fn mode_listed(modes: &[AddrMode], mode: AddrMode) -> bool {
+    let mut i = 0;
+    while i < modes.len() {
+        if modes[i] as u8 == mode as u8 {
+            return true;
+        }
+        i += 1;
+    }
+    false
 }
 
 /// Static description of one opcode, from the manual's instruction set table.
@@ -421,9 +479,42 @@ impl Instruction {
         AddrMode::from_bits(self.mode_bits())
     }
 
-    /// Big-endian bytes, as stored in memory.
+    /// The 4-byte form, in memory order. Only the first [`Instruction::size`]
+    /// bytes are part of the instruction.
     pub const fn to_bytes(self) -> [u8; 4] {
         self.0.to_be_bytes()
+    }
+
+    /// Bytes the CPU reads for this instruction (1 to 4):
+    /// - an invalid opcode is a 1-byte NOP;
+    /// - an opcode without operands is 1 byte;
+    /// - otherwise the addressing mode gives the length.
+    ///
+    /// When [`Instruction::stops`], this is the bytes read before stopping.
+    #[inline(always)]
+    pub fn size(self) -> u16 {
+        (self.decode() & !STOPS) as u16
+    }
+
+    /// True if the CPU stops on this instruction (H set, I cleared): a valid
+    /// opcode with an addressing mode it doesn't accept. For an opcode without
+    /// operands, that's mode bits in the first byte that aren't 0.
+    #[inline(always)]
+    pub fn stops(self) -> bool {
+        self.decode() & STOPS != 0
+    }
+
+    /// The instruction the CPU reads from these 4 bytes: the bytes past its
+    /// size are cleared.
+    #[inline(always)]
+    pub fn fetched(word: u32) -> Instruction {
+        const MASK: [u32; 5] = [0, 0xFF00_0000, 0xFFFF_0000, 0xFFFF_FF00, 0xFFFF_FFFF];
+        Instruction(word & MASK[Instruction(word).size() as usize])
+    }
+
+    #[inline(always)]
+    fn decode(self) -> u8 {
+        DECODE[self.opcode_bits() as usize][self.mode_bits() as usize]
     }
 }
 
@@ -536,6 +627,62 @@ mod tests {
             encode::ramreg_immreg(Opcode::Str, Register::A, Register::B, Register::Y).r3(),
             7
         );
+    }
+
+    #[test]
+    fn sizes() {
+        use Register::*;
+        let size = |i: Instruction| (i.size(), i.stops());
+        assert_eq!(size(encode::none(Opcode::Ret)), (1, false));
+        assert_eq!(size(encode::reg(Opcode::Mov, A, B)), (2, false));
+        assert_eq!(size(encode::reg16(Opcode::Jmp, X, Y)), (2, false));
+        assert_eq!(size(encode::reg_imm8(Opcode::Mov, A, 5)), (3, false));
+        assert_eq!(size(encode::stack_offset(Opcode::Lod, A, 2)), (3, false));
+        assert_eq!(size(encode::imm8(Opcode::Int, 2)), (3, false));
+        assert_eq!(size(encode::reg_ram(Opcode::Lod, A, 0x9000)), (4, false));
+        assert_eq!(
+            size(encode::ramreg_offset(Opcode::Str, X, Y, A, 1)),
+            (4, false)
+        );
+        assert_eq!(size(encode::imm16(Opcode::Jmp, 0x0300)), (4, false));
+        for info in INSTRUCTION_TABLE.iter() {
+            for &mode in info.modes {
+                let i = encode::raw(info.opcode, mode, 0, 0, 0, 0);
+                assert_eq!(
+                    size(i),
+                    (mode.length(), false),
+                    "{} {mode:?}",
+                    info.mnemonic
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn invalid_instructions() {
+        let word = |op: u8, mode: u8| Instruction(((op as u32) << 26) | ((mode as u32) << 22));
+        // Invalid opcode: 1-byte NOP, whatever follows.
+        assert_eq!(word(0x36, 0xF).size(), 1);
+        assert!(!word(0x3F, 0x3).stops());
+        // Valid opcode, mode it doesn't accept: stops after reading 2 bytes.
+        let add_imm16 = word(Opcode::Add as u8, AddrMode::Imm16 as u8);
+        assert_eq!((add_imm16.size(), add_imm16.stops()), (2, true));
+        assert!(word(Opcode::Jmp as u8, 0x9).stops());
+        assert!(word(Opcode::Mov as u8, AddrMode::None as u8).stops());
+        // No-operand opcode: only the 2 mode bits of the first byte count.
+        assert_eq!(word(Opcode::Ret as u8, 0b0011).size(), 1);
+        assert!(!word(Opcode::Ret as u8, 0b0011).stops());
+        assert!(word(Opcode::Ret as u8, 0b0100).stops());
+        assert_eq!(word(Opcode::Nop as u8, 0b1000).size(), 1);
+        assert!(word(Opcode::Nop as u8, 0b1000).stops());
+    }
+
+    #[test]
+    fn fetched_clears_the_bytes_past_the_size() {
+        let ret = encode::none(Opcode::Ret);
+        assert_eq!(Instruction::fetched(ret.0 | 0x00AB_CDEF), ret);
+        let mov = encode::reg_imm8(Opcode::Mov, Register::A, 5);
+        assert_eq!(Instruction::fetched(mov.0 | 0xEE), mov);
     }
 
     #[test]

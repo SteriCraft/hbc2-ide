@@ -44,7 +44,10 @@ _interrupts_on:
     sti
     ret
 
+; sti then hlt: no interrupt can come between the two (sti takes effect
+; after the next instruction), so the one that wakes the CPU is never missed.
 _wait_interrupt:
+    sti
     hlt
     ret
 

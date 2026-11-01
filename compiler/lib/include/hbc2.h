@@ -36,7 +36,7 @@ void out(unsigned char port, unsigned char value);
 
 void interrupts_off(void);                      // cli
 void interrupts_on(void);                       // sti
-void wait_interrupt(void);  // hlt: sleeps until the next interrupt (enables them)
+void wait_interrupt(void);  // sti + hlt: sleeps until the next interrupt (enables them)
 
 // Points the interrupt vector of port to handler, with interrupts off
 // while it is written. Returns a non-zero value if port is 0 (refused:

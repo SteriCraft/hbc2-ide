@@ -271,8 +271,10 @@ __exit:                         ; [a:b] = main's return value, or exit's argumen
   vectors can't be fixed in an assembly file (`.data` at `$0xFE00 + 2n`):
   their ports are given by the IOD at power-on, and detection points them
   to the handler that does nothing. See section 10.
-* `hlt` waits for an interrupt (it enables them), so `__exit` loops: once
-  the program has finished, only the interrupt handlers run.
+* `hlt` waits for an interrupt, or stops the CPU for good when interrupts
+  are off. Interrupts are on from reset, so `__exit` loops: once the program
+  has finished, only the interrupt handlers run (a program that turned
+  interrupts off stops there).
 * `exit(n)` (`stdlib.h`) puts `n` in `[a:b]`, resets SP and jumps to
   `__exit`. Tests read the result there.
 

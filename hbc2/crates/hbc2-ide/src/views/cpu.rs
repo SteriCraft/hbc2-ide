@@ -131,8 +131,12 @@ pub fn cpu_sections<'a>(
                         ui.end_row();
 
                         ui.label("IR");
+                        let ir_bytes: String = cpu.ir.to_bytes()[..cpu.ir.size() as usize]
+                            .iter()
+                            .map(|b| format!("{b:02X}"))
+                            .collect();
                         ui.label(mono(
-                            format!("{:08X}", cpu.ir.0),
+                            format!("{ir_bytes:<8}"),
                             before.is_some_and(|b| b.ir != cpu.ir),
                         ));
                         note(
@@ -155,6 +159,12 @@ pub fn cpu_sections<'a>(
                         let (state, detail) = match (cpu.state, cpu.is_halted()) {
                             (CpuState::InterruptAcknowledge, _) => {
                                 ("Interrupt", "being acknowledged")
+                            }
+                            _ if cpu.stopped_by_invalid_instruction() => {
+                                ("Stopped", "invalid instruction; reset to restart")
+                            }
+                            _ if cpu.is_stopped() => {
+                                ("Stopped", "HLT with interrupts off; reset to restart")
                             }
                             (_, true) => ("Halted", "waiting for an interrupt"),
                             _ => ("Executing", ""),

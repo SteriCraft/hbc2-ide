@@ -28,7 +28,42 @@ fn mov() {
     let mut m = machine(&[reg_imm8(O::Mov, A, 0x42), reg(O::Mov, B, A)]);
     steps(&mut m, 2);
     assert_eq!((m.cpu.reg(A), m.cpu.reg(B)), (0x42, 0x42));
-    assert_eq!(m.cpu.pc, at(2));
+    assert_eq!(m.cpu.pc, 5, "MOV r, value is 3 bytes, MOV r, r 2");
+}
+
+#[test]
+fn instructions_take_the_bytes_their_mode_needs() {
+    let program = [
+        none(O::Nop),                      // 1
+        reg(O::Mov, A, B),                 // 2
+        reg16(O::Rsp, X, Y),               // 2
+        reg_imm8(O::Mov, A, 1),            // 3
+        stack_offset(O::Lod, B, 0),        // 3
+        imm8(O::Asp, 0),                   // 3
+        reg_ram(O::Lod, C, 0x9000),        // 4
+        ramreg_offset(O::Lod, D, X, Y, 1), // 4
+        imm16(O::Jmp, 0x0100),             // 4
+    ];
+    let mut m = machine(&program);
+    let mut pcs = Vec::new();
+    for _ in 0..program.len() {
+        m.step();
+        pcs.push(m.cpu.pc);
+    }
+    assert_eq!(pcs, [1, 3, 5, 8, 11, 14, 18, 22, 0x0100]);
+    assert_eq!(size(&program), 26);
+}
+
+#[test]
+fn only_the_bytes_of_the_instruction_are_read() {
+    // RET is 1 byte: the next byte is the next instruction (MOV, 3 bytes).
+    let mut m = machine(&[none(O::Nop), reg_imm8(O::Mov, A, 7)]);
+    steps(&mut m, 1);
+    assert_eq!(m.cpu.ir, none(O::Nop));
+    assert_eq!(m.cpu.pc, 1);
+    steps(&mut m, 1);
+    assert_eq!(m.cpu.ir, reg_imm8(O::Mov, A, 7));
+    assert_eq!(m.cpu.reg(A), 7);
 }
 
 #[test]
@@ -329,12 +364,14 @@ fn conditional_jumps() {
         (O::Jmz, O::Stz, O::Clz),
         (O::Jmf, O::Stf, O::Clf),
     ];
+    // Past the MOV: 1 + 4 + 3 bytes.
+    let end = 8;
     for (jump, set, clear) in cases {
-        let mut m = machine(&[none(set), imm16(jump, at(3)), reg_imm8(O::Mov, A, 1)]);
+        let mut m = machine(&[none(set), imm16(jump, end), reg_imm8(O::Mov, A, 1)]);
         steps(&mut m, 2);
-        assert_eq!(m.cpu.pc, at(3), "{jump:?} taken");
+        assert_eq!(m.cpu.pc, end, "{jump:?} taken");
 
-        let mut m = machine(&[none(clear), imm16(jump, at(3)), reg_imm8(O::Mov, A, 1)]);
+        let mut m = machine(&[none(clear), imm16(jump, end), reg_imm8(O::Mov, A, 1)]);
         steps(&mut m, 3);
         assert_eq!(m.cpu.reg(A), 1, "{jump:?} not taken");
     }
@@ -364,7 +401,7 @@ fn call_and_return() {
     assert_eq!(m.cpu.sp, 0xFDFE);
     assert_eq!((ram(&m, 0xFDFF), ram(&m, 0xFDFE)), (0x04, 0x00));
     steps(&mut m, 2);
-    assert_eq!(m.cpu.pc, at(1), "RET");
+    assert_eq!(m.cpu.pc, 0x0004, "RET");
     assert_eq!(m.cpu.sp, STACK_RESET);
     steps(&mut m, 1);
     assert_eq!((m.cpu.reg(A), m.cpu.reg(B)), (1, 2));
@@ -421,23 +458,63 @@ fn hlt_stops_execution() {
     let mut m = machine(&[none(O::Hlt), reg_imm8(O::Mov, A, 1)]);
     m.run(100);
     assert!(m.cpu.is_halted());
-    assert_eq!(m.cpu.pc, at(1));
+    assert!(m.cpu.flag(Flag::Interrupt), "HLT leaves I as it was");
+    assert!(!m.cpu.is_stopped(), "interrupts can wake it");
+    assert_eq!(m.cpu.pc, 1);
     assert_eq!(m.cpu.reg(A), 0);
     assert_eq!(m.ticks(), 100, "clock keeps ticking while halted");
 }
 
 #[test]
-fn invalid_mode_and_opcode_are_nop() {
-    let mut m = machine(&[
-        imm16(O::Mov, 0x1234),                    // MOV has no Imm16 mode
-        hbc2_core::isa::Instruction(0xFFFF_FFFF), // opcode 0x3F, mode 0xF
-        reg_imm8(O::Mov, A, 1),
-    ]);
+fn invalid_opcode_is_a_one_byte_nop() {
+    let mut m = Image::new()
+        .byte(0x0000, 0xFF) // opcode 0x3F
+        .byte(0x0001, 0xD8) // opcode 0x36
+        .code(0x0002, &[reg_imm8(O::Mov, A, 1)])
+        .build(bare());
     steps(&mut m, 2);
     assert_eq!(m.cpu.registers, [0; 8]);
-    assert_eq!(m.cpu.pc, at(2));
+    assert_eq!(m.cpu.pc, 2);
+    assert!(!m.cpu.is_halted());
     steps(&mut m, 1);
     assert_eq!(m.cpu.reg(A), 1);
+}
+
+#[test]
+fn invalid_mode_stops_the_cpu() {
+    for bad in [
+        raw(O::Mov, AddrMode::Imm16, 0, 0, 0x12, 0x34), // MOV has no Imm16 mode
+        hbc2_core::isa::Instruction(((O::Add as u32) << 26) | (0xF << 22)), // mode 0xF
+    ] {
+        let mut m = Image::new()
+            .code(0x0000, &[none(O::Nop)])
+            .byte(0x0001, bad.to_bytes()[0])
+            .byte(0x0002, bad.to_bytes()[1])
+            .code(0x0003, &[reg_imm8(O::Mov, A, 1)])
+            .vector(0x20, 0x0003)
+            .build(bare());
+        m.run(100);
+        m.board.iod.trigger_interrupt(0x20);
+        m.run(1000);
+        assert!(m.cpu.is_stopped(), "{bad:?}");
+        assert!(m.cpu.stopped_by_invalid_instruction());
+        assert!(!m.cpu.flag(Flag::Interrupt));
+        assert_eq!((m.cpu.pc, m.cpu.last_pc), (1, 1), "PC stays on it");
+        assert_eq!(m.cpu.reg(A), 0, "nothing runs after it, interrupts neither");
+    }
+}
+
+#[test]
+fn no_operand_opcode_with_mode_bits_stops_the_cpu() {
+    // RET with mode bits 01xx in the first byte.
+    let mut m = Image::new()
+        .byte(0x0000, ((O::Ret as u8) << 2) | 0b01)
+        .code(0x0001, &[reg_imm8(O::Mov, A, 1)])
+        .build(bare());
+    m.run(100);
+    assert!(m.cpu.stopped_by_invalid_instruction());
+    assert_eq!(m.cpu.pc, 0);
+    assert_eq!(m.cpu.reg(A), 0);
 }
 
 #[test]
@@ -683,7 +760,7 @@ fn function_reads_its_arguments_with_stack_offset() {
         "RSP: address of the local"
     );
     assert_eq!(ram(&m, 0xFDFB), 7);
-    assert_eq!(m.cpu.pc, at(5), "returned after CAL");
+    assert_eq!(m.cpu.pc, 14, "returned after CAL (3 + 2 + 3 + 2 + 4 bytes)");
     steps(&mut m, 1);
     assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
 }

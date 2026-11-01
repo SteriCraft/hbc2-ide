@@ -92,7 +92,11 @@ fn step_runs_instructions_then_stays_paused() {
     let s = runner.sync();
     assert_eq!(s.state, RunState::Paused);
     assert_eq!(s.cpu.reg(Register::A), 1);
-    assert_eq!(s.cpu.pc, PROGRAM_START + 4);
+    assert_eq!(
+        s.cpu.pc,
+        PROGRAM_START + 1,
+        "back to loop, after cli (1 byte)"
+    );
     assert_eq!(s.ticks, 3);
 }
 
@@ -265,7 +269,13 @@ fn step_within_runs_until_the_pc_leaves_the_addresses() {
     runner.step(2); // cli, mov b, 5
 
     // The four instructions of the loop: it goes round 5 times.
-    let lop: Vec<u16> = (0..4).map(|i| at("again") + 4 * i).collect();
+    let lop: Vec<u16> = p
+        .lines
+        .iter()
+        .map(|l| l.address as u16)
+        .filter(|a| (at("again")..at("done")).contains(a))
+        .collect();
+    assert_eq!(lop.len(), 4);
     runner.step_within(lop);
     let s = wait_until(&runner, |s| s.state == RunState::Paused && s.ticks > 2);
     assert_eq!(s.cpu.pc, at("done"));
@@ -327,7 +337,7 @@ fn step_over_runs_the_routines_called() {
     // Over a CAL: the whole routine (and the ones it calls) runs.
     runner.step_over(vec![]);
     let s = wait_until(&runner, |s| {
-        s.state == RunState::Paused && s.cpu.pc != at("after") - 4
+        s.state == RunState::Paused && s.cpu.pc != at("after") - 4 // the cal
     });
     assert_eq!(s.cpu.pc, at("after"));
     assert_eq!(s.cpu.reg(Register::A), 2);
@@ -336,7 +346,7 @@ fn step_over_runs_the_routines_called() {
     // Over a PSH: a plain step, though the stack grew.
     runner.step_over(vec![]);
     let s = runner.sync();
-    assert_eq!((s.state, s.cpu.pc), (RunState::Paused, at("after") + 4));
+    assert_eq!((s.state, s.cpu.pc), (RunState::Paused, at("after") + 2));
     runner.step(1); // pop a
 
     // A breakpoint in a routine called stops the step there.

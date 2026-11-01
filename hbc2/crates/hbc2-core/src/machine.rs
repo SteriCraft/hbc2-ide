@@ -213,11 +213,16 @@ impl Machine {
     /// cycle until then would leave the machine unchanged.
     pub fn is_idle(&self) -> bool {
         let cpu = &self.cpu;
-        cpu.is_halted()
-            && cpu.state == CpuState::Executing
-            && !self.board.int
-            && !self.board.inr
-            && !self.board.iod.has_pending_interrupt()
+        let board = &self.board;
+        if !cpu.is_halted() || cpu.state != CpuState::Executing || board.inr {
+            return false;
+        }
+        if cpu.is_stopped() {
+            // Interrupts are ignored; only the INT line may still follow the queue.
+            return board.int == board.iod.has_pending_interrupt();
+        }
+        !board.int
+            && !board.iod.has_pending_interrupt()
             && (cpu.pending_software_interrupt().is_none() || !cpu.flag(Flag::Interrupt))
     }
 

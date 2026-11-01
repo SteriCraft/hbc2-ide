@@ -5,20 +5,34 @@ use hbc2_core::{AddrMode, Opcode, Register};
 
 use crate::encode::forms;
 
-/// Disassembles one instruction word, e.g. `lod a, $0x9000`.
+/// Disassembles the instruction starting the 4 bytes `word` (most significant
+/// first, as read from memory), e.g. `lod a, $0x9000`. Only the bytes of the
+/// instruction are used: [`Instruction::size`] tells how many.
 pub fn disassemble(word: u32) -> String {
     disassemble_with(word, |_| None)
 }
 
 /// Like [`disassemble`], with `name_of` giving names for addresses (labels, variables).
 pub fn disassemble_with(word: u32, name_of: impl Fn(u16) -> Option<String>) -> String {
-    let i = Instruction(word);
-    let (Some(op), Some(mode)) = (i.opcode(), i.mode()) else {
-        return format!("??? ({word:#010x})");
+    let i = Instruction::fetched(word);
+    let bytes = || {
+        let hex: String = i.to_bytes()[..i.size() as usize]
+            .iter()
+            .map(|b| format!("{b:02x}"))
+            .collect();
+        format!("0x{hex}")
     };
-    let Some(form) = forms(op).iter().find(|f| f.mode == mode) else {
-        return format!("??? ({word:#010x})");
+    if i.stops() {
+        return format!("??? ({}, stops the CPU)", bytes());
+    }
+    let Some(op) = i.opcode() else {
+        return format!("??? ({}, runs as nop)", bytes());
     };
+    let mode = i.mode().unwrap_or(AddrMode::None);
+    let form = forms(op)
+        .iter()
+        .find(|f| f.mode == mode)
+        .expect("a mode the CPU accepts has a form");
 
     let reg = |bits: u8| Register::from_bits(bits).name().to_string();
     let pair = || format!("[{}:{}]", reg(i.r1()), reg(i.r2()));
@@ -98,7 +112,16 @@ mod tests {
         );
         assert_eq!(disassemble(encode::imm16(Opcode::Ssp, 300).0), "ssp 300");
         assert_eq!(disassemble(encode::none(Opcode::Ret).0), "ret");
-        assert_eq!(disassemble(0xFFFF_FFFF), "??? (0xffffffff)");
+        assert_eq!(
+            disassemble(encode::none(Opcode::Ret).0 | 0x00FF_FFFF),
+            "ret",
+            "the bytes after a 1-byte instruction are not part of it"
+        );
+        assert_eq!(disassemble(0xFFFF_FFFF), "??? (0xff, runs as nop)");
+        let mov_imm16 = encode::raw(Opcode::Mov, AddrMode::Imm16, 0, 0, 1, 2).0;
+        assert_eq!(disassemble(mov_imm16), "??? (0x75c0, stops the CPU)");
+        let ret_mode_bits = encode::none(Opcode::Ret).0 | 0x0100_0000;
+        assert_eq!(disassemble(ret_mode_bits), "??? (0x89, stops the CPU)");
         let named = disassemble_with(encode::imm16(Opcode::Jmp, 0x0300).0, |a| {
             (a == 0x0300).then(|| "_start".to_string())
         });

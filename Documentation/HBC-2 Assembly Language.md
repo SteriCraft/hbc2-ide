@@ -102,6 +102,21 @@ The form decides the addressing mode.
 
 `op address` with `[r:r]` uses the pair as the address (for jumps: the address to jump to; for `inc`/`dec`: the memory byte to change).
 
+### Instruction sizes
+
+An instruction takes 1 to 4 bytes: the CPU reads only the bytes its form
+(its addressing mode) needs. The assembler places each instruction right
+after the one before, so the size matters when counting bytes (what fits in
+the EEPROM's first 512 bytes) or when computing an address from a label
+(`jmp loop + 3`).
+
+| Size | Forms |
+|---|---|
+| 1 byte | no operand: `ret`, `nop`, `hlt`, `sti`… |
+| 2 bytes | `op r, r` · `op r` · `in r, r` · `out r, r` · `jmp [r:r]` (and the other jumps, `cal`) · `rsp [r:r]` · `wsp [r:r]` |
+| 3 bytes | `op r, value` · `op r, [sp + n]` · `str [sp + n], r` · `int value` · `asp value`, `ssp value` (0-255) |
+| 4 bytes | `op r, address` · `str address, r` · `op address` (jumps, `cal`, `inc`, `dec`, `not`, `wsp`) · `op r, [r:r + n]` · `str [r:r + n], r` · `inc [r:r + n]`, `dec [r:r + n]` · `asp value16`, `ssp value16` |
+
 ### Offsets
 
 `[x:y + n]` is the address in `[x:y]` plus `n`, from 0 to 255. The CPU adds
@@ -435,5 +450,6 @@ enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 | including a file twice was an error | it is included once |
 | | added: `name + n`, `'A'`, `0b…`, `-1`, mixed `.data` values, escapes, upper case, `psh`/`pop` register lists, `.data16`/`.data32`, `.bss`, `.common`, `.keep`, `.library`, leaving out unused code (C builds; asm projects when asked) |
 | the program starts at `$0x0300` | it starts at `$0x0000` |
+| every instruction took 4 bytes | 1 to 4 bytes (see [Instruction sizes](#instruction-sizes)) |
 | interrupt vectors at `$0x0100` | at `$0xFE00` (port n: `$0xFE00 + 2n`); the stack starts at `$0xFE00` and grows down |
 | | added: `[x:y + n]`, `[sp + n]` (n can be `name.lsb`), `asp`, `ssp`, `rsp`, `wsp` |

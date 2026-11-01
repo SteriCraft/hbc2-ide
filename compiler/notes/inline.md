@@ -12,7 +12,7 @@ All in `gen_shortcut` of backend-hbc2.c (the node is not generated yet: the code
 - **++ -- += -= &= |= ^=** on locals/globals/statics: in memory byte by byte through b (unchanged bytes skipped); with a non-constant right value: `add b, [var]` + `str`. Through a pointer: only with a constant (`p->n++`, `(*p)--`); char ±1 in memory = `inc`/`dec` (no `[sp + n]` form). Post-forms keep the old value in the working register, the new one is made in `i`.
 - **Bug found by bench.c (from step 3):** a cast that only changes the sign retyped the node below: `s += v % 10` (int s, unsigned v) became a signed %. Now the cast stays when the node below is / % >> or their assignment forms (`sign_matters`).
 - **FCC quirk (documented in ABI.md 12):** decimal 32768..65535 is `unsigned int` (C says `long`). gen_ops.py writes such constants with literal().
-- Measured with `programs.rs` (prints code bytes = instruction lines × 4, and ticks). Before → after: basics 1564 → 924 bytes, 11816 → 6025 ticks; bench 6200 → 4256 bytes, 1 294 102 → 253 253 ticks.
+- Measured with `programs.rs` (printed code bytes = instruction lines × 4 then, when every instruction was 4 bytes; ticks). Before → after: basics 1564 → 924 bytes, 11816 → 6025 ticks; bench 6200 → 4256 bytes, 1 294 102 → 253 253 ticks.
 - Mutation check done (7 mutations of the new code, each fails ≥ 1 program).
 - Left for step 7 (copt): `jmc X / jmp L / X: jmp M` (FCC's for-loop layout), `jmp L` + `L:` (every function's return), jump to a jump, `str` then `lod` of the same place, the same constant loaded twice (`mov a, 0 / mov b, 0`). All done in step 7 except the last (`mov b, a` costs the same).
 

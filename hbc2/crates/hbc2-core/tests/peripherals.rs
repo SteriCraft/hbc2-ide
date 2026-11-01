@@ -8,16 +8,14 @@ use hbc2_core::isa::encode::*;
 use hbc2_core::peripherals::{Eeprom, eeprom, monitor, rtc};
 use hbc2_core::{Machine, MachineConfig};
 
-/// Builds a program from instruction groups, ending in a halt loop
-/// (HLT re-enables interrupts, so the CPU may wake up and must halt again).
+/// Builds a program from instruction groups, between CLI and HLT (interrupts
+/// off: HLT stops the CPU for good).
 fn program(parts: &[&[Instruction]]) -> Vec<Instruction> {
     let mut v = vec![none(O::Cli)];
     for part in parts {
         v.extend_from_slice(part);
     }
-    let halt = at(v.len() as u16);
     v.push(none(O::Hlt));
-    v.push(imm16(O::Jmp, halt));
     v
 }
 
@@ -165,7 +163,7 @@ fn monitor_invalid_positions() {
 #[test]
 fn keyboard_press_and_release_use_two_ports() {
     let mut m = Image::new()
-        .program(&[none(O::Cli), imm16(O::Jmp, at(1))])
+        .program(&[none(O::Cli), imm16(O::Jmp, 0x0001)])
         .build(MachineConfig {
             keyboard: true,
             ..bare()
@@ -208,11 +206,10 @@ fn eeprom_image() -> Vec<u8> {
         &out(EE + eeprom::port::DATA, 0x55),
         &out(EE + eeprom::port::CMD, eeprom::command::WRITE),
     ]);
-    for (n, i) in code.iter().enumerate() {
-        image[n * 4..n * 4 + 4].copy_from_slice(&i.to_bytes());
-    }
+    let ram = Image::new().program(&code).0;
+    image[..0x0200].copy_from_slice(&ram[..0x0200]);
     image[0xFE00..0xFE02].copy_from_slice(&[0x01, 0xF0]); // IVT: port 0 -> 0x01F0
-    image[0x01F0..0x01F4].copy_from_slice(&none(O::Irt).to_bytes()); // handler, first 512 bytes
+    image[0x01F0] = none(O::Irt).to_bytes()[0]; // handler, first 512 bytes
     image[0xF000] = 0xEE; // the old handlers area: not copied any more
     image[0x0200] = 0xEE; // just after the first 512 bytes
     image[0x12345] = 0x99;
@@ -280,7 +277,7 @@ fn rtc_only() -> MachineConfig {
 #[test]
 fn rtc_interrupts_every_second() {
     let mut m = Image::new()
-        .program(&[none(O::Cli), imm16(O::Jmp, at(1))])
+        .program(&[none(O::Cli), imm16(O::Jmp, 0x0001)])
         .build(rtc_only());
     m.advance_time(500_000_000);
     assert_eq!(

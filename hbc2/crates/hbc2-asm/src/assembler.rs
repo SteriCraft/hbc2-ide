@@ -33,7 +33,7 @@ use hbc2_core::isa::{IVT_START, PROGRAM_START};
 use hbc2_core::peripherals::eeprom::BOOT_RANGES;
 
 use crate::diagnostic::{Loc, Report};
-use crate::encode::{Resolved, encode_instruction, usage};
+use crate::encode::{Kind, Resolved, encode_instruction, instruction_size, usage};
 use crate::parser::{Address, DataValue, Located, Op, Operand, Stmt, Value8};
 use crate::{Options, Removed, SourceLine, Symbol, SymbolKind, Target};
 
@@ -46,14 +46,42 @@ pub(crate) enum Item {
 struct Block {
     address: Option<u32>,
     loc: Loc,
-    /// (name, offset in bytes, location)
-    labels: Vec<(String, u32, Loc)>,
+    /// (name, index of the instruction it's on, location)
+    labels: Vec<(String, usize, Loc)>,
     instructions: Vec<(Opcode, Vec<Op>, Loc)>,
+    /// Offset in bytes of each instruction, then the block's size.
+    offsets: Vec<u32>,
 }
 
 impl Block {
+    fn new(address: Option<u32>, loc: Loc) -> Block {
+        Block {
+            address,
+            loc,
+            labels: Vec::new(),
+            instructions: Vec::new(),
+            offsets: vec![0],
+        }
+    }
+
     fn size(&self) -> u32 {
-        self.instructions.len() as u32 * 4
+        *self.offsets.last().expect("never empty")
+    }
+
+    /// Offset in bytes of instruction `index` (the size for the index past the last).
+    fn offset(&self, index: usize) -> u32 {
+        self.offsets[index]
+    }
+
+    fn label(&mut self, name: String, loc: Loc) {
+        self.labels.push((name, self.instructions.len(), loc));
+    }
+
+    fn push(&mut self, instruction: (Opcode, Vec<Op>, Loc)) {
+        let kinds: Vec<Kind> = instruction.1.iter().map(|op| op.operand.kind()).collect();
+        let size = instruction_size(instruction.0, &kinds);
+        self.offsets.push(self.size() + size);
+        self.instructions.push(instruction);
     }
 }
 
@@ -202,23 +230,17 @@ fn group(items: Vec<Item>, files: &[PathBuf], report: &mut Report) -> Grouped {
                     continue;
                 };
                 match continued {
-                    Some(b) => {
-                        let offset = out.blocks[b].size();
-                        out.blocks[b].labels.push((name, offset, loc));
-                    }
+                    Some(b) => out.blocks[b].label(name, loc),
                     None => {
-                        out.blocks.push(Block {
-                            address,
-                            loc,
-                            labels: vec![(name, 0, loc)],
-                            instructions: Vec::new(),
-                        });
+                        let mut block = Block::new(address, loc);
+                        block.label(name, loc);
+                        out.blocks.push(block);
                         open = Some(out.blocks.len() - 1);
                     }
                 }
             }
             Stmt::Instr { opcode, operands } => match open {
-                Some(b) => out.blocks[b].instructions.push((opcode, operands, loc)),
+                Some(b) => out.blocks[b].push((opcode, operands, loc)),
                 None => report.error(
                     loc,
                     "this instruction has no label above it (add one, e.g. _start:)",
@@ -327,10 +349,7 @@ impl Names<'_> {
         report: &mut Report,
     ) -> Option<String> {
         if assembler_name(&name) {
-            report.error(
-                loc,
-                format!("'{name}' is defined by the assembler"),
-            );
+            report.error(loc, format!("'{name}' is defined by the assembler"));
             return None;
         }
         let new = Definition { loc, library, at };
@@ -456,11 +475,11 @@ fn operand_name(operand: &Operand) -> Option<&str> {
 
 /// Instructions of the code piece starting at label `label`.
 fn piece_range(block: &Block, label: usize) -> Range<usize> {
-    let start = block.labels[label].1 as usize / 4;
+    let start = block.labels[label].1;
     let end = block
         .labels
         .get(label + 1)
-        .map_or(block.instructions.len(), |l| l.1 as usize / 4);
+        .map_or(block.instructions.len(), |l| l.1);
     start..end
 }
 
@@ -596,7 +615,8 @@ fn strip(
             Piece::Code { block, label } => {
                 let b = &blocks[block];
                 let (name, _, loc) = &b.labels[label];
-                let size = piece_range(b, label).len() as u32 * 4;
+                let range = piece_range(b, label);
+                let size = b.offset(range.end) - b.offset(range.start);
                 (name, size, SymbolKind::Label, *loc)
             }
             Piece::Data(i) => (&data[i].name, data[i].size(), SymbolKind::Data, data[i].loc),
@@ -620,25 +640,20 @@ fn strip(
         let ranges: Vec<Range<usize>> = (0..block.labels.len())
             .map(|l| piece_range(&block, l))
             .collect();
-        let mut labels = Vec::new();
-        let mut instructions = Vec::new();
+        let mut kept_block: Option<Block> = None;
         let mut source = block.instructions.into_iter();
         for (l, (name, _, loc)) in block.labels.into_iter().enumerate() {
             let piece: Vec<_> = source.by_ref().take(ranges[l].len()).collect();
             if kept[first + l] {
-                labels.push((name, instructions.len() as u32 * 4, loc));
-                instructions.extend(piece);
+                let b = kept_block.get_or_insert_with(|| Block::new(block.address, loc));
+                b.label(name, loc);
+                for instruction in piece {
+                    b.push(instruction);
+                }
             }
         }
         first += ranges.len();
-        if let Some(&(_, _, loc)) = labels.first() {
-            rebuilt.push(Block {
-                address: block.address,
-                loc,
-                labels,
-                instructions,
-            });
-        }
+        rebuilt.extend(kept_block);
     }
     *blocks = rebuilt;
     let mut n = data_start;
@@ -818,8 +833,9 @@ fn symbols(
     let mut symbols = Vec::new();
     for b in blocks {
         let start = b.address.expect("placed");
-        for (i, (name, offset, loc)) in b.labels.iter().enumerate() {
-            let next = b.labels.get(i + 1).map_or(b.size(), |l| l.1);
+        for (i, (name, index, loc)) in b.labels.iter().enumerate() {
+            let offset = b.offset(*index);
+            let next = b.labels.get(i + 1).map_or(b.size(), |l| b.offset(l.1));
             symbols.push(Symbol {
                 name: name.clone(),
                 address: start + offset,
@@ -904,7 +920,7 @@ fn write(
     for block in blocks {
         let start = block.address.expect("placed");
         for (n, (opcode, operands, loc)) in block.instructions.iter().enumerate() {
-            let address = start + n as u32 * 4;
+            let address = start + block.offset(n);
             let mut resolved = Vec::with_capacity(operands.len());
             for op in operands {
                 let op_loc = Loc {
@@ -931,7 +947,9 @@ fn write(
             match encode_instruction(*opcode, &resolved) {
                 Some(word) => {
                     let a = address as usize;
-                    image[a..a + 4].copy_from_slice(&word.to_bytes());
+                    let size = word.size() as usize;
+                    debug_assert_eq!(size as u32, block.offset(n + 1) - block.offset(n));
+                    image[a..a + size].copy_from_slice(&word.to_bytes()[..size]);
                     lines.push(SourceLine {
                         address,
                         file: loc.file,

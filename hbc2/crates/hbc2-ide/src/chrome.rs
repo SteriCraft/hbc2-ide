@@ -390,11 +390,23 @@ fn run_status(state: &State) -> (String, Color32) {
     let s = &state.snapshot;
     let green = Color32::from_rgb(80, 180, 90);
     let amber = Color32::from_rgb(220, 160, 40);
+    let red = Color32::from_rgb(220, 70, 60);
     let gray = Color32::GRAY;
     if state.emulator.image().is_none() {
         return ("Nothing loaded".into(), gray);
     }
     match s.state {
+        RunState::Running if s.cpu.stopped_by_invalid_instruction() => (
+            format!(
+                "CPU stopped: invalid instruction at {:04X} (reset to restart)",
+                s.cpu.last_pc
+            ),
+            red,
+        ),
+        RunState::Running if s.cpu.is_stopped() => (
+            "CPU stopped: HLT with interrupts off (reset to restart)".into(),
+            amber,
+        ),
         RunState::Running if s.cpu.is_halted() => (
             "Running (CPU halted, waiting for an interrupt)".into(),
             green,

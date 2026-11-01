@@ -24,10 +24,13 @@ impl Image {
         Image(vec![0; RAM_SIZE])
     }
 
+    /// Places the instructions one after the other, each on its size.
     pub fn code(mut self, address: u16, program: &[Instruction]) -> Image {
-        for (n, i) in program.iter().enumerate() {
-            let a = address as usize + n * 4;
-            self.0[a..a + 4].copy_from_slice(&i.to_bytes());
+        let mut a = address as usize;
+        for i in program {
+            let size = i.size() as usize;
+            self.0[a..a + size].copy_from_slice(&i.to_bytes()[..size]);
+            a += size;
         }
         self
     }
@@ -82,9 +85,15 @@ pub fn input(reg: Register, port: u8) -> [Instruction; 2] {
     ]
 }
 
-/// Address of the n-th instruction of a program.
-pub const fn at(n: u16) -> u16 {
-    PROGRAM_START + n * 4
+/// Address of the n-th instruction of a program placed at PROGRAM_START
+/// (`n` = the length: the address right after it).
+pub fn at(program: &[Instruction], n: usize) -> u16 {
+    PROGRAM_START + size(&program[..n])
+}
+
+/// Size in bytes of these instructions.
+pub fn size(program: &[Instruction]) -> u16 {
+    program.iter().map(|i| i.size()).sum()
 }
 
 pub fn ram(m: &Machine, address: u16) -> u8 {

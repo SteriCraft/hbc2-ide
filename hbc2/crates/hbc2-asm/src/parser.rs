@@ -37,6 +37,21 @@ pub(crate) enum Operand {
     Mem(Address),
 }
 
+impl Operand {
+    /// Its kind, which selects the form (and so the size) of the instruction.
+    pub fn kind(&self) -> crate::encode::Kind {
+        use crate::encode::Kind;
+        match self {
+            Operand::Reg(_) => Kind::R,
+            Operand::Pair(..) => Kind::P,
+            Operand::Stack(_) => Kind::S,
+            Operand::Imm(_) => Kind::I,
+            Operand::Wide(_) => Kind::W,
+            Operand::Mem(_) => Kind::M,
+        }
+    }
+}
+
 #[derive(Clone, Debug)]
 pub(crate) struct Op {
     pub operand: Operand,

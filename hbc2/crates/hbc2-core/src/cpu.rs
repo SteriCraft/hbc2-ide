@@ -4,13 +4,19 @@
 //! instruction, or performs one step of the interrupt handshake, or does
 //! nothing (halted).
 //!
-//! Instructions with an addressing mode the manual does not list for them,
-//! and unimplemented opcodes, behave as NOP.
+//! Instructions are 1 to 4 bytes long (see [`Instruction::size`]).
+//! Unimplemented opcodes are 1-byte NOPs. A valid opcode with an addressing
+//! mode the manual does not list for it stops the CPU: H set, I cleared, PC
+//! left on that instruction. Only a reset restarts it.
+//!
+//! HLT sets H only: with I set, the next interrupt wakes the CPU; with I
+//! clear, the CPU stops until a reset. STI sets I, but the CPU takes
+//! interrupts only after the next instruction, so `sti` + `hlt` can't miss
+//! an interrupt arriving between the two.
 
 use crate::board::Board;
 use crate::isa::{
-    AddrMode, Flag, INSTRUCTION_SIZE, IVT_START, Instruction, Opcode, PROGRAM_START, Register,
-    STACK_RESET,
+    AddrMode, Flag, IVT_START, Instruction, Opcode, PROGRAM_START, Register, STACK_RESET,
 };
 
 /// The 8-bit flag register.
@@ -62,6 +68,8 @@ pub struct Cpu {
     pub state: CpuState,
     /// Software interrupt (port, data) raised by `INT`, waiting for the Interrupt flag.
     pending_software_interrupt: Option<(u8, u8)>,
+    /// Set by STI: no interrupt is taken before the next instruction has run.
+    interrupt_delay: bool,
 }
 
 impl Default for Cpu {
@@ -82,6 +90,7 @@ impl Cpu {
             call_depth: 0,
             state: CpuState::Executing,
             pending_software_interrupt: None,
+            interrupt_delay: false,
         };
         cpu.reset();
         cpu
@@ -99,6 +108,7 @@ impl Cpu {
         self.call_depth = 0;
         self.state = CpuState::Executing;
         self.pending_software_interrupt = None;
+        self.interrupt_delay = false;
     }
 
     #[inline(always)]
@@ -120,8 +130,24 @@ impl Cpu {
         self.flags.get(Flag::Halt)
     }
 
+    /// Halted with interrupts off: only a reset restarts the CPU
+    /// (`cli` + `hlt`, or an invalid instruction).
+    pub fn is_stopped(&self) -> bool {
+        self.is_halted() && !self.flags.get(Flag::Interrupt)
+    }
+
+    /// Stopped by an invalid instruction, at [`Cpu::last_pc`] (= PC).
+    pub fn stopped_by_invalid_instruction(&self) -> bool {
+        self.is_stopped() && self.ir.stops()
+    }
+
     pub fn pending_software_interrupt(&self) -> Option<(u8, u8)> {
         self.pending_software_interrupt
+    }
+
+    /// True right after STI: interrupts wait for the next instruction.
+    pub fn interrupt_delayed(&self) -> bool {
+        self.interrupt_delay
     }
 
     /// One clock cycle. Returns true when the PC moved to a new instruction
@@ -141,7 +167,7 @@ impl Cpu {
                 true
             }
             CpuState::Executing => {
-                if self.flags.get(Flag::Interrupt) {
+                if self.flags.get(Flag::Interrupt) && !self.interrupt_delay {
                     if board.int {
                         // Step 2: hardware interrupt pending, signal we are ready.
                         board.inr = true;
@@ -159,8 +185,7 @@ impl Cpu {
                 if self.flags.get(Flag::Halt) {
                     return false;
                 }
-                self.execute_next(board);
-                true
+                self.execute_next(board)
             }
         }
     }
@@ -274,19 +299,27 @@ impl Cpu {
         }
     }
 
-    /// Fetch, decode and execute the instruction at PC.
+    /// Fetch, decode and execute the instruction at PC. Returns false when
+    /// the instruction is invalid: the CPU stops there.
     #[inline(always)]
-    fn execute_next(&mut self, board: &mut Board) {
+    fn execute_next(&mut self, board: &mut Board) -> bool {
         let address = self.pc;
-        let i = Instruction(board.ram.read_u32(address));
+        let i = Instruction::fetched(board.ram.read_u32(address));
         self.ir = i;
         self.last_pc = address;
-        self.pc = address.wrapping_add(INSTRUCTION_SIZE);
+        self.interrupt_delay = false;
+        if i.stops() {
+            self.flags.set(Flag::Halt, true);
+            self.flags.set(Flag::Interrupt, false);
+            return false;
+        }
+        self.pc = address.wrapping_add(i.size());
 
-        let (Some(op), Some(mode)) = (i.opcode(), i.mode()) else {
-            return;
-        };
-        self.execute(board, op, mode, i);
+        // An invalid opcode is a NOP. A valid one has a valid mode here.
+        if let (Some(op), Some(mode)) = (i.opcode(), i.mode()) {
+            self.execute(board, op, mode, i);
+        }
+        true
     }
 
     #[inline(always)]
@@ -520,12 +553,7 @@ impl Cpu {
                     self.pending_software_interrupt = Some((i.v1(), data));
                 }
             }
-            O::Hlt => {
-                if mode == M::None {
-                    self.flags.set(Flag::Halt, true);
-                    self.flags.set(Flag::Interrupt, true);
-                }
-            }
+            O::Hlt => self.set_flag_if_none(mode, Flag::Halt, true),
 
             // ----- I/O
             O::In => {
@@ -557,7 +585,10 @@ impl Cpu {
             O::Clf => self.set_flag_if_none(mode, Flag::Inferior, false),
             O::Stc => self.set_flag_if_none(mode, Flag::Carry, true),
             O::Ste => self.set_flag_if_none(mode, Flag::Equal, true),
-            O::Sti => self.set_flag_if_none(mode, Flag::Interrupt, true),
+            O::Sti => {
+                self.set_flag_if_none(mode, Flag::Interrupt, true);
+                self.interrupt_delay = true;
+            }
             O::Stn => self.set_flag_if_none(mode, Flag::Negative, true),
             O::Sts => self.set_flag_if_none(mode, Flag::Superior, true),
             O::Stz => self.set_flag_if_none(mode, Flag::Zero, true),

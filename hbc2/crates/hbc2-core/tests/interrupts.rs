@@ -20,6 +20,9 @@ fn logging_handler() -> Vec<hbc2_core::isa::Instruction> {
     ]
 }
 
+/// Address of the JMP above, after CLI (1 byte), MOV (3) and STI (1).
+const SELF_LOOP: u16 = 5;
+
 fn monitor_only() -> MachineConfig {
     MachineConfig {
         monitor: true,
@@ -34,7 +37,7 @@ fn plugging_a_peripheral_sends_port_then_id_on_port_0() {
             none(O::Cli),
             reg_imm8(O::Mov, I, 0x77),
             none(O::Sti),
-            imm16(O::Jmp, at(3)),
+            imm16(O::Jmp, SELF_LOOP), // jumps to itself
         ])
         .vector(0, 0xF000)
         .code(0xF000, &logging_handler())
@@ -55,7 +58,7 @@ fn interrupt_entry_pushes_i_then_pc() {
             none(O::Cli),
             reg_imm8(O::Mov, I, 0x77),
             none(O::Sti),
-            imm16(O::Jmp, at(3)),
+            imm16(O::Jmp, SELF_LOOP), // jumps to itself
         ])
         .vector(0, 0xF000)
         .code(0xF000, &[none(O::Irt)])
@@ -66,8 +69,8 @@ fn interrupt_entry_pushes_i_then_pc() {
     // push I, push PC_LSB, push PC_MSB
     assert_eq!(m.cpu.sp, 0xFDFD);
     assert_eq!(ram(&m, 0xFDFF), 0x77, "I");
-    assert_eq!(ram(&m, 0xFDFE), at(3) as u8, "PC_LSB");
-    assert_eq!(ram(&m, 0xFDFD), (at(3) >> 8) as u8, "PC_MSB on top");
+    assert_eq!(ram(&m, 0xFDFE), SELF_LOOP as u8, "PC_LSB");
+    assert_eq!(ram(&m, 0xFDFD), (SELF_LOOP >> 8) as u8, "PC_MSB on top");
     assert_eq!(m.cpu.reg(I), 1, "I holds the interrupt data");
     assert!(
         !m.cpu.flag(Flag::Interrupt),
@@ -78,7 +81,7 @@ fn interrupt_entry_pushes_i_then_pc() {
 #[test]
 fn hardware_interrupt_handshake_takes_two_cycles() {
     let mut m = Image::new()
-        .program(&[imm16(O::Jmp, at(0))])
+        .program(&[imm16(O::Jmp, 0x0000)])
         .vector(0, 0xF000)
         .build(monitor_only());
     m.tick(); // JMP runs; the IOD raises INT at the end of the cycle
@@ -91,7 +94,7 @@ fn hardware_interrupt_handshake_takes_two_cycles() {
 #[test]
 fn interrupts_wait_while_the_flag_is_clear() {
     let mut m = Image::new()
-        .program(&[none(O::Cli), imm16(O::Jmp, at(1))])
+        .program(&[none(O::Cli), imm16(O::Jmp, 0x0001)])
         .vector(0, 0xF000)
         .build(monitor_only());
     m.run(1000);
@@ -124,14 +127,15 @@ fn software_interrupt() {
 #[test]
 fn int_and_irt_round_trip() {
     // Port 0xFF: the last IVT entry, 0xFFFE-0xFFFF.
+    let program = [
+        reg_imm8(O::Mov, I, 0x42),
+        none(O::Stc),
+        imm8(O::Int, 0xFF),
+        reg_imm8(O::Mov, B, 1),
+        none(O::Hlt),
+    ];
     let mut m = Image::new()
-        .program(&[
-            reg_imm8(O::Mov, I, 0x42),
-            none(O::Stc),
-            imm8(O::Int, 0xFF),
-            reg_imm8(O::Mov, B, 1),
-            none(O::Hlt),
-        ])
+        .program(&program)
         .vector(0xFF, 0xF000)
         .code(
             0xF000,
@@ -150,7 +154,10 @@ fn int_and_irt_round_trip() {
     assert!(!m.cpu.flag(Flag::Interrupt));
     assert_eq!(m.cpu.sp, 0xFDFD);
     m.run(100);
-    assert_eq!(u16::from_be_bytes([m.cpu.reg(C), m.cpu.reg(D)]), at(3));
+    assert_eq!(
+        u16::from_be_bytes([m.cpu.reg(C), m.cpu.reg(D)]),
+        at(&program, 3)
+    );
     assert_eq!(m.cpu.reg(X), 0x42);
     assert_eq!(m.cpu.reg(I), 0x42, "IRT restores I");
     assert_eq!(m.cpu.reg(B), 1, "execution resumes after INT");
@@ -202,8 +209,8 @@ fn hlt_wakes_up_on_interrupt() {
         .program(&[
             none(O::Hlt),
             reg_imm8(O::Mov, B, 1),
-            none(O::Hlt),
-            imm16(O::Jmp, at(2)),
+            none(O::Hlt), // at 4: HLT (1 byte) + MOV (3)
+            imm16(O::Jmp, 0x0004),
         ])
         .vector(0, 0xF100) // plug-in interrupts: ignored
         .code(0xF100, &[none(O::Irt)])
@@ -222,7 +229,7 @@ fn hlt_wakes_up_on_interrupt() {
 
 #[test]
 fn iod_queue_drops_interrupts_when_full() {
-    let mut m = machine(&[none(O::Cli), imm16(O::Jmp, at(1))]);
+    let mut m = machine(&[none(O::Cli), imm16(O::Jmp, 0x0001)]);
     let accepted = (0..300)
         .filter(|_| m.board.iod.trigger_interrupt(0x20))
         .count();
@@ -232,22 +239,23 @@ fn iod_queue_drops_interrupts_when_full() {
 
 #[test]
 fn breakpoint_stops_before_the_instruction_and_resumes() {
-    let mut m = machine(&[
+    let program = [
         reg_imm8(O::Mov, A, 1),
         reg_imm8(O::Mov, A, 2),
         reg_imm8(O::Mov, A, 3),
-        imm16(O::Jmp, at(0)),
-    ]);
-    m.breakpoints.set(at(2), true);
+        imm16(O::Jmp, 0x0000),
+    ];
+    let mut m = machine(&program);
+    m.breakpoints.set(at(&program, 2), true);
     let result = m.run(1000);
-    assert_eq!(result.stop, Some(StopReason::Breakpoint(at(2))));
+    assert_eq!(result.stop, Some(StopReason::Breakpoint(at(&program, 2))));
     assert_eq!(result.ticks, 2);
     assert_eq!(m.cpu.reg(A), 2);
 
     let result = m.run(1000);
     assert_eq!(
         result.stop,
-        Some(StopReason::Breakpoint(at(2))),
+        Some(StopReason::Breakpoint(at(&program, 2))),
         "next loop iteration"
     );
     assert_eq!(result.ticks, 4);
@@ -256,8 +264,8 @@ fn breakpoint_stops_before_the_instruction_and_resumes() {
 #[test]
 fn halted_breakpoint_does_not_retrigger() {
     let mut m = machine(&[none(O::Hlt), none(O::Nop)]);
-    m.breakpoints.set(at(1), true);
-    assert_eq!(m.run(100).stop, Some(StopReason::Breakpoint(at(1))));
+    m.breakpoints.set(0x0001, true);
+    assert_eq!(m.run(100).stop, Some(StopReason::Breakpoint(0x0001)));
     assert_eq!(m.run(100).stop, None);
 }
 
@@ -276,15 +284,75 @@ fn idle_cycles_are_counted_without_being_simulated() {
 }
 
 #[test]
+fn stopped_cpu_is_idle_even_with_interrupts_waiting() {
+    let mut m = machine(&[none(O::Cli), none(O::Hlt)]);
+    m.board.iod.trigger_interrupt(0x20);
+    let result = m.run(1_000_000_000);
+    assert_eq!(result.ticks, 1_000_000_000);
+    assert!(m.cpu.is_stopped());
+    assert!(m.is_idle());
+    assert_eq!(m.board.iod.queue().len(), 1, "never taken");
+}
+
+#[test]
+fn hlt_leaves_the_interrupt_flag_alone() {
+    let mut m = Image::new()
+        .program(&[none(O::Cli), none(O::Hlt), reg_imm8(O::Mov, A, 1)])
+        .vector(0x20, 0xF000)
+        .code(0xF000, &[reg_imm8(O::Mov, B, 1), none(O::Irt)])
+        .build(bare());
+    steps(&mut m, 2);
+    assert!(m.cpu.is_halted() && !m.cpu.flag(Flag::Interrupt));
+    m.board.iod.trigger_interrupt(0x20);
+    m.run(1000);
+    assert_eq!(
+        (m.cpu.reg(A), m.cpu.reg(B)),
+        (0, 0),
+        "CLI + HLT: stopped for good"
+    );
+    assert!(m.cpu.is_stopped());
+    assert!(!m.cpu.stopped_by_invalid_instruction());
+}
+
+#[test]
+fn sti_takes_effect_after_the_next_instruction() {
+    // The interrupt is already waiting when STI runs: it must not be taken
+    // between STI and HLT, or HLT would sleep after it.
+    let mut m = Image::new()
+        .program(&[
+            none(O::Cli),
+            none(O::Sti),
+            none(O::Hlt),
+            reg_imm8(O::Mov, A, 1),
+            none(O::Hlt),
+        ])
+        .vector(0x20, 0xF000)
+        .code(0xF000, &[reg_imm8(O::Mov, B, 1), none(O::Irt)])
+        .build(bare());
+    m.board.iod.trigger_interrupt(0x20);
+    steps(&mut m, 1); // CLI; the IOD raises INT at the end of the cycle
+    assert!(m.board.int);
+    steps(&mut m, 1); // STI
+    assert!(m.cpu.flag(Flag::Interrupt), "I is set at once");
+    assert!(m.cpu.interrupt_delayed());
+    steps(&mut m, 1);
+    assert_eq!(m.cpu.last_pc, 0x0002, "HLT ran before the interrupt");
+    assert!(m.cpu.is_halted());
+    m.run(100);
+    assert_eq!(m.cpu.reg(B), 1, "the interrupt woke HLT");
+    assert_eq!(m.cpu.reg(A), 1, "and execution went on after HLT");
+}
+
+#[test]
 fn power_on_restores_initial_state() {
-    let mut m = machine(&[reg_imm8(O::Mov, A, 0x77), reg_ram(O::Str, A, at(0))]);
+    let mut m = machine(&[reg_imm8(O::Mov, A, 0x77), reg_ram(O::Str, A, 0x0000)]);
     m.breakpoints.set(0x1234, true);
     steps(&mut m, 2);
     m.power_on();
     assert_eq!(m.cpu.reg(A), 0);
     assert_eq!(m.ticks(), 0);
     assert_eq!(
-        ram(&m, at(0)),
+        ram(&m, 0x0000),
         O::Mov as u8 * 4,
         "program reloaded from the image"
     );

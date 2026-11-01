@@ -65,7 +65,8 @@ fn parse<T: std::str::FromStr>(args: &[String], name: &str, default: T) -> Resul
 fn bench_program() -> Vec<u8> {
     use Opcode as O;
     use Register::*;
-    let loop_start = PROGRAM_START + 4 * 4;
+    // After CLI (1 byte) and three MOV r, value (3 bytes each).
+    let loop_start = PROGRAM_START + 1 + 3 * 3;
     let program = [
         encode::none(O::Cli),           // ignore the plug-in interrupts
         encode::reg_imm8(O::Mov, D, 5), // D = monitor CMD port (monitor is plugged first, ports 1-5)
@@ -82,9 +83,11 @@ fn bench_program() -> Vec<u8> {
         encode::none(O::Hlt),
     ];
     let mut ram = vec![0u8; hbc2_core::isa::RAM_SIZE];
-    for (n, instruction) in program.iter().enumerate() {
-        let address = PROGRAM_START as usize + n * 4;
-        ram[address..address + 4].copy_from_slice(&instruction.to_bytes());
+    let mut address = PROGRAM_START as usize;
+    for instruction in program {
+        let size = instruction.size() as usize;
+        ram[address..address + size].copy_from_slice(&instruction.to_bytes()[..size]);
+        address += size;
     }
     ram
 }
@@ -362,5 +365,10 @@ fn run(args: &[String]) -> Result<(), String> {
         .map(|&f| if cpu.flag(f) { f.letter() } else { '-' })
         .collect();
     println!("flags: {flags}");
+    if cpu.stopped_by_invalid_instruction() {
+        println!("stopped: invalid instruction at {:#06x}", cpu.last_pc);
+    } else if cpu.is_stopped() {
+        println!("stopped: hlt with interrupts off");
+    }
     Ok(())
 }

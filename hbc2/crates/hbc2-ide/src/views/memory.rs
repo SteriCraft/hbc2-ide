@@ -1,7 +1,7 @@
 //! Hex view of the RAM or the EEPROM. RAM bytes can be edited while paused.
 
 use eframe::egui::{self, Color32, Event, Key, RichText, Sense, TextStyle};
-use hbc2_core::isa::{INSTRUCTION_SIZE, IVT_START, PROGRAM_START};
+use hbc2_core::isa::{IVT_START, Instruction, PROGRAM_START};
 use hbc2_runner::{RunState, Runner, Snapshot};
 
 use crate::views::cpu::changed_color;
@@ -143,6 +143,8 @@ impl MemoryView {
             area = area.vertical_scroll_offset(row.min(rows - 1) as f32 * (row_height + spacing));
         }
         let pc = s.cpu.pc as usize;
+        // The bytes of the instruction at the PC (1 to 4).
+        let pc_size = Instruction::fetched(s.board.ram.read_u32(s.cpu.pc)).size() as usize;
         let sp = s.cpu.sp as usize;
         let address_digits = if memory.len() > 0x1_0000 { 5 } else { 4 };
         area.show_rows(ui, row_height, rows, |ui, range| {
@@ -165,7 +167,7 @@ impl MemoryView {
                         if before.is_some_and(|b| b[address] != value) {
                             text = text.color(changed_color(dark)).strong();
                         }
-                        if in_ram && (pc..pc + INSTRUCTION_SIZE as usize).contains(&address) {
+                        if in_ram && (pc..pc + pc_size).contains(&address) {
                             text = text.background_color(crate::views::editor::pc_color(dark));
                         } else if in_ram && address == sp {
                             text = text.background_color(sp_color());

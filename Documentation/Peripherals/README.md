@@ -86,7 +86,10 @@ one that is just `irt`) before allowing interrupts. The Interrupt flag is
 **set at power-on**.
 
 `hlt` stops the CPU until the next interrupt: a program waiting for a key or
-the next second can sleep instead of looping.
+the next second can sleep instead of looping. `hlt` doesn't turn interrupts
+on: with interrupts off (`cli`), it stops the CPU until a reset. To wait with
+interrupts off until then, write `sti` then `hlt`: `sti` takes effect after
+the next instruction, so no interrupt can come between the two and be missed.
 
 ### Installing a handler
 

@@ -137,6 +137,15 @@ pub fn forms(op: Opcode) -> &'static [Form] {
     }
 }
 
+/// Size in bytes of the instruction written with these operand kinds. The
+/// form only depends on the kinds, so the size is known before names are
+/// resolved. Operands no form accepts (an error, reported when encoding) count
+/// as the longest instruction.
+pub fn instruction_size(op: Opcode, kinds: &[Kind]) -> u32 {
+    let mode = forms(op).iter().find(|f| f.kinds == kinds).map(|f| f.mode);
+    mode.map_or(hbc2_core::isa::MAX_INSTRUCTION_SIZE, AddrMode::length) as u32
+}
+
 /// "mov r, r | mov r, value"
 pub fn usage(op: Opcode) -> String {
     let mut usages: Vec<String> = forms(op)
@@ -278,6 +287,28 @@ mod tests {
             modes.sort_by_key(|m| *m as u8);
             expected.sort_by_key(|m| *m as u8);
             assert_eq!(modes, expected, "{}", info.mnemonic);
+        }
+    }
+
+    #[test]
+    fn sizes_follow_the_mode() {
+        assert_eq!(instruction_size(Opcode::Ret, &[]), 1);
+        assert_eq!(instruction_size(Opcode::Mov, &[R, R]), 2);
+        assert_eq!(instruction_size(Opcode::Psh, &[R]), 2);
+        assert_eq!(instruction_size(Opcode::Jmp, &[P]), 2);
+        assert_eq!(instruction_size(Opcode::Mov, &[R, I]), 3);
+        assert_eq!(instruction_size(Opcode::Lod, &[R, S]), 3);
+        assert_eq!(instruction_size(Opcode::Asp, &[I]), 3);
+        assert_eq!(instruction_size(Opcode::Asp, &[W]), 4);
+        assert_eq!(instruction_size(Opcode::Lod, &[R, M]), 4);
+        assert_eq!(instruction_size(Opcode::Lod, &[R, P]), 4);
+        assert_eq!(instruction_size(Opcode::Jmp, &[M]), 4);
+        // Every form: the size of the encoded instruction.
+        for info in hbc2_core::isa::INSTRUCTION_TABLE.iter() {
+            for f in forms(info.opcode) {
+                let i = encode::raw(info.opcode, f.mode, 0, 0, 0, 0);
+                assert_eq!(instruction_size(info.opcode, f.kinds), i.size() as u32);
+            }
         }
     }
 

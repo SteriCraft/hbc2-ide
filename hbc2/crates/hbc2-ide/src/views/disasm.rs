@@ -7,7 +7,8 @@ use eframe::egui::{
 };
 use hbc2_asm::Program;
 use hbc2_asm::disasm::disassemble_with;
-use hbc2_core::isa::INSTRUCTION_SIZE;
+use hbc2_core::Ram;
+use hbc2_core::isa::Instruction;
 use hbc2_runner::Snapshot;
 
 use crate::emulator::ram_address;
@@ -59,17 +60,35 @@ fn program_rows(program: &Program) -> Vec<Row> {
         .collect()
 }
 
-/// Without debug information: instructions around the PC, every 4 bytes.
-fn raw_rows(pc: u16) -> Vec<Row> {
-    let start = pc.saturating_sub(32 * INSTRUCTION_SIZE);
-    (0..128u16)
-        .map(|n| start.wrapping_add(n * INSTRUCTION_SIZE))
-        .take_while(|&a| a >= start)
-        .map(|address| Row {
+/// Without debug information: the instructions from the PC on, as RAM holds
+/// them now. Instructions are 1 to 4 bytes, so the ones before the PC can't
+/// be found.
+fn raw_rows(pc: u16, ram: &Ram) -> Vec<Row> {
+    let mut rows = Vec::new();
+    let mut address = pc;
+    for _ in 0..128 {
+        rows.push(Row {
             address,
             label: None,
             source: None,
-        })
+        });
+        let Some(next) = address.checked_add(instruction_at(ram, address).size()) else {
+            break; // end of RAM
+        };
+        address = next;
+    }
+    rows
+}
+
+fn instruction_at(ram: &Ram, address: u16) -> Instruction {
+    Instruction::fetched(ram.read_u32(address))
+}
+
+/// The bytes of the instruction, e.g. "748005" for `mov a, 5`.
+fn hex_bytes(i: Instruction) -> String {
+    i.to_bytes()[..i.size() as usize]
+        .iter()
+        .map(|b| format!("{b:02X}"))
         .collect()
 }
 
@@ -108,7 +127,7 @@ impl DisasmView {
                 if !self.rows.iter().any(|r| r.address == pc)
                     || self.rows.first().is_some_and(|r| r.source.is_some())
                 {
-                    self.rows = raw_rows(pc);
+                    self.rows = raw_rows(pc, &s.board.ram);
                 }
             }
         }
@@ -141,6 +160,7 @@ impl DisasmView {
         area.show_rows(ui, row_height, self.rows.len(), |ui, range| {
             for row in &self.rows[range] {
                 let word = s.board.ram.read_u32(row.address);
+                let instruction = instruction_at(&s.board.ram, row.address);
                 let is_pc = row.address == pc;
                 let has_breakpoint = s.breakpoints.contains(row.address);
                 ui.horizontal(|ui| {
@@ -180,7 +200,8 @@ impl DisasmView {
                         address = address.background_color(crate::views::editor::pc_color(dark));
                     }
                     ui.label(address);
-                    ui.label(RichText::new(format!("{word:08X}")).monospace().weak());
+                    let bytes = format!("{:<8}", hex_bytes(instruction));
+                    ui.label(RichText::new(bytes).monospace().weak());
                     let label = row
                         .label
                         .as_ref()
@@ -213,17 +234,24 @@ impl DisasmView {
 mod tests {
     use super::*;
 
+    use hbc2_core::Opcode;
+    use hbc2_core::isa::encode;
+
     #[test]
-    fn raw_rows_around_the_pc() {
-        let rows = raw_rows(0x0000);
-        assert_eq!(rows[0].address, 0x0000);
-        let rows = raw_rows(0x0400);
-        assert_eq!(rows[0].address, 0x0380);
-        assert!(rows.iter().any(|r| r.address == 0x0400));
-        let rows = raw_rows(0xFFF0);
+    fn raw_rows_follow_the_instruction_sizes() {
+        let mut ram = Ram::new();
+        let mov = encode::reg_imm8(Opcode::Mov, hbc2_core::Register::A, 5).to_bytes();
+        ram.as_mut_slice()[0x0400..0x0403].copy_from_slice(&mov[..3]);
+        // Then zeros: 1-byte NOPs.
+        let rows = raw_rows(0x0400, &ram);
+        assert_eq!(rows[0].address, 0x0400);
+        assert_eq!(rows[1].address, 0x0403);
+        assert_eq!(rows[2].address, 0x0404);
+        assert_eq!(hex_bytes(instruction_at(&ram, 0x0400)), "748005");
+        let rows = raw_rows(0xFFF0, &ram);
         assert_eq!(
             rows.last().unwrap().address,
-            0xFFFC,
+            0xFFFF,
             "stops at the end of RAM"
         );
     }

@@ -21,9 +21,22 @@ fn errors(source: &str) -> Vec<String> {
     build(MemoryFiles::new().with("main.has", source), Target::Ram).expect_err("should fail")
 }
 
+/// The instruction at `address`: only its own bytes (see `Instruction::size`).
 fn word(p: &Program, address: u32) -> Instruction {
     let a = address as usize;
-    Instruction(u32::from_be_bytes(p.image[a..a + 4].try_into().unwrap()))
+    Instruction::fetched(u32::from_be_bytes(p.image[a..a + 4].try_into().unwrap()))
+}
+
+/// The `n` instructions from `address`, one after the other.
+fn words(p: &Program, address: u32, n: usize) -> Vec<Instruction> {
+    let mut a = address;
+    (0..n)
+        .map(|_| {
+            let i = word(p, a);
+            a += i.size() as u32;
+            i
+        })
+        .collect()
 }
 
 fn addr(p: &Program, name: &str) -> u32 {
@@ -49,9 +62,9 @@ fn bare() -> MachineConfig {
 fn minimal_program() {
     let p = asm("_start:\n    mov a, 0x2A\n    jmp _start\n");
     assert_eq!(word(&p, 0x0000), encode::reg_imm8(O::Mov, A, 0x2A));
-    assert_eq!(word(&p, 0x0004), encode::imm16(O::Jmp, 0x0000));
-    assert_eq!(p.bytes_used, 8);
-    assert_eq!(p.source_of(0x0004).unwrap().line, 3);
+    assert_eq!(word(&p, 0x0003), encode::imm16(O::Jmp, 0x0000));
+    assert_eq!(p.bytes_used, 7, "3 + 4 bytes");
+    assert_eq!(p.source_of(0x0003).unwrap().line, 3);
     assert_eq!(p.address_of(0, 2), Some(0x0000));
 }
 
@@ -96,8 +109,9 @@ _start:
         encode::reg(O::Psh, A, A),
         encode::none(O::Ret),
     ];
-    for (n, e) in expected.iter().enumerate() {
-        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
+    let got = words(&p, 0, expected.len());
+    for (n, (got, e)) in got.iter().zip(&expected).enumerate() {
+        assert_eq!(got, e, "instruction {n}");
     }
 }
 
@@ -139,8 +153,9 @@ _start:
         encode::reg16(O::Wsp, C, D),
         encode::imm16(O::Wsp, 0xFE00),
     ];
-    for (n, e) in expected.iter().enumerate() {
-        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
+    let got = words(&p, 0, expected.len());
+    for (n, (got, e)) in got.iter().zip(&expected).enumerate() {
+        assert_eq!(got, e, "instruction {n}");
     }
 
     let e = errors("_start:\n    jmp [x:y + 2]\n");
@@ -171,8 +186,9 @@ _start:
         encode::ramreg_offset(O::Inc, I, J, A, b'A'),
         encode::ramreg_offset(O::Lod, X, Y, A, 2),
     ];
-    for (n, e) in expected.iter().enumerate() {
-        assert_eq!(word(&p, n as u32 * 4), *e, "instruction {n}");
+    let got = words(&p, 0, expected.len());
+    for (n, (got, e)) in got.iter().zip(&expected).enumerate() {
+        assert_eq!(got, e, "instruction {n}");
     }
 
     // Indexing a table: [x:b + table.lsb] with x = table.msb is table + b,
@@ -269,7 +285,7 @@ _start:
     hlt
 ");
     assert_eq!(
-        word(&p, 0x0008).mode(),
+        word(&p, 0x0006).mode(),
         Some(hbc2_core::AddrMode::RamRegImmReg)
     );
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
@@ -291,12 +307,13 @@ end:
 .data msg \"Hi!\\n\", 0
 ");
     let msg = addr(&p, "msg");
+    // mov: 3 bytes, lod and jmp: 4.
     assert_eq!(word(&p, 0x0000).v1(), 0xFF);
-    assert_eq!(word(&p, 0x0004).v1(), 0xA5);
-    assert_eq!(word(&p, 0x0008).v1(), (msg >> 8) as u8);
-    assert_eq!(word(&p, 0x000C).v1(), msg as u8);
-    assert_eq!(word(&p, 0x0010).vx() as u32, msg + 2);
-    assert_eq!(word(&p, 0x0014).vx(), 0x0014, "end - 4");
+    assert_eq!(word(&p, 0x0003).v1(), 0xA5);
+    assert_eq!(word(&p, 0x0006).v1(), (msg >> 8) as u8);
+    assert_eq!(word(&p, 0x0009).v1(), msg as u8);
+    assert_eq!(word(&p, 0x000C).vx() as u32, msg + 2);
+    assert_eq!(word(&p, 0x0010).vx(), 0x0010, "end - 4");
     assert_eq!(&p.image[msg as usize..msg as usize + 5], b"Hi!\n\0");
 }
 
@@ -321,10 +338,10 @@ _start:
     assert_eq!(addr(&p, "vector"), 0x0100);
     assert_eq!(
         addr(&p, "first"),
-        0x0008,
-        "first free byte after _start's 8 bytes"
+        0x0002,
+        "first free byte after _start's 2 bytes"
     );
-    assert_eq!(addr(&p, "second"), 0x000B);
+    assert_eq!(addr(&p, "second"), 0x0005);
     assert_eq!(&p.image[0x0100..0x0102], [0xF0, 0x00]);
     assert_eq!(p.symbol("first").unwrap().kind, SymbolKind::Data);
 }
@@ -341,7 +358,7 @@ next:            ; continues _start's block
     hlt
 handler: $0xF000
     irt
-after_handler:   ; continues at 0xF004
+after_handler:   ; continues at 0xF001
     irt
 ",
         )
@@ -350,11 +367,11 @@ after_handler:   ; continues at 0xF004
     assert_eq!(addr(&p, "_start"), 0x0000);
     assert_eq!(addr(&p, "next"), 0x0004);
     assert_eq!(addr(&p, "handler"), 0xF000);
-    assert_eq!(addr(&p, "after_handler"), 0xF004);
+    assert_eq!(addr(&p, "after_handler"), 0xF001);
     assert_eq!(
         addr(&p, "double"),
-        0x0008,
-        "floating block placed after _start"
+        0x0005,
+        "floating block placed after _start (cal 4 bytes + hlt 1)"
     );
     assert_eq!(p.files.len(), 2);
 }
@@ -443,7 +460,7 @@ _start:
     str VECTOR, a
 ");
     assert_eq!(word(&p, 0x0000), encode::reg_imm8(O::Mov, A, 5));
-    assert_eq!(word(&p, 0x0004), encode::reg_ram(O::Str, A, 0x0100));
+    assert_eq!(word(&p, 0x0003), encode::reg_ram(O::Str, A, 0x0100));
     assert!(errors(".define A_ 1\n.define A_ 2\n_start:\n nop")[0].contains("already defined"));
     assert!(errors(".define X1 X2\n.define X2 X1\n_start:\n mov a, X1")[0].contains("loop"));
     assert!(errors(".define mov 1\n_start:\n nop")[0].contains("reserved"));
@@ -521,7 +538,7 @@ far: $0x20000
     assert_eq!(&p.image[0x12345..0x12348], [1, 2, 3]);
     assert_eq!(
         addr(&p, "auto"),
-        0x0004,
+        0x0001,
         "automatic placement stays in boot ranges"
     );
     let warnings: Vec<String> = p.warnings.iter().map(ToString::to_string).collect();
@@ -651,14 +668,15 @@ done:
     jmp done
 ");
     // One instruction per register, all on the same source line.
-    assert_eq!(word(&p, 0x0010), encode::reg(O::Psh, A, A));
-    assert_eq!(word(&p, 0x0018), encode::reg(O::Psh, Y, A));
-    assert_eq!(word(&p, 0x0028), encode::reg(O::Pop, Y, A));
-    assert_eq!(word(&p, 0x0030), encode::reg(O::Pop, A, A));
-    assert_eq!(p.source_of(0x0018).unwrap().line, 7);
+    // cli: 1 byte, mov r, value: 3, psh / pop: 2.
+    assert_eq!(word(&p, 10), encode::reg(O::Psh, A, A));
+    assert_eq!(word(&p, 14), encode::reg(O::Psh, Y, A));
+    assert_eq!(word(&p, 25), encode::reg(O::Pop, Y, A));
+    assert_eq!(word(&p, 29), encode::reg(O::Pop, A, A));
+    assert_eq!(p.source_of(14).unwrap().line, 7);
     assert_eq!(
         p.address_of(0, 11),
-        Some(0x0028),
+        Some(25),
         "breakpoints stop at the first one"
     );
 
@@ -756,11 +774,7 @@ _start:
         addr(&without, "__bss_end"),
         "empty area when there is no .bss"
     );
-    assert_eq!(
-        used,
-        15 * 4 + 2,
-        "code + data only: .bss takes no image bytes"
-    );
+    assert_eq!(used, 48 + 2, "code + data only: .bss takes no image bytes");
 }
 
 #[test]
@@ -794,11 +808,11 @@ late: $0x8000                ; fixed: not counted
 .bss buffer 16               ; not in the image: not counted
 .data16 vector $0xFE02 late
 ");
-    assert_eq!(addr(&p, "table"), 12, "after the code");
-    assert_eq!(addr(&p, "__program_end"), 15);
+    assert_eq!(addr(&p, "table"), 7, "after the code (3 + 3 + 1 bytes)");
+    assert_eq!(addr(&p, "__program_end"), 10);
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
     m.run(100);
-    assert_eq!((m.cpu.reg(Register::A), m.cpu.reg(Register::B)), (0x00, 15));
+    assert_eq!((m.cpu.reg(Register::A), m.cpu.reg(Register::B)), (0x00, 10));
 
     let only_start = asm("_start:\n    hlt\n");
     assert_eq!(addr(&only_start, "__program_end"), 0, "_start is fixed");
@@ -930,16 +944,17 @@ handler:
         removed(&p),
         ["dead", "unused", "table", "buffer", "kept_buffer", "ptr"]
     );
+    // dead: mov (3) + ret (1); unused: lod (4) + cal (4) + ret (1)
     assert_eq!(
         p.removed.iter().map(|r| r.size).collect::<Vec<_>>(),
-        [8, 12, 3, 64, 2, 2]
+        [4, 9, 3, 64, 2, 2]
     );
-    assert_eq!(p.bytes_removed(), 91);
+    assert_eq!(p.bytes_removed(), 84);
     assert!(p.symbol("dead").is_none() && p.symbol("table").is_none());
     // used moved up to where dead was
-    assert_eq!(addr(&p, "loop"), 0x0008);
-    assert_eq!(addr(&p, "used"), 0x000C);
-    assert_eq!(word(&p, 0x0000), encode::imm16(O::Cal, 0x000C));
+    assert_eq!(addr(&p, "loop"), 0x0005);
+    assert_eq!(addr(&p, "used"), 0x0009);
+    assert_eq!(word(&p, 0x0000), encode::imm16(O::Cal, 0x0009));
     // handler is reached only from data at a fixed address
     assert!(p.symbol("handler").is_some() && p.symbol("vector").is_some());
     // A variable used only from data that is kept
@@ -955,7 +970,7 @@ handler:
     let all = asm(source);
     assert!(all.removed.is_empty());
     assert!(all.symbol("dead").is_some());
-    assert_eq!(all.bytes_used, p.bytes_used + 8 + 12 + 1 + 3);
+    assert_eq!(all.bytes_used, p.bytes_used + 4 + 9 + 1 + 3);
 }
 
 #[test]
@@ -1001,7 +1016,7 @@ computed:        ; still in the fixed block
 ",
     );
     assert_eq!(removed(&p), ["helper", "msb_only", "user"]);
-    assert_eq!(addr(&p, "fixed_tail"), 0x8004);
+    assert_eq!(addr(&p, "fixed_tail"), 0x8001);
     assert!(p.symbol("computed").is_some() && p.symbol("computed2").is_some());
     // msb / lsb count as uses
     let p = stripped("_start:\n    mov a, v.msb\n    hlt\n.data v 1\n");
@@ -1133,7 +1148,7 @@ fn library_duplicates_and_scope() {
     .unwrap();
     assert_eq!(
         addr(&p, "second (library, replaced)"),
-        addr(&p, "first") + 4
+        addr(&p, "first") + 1
     );
     assert!(errors("_start:\n    hlt\n.library now\n")[0].contains("takes nothing"));
 }

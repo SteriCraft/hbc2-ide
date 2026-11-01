@@ -17,8 +17,9 @@
 
 use std::path::{Path, PathBuf};
 
-use hbc2_asm::Target;
+use hbc2_asm::{Program, SymbolKind, Target};
 use hbc2_cc::{Library, build_library, build_program, compiler_dir, report};
+use hbc2_core::isa::Instruction;
 use hbc2_core::peripherals::Eeprom;
 use hbc2_core::peripherals::monitor::{TEXT_COLUMNS, TEXT_ROWS};
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
@@ -48,22 +49,34 @@ struct Run {
     ticks: u64,
 }
 
-/// Instructions in a compiled file (4 bytes each): indented lines that are
-/// not directives or comments. `psh`/`pop` with a register list is one
-/// instruction per register.
-fn code_bytes(asm: &str) -> usize {
-    asm.lines()
-        .filter(|l| l.starts_with('\t') && !l.trim_start().starts_with(['.', ';']))
+/// Bytes of the instructions of the program's own files (`own`: the sources
+/// and their compiled assembly), the unreached ones left out included.
+fn code_bytes(program: &Program, own: &[PathBuf]) -> usize {
+    let canonical = |p: &Path| std::fs::canonicalize(p).unwrap_or_else(|_| p.to_path_buf());
+    let own: Vec<PathBuf> = own.iter().map(|p| canonical(p)).collect();
+    let mine: Vec<bool> = program
+        .files
+        .iter()
+        .map(|f| own.contains(&canonical(f)))
+        .collect();
+    let mine = |file: usize| mine.get(file).copied().unwrap_or(false);
+    let kept: usize = program
+        .lines
+        .iter()
+        .filter(|l| mine(l.file))
         .map(|l| {
-            let l = l.trim_start();
-            if l.starts_with("psh ") || l.starts_with("pop ") {
-                l.matches(',').count() + 1
-            } else {
-                1
-            }
+            let a = l.address as usize;
+            let word = u32::from_be_bytes(program.image[a..a + 4].try_into().unwrap());
+            Instruction::fetched(word).size() as usize
         })
-        .sum::<usize>()
-        * 4
+        .sum();
+    let removed: usize = program
+        .removed
+        .iter()
+        .filter(|r| r.kind == SymbolKind::Label && mine(r.file))
+        .map(|r| r.size as usize)
+        .sum();
+    kept + removed
 }
 
 /// The text of the monitor, as in a `.screen` file.
@@ -172,11 +185,7 @@ fn run(
     }
     Ok(Run {
         result: u16::from_be_bytes([m.cpu.reg(Register::A), m.cpu.reg(Register::B)]),
-        code_bytes: build
-            .compiled
-            .iter()
-            .map(|f| code_bytes(&std::fs::read_to_string(f).unwrap()))
-            .sum(),
+        code_bytes: code_bytes(program, &[sources, &build.compiled[..]].concat()),
         program_bytes: build.program.bytes_used,
         ticks,
     })
