@@ -211,7 +211,7 @@ const C_TYPES: &[&str] = &[
     "short", "signed", "static", "struct", "typedef", "union", "unsigned", "void", "volatile",
 ];
 
-/// Text color of a closing bracket that no opening bracket matches.
+/// Text color of a bracket that has no partner.
 fn lonely_color(dark: bool) -> Color32 {
     if dark {
         Color32::from_rgb(0xF4, 0x47, 0x47)
@@ -306,7 +306,7 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
     let mut job = LayoutJob::default();
     let mut offset = 0;
     let mut in_comment = false;
-    // Closing brackets without an opening one stand out in red.
+    // Brackets without a partner stand out in red.
     let mut lonely = lonely_brackets(text, syntax).into_iter().peekable();
     let lonely_format = TextFormat {
         background: if dark {
@@ -384,14 +384,16 @@ fn brackets(text: &str, syntax: Syntax) -> Vec<(usize, char)> {
     brackets
 }
 
-/// The closing brackets that no opening bracket matches, as sorted char
+/// The brackets that have no partner: closing brackets that no opening
+/// bracket matches, and opening brackets that are never closed. Sorted char
 /// indices. Each kind of bracket is counted on its own, like
 /// [`matching_bracket`] does.
 pub fn lonely_brackets(text: &str, syntax: Syntax) -> Vec<usize> {
-    if !text.contains([')', ']', '}']) {
+    if !text.contains(['(', ')', '[', ']', '{', '}']) {
         return Vec::new();
     }
-    let mut open = [0usize; 3];
+    // Char indices of the opening brackets not closed yet, per kind.
+    let mut open: [Vec<usize>; 3] = Default::default();
     let mut lonely = Vec::new();
     for (at, c) in brackets(text, syntax) {
         let kind = match c {
@@ -400,13 +402,13 @@ pub fn lonely_brackets(text: &str, syntax: Syntax) -> Vec<usize> {
             _ => 2,
         };
         if "([{".contains(c) {
-            open[kind] += 1;
-        } else if open[kind] > 0 {
-            open[kind] -= 1;
-        } else {
+            open[kind].push(at);
+        } else if open[kind].pop().is_none() {
             lonely.push(at);
         }
     }
+    lonely.extend(open.into_iter().flatten());
+    lonely.sort_unstable();
     lonely
 }
 
@@ -486,6 +488,9 @@ mod tests {
         assert_eq!(c("a) b] c}"), vec![1, 4, 7]);
         assert_eq!(c("(])"), vec![1]);
         assert_eq!(c("{\n}\n}"), vec![4]);
+        assert_eq!(c("f(a[1, {b}"), vec![1, 3]);
+        assert_eq!(c("{ ( } ) {"), vec![8]);
+        assert_eq!(c("(("), vec![0, 1]);
         assert_eq!(c("x = ')'; // )\n/* ] */"), Vec::<usize>::new());
         assert_eq!(lonely_brackets("mov a, b] ; ]", Syntax::Assembly), vec![8]);
     }
