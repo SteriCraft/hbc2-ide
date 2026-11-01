@@ -13,6 +13,16 @@
 // The first port of each device, 0 when it is not plugged. Set at
 // startup (compiler/runtime/devices.has).
 
+#define MONITOR_ID               0x4A
+#define RTC_ID                   0x95
+#define KEYBOARD_ID              0xAA
+#define EEPROM_ID                0xE1
+
+#define MONITOR_PORTS_COUNT      5
+#define RTC_PORTS_COUNT          7
+#define KEYBOARD_PORTS_COUNT     2
+#define EEPROM_PORTS_COUNT       5
+
 extern unsigned char monitor_port;
 extern unsigned char rtc_port;
 extern unsigned char keyboard_port;
