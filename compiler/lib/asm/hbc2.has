@@ -74,13 +74,29 @@ lib_vector_refused:
 
 ; --- Monitor -------------------------------------------------------------
 
-_screen_text_mode:
+; int screen_set_mode(unsigned char mode): 0 = pixel, 1 = text.
+; Refused (1) for another mode or without a monitor. screen.has keeps
+; _monitor_mode up to date.
+_screen_set_mode:
+    lod a, [sp + 2]
+    cmp a, 1
+    jme lib_set_text
+    cmp a, 0
+    jme lib_set_pixel
+    mov a, 0                    ; not a mode
+    mov b, 1
+    ret
+lib_set_text:
     cal screen_text_mode
     jmp lib_carry
-
-_screen_pixel_mode:
+lib_set_pixel:
     cal screen_pixel_mode
     jmp lib_carry
+
+; unsigned char screen_get_mode(void)
+_screen_get_mode:
+    lod b, _monitor_mode
+    ret
 
 ; int screen_putc(char c, unsigned char x, unsigned char y, unsigned char colors)
 _screen_putc:
@@ -232,7 +248,7 @@ _term_update:
 ; struct rtc_time: year, month, day, hour, minute, second (one byte each),
 ; in the order of the RTC ports 0-5.
 
-; int rtc_get(struct rtc_time *time)
+; int rtc_get(struct rtc_time *time): 0, or 1 (no RTC)
 _rtc_get:
     lod d, _rtc_port
     cmp d, 0
@@ -261,14 +277,14 @@ _rtc_get:
     in a, d
     str [x:y + 5], a            ; second
     mov a, 0
-    mov b, 1
+    mov b, 0
     ret
 lib_rtc_none:
     mov a, 0
-    mov b, 0
+    mov b, 1
     ret
 
-; int rtc_set(const struct rtc_time *time)
+; int rtc_set(const struct rtc_time *time): 0, or 1 (no RTC, invalid date)
 _rtc_set:
     lod d, _rtc_port
     cmp d, 0
@@ -297,6 +313,7 @@ _rtc_set:
     out d, a                    ; CMD = SET_TIME
     sub d, 6
     in b, d                     ; YEAR = 1 when set, 0 when refused
+    xor b, 1                    ; C result: 0 when set, 1 when refused
     mov a, 0
     ret
 
@@ -476,15 +493,15 @@ lib_eeprom_save_byte:
 
 ; --- Random numbers (extras of rand and srand, stdlib.h) ----------------
 
-; int srand_rtc(void): seeds from the real-time clock; 1, or 0 (no RTC)
+; int srand_rtc(void): seeds from the real-time clock; 0, or 1 (no RTC)
 _srand_rtc:
     lod d, _rtc_port
     mov a, 0
-    mov b, 0
+    mov b, 1
     cmp d, 0
     jme lib_srand_rtc_end
     cal srand_rtc               ; keeps a
-    mov b, 1
+    mov b, 0
 lib_srand_rtc_end:
     ret
 

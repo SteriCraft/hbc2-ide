@@ -1,4 +1,4 @@
-/* string.h - HBC-2 C library (code in compiler/lib/asm/string.has) */
+// string.h - HBC-2 C library (code in compiler/lib/asm/string.has)
 
 #ifndef __STRING_H
 #define __STRING_H
@@ -12,7 +12,7 @@
 typedef unsigned size_t;
 #endif
 
-size_t 	strlen(const char *s);							// Returns the length of a given string 
+size_t 	strlen(const char *s);							// Returns the length of a given string
 char* 	strcpy(char *dest, const char *src);			// Copies one string to another
 char* 	strncpy(char *dest, const char *src, size_t n);	// Copies a certain amount of characters from one string to another
 char* 	strcat(char *dest, const char *src);			// Concatenates two string

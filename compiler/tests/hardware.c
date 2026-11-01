@@ -9,8 +9,12 @@ static char text[] = "Hello, HBC-2!";
 
 int pixels(void)
 {
-    if (screen_pixel_mode())
+    if (screen_get_mode() != TEXT_MODE || monitor_mode != TEXT_MODE)   /* power-on mode */
+        return 8;
+    if (screen_set_mode(PIXEL_MODE) || screen_get_mode() != PIXEL_MODE)
         return 1;
+    if (screen_set_mode(2) != 1 || monitor_mode != PIXEL_MODE)          /* not a mode */
+        return 9;
     if (screen_put_pixel(10, 20, RED) || screen_put_pixel(255, 191, WHITE))
         return 2;
     if (screen_put_pixel(0, 192, RED) != 1)     /* below the screen */
@@ -29,7 +33,9 @@ int pixels(void)
 int cells(void)
 {
     unsigned char color = COLORS(WHITE, BLUE);
-    if (screen_text_mode() || screen_clear(COLORS(LIGHT_GRAY, BLACK)))
+    if (screen_set_mode(TEXT_MODE) || screen_get_mode() != TEXT_MODE)
+        return 10;
+    if (screen_clear(COLORS(LIGHT_GRAY, BLACK)))
         return 10;
     if (screen_putc('A', 0, 0, color))
         return 11;
@@ -73,7 +79,7 @@ int ports(void)
 int clock(void)
 {
     struct rtc_time t;
-    if (!rtc_get(&t))
+    if (rtc_get(&t))
         return 30;
     /* the emulator's RTC starts at 2000-01-01 00:00:00 (in tests, no time goes by) */
     if (t.year != 100 || t.month != 1 || t.day != 1 || t.hour != 0 || t.minute != 0)
@@ -81,17 +87,17 @@ int clock(void)
     t.year = 126;
     t.month = 2;
     t.day = 29;                                 /* 2026 is not a leap year */
-    if (rtc_set(&t) != 0)
+    if (rtc_set(&t) != 1)                      /* refused */
         return 32;
     t.month = 10;
     t.day = 30;
     t.hour = 14;
     t.minute = 5;
     t.second = 0;
-    if (!rtc_set(&t))
+    if (rtc_set(&t))
         return 33;
     t.year = 0;
-    if (!rtc_get(&t) || t.year != 126 || t.month != 10 || t.day != 30 || t.hour != 14)
+    if (rtc_get(&t) || t.year != 126 || t.month != 10 || t.day != 30 || t.hour != 14)
         return 34;
     return 0;
 }

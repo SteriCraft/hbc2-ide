@@ -85,7 +85,7 @@ int main(void)
     r = ranges();
     if (r)
         return r;
-    if (!srand_rtc())                       /* the tests run with an RTC */
+    if (srand_rtc())                       /* the tests run with an RTC */
         return 20;
     r = rand();
     if (r < 0 || r > RAND_MAX)

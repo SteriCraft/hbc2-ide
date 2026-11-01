@@ -1,7 +1,7 @@
-/* stdarg.h - HBC-2 C library: variable arguments.
-   The arguments are on the stack in order, the first one at the lowest
-   address (ABI.md, section 5), so the next one starts right after the
-   last named one. char arguments arrive as int: va_arg(ap, int). */
+// stdarg.h - HBC-2 C library: variable arguments.
+// The arguments are on the stack in order, the first one at the lowest
+// address (ABI.md, section 5), so the next one starts right after the
+// last named one. char arguments arrive as int: va_arg(ap, int).
 
 #ifndef __STDARG_H
 #define __STDARG_H
