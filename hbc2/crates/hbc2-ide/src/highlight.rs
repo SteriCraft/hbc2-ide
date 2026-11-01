@@ -211,6 +211,15 @@ const C_TYPES: &[&str] = &[
     "short", "signed", "static", "struct", "typedef", "union", "unsigned", "void", "volatile",
 ];
 
+/// Text color of a closing bracket that no opening bracket matches.
+fn lonely_color(dark: bool) -> Color32 {
+    if dark {
+        Color32::from_rgb(0xF4, 0x47, 0x47)
+    } else {
+        Color32::from_rgb(0xCD, 0x31, 0x31)
+    }
+}
+
 /// Splits one line of C into highlighted spans, covering the whole line.
 /// `in_comment` says whether the line starts inside a `/* */` comment, and
 /// is updated for the next line.
@@ -297,6 +306,17 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
     let mut job = LayoutJob::default();
     let mut offset = 0;
     let mut in_comment = false;
+    // Closing brackets without an opening one stand out in red.
+    let mut lonely = lonely_brackets(text, syntax).into_iter().peekable();
+    let lonely_format = TextFormat {
+        background: if dark {
+            Color32::from_rgba_unmultiplied(255, 70, 70, 70)
+        } else {
+            Color32::from_rgba_unmultiplied(255, 60, 60, 50)
+        },
+        ..TextFormat::simple(font.clone(), lonely_color(dark))
+    };
+    let mut index = 0; // char index of the start of the current span
     for line in text.split_inclusive('\n') {
         let content = line.trim_end_matches(['\n', '\r']);
         let spans = match syntax {
@@ -306,33 +326,36 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool) -> Layou
         let mut column = 0;
         for (range, kind) in spans {
             let format = TextFormat::simple(font.clone(), color(kind, dark));
-            append_with_tabs(&mut job, &content[range], &format, &mut column);
+            let piece = &content[range];
+            let mut from = 0;
+            for (i, (byte, _)) in piece.char_indices().enumerate() {
+                if lonely.next_if_eq(&(index + i)).is_some() {
+                    append_with_tabs(&mut job, &piece[from..byte], &format, &mut column);
+                    // Brackets are one byte long.
+                    let bracket = &piece[byte..byte + 1];
+                    append_with_tabs(&mut job, bracket, &lonely_format, &mut column);
+                    from = byte + 1;
+                }
+            }
+            append_with_tabs(&mut job, &piece[from..], &format, &mut column);
+            index += piece.chars().count();
         }
+        let end = &line[content.len()..];
         job.append(
-            &line[content.len()..],
+            end,
             0.0,
             TextFormat::simple(font.clone(), color(Kind::Plain, dark)),
         );
+        index += end.chars().count();
         offset += line.len();
     }
     debug_assert_eq!(offset, text.len());
     job
 }
 
-/// The bracket next to the cursor (`cursor` is a char index) and the one
-/// that matches it, as char indices. The bracket left of the cursor wins
-/// over the one right of it. Brackets in comments and strings are ignored.
-pub fn matching_bracket(text: &str, syntax: Syntax, cursor: usize) -> Option<(usize, usize)> {
-    let is_bracket = |c: char| "()[]{}".contains(c);
-    // Cheap check first: most of the time no bracket is next to the cursor.
-    let mut around = text.chars().skip(cursor.saturating_sub(1));
-    let left = if cursor > 0 { around.next() } else { None };
-    let right = around.next();
-    if !left.is_some_and(is_bracket) && !right.is_some_and(is_bracket) {
-        return None;
-    }
-
-    // The brackets of the code: (char index, bracket).
+/// The brackets of the code (not in comments or strings), as
+/// (char index, bracket).
+fn brackets(text: &str, syntax: Syntax) -> Vec<(usize, char)> {
     let mut brackets = Vec::new();
     let mut index = 0;
     let mut in_comment = false;
@@ -349,7 +372,7 @@ pub fn matching_bracket(text: &str, syntax: Syntax, cursor: usize) -> Option<(us
                 if at >= range.end {
                     break;
                 }
-                if code && is_bracket(c) {
+                if code && "()[]{}".contains(c) {
                     brackets.push((index, c));
                 }
                 chars.next();
@@ -358,7 +381,49 @@ pub fn matching_bracket(text: &str, syntax: Syntax, cursor: usize) -> Option<(us
         }
         index += line[content.len()..].chars().count();
     }
+    brackets
+}
 
+/// The closing brackets that no opening bracket matches, as sorted char
+/// indices. Each kind of bracket is counted on its own, like
+/// [`matching_bracket`] does.
+pub fn lonely_brackets(text: &str, syntax: Syntax) -> Vec<usize> {
+    if !text.contains([')', ']', '}']) {
+        return Vec::new();
+    }
+    let mut open = [0usize; 3];
+    let mut lonely = Vec::new();
+    for (at, c) in brackets(text, syntax) {
+        let kind = match c {
+            '(' | ')' => 0,
+            '[' | ']' => 1,
+            _ => 2,
+        };
+        if "([{".contains(c) {
+            open[kind] += 1;
+        } else if open[kind] > 0 {
+            open[kind] -= 1;
+        } else {
+            lonely.push(at);
+        }
+    }
+    lonely
+}
+
+/// The bracket next to the cursor (`cursor` is a char index) and the one
+/// that matches it, as char indices. The bracket left of the cursor wins
+/// over the one right of it. Brackets in comments and strings are ignored.
+pub fn matching_bracket(text: &str, syntax: Syntax, cursor: usize) -> Option<(usize, usize)> {
+    let is_bracket = |c: char| "()[]{}".contains(c);
+    // Cheap check first: most of the time no bracket is next to the cursor.
+    let mut around = text.chars().skip(cursor.saturating_sub(1));
+    let left = if cursor > 0 { around.next() } else { None };
+    let right = around.next();
+    if !left.is_some_and(is_bracket) && !right.is_some_and(is_bracket) {
+        return None;
+    }
+
+    let brackets = brackets(text, syntax);
     let find = |at: usize| brackets.iter().position(|&(i, _)| i == at);
     let start = cursor
         .checked_sub(1)
@@ -412,6 +477,17 @@ mod tests {
         let asm = |text: &str, at| matching_bracket(text, Syntax::Assembly, at);
         assert_eq!(asm("mov a, [b] ; ]", 7), Some((7, 9)));
         assert_eq!(asm("x ')' (", 4), None);
+    }
+
+    #[test]
+    fn lonely() {
+        let c = |text: &str| lonely_brackets(text, Syntax::C);
+        assert_eq!(c("f(a[1], {b})"), Vec::<usize>::new());
+        assert_eq!(c("a) b] c}"), vec![1, 4, 7]);
+        assert_eq!(c("(])"), vec![1]);
+        assert_eq!(c("{\n}\n}"), vec![4]);
+        assert_eq!(c("x = ')'; // )\n/* ] */"), Vec::<usize>::new());
+        assert_eq!(lonely_brackets("mov a, b] ; ]", Syntax::Assembly), vec![8]);
     }
 
     #[test]

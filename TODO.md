@@ -33,10 +33,8 @@ Must indicate the computer's name, shell version, memory capacity (RAM, EEPROM i
 |✔| `memdump <addr> [len]` | 8 bytes per row: `1A00: 3E 00 12 ... >...` (hex + text); stop or pause when the output scrolls past the screen |
 |✔| `poke <addr> <val>` | Write one byte of memory |
 |✔| `peek <addr>` | Read one byte of memory |
+|✔| `date` | Read the RTC ports |
 |☐| `time` | Read the RTC ports |
-|☐| `date` | Read the RTC ports |
-|☐| `set_time hh mm ss` | RTC `SET_TIME` |
-|☐| `set_date hh mm ss` | RTC `SET_DATE` |
 |✔| `echo text` | Tests the word splitting |
 |✔| `hex n` / `dec n` | Number conversion: `hex 255` -> `0xFF` |
 |✔| `rand [min max]` | Uses `random_range` |
