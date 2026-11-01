@@ -30,18 +30,18 @@ Must indicate the computer's name, shell version, memory capacity (RAM, EEPROM i
 |✔| `help [cmd]` | Lists the commands from the table |
 |✔| `clear` | `screen_clear` with the current colors, prompt on the top row |
 |✔| `set_colors <fg> <bg> [-f]` | Changes `term_color` for new text (0-15) |
-|☐| `memdump <addr> [len]` | 8 bytes per row: `1A00: 3E 00 12 ... >...` (hex + text); stop or pause when the output scrolls past the screen |
-|☐| `poke <addr> <val>` | Write one byte of memory |
-|☐| `peek <addr>` | Read one byte of memory |
+|✔| `memdump <addr> [len]` | 8 bytes per row: `1A00: 3E 00 12 ... >...` (hex + text); stop or pause when the output scrolls past the screen |
+|✔| `poke <addr> <val>` | Write one byte of memory |
+|✔| `peek <addr>` | Read one byte of memory |
 |☐| `time` | Read the RTC ports |
 |☐| `date` | Read the RTC ports |
 |☐| `set_time hh mm ss` | RTC `SET_TIME` |
 |☐| `set_date hh mm ss` | RTC `SET_DATE` |
 |✔| `echo text` | Tests the word splitting |
-|☐| `hex n` / `dec n` | Number conversion: `hex 255` -> `0xFF` |
-|☐| `rand [min max]` | Uses `random_range` |
+|✔| `hex n` / `dec n` | Number conversion: `hex 255` -> `0xFF` |
+|✔| `rand [min max]` | Uses `random_range` |
 |☐| `devices` | Port of each peripheral (monitor, keyboard, RTC, EEPROM) |
-|☐| `run addr` | Calls code at an address, back to the prompt after |
+|✔| `run addr` | Calls code at an address, back to the prompt after |
 
 Naming to decide: shorter names (`color 14`, `bgcolor 1`, or DOS-like
 `color 14 1`) are quicker to type on a 42-column screen; the table also
