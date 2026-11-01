@@ -83,6 +83,8 @@ fn main() -> eframe::Result {
         "HBC-2 IDE",
         options,
         Box::new(|cc| {
+            // No Ctrl+Q to quit (egui's default): it is too close to Ctrl+S.
+            cc.egui_ctx.options_mut(|o| o.quit_shortcuts.clear());
             let saved: Option<Saved> = cc.storage.and_then(|s| eframe::get_value(s, STORAGE_KEY));
             let mut ide = Ide::new(&cc.egui_ctx, saved);
             if let Err(e) = hbc2_ide::project::create_projects_dir() {
