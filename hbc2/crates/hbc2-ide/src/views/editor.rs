@@ -456,8 +456,11 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
 
             // Inside the brackets of a known function's call: its parameters.
+            // Hidden while Ctrl is held, so it does not cover the text
+            // during a multiple selection.
             if let Some(signatures) = marks.signatures
                 && output.response.has_focus()
+                && !ui.input(|i| i.modifiers.command)
                 && let Some(range) = output.state.cursor.char_range()
                 && range.is_empty()
             {
