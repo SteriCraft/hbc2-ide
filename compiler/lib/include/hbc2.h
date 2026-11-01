@@ -123,8 +123,8 @@ struct rtc_time {
     unsigned char second;           /* 0-59 */
 };
 
-int rtc_get(struct rtc_time *time);             /* 0, or 1 */
-int rtc_set(const struct rtc_time *time);       /* 0, or 1 (no RTC, invalid date) */
+int rtc_get(struct rtc_time *time);             /* 1, or 0 (no RTC) */
+int rtc_set(const struct rtc_time *time);       /* 1, or 0 (no RTC, invalid date) */
 
 
 /* --- EEPROM ------------------------------------------------------------
@@ -149,7 +149,7 @@ int eeprom_save(unsigned long address, const void *ram, unsigned length);
 /* --- Random numbers ----------------------------------------------------
    Extras of rand and srand (stdlib.h): same generator. */
 
-int srand_rtc(void);        /* seeds from the clock: 0, or 1 (no RTC) */
+int srand_rtc(void);        /* seeds from the clock: 1, or 0 (no RTC) */
 /* lo to hi (both included), every value equally likely; lo when hi < lo */
 int rand_range(int lo, int hi);
 

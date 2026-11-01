@@ -73,7 +73,7 @@ int ports(void)
 int clock(void)
 {
     struct rtc_time t;
-    if (rtc_get(&t))
+    if (!rtc_get(&t))
         return 30;
     /* the emulator's RTC starts at 2000-01-01 00:00:00 (in tests, no time goes by) */
     if (t.year != 100 || t.month != 1 || t.day != 1 || t.hour != 0 || t.minute != 0)
@@ -81,17 +81,17 @@ int clock(void)
     t.year = 126;
     t.month = 2;
     t.day = 29;                                 /* 2026 is not a leap year */
-    if (rtc_set(&t) != 1)
+    if (rtc_set(&t) != 0)
         return 32;
     t.month = 10;
     t.day = 30;
     t.hour = 14;
     t.minute = 5;
     t.second = 0;
-    if (rtc_set(&t))
+    if (!rtc_set(&t))
         return 33;
     t.year = 0;
-    if (rtc_get(&t) || t.year != 126 || t.month != 10 || t.day != 30 || t.hour != 14)
+    if (!rtc_get(&t) || t.year != 126 || t.month != 10 || t.day != 30 || t.hour != 14)
         return 34;
     return 0;
 }

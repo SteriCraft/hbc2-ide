@@ -261,11 +261,11 @@ _rtc_get:
     in a, d
     str [x:y + 5], a            ; second
     mov a, 0
-    mov b, 0
+    mov b, 1
     ret
 lib_rtc_none:
     mov a, 0
-    mov b, 1
+    mov b, 0
     ret
 
 ; int rtc_set(const struct rtc_time *time)
@@ -297,7 +297,6 @@ _rtc_set:
     out d, a                    ; CMD = SET_TIME
     sub d, 6
     in b, d                     ; YEAR = 1 when set, 0 when refused
-    xor b, 1                    ; C result: 0 when set, 1 when refused
     mov a, 0
     ret
 
@@ -477,15 +476,15 @@ lib_eeprom_save_byte:
 
 ; --- Random numbers (extras of rand and srand, stdlib.h) ----------------
 
-; int srand_rtc(void): seeds from the real-time clock; 0, or 1 (no RTC)
+; int srand_rtc(void): seeds from the real-time clock; 1, or 0 (no RTC)
 _srand_rtc:
     lod d, _rtc_port
     mov a, 0
-    mov b, 1
+    mov b, 0
     cmp d, 0
     jme lib_srand_rtc_end
-    cal srand_rtc
-    mov b, 0
+    cal srand_rtc               ; keeps a
+    mov b, 1
 lib_srand_rtc_end:
     ret
 
