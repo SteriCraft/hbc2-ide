@@ -60,6 +60,13 @@ cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on t
 - Assembling uses the editors' text, saved or not.
 - Click the editor margin to set a breakpoint. When the emulator pauses, the
   editor shows the line of the next instruction.
+- Functions fold: the arrows at the right of the margin fold one (C: any
+  `{ }` block; assembly: a label after a comment, a directive or a blank
+  line, up to its last instruction). **Ctrl+K** collapses all functions,
+  **Ctrl+J** expands everything.
+- Settings ▸ Shortcuts lists the shortcuts by category; click one, then
+  press the new keys (or choose "No shortcut"). "Restore defaults" puts
+  them all back.
 - The CPU and Memory views highlight what changed since the last run or
   step. RAM bytes can be edited in the Memory view while paused.
 - Click the monitor to type on the HBC-2 keyboard (an AZERTY keyboard: see

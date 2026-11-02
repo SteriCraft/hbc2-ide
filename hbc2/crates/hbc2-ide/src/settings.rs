@@ -9,6 +9,7 @@ use serde::{Deserialize, Serialize};
 
 use crate::editor_groups::EditorLayout;
 use crate::emulator::Peripherals;
+use crate::shortcuts::Shortcuts;
 
 pub const STORAGE_KEY: &str = "hbc2-ide";
 
@@ -290,6 +291,8 @@ pub struct Settings {
     pub build: BuildSettings,
     pub emulator: EmulatorSettings,
     pub monitor: MonitorSettings,
+    /// Settings dialog, Shortcuts page.
+    pub shortcuts: Shortcuts,
     /// Where the monitor window was last closed: outside position and
     /// inside size.
     pub monitor_geometry: Option<[f32; 4]>,
@@ -311,6 +314,7 @@ impl Default for Settings {
             build: BuildSettings::default(),
             emulator: EmulatorSettings::default(),
             monitor: MonitorSettings::default(),
+            shortcuts: Shortcuts::default(),
             monitor_geometry: None,
             projects: HashMap::new(),
         }
@@ -334,6 +338,7 @@ impl Settings {
         self.emulator = from.emulator;
         self.follow_pc = from.follow_pc;
         self.monitor = from.monitor;
+        self.shortcuts = from.shortcuts.clone();
         self.recent_projects
             .truncate(self.general.recent_count.max(1));
     }

@@ -34,6 +34,8 @@ pub struct Document {
     /// (position, count) in the text before: the editor moves its cursor
     /// accordingly when it is next drawn.
     pub trimmed: Option<Vec<(usize, usize)>>,
+    /// Folded functions and blocks.
+    pub folds: crate::fold::Folds,
 }
 
 impl Document {
@@ -51,6 +53,7 @@ impl Document {
             focus: false,
             layout_cache: None,
             trimmed: None,
+            folds: Default::default(),
         })
     }
 

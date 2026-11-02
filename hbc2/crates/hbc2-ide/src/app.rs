@@ -79,6 +79,8 @@ pub enum Action {
     /// Undoes or redoes the last edit in the editor tab.
     Undo,
     Redo,
+    /// Collapses the functions of the editor tab (true), or expands everything.
+    FoldAll(bool),
     /// Opens the find bar.
     OpenFind(FindMode),
     /// Closes the find bar; the editor gets the keyboard, with the current
@@ -179,6 +181,10 @@ pub enum Dialog {
     Settings {
         page: SettingsPage,
         draft: Box<Settings>,
+        /// Waiting for the keys of a new shortcut for this command.
+        capture: Option<crate::shortcuts::Command>,
+        /// Told on the Shortcuts page: a command lost its shortcut.
+        notice: Option<String>,
     },
 }
 
@@ -190,15 +196,17 @@ pub enum SettingsPage {
     Build,
     Emulator,
     Monitor,
+    Shortcuts,
 }
 
 impl SettingsPage {
-    pub const ALL: [SettingsPage; 5] = [
+    pub const ALL: [SettingsPage; 6] = [
         SettingsPage::General,
         SettingsPage::Editor,
         SettingsPage::Build,
         SettingsPage::Emulator,
         SettingsPage::Monitor,
+        SettingsPage::Shortcuts,
     ];
 
     pub fn label(self) -> &'static str {
@@ -208,6 +216,7 @@ impl SettingsPage {
             SettingsPage::Build => "Build",
             SettingsPage::Emulator => "Emulator",
             SettingsPage::Monitor => "Monitor",
+            SettingsPage::Shortcuts => "Shortcuts",
         }
     }
 }
@@ -617,42 +626,32 @@ impl Ide {
     }
 
     fn shortcuts(&mut self, ctx: &egui::Context) {
+        use crate::shortcuts::{Command as C, consume_command};
         use egui::{Key, KeyboardShortcut as K, Modifiers as M};
-        let table = [
-            (K::new(M::NONE, Key::F7), Action::Assemble),
-            (K::new(M::COMMAND, Key::B), Action::Assemble),
-            (K::new(M::NONE, Key::F5), Action::Run),
-            (K::new(M::NONE, Key::F6), Action::Pause),
-            // Shift first: a shortcut without it also matches with it.
-            (K::new(M::SHIFT, Key::F10), Action::StepOut),
-            (K::new(M::SHIFT, Key::F11), Action::StepOut),
-            (K::new(M::NONE, Key::F10), Action::StepOver),
-            (K::new(M::NONE, Key::F11), Action::StepInto),
-            (K::new(M::COMMAND, Key::F5), Action::Reset),
-            (K::new(M::COMMAND | M::SHIFT, Key::S), Action::SaveAll),
-            (K::new(M::COMMAND, Key::S), Action::Save),
-            (K::new(M::COMMAND, Key::O), Action::OpenProjectDialog),
-            (
-                K::new(M::COMMAND | M::SHIFT, Key::F),
-                Action::OpenFind(FindMode::Files),
-            ),
-            (K::new(M::COMMAND, Key::F), Action::OpenFind(FindMode::File)),
-        ];
-        for (shortcut, action) in table {
-            if ctx.input_mut(|i| i.consume_shortcut(&shortcut)) {
-                self.state.actions.push(action);
-            }
+        // The settings dialog is waiting for a new shortcut.
+        if matches!(
+            self.state.dialog,
+            Some(Dialog::Settings {
+                capture: Some(_),
+                ..
+            })
+        ) {
+            return;
         }
-        // Ctrl+W closes the tab when W is released; R or K pressed while
-        // Ctrl+W is held closes the other tabs or all of them instead.
-        if ctx.input_mut(|i| i.consume_shortcut(&K::new(M::COMMAND, Key::W))) {
+        let keys = self.state.settings.shortcuts.clone();
+        // Close tab (Ctrl+W) closes the tab when its key is released; R or
+        // K pressed while it is held closes the other tabs or all of them
+        // instead. First: Ctrl+K is also a shortcut.
+        let close = keys.get(C::CloseTab);
+        if consume_command(ctx, &keys, C::CloseTab) {
             self.close_chord.get_or_insert(false);
         }
         if let Some(chord) = &mut self.close_chord {
+            let modifiers = close.map_or(M::COMMAND, |c| c.modifiers);
             let (others, all) = ctx.input_mut(|i| {
                 (
-                    i.consume_key(M::COMMAND, Key::R),
-                    i.consume_key(M::COMMAND, Key::K),
+                    crate::shortcuts::consume(i, K::new(modifiers, Key::R)),
+                    crate::shortcuts::consume(i, K::new(modifiers, Key::K)),
                 )
             });
             if others {
@@ -665,13 +664,44 @@ impl Ide {
                 *chord = true;
                 self.state.actions.push(Action::CloseGroup(TabGroup::All));
             }
-            if !ctx.input(|i| i.key_down(Key::W)) {
+            if close.is_none_or(|c| !ctx.input(|i| i.key_down(c.logical_key))) {
                 if !*chord {
                     self.state.actions.push(Action::CloseCurrentTab);
                 }
                 self.close_chord = None;
             }
         }
+        let table = [
+            (C::Build, Action::Assemble),
+            (C::Build2, Action::Assemble),
+            (C::Run, Action::Run),
+            (C::Pause, Action::Pause),
+            (C::StepOut, Action::StepOut),
+            (C::StepOut2, Action::StepOut),
+            (C::StepOver, Action::StepOver),
+            (C::StepInto, Action::StepInto),
+            (C::Reset, Action::Reset),
+            (C::SaveAll, Action::SaveAll),
+            (C::Save, Action::Save),
+            (C::OpenProject, Action::OpenProjectDialog),
+            (C::FindInFiles, Action::OpenFind(FindMode::Files)),
+            (C::Find, Action::OpenFind(FindMode::File)),
+            (C::FoldAll, Action::FoldAll(true)),
+            (C::UnfoldAll, Action::FoldAll(false)),
+        ];
+        for (command, action) in table {
+            if consume_command(ctx, &keys, command) {
+                self.state.actions.push(action);
+            }
+        }
+        // egui's text box deletes text on Ctrl+H, K, U and W (Emacs keys):
+        // they are not passed to it, even when no command has them.
+        ctx.input_mut(|i| {
+            i.events.retain(|e| {
+                !matches!(e, egui::Event::Key { key: Key::H | Key::K | Key::U | Key::W, modifiers, .. }
+                    if modifiers.ctrl && !modifiers.alt)
+            })
+        });
         // Escape closes the find bar, from the editor too (the find bar's own
         // field handles it by itself; the monitor sends it to the HBC-2).
         let editor_focused = |m: &egui::Memory| {
@@ -1165,6 +1195,18 @@ impl Ide {
                 }
                 if let Some(path) = self.active_editor() {
                     self.state.undo(ctx, &path, matches!(action, Action::Redo));
+                }
+            }
+            Action::FoldAll(fold) => {
+                if let Some(path) = self.active_editor()
+                    && let Some(doc) = self.state.docs.iter_mut().find(|d| d.path == path)
+                {
+                    if fold {
+                        let syntax = crate::highlight::Syntax::of(&doc.path);
+                        doc.folds.fold_all(&doc.text, syntax);
+                    } else {
+                        doc.folds.unfold_all();
+                    }
                 }
             }
             Action::OpenFind(mode) => {

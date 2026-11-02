@@ -81,6 +81,9 @@ impl egui_dock::TabViewer for Viewer<'_> {
             response.clone().on_hover_text(path.display().to_string());
         }
         let alone = self.alone.contains(path);
+        let keys = &self.state.settings.shortcuts;
+        let close = keys.text(crate::shortcuts::Command::CloseTab);
+        let (others, all) = (keys.close_chord('R'), keys.close_chord('K'));
         let actions = &mut self.state.actions;
         response.context_menu(|ui| {
             let item = |text: &str, shortcut: &str| {
@@ -99,7 +102,7 @@ impl egui_dock::TabViewer for Viewer<'_> {
             };
             clicked(
                 ui,
-                item("Close this tab", "Ctrl+W"),
+                item("Close this tab", &close),
                 Action::CloseTab(path.clone()),
             );
             clicked(
@@ -114,12 +117,12 @@ impl egui_dock::TabViewer for Viewer<'_> {
             );
             clicked(
                 ui,
-                item("Close other tabs", "Ctrl+W+R"),
+                item("Close other tabs", &others),
                 Action::CloseGroup(TabGroup::Others(Some(path.clone()))),
             );
             clicked(
                 ui,
-                item("Close all tabs", "Ctrl+W+K"),
+                item("Close all tabs", &all),
                 Action::CloseGroup(TabGroup::All),
             );
         });
@@ -309,6 +312,7 @@ fn editor_tab(ui: &mut egui::Ui, state: &mut State, path: &PathBuf) {
             font_size: state.settings.editor_font_size,
             line_numbers: state.settings.editor.line_numbers,
             highlight_line: state.settings.editor.highlight_line,
+            shortcuts: &state.settings.shortcuts,
             read_only: state.snapshot.state == RunState::Running || generated,
         },
     );

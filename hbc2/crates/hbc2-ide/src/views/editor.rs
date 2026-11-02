@@ -16,8 +16,10 @@ use eframe::egui::{
 use crate::document::{Document, shift_breakpoints};
 use crate::editing;
 use crate::find::{self, Options};
+use crate::fold;
 use crate::highlight;
 use crate::multicursor::{self, Cursor, Motion, Op};
+use crate::shortcuts::{self, Command, Shortcuts, is_modifier};
 use crate::signatures::{Signature, Signatures};
 
 /// What the editor shows besides the text.
@@ -41,6 +43,8 @@ pub struct Marks<'a> {
     pub line_numbers: bool,
     /// The line of the cursor gets a lighter background.
     pub highlight_line: bool,
+    /// For Select next, Select every occurrence and Duplicate the lines.
+    pub shortcuts: &'a Shortcuts,
 }
 
 #[derive(Default)]
@@ -50,6 +54,8 @@ pub struct EditorResponse {
 }
 
 const MARKER_WIDTH: f32 = 16.0;
+/// The column of the fold arrows, at the right of the gutter.
+const FOLD_WIDTH: f32 = 14.0;
 
 /// Id of the text widget of the editor of `path` (its state holds the
 /// cursor and the undo history).
@@ -65,9 +71,9 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
     let line_total = crate::document::line_count(&doc.text);
     let digits = line_total.to_string().len().max(3) as f32;
     let gutter_width = if marks.line_numbers {
-        (MARKER_WIDTH + digits * digit_width + 10.0).min(127.0)
+        (MARKER_WIDTH + digits * digit_width + FOLD_WIDTH + 4.0).min(127.0)
     } else {
-        MARKER_WIDTH + 6.0
+        MARKER_WIDTH + FOLD_WIDTH
     };
     let tabs = highlight::Tabs {
         width: highlight::tab_width(),
@@ -84,8 +90,21 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
         select,
         focus,
         trimmed,
+        folds,
         ..
     } = doc;
+
+    // A line to show or text to select in a folded region: it unfolds.
+    if let Some(line) = *scroll_to {
+        folds.reveal(text, syntax, line);
+    }
+    if let Some(range) = select.as_ref() {
+        for at in [range.start, range.end] {
+            folds.reveal(text, syntax, fold::line_of(text, at));
+        }
+    }
+    let hidden = folds.hidden(text, syntax);
+    let hidden_count: u32 = hidden.iter().map(|r| r.end() - r.start() + 1).sum();
 
     // Saving trimmed line ends: the cursor keeps its place in the text.
     if let Some(removed) = trimmed.take()
@@ -110,7 +129,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             let mut layouter = |ui: &egui::Ui, buffer: &dyn egui::TextBuffer, _wrap: f32| {
                 let source = buffer.as_str();
                 let mut hasher = std::collections::hash_map::DefaultHasher::new();
-                (source, dark, marks.font_size.to_bits(), tabs.width).hash(&mut hasher);
+                (source, dark, marks.font_size.to_bits(), tabs.width, &hidden).hash(&mut hasher);
                 let key = hasher.finish();
                 let job = match layout_cache {
                     Some((k, job)) if *k == key => job.clone(),
@@ -118,6 +137,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                         let mut job =
                             highlight::layout_job(source, syntax, font.clone(), dark, tabs);
                         job.wrap.max_width = f32::INFINITY;
+                        fold::hide(&mut job, source, &hidden);
                         *layout_cache = Some((key, job.clone()));
                         job
                     }
@@ -149,7 +169,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             let (auto_edited, selected) = if focused && !marks.read_only {
                 let (duplicated, selected) =
-                    cursor_shortcuts(ui, editor_id, text, &mut multi.cursors);
+                    cursor_shortcuts(ui, editor_id, text, &mut multi.cursors, marks.shortcuts);
                 let edited = if multi.cursors.is_empty() {
                     auto_edit(ui, editor_id, text)
                 } else {
@@ -173,7 +193,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 .code_editor()
                 .lock_focus(true)
                 .desired_width(f32::INFINITY)
-                .desired_rows((line_total as usize).max(visible_rows))
+                .desired_rows((line_total.saturating_sub(hidden_count) as usize).max(visible_rows))
                 .frame(Frame::NONE.inner_margin(Margin {
                     left: gutter_width as i8,
                     right: 8,
@@ -185,6 +205,34 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
 
             if std::mem::take(focus) || refocus {
                 output.response.request_focus();
+            }
+            // The cursor on a hidden line: when an edit or a selection
+            // (Ctrl+L) put it there, its region unfolds; when it moved
+            // there, it goes past the hidden lines.
+            if let Some(range) = output.state.cursor.char_range() {
+                let at = range.primary.index.0;
+                let line = fold::line_of(text, at);
+                if fold::is_hidden(&hidden, line).is_some() {
+                    if output.response.changed() || auto_edited || selected {
+                        folds.reveal(text, syntax, line);
+                        ui.ctx().request_repaint();
+                    } else {
+                        let old = cursor_before.map_or(at, |c| c.head);
+                        if let Some(to) = fold::snap(text, &hidden, old, at) {
+                            // A selection keeps its start.
+                            let anchor = if range.is_empty() {
+                                to
+                            } else {
+                                range.secondary.index.0
+                            };
+                            output.state.cursor.set_char_range(Some(CCursorRange::two(
+                                CCursor::new(anchor),
+                                CCursor::new(to),
+                            )));
+                            output.state.clone().store(ui.ctx(), editor_id);
+                        }
+                    }
+                }
             }
             // Ctrl+click (or Ctrl+drag) adds a cursor: the main one (with its
             // selection) is kept, egui moved it to the click. Ctrl+click on
@@ -304,6 +352,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             if output.response.changed() || auto_edited {
                 result.changed = true;
                 if let Some(before) = before {
+                    folds.shift(&before, text);
                     let count = marks.breakpoints.len();
                     let old: Vec<u32> = marks.breakpoints.iter().copied().collect();
                     shift_breakpoints(marks.breakpoints, &before, text);
@@ -399,12 +448,38 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
             }
             ui.painter().set(background, Shape::Vec(shapes));
 
-            // Gutter: breakpoints, PC arrow, line numbers.
+            // Gutter: breakpoints, PC arrow, line numbers, fold arrows (the
+            // unfolded ones while the pointer is over the gutter).
             let painter = ui.painter();
             let number_color = visuals.weak_text_color();
+            let gutter_hovered = ui
+                .ctx()
+                .pointer_hover_pos()
+                .is_some_and(|p| gutter.contains(p) && ui.clip_rect().contains(p));
+            let regions = folds.regions(text, syntax).to_vec();
+            let is_header = |line: u32| regions.binary_search_by_key(&line, |r| r.header).is_ok();
+            let fold_x = gutter.max.x - FOLD_WIDTH / 2.0 - 1.0;
             for (index, &(top, bottom)) in rows.iter().enumerate() {
                 let line = index as u32 + 1;
+                if bottom - top < 1.0 {
+                    continue; // hidden by a fold
+                }
                 let y = (top + bottom) / 2.0;
+                let folded = folds.is_folded(line);
+                if folded || (gutter_hovered && is_header(line)) {
+                    let color = if folded {
+                        visuals.text_color()
+                    } else {
+                        visuals.weak_text_color()
+                    };
+                    fold_arrow(
+                        painter,
+                        pos2(fold_x, y),
+                        marks.font_size * 0.28,
+                        folded,
+                        color,
+                    );
+                }
                 let marker = pos2(gutter.min.x + MARKER_WIDTH / 2.0, y);
                 if marks.breakpoints.contains(&line) {
                     let bound = marks.code_lines.is_none_or(|lines| lines.contains(&line));
@@ -441,7 +516,7 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 }
                 if marks.line_numbers {
                     painter.text(
-                        pos2(gutter.max.x - 8.0, y),
+                        pos2(gutter.max.x - FOLD_WIDTH - 2.0, y),
                         Align2::RIGHT_CENTER,
                         line.to_string(),
                         font.clone(),
@@ -450,22 +525,70 @@ pub fn editor_ui(ui: &mut egui::Ui, doc: &mut Document, marks: Marks<'_>) -> Edi
                 }
             }
 
-            // Click in the gutter: toggle a breakpoint. Hover: show the line's diagnostics.
+            // After a folded line: a box standing for the hidden lines.
+            // Clicked, it shows them.
+            for range in &hidden {
+                let header = range.start() - 1;
+                let Some(&(top, bottom)) = rows.get(header as usize - 1) else {
+                    continue;
+                };
+                // End of the header's text (before its line break).
+                let end = line_end(text, header);
+                let x = text_rect(&output.galley, output.galley_pos, &(end..end))
+                    .min
+                    .x;
+                let rect = Rect::from_min_max(
+                    pos2(x + digit_width, top + 2.0),
+                    pos2(x + digit_width * 4.0, bottom - 2.0),
+                );
+                let response = ui
+                    .interact(rect, editor_id.with(("folded", header)), Sense::click())
+                    .on_hover_cursor(egui::CursorIcon::PointingHand);
+                let fill = if response.hovered() {
+                    visuals.widgets.hovered.bg_fill
+                } else {
+                    visuals.widgets.inactive.bg_fill
+                };
+                let painter = ui.painter();
+                painter.rect_filled(rect, 3.0, fill);
+                for i in -1..=1 {
+                    let center = rect.center() + vec2(i as f32 * rect.width() / 4.0, 0.0);
+                    painter.circle_filled(center, 1.5, visuals.text_color());
+                }
+                let lines = range.end() - range.start() + 1;
+                let plural = if lines == 1 { "" } else { "s" };
+                if response
+                    .on_hover_text(format!("{lines} hidden line{plural}: click to show them"))
+                    .clicked()
+                {
+                    folds.toggle(header);
+                }
+            }
+
+            // Click in the gutter: toggle a breakpoint, or a fold on its
+            // arrow. Hover: show the line's diagnostics.
             let gutter_response = ui
                 .interact(gutter, editor_id.with("gutter"), Sense::click())
                 .on_hover_cursor(egui::CursorIcon::PointingHand);
             let pointer_line = gutter_response.hover_pos().and_then(|p| {
                 rows.iter()
-                    .position(|&(top, bottom)| (top..=bottom).contains(&p.y))
+                    .position(|&(top, bottom)| bottom - top >= 1.0 && (top..=bottom).contains(&p.y))
                     .map(|i| i as u32 + 1)
             });
+            let on_arrows = gutter_response
+                .hover_pos()
+                .is_some_and(|p| p.x >= gutter.max.x - FOLD_WIDTH - 2.0);
             if gutter_response.clicked()
                 && let Some(line) = pointer_line
             {
-                if !marks.breakpoints.remove(&line) {
-                    marks.breakpoints.insert(line);
+                if on_arrows && is_header(line) {
+                    folds.toggle(line);
+                } else {
+                    if !marks.breakpoints.remove(&line) {
+                        marks.breakpoints.insert(line);
+                    }
+                    result.breakpoints_changed = true;
                 }
-                result.breakpoints_changed = true;
             }
             if let Some(line) = pointer_line {
                 let messages: Vec<&str> = marks
@@ -825,7 +948,8 @@ fn selection_rects(
     rects
 }
 
-/// The shortcuts of the cursors, with one cursor or several:
+/// The shortcuts of the cursors (Settings > Shortcuts), with one cursor
+/// or several:
 /// - Ctrl+L selects the word at the cursor, then the next place with the
 ///   same text; Ctrl+Shift+L every place at once. Each one is a cursor
 ///   with its selection.
@@ -837,12 +961,12 @@ fn cursor_shortcuts(
     id: Id,
     text: &mut String,
     extra: &mut Vec<Cursor>,
+    keys: &Shortcuts,
 ) -> (bool, bool) {
-    let (all, next, duplicate) = ui.ctx().input_mut(|i| {
-        let all = i.consume_key(Modifiers::COMMAND | Modifiers::SHIFT, Key::L);
-        let next = i.consume_key(Modifiers::COMMAND, Key::L);
-        (all, next, i.consume_key(Modifiers::COMMAND, Key::D))
-    });
+    let consume = |command| shortcuts::consume_command(ui.ctx(), keys, command);
+    let all = consume(Command::SelectEvery);
+    let next = consume(Command::SelectNext);
+    let duplicate = consume(Command::DuplicateLines);
     if !all && !next && !duplicate {
         return (false, false);
     }
@@ -992,21 +1116,6 @@ fn multi_edit(ui: &egui::Ui, id: Id, text: &mut String, extra: &mut Vec<Cursor>)
     changed
 }
 
-/// Shift, Ctrl, Alt and the Windows key: egui sends them as keys too.
-fn is_modifier(key: Key) -> bool {
-    matches!(
-        key,
-        Key::ShiftLeft
-            | Key::ShiftRight
-            | Key::ControlLeft
-            | Key::ControlRight
-            | Key::AltLeft
-            | Key::AltRight
-            | Key::SuperLeft
-            | Key::SuperRight
-    )
-}
-
 /// Keys that change the text or move the cursor in the text box.
 fn edits_or_moves(key: Key) -> bool {
     matches!(
@@ -1062,6 +1171,41 @@ fn drag_scroll(ui: &egui::Ui) {
     // A positive delta moves the content down, which shows what is above.
     ui.scroll_with_delta(-vec2(speed(distance.x), speed(distance.y)) * dt);
     ui.ctx().request_repaint(); // keep scrolling while the mouse is still
+}
+
+/// The arrow of a fold: pointing right when folded, down otherwise.
+fn fold_arrow(
+    painter: &egui::Painter,
+    center: egui::Pos2,
+    size: f32,
+    folded: bool,
+    color: Color32,
+) {
+    let points = if folded {
+        vec![
+            center + vec2(-size * 0.6, -size),
+            center + vec2(size * 0.8, 0.0),
+            center + vec2(-size * 0.6, size),
+        ]
+    } else {
+        vec![
+            center + vec2(-size, -size * 0.6),
+            center + vec2(size, -size * 0.6),
+            center + vec2(0.0, size * 0.8),
+        ]
+    };
+    painter.add(Shape::convex_polygon(points, color, Stroke::NONE));
+}
+
+/// Char index of the end of `line` (1-based), before its line break.
+fn line_end(text: &str, line: u32) -> usize {
+    let start = char_index_of_line(text, line);
+    let length = text
+        .chars()
+        .skip(start)
+        .take_while(|&c| c != '\n' && c != '\r')
+        .count();
+    start + length
 }
 
 /// Screen rectangle of some characters of one line.

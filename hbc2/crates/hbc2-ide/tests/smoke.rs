@@ -962,3 +962,127 @@ fn c_project_builds_and_runs() {
     );
     std::fs::remove_dir_all(&dir).unwrap();
 }
+
+#[test]
+fn folding_with_the_keyboard() {
+    use hbc2_ide::shortcuts::{Command, parse};
+    let dir = temp_project("fold");
+    let main = dir.join("main.has");
+    let mut h = Harness::new();
+    h.act(Action::OpenProject(dir.clone()));
+    let original = main_text(&h.ide, &main);
+    let header = line_of(PROGRAM, "_start:");
+    let folded = |h: &Harness| {
+        let doc = h.ide.state.docs.iter().find(|d| d.path == main).unwrap();
+        doc.folds.is_folded(header)
+    };
+    let key = |key, modifiers| egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers,
+    };
+    let id = hbc2_ide::views::editor::editor_id(&main);
+    h.ctx.memory_mut(|m| m.request_focus(id));
+    h.frame();
+
+    // Ctrl+K folds the function (and egui's Ctrl+K deletes nothing).
+    let start = PROGRAM.find("_start:").unwrap();
+    let mut state = egui::text_edit::TextEditState::load(&h.ctx, id).unwrap();
+    state
+        .cursor
+        .set_char_range(Some(egui::text::CCursorRange::one(
+            egui::text::CCursor::new(start),
+        )));
+    state.store(&h.ctx, id);
+    h.frame_with(vec![key(egui::Key::K, egui::Modifiers::COMMAND)]);
+    h.frame();
+    assert!(folded(&h));
+    assert_eq!(main_text(&h.ide, &main), original);
+
+    // Down from the header jumps over the hidden lines.
+    h.frame_with(vec![key(egui::Key::ArrowDown, egui::Modifiers::NONE)]);
+    h.frame();
+    let after = PROGRAM.chars().count();
+    assert_eq!(h.selection(&main), Some(after..after));
+
+    // Going to a hidden line shows it.
+    let line = line_of(PROGRAM, "jmp loop");
+    h.ide
+        .state
+        .docs
+        .iter_mut()
+        .find(|d| d.path == main)
+        .unwrap()
+        .scroll_to = Some(line);
+    h.frame();
+    assert!(!folded(&h));
+
+    // Ctrl+J unfolds everything.
+    h.frame_with(vec![key(egui::Key::K, egui::Modifiers::COMMAND)]);
+    assert!(folded(&h));
+    h.frame_with(vec![key(egui::Key::J, egui::Modifiers::COMMAND)]);
+    assert!(!folded(&h));
+
+    // Another shortcut: Ctrl+K does nothing now.
+    let other = parse("Ctrl+Shift+K");
+    h.ide
+        .state
+        .settings
+        .shortcuts
+        .assign(Command::FoldAll, other);
+    h.frame_with(vec![key(egui::Key::K, egui::Modifiers::COMMAND)]);
+    assert!(!folded(&h));
+    assert_eq!(main_text(&h.ide, &main), original);
+    let ctrl_shift = egui::Modifiers::COMMAND | egui::Modifiers::SHIFT;
+    h.frame_with(vec![key(egui::Key::K, ctrl_shift)]);
+    assert!(folded(&h));
+    std::fs::remove_dir_all(&dir).unwrap();
+}
+
+#[test]
+fn a_shortcut_is_changed_in_the_settings() {
+    use hbc2_ide::app::{Dialog, SettingsPage};
+    use hbc2_ide::shortcuts::{Command, parse};
+    let mut h = Harness::new();
+    h.frame();
+    let key = |key, modifiers| egui::Event::Key {
+        key,
+        physical_key: None,
+        pressed: true,
+        repeat: false,
+        modifiers,
+    };
+    h.act(Action::ShowDialog(Dialog::Settings {
+        page: SettingsPage::Shortcuts,
+        draft: Box::new(h.ide.state.settings.clone()),
+        capture: Some(Command::Run),
+        notice: None,
+    }));
+    let draft = |h: &Harness| match &h.ide.state.dialog {
+        Some(Dialog::Settings {
+            draft,
+            capture,
+            notice,
+            ..
+        }) => (draft.shortcuts.clone(), *capture, notice.clone()),
+        _ => panic!("the settings dialog is open"),
+    };
+    // A plain letter is refused; Ctrl+K is taken from "Collapse all".
+    h.frame_with(vec![key(egui::Key::K, egui::Modifiers::NONE)]);
+    let (_, capture, notice) = draft(&h);
+    assert_eq!(capture, Some(Command::Run));
+    assert!(notice.is_some());
+    h.frame_with(vec![key(egui::Key::K, egui::Modifiers::COMMAND)]);
+    let (keys, capture, notice) = draft(&h);
+    assert_eq!(capture, None);
+    assert_eq!(keys.get(Command::Run), parse("Ctrl+K"));
+    assert_eq!(keys.get(Command::FoldAll), None);
+    assert!(notice.unwrap().contains("Collapse all functions"));
+    // Not taken until OK.
+    assert_eq!(
+        h.ide.state.settings.shortcuts.get(Command::Run),
+        parse("F5")
+    );
+}

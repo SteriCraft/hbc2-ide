@@ -13,9 +13,10 @@ use crate::project::{
 use crate::settings::{
     MonitorSettings, Placement, SPEEDS, Settings, TargetSetting, frequency_label, speed_label,
 };
+use crate::shortcuts::{self, Category, Command};
 
-fn shortcut_button(text: &str, shortcut: &str) -> Button<'static> {
-    Button::new(text.to_string()).shortcut_text(shortcut.to_string())
+fn shortcut_button(text: &str, shortcut: String) -> Button<'static> {
+    Button::new(text.to_string()).shortcut_text(shortcut)
 }
 
 /// Why a C project has no EEPROM target.
@@ -38,13 +39,15 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
     let eeprom_target = state.target() == Target::Eeprom;
     let actions = &mut state.actions;
     let has_project = state.project.is_some();
+    let keys = state.settings.shortcuts.clone();
+    let key = |command| keys.text(command);
     egui::Panel::top("menu_bar").show(ui, |ui| {
         egui::MenuBar::new().ui(ui, |ui| {
             ui.menu_button("File", |ui| {
                 if ui.button("New project…").clicked() {
                     actions.push(Action::NewProject);
                 }
-                if ui.add(shortcut_button("Open project…", "Ctrl+O")).clicked() {
+                if ui.add(shortcut_button("Open project…", key(Command::OpenProject))).clicked() {
                     actions.push(Action::OpenProjectDialog);
                 }
                 ui.add_enabled_ui(!state.settings.recent_projects.is_empty(), |ui| {
@@ -73,11 +76,11 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui.button("Open file…").clicked() {
                     actions.push(Action::OpenFileDialog);
                 }
-                if ui.add(shortcut_button("Save", "Ctrl+S")).clicked() {
+                if ui.add(shortcut_button("Save", key(Command::Save))).clicked() {
                     actions.push(Action::Save);
                 }
                 if ui
-                    .add(shortcut_button("Save all", "Ctrl+Shift+S"))
+                    .add(shortcut_button("Save all", key(Command::SaveAll)))
                     .clicked()
                 {
                     actions.push(Action::SaveAll);
@@ -87,6 +90,8 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::ShowDialog(Dialog::Settings {
                         page: SettingsPage::General,
                         draft: Box::new(state.settings.clone()),
+                        capture: None,
+                        notice: None,
                     }));
                 }
                 ui.separator();
@@ -105,20 +110,20 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     None => (false, false),
                 };
                 if ui
-                    .add_enabled(can_undo, shortcut_button("Undo", "Ctrl+Z"))
+                    .add_enabled(can_undo, shortcut_button("Undo", "Ctrl+Z".into()))
                     .clicked()
                 {
                     actions.push(Action::Undo);
                 }
                 if ui
-                    .add_enabled(can_redo, shortcut_button("Redo", "Ctrl+Y"))
+                    .add_enabled(can_redo, shortcut_button("Redo", "Ctrl+Y".into()))
                     .clicked()
                 {
                     actions.push(Action::Redo);
                 }
                 ui.separator();
                 if ui
-                    .add_enabled(editor, shortcut_button("Find…", "Ctrl+F"))
+                    .add_enabled(editor, shortcut_button("Find…", key(Command::Find)))
                     .clicked()
                 {
                     actions.push(Action::OpenFind(FindMode::File));
@@ -126,11 +131,27 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui
                     .add_enabled(
                         has_project,
-                        shortcut_button("Find in files…", "Ctrl+Shift+F"),
+                        shortcut_button("Find in files…", key(Command::FindInFiles)),
                     )
                     .clicked()
                 {
                     actions.push(Action::OpenFind(FindMode::Files));
+                }
+                ui.separator();
+                if ui
+                    .add_enabled(
+                        editor,
+                        shortcut_button("Collapse all functions", key(Command::FoldAll)),
+                    )
+                    .clicked()
+                {
+                    actions.push(Action::FoldAll(true));
+                }
+                if ui
+                    .add_enabled(editor, shortcut_button("Expand all", key(Command::UnfoldAll)))
+                    .clicked()
+                {
+                    actions.push(Action::FoldAll(false));
                 }
             });
 
@@ -138,7 +159,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui
                     .add_enabled(
                         has_project && !building,
-                        shortcut_button(build_label(c_project), "F7"),
+                        shortcut_button(build_label(c_project), key(Command::Build)),
                     )
                     .clicked()
                 {
@@ -190,37 +211,37 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
             ui.menu_button("Emulator", |ui| {
                 let running = state.snapshot.state == RunState::Running;
                 if ui
-                    .add_enabled(!running, shortcut_button("Run", "F5"))
+                    .add_enabled(!running, shortcut_button("Run", key(Command::Run)))
                     .clicked()
                 {
                     actions.push(Action::Run);
                 }
                 if ui
-                    .add_enabled(running, shortcut_button("Pause", "F6"))
+                    .add_enabled(running, shortcut_button("Pause", key(Command::Pause)))
                     .clicked()
                 {
                     actions.push(Action::Pause);
                 }
                 if ui
-                    .add_enabled(!running, shortcut_button("Step over", "F10"))
+                    .add_enabled(!running, shortcut_button("Step over", key(Command::StepOver)))
                     .clicked()
                 {
                     actions.push(Action::StepOver);
                 }
                 if ui
-                    .add_enabled(!running, shortcut_button("Step into", "F11"))
+                    .add_enabled(!running, shortcut_button("Step into", key(Command::StepInto)))
                     .clicked()
                 {
                     actions.push(Action::StepInto);
                 }
                 if ui
-                    .add_enabled(!running, shortcut_button("Step out", "Shift+F11"))
+                    .add_enabled(!running, shortcut_button("Step out", key(Command::StepOut)))
                     .clicked()
                 {
                     actions.push(Action::StepOut);
                 }
                 ui.checkbox(&mut state.settings.monitor_window, "Monitor window");
-                if ui.add(shortcut_button("Reset", "Ctrl+F5")).clicked() {
+                if ui.add(shortcut_button("Reset", key(Command::Reset))).clicked() {
                     actions.push(Action::Reset);
                 }
                 ui.separator();
@@ -298,6 +319,7 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
     let has_project = state.project.is_some();
     let c_project = is_c_project(state);
     let building = state.is_building();
+    let keys = state.settings.shortcuts.clone();
     egui::Panel::top("toolbar").show(ui, |ui| {
         ui.horizontal(|ui| {
             let actions = &mut state.actions;
@@ -307,9 +329,9 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                     Button::new(format!("🔨 {}", build_label(c_project))),
                 )
                 .on_hover_text(if c_project {
-                    "Save, compile, assemble and load (F7)"
+                    keys.with_key("Save, compile, assemble and load", Command::Build)
                 } else {
-                    "Assemble and load (F7)"
+                    keys.with_key("Assemble and load", Command::Build)
                 })
                 .clicked()
             {
@@ -317,22 +339,22 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             }
             ui.separator();
             let run_label = if s.ticks > 0 { "▶ Continue" } else { "▶ Run" };
-            if ui.add_enabled(!running, Button::new(run_label)).on_hover_text("F5").clicked() {
+            if ui.add_enabled(!running, Button::new(run_label)).on_hover_text(keys.with_key("Run", Command::Run)).clicked() {
                 actions.push(Action::Run);
             }
-            if ui.add_enabled(running, Button::new("⏸ Pause")).on_hover_text("F6").clicked() {
+            if ui.add_enabled(running, Button::new("⏸ Pause")).on_hover_text(keys.with_key("Pause", Command::Pause)).clicked() {
                 actions.push(Action::Pause);
             }
             if ui
                 .add_enabled(!running, Button::new("⏭ Step"))
-                .on_hover_text("Step over (F10): the current line or instruction, with the routines it calls. Step into and out: Emulator menu")
+                .on_hover_text(format!("{}: the current line or instruction, with the routines it calls. Step into and out: Emulator menu", keys.with_key("Step over", Command::StepOver)))
                 .clicked()
             {
                 actions.push(Action::StepOver);
             }
             if ui
                 .button("⟲ Reset")
-                .on_hover_text("Reset the machine: reload its image, paused (Ctrl+F5)")
+                .on_hover_text(keys.with_key("Reset the machine: reload its image, paused", Command::Reset))
                 .clicked()
             {
                 actions.push(Action::Reset);
@@ -380,7 +402,7 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             ui.label(RichText::new(text).color(color).strong());
             if state.is_stale() {
                 ui.label(RichText::new("⚠ sources changed since the last build").color(ui.visuals().warn_fg_color))
-                    .on_hover_text("Assemble (F7) to load the new version. Run assembles by itself if the program has not started yet.");
+                    .on_hover_text(format!("{} to load the new version. Run assembles by itself if the program has not started yet.", state.settings.shortcuts.with_key("Assemble", Command::Build)));
             }
         });
     });
@@ -503,38 +525,53 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
     }
     ui.add_space(12.0);
     ui.strong("Keys");
+    let keys = &state.settings.shortcuts;
+    let key = |command| keys.text(command);
+    let rows = [
+        (
+            key(Command::Build),
+            "Assemble (or build a C project) and load",
+        ),
+        (key(Command::Run), "Run / continue"),
+        (key(Command::Pause), "Pause"),
+        (
+            key(Command::StepOver),
+            "Step over: the line or instruction, with the routines it calls",
+        ),
+        (
+            key(Command::StepInto),
+            "Step into: stop in the routines called",
+        ),
+        (key(Command::StepOut), "Step out: until the routine returns"),
+        (key(Command::Reset), "Reset"),
+        (key(Command::Save), "Save"),
+        (key(Command::CloseTab), "Close the tab"),
+        (keys.close_chord('R'), "Close the other tabs"),
+        (keys.close_chord('K'), "Close all tabs"),
+        (key(Command::Find), "Find in the file"),
+        (key(Command::FindInFiles), "Find in the project's files"),
+        ("Ctrl+click".into(), "Add a cursor (Ctrl+drag: a selection)"),
+        (
+            key(Command::SelectNext),
+            "Select the word, then its next occurrence",
+        ),
+        (key(Command::SelectEvery), "Select every occurrence"),
+        (
+            key(Command::DuplicateLines),
+            "Duplicate the lines of the cursors",
+        ),
+        ("Escape".into(), "Back to one cursor"),
+        (key(Command::FoldAll), "Collapse all functions"),
+        (key(Command::UnfoldAll), "Expand everything"),
+    ];
     egui::Grid::new("keys").num_columns(2).show(ui, |ui| {
-        for (key, what) in [
-            ("F7", "Assemble (or build a C project) and load"),
-            ("F5", "Run / continue"),
-            ("F6", "Pause"),
-            (
-                "F10",
-                "Step over: the line or instruction, with the routines it calls",
-            ),
-            ("F11", "Step into: stop in the routines called"),
-            (
-                "Shift+F11",
-                "Step out: until the routine returns (Shift+F10 too)",
-            ),
-            ("Ctrl+F5", "Reset"),
-            ("Ctrl+S", "Save"),
-            ("Ctrl+W", "Close the tab"),
-            ("Ctrl+W+R", "Close the other tabs"),
-            ("Ctrl+W+K", "Close all tabs"),
-            ("Ctrl+F", "Find in the file"),
-            ("Ctrl+Shift+F", "Find in the project's files"),
-            ("Ctrl+click", "Add a cursor (Ctrl+drag: a selection)"),
-            ("Ctrl+L", "Select the word, then its next occurrence"),
-            ("Ctrl+Shift+L", "Select every occurrence"),
-            ("Ctrl+D", "Duplicate the lines of the cursors"),
-            ("Escape", "Back to one cursor"),
-        ] {
+        for (key, what) in rows.iter().filter(|(key, _)| !key.is_empty()) {
             ui.monospace(key);
-            ui.label(what);
+            ui.label(*what);
             ui.end_row();
         }
     });
+    ui.label(RichText::new("Settings > Shortcuts changes them.").weak());
     ui.add_space(8.0);
     ui.label("Click in the margin of the editor to set a breakpoint. Click the monitor to type on the HBC-2 keyboard.");
 }
@@ -884,7 +921,12 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     keep = false;
                 }
             }
-            Dialog::Settings { page, draft } => {
+            Dialog::Settings {
+                page,
+                draft,
+                capture,
+                notice,
+            } => {
                 ui.set_max_width(620.0);
                 ui.heading("Settings");
                 ui.add_space(12.0);
@@ -909,6 +951,9 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                             SettingsPage::Build => build_settings(ui, draft),
                             SettingsPage::Emulator => emulator_settings(ui, draft),
                             SettingsPage::Monitor => monitor_settings(ui, &mut draft.monitor),
+                            SettingsPage::Shortcuts => {
+                                shortcut_settings(ui, &mut draft.shortcuts, capture, notice)
+                            }
                         }
                     });
                     line
@@ -918,6 +963,9 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                     row.response.rect.y_range(),
                     ui.visuals().widgets.noninteractive.bg_stroke,
                 );
+                if let Some(command) = *capture {
+                    capture_dialog(ui.ctx(), command, &mut draft.shortcuts, capture, notice);
+                }
                 ui.add_space(12.0);
                 ui.horizontal(|ui| {
                     if ui.button("OK").clicked() {
@@ -1085,6 +1133,175 @@ fn emulator_settings(ui: &mut egui::Ui, settings: &mut Settings) {
     ui.checkbox(&mut peripherals.monitor, "Monitor");
     ui.checkbox(&mut peripherals.rtc, "Real-time clock");
     ui.checkbox(&mut peripherals.keyboard, "Keyboard");
+}
+
+fn shortcut_settings(
+    ui: &mut egui::Ui,
+    keys: &mut shortcuts::Shortcuts,
+    capture: &mut Option<Command>,
+    notice: &mut Option<String>,
+) {
+    ui.label(RichText::new("Click a shortcut to change it.").weak());
+    let fixed = |ui: &mut egui::Ui, what: &str, keys: &str, why: &str| {
+        ui.label(RichText::new(what).weak());
+        ui.label(RichText::new(keys).monospace().weak())
+            .on_hover_text(why);
+        ui.end_row();
+    };
+    egui::ScrollArea::vertical()
+        .max_height(300.0)
+        .auto_shrink([false, true])
+        .show(ui, |ui| {
+            for category in Category::ALL {
+                settings_section(ui, category.label());
+                egui::Grid::new(("shortcuts", category.label()))
+                    .num_columns(2)
+                    .min_col_width(190.0)
+                    .spacing([16.0, 4.0])
+                    .show(ui, |ui| {
+                        for command in Command::ALL
+                            .into_iter()
+                            .filter(|c| c.category() == category)
+                        {
+                            ui.label(command.label());
+                            let text = keys.text(command);
+                            let shown = if text.is_empty() {
+                                RichText::new("None").weak().italics()
+                            } else {
+                                RichText::new(text).monospace()
+                            };
+                            if ui
+                                .add(Button::new(shown).min_size(egui::vec2(140.0, 0.0)))
+                                .on_hover_text("Click, then press the new shortcut")
+                                .clicked()
+                            {
+                                *capture = Some(command);
+                                *notice = None;
+                            }
+                            ui.end_row();
+                        }
+                        if category == Category::File && keys.get(Command::CloseTab).is_some() {
+                            let why = "Hold Close tab and press the letter";
+                            fixed(ui, "Close the other tabs", &keys.close_chord('R'), why);
+                            fixed(ui, "Close all tabs", &keys.close_chord('K'), why);
+                        }
+                        for (_, what, text) in shortcuts::FIXED.iter().filter(|f| f.0 == category) {
+                            fixed(ui, what, text, "Built into the text box: cannot be changed");
+                        }
+                    });
+            }
+        });
+    ui.add_space(6.0);
+    if let Some(text) = notice {
+        ui.label(RichText::new(text.as_str()).color(ui.visuals().warn_fg_color));
+    }
+    if ui
+        .add_enabled(!keys.is_default(), Button::new("Restore defaults"))
+        .clicked()
+    {
+        keys.restore_defaults();
+        *notice = None;
+    }
+}
+
+/// The small dialog that waits for the new shortcut of `command`.
+fn capture_dialog(
+    ctx: &egui::Context,
+    command: Command,
+    keys: &mut shortcuts::Shortcuts,
+    capture: &mut Option<Command>,
+    notice: &mut Option<String>,
+) {
+    use egui::{Event, Key, KeyboardShortcut};
+    let taken = |other: Option<Command>, shortcut: Option<KeyboardShortcut>| {
+        let (other, shortcut) = (other?, shortcut?);
+        Some(format!(
+            "{} was taken from \u{201c}{}\u{201d}, which has no shortcut now.",
+            shortcuts::format(shortcut),
+            other.label()
+        ))
+    };
+    let mut done = false;
+    let modal = egui::Modal::new(egui::Id::new("shortcut-capture")).show(ctx, |ui| {
+        egui::Frame::new().inner_margin(16.0).show(ui, |ui| {
+            ui.set_width(340.0);
+            ui.spacing_mut().item_spacing.y = 6.0;
+            ui.spacing_mut().button_padding = egui::vec2(10.0, 4.0);
+            ui.heading(command.label());
+            ui.label("Press the new shortcut…");
+            let now = keys.text(command);
+            ui.label(
+                RichText::new(format!(
+                    "Now: {}",
+                    if now.is_empty() { "none" } else { now.as_str() }
+                ))
+                .weak(),
+            );
+            ui.label(RichText::new("With Ctrl or Alt, or a function key. Escape cancels.").weak());
+            // The keys go to this dialog only.
+            let pressed = ui.input_mut(|i| {
+                let mut found = None;
+                i.events.retain(|event| match event {
+                    Event::Key {
+                        key,
+                        pressed,
+                        modifiers,
+                        ..
+                    } => {
+                        if *pressed && !shortcuts::is_modifier(*key) && found.is_none() {
+                            found = Some(KeyboardShortcut::new(*modifiers, *key));
+                        }
+                        false
+                    }
+                    Event::Text(_) => false,
+                    _ => true,
+                });
+                found
+            });
+            match pressed {
+                Some(s) if s.logical_key == Key::Escape && s.modifiers.is_none() => {
+                    *notice = None;
+                    done = true;
+                }
+                Some(s) => match shortcuts::refusal(s) {
+                    Some(why) => *notice = Some(why),
+                    None => {
+                        *notice = taken(keys.assign(command, Some(s)), Some(s));
+                        done = true;
+                    }
+                },
+                None => {}
+            }
+            if let Some(text) = notice {
+                ui.label(RichText::new(text.as_str()).color(ui.visuals().warn_fg_color));
+            }
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                if ui.button("No shortcut").clicked() {
+                    keys.assign(command, None);
+                    *notice = None;
+                    done = true;
+                }
+                let default = command.default_shortcut();
+                let default_text = default.map_or_else(|| "None".into(), shortcuts::format);
+                if ui
+                    .add_enabled(keys.get(command) != default, Button::new("Default"))
+                    .on_hover_text(default_text)
+                    .clicked()
+                {
+                    *notice = taken(keys.assign(command, default), default);
+                    done = true;
+                }
+                if ui.button("Cancel").clicked() {
+                    *notice = None;
+                    done = true;
+                }
+            });
+        });
+    });
+    if done || modal.should_close() {
+        *capture = None;
+    }
 }
 
 fn monitor_settings(ui: &mut egui::Ui, monitor: &mut MonitorSettings) {

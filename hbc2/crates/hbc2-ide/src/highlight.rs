@@ -390,7 +390,7 @@ pub fn layout_job(text: &str, syntax: Syntax, font: FontId, dark: bool, tabs: Ta
 
 /// The brackets of the code (not in comments or strings), as
 /// (char index, bracket).
-fn brackets(text: &str, syntax: Syntax) -> Vec<(usize, char)> {
+pub fn brackets(text: &str, syntax: Syntax) -> Vec<(usize, char)> {
     let mut brackets = Vec::new();
     let mut index = 0;
     let mut in_comment = false;
