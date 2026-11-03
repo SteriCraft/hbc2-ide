@@ -4,7 +4,7 @@
 // on double) is not here. These are integer functions with their own
 // names (isqrt, ipow...), so that the float ones can be added one day
 // without a clash. Not standard C. Assembly in asm/math.has, on the math
-// library (asm/mathlib). abs and labs are in stdlib.h.
+// library (asm/math). abs and labs are in stdlib.h.
 //
 // The l versions take an (unsigned) long.
 

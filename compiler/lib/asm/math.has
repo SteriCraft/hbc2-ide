@@ -1,4 +1,4 @@
-; math.h functions: wrappers of the math library (asm/mathlib, a copy of
+; math.h functions: wrappers of the math library (asm/math, a copy of
 ; design_projects/ASM_p/lib/math). They read the C arguments from the
 ; stack (ABI.md section 9). The 32-bit routines work on a value in memory
 ; at [x:y]: they work on the argument itself, on the stack (a C function
