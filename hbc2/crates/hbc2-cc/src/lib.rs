@@ -109,8 +109,12 @@ pub struct Library {
 pub fn build_library(dir: &Path) -> Result<Library, Vec<Diagnostic>> {
     let dir = &absolute(dir)?;
     fs::create_dir_all(dir).map_err(|e| io_error(dir, e))?;
+    // The whole library is in assembly for now: no src folder, no C files.
     let src = lib_dir().join("src");
-    let mut sources = files_in(&src, "c").map_err(|e| io_error(&src, e))?;
+    let mut sources = match files_in(&src, "c") {
+        Err(e) if e.kind() == std::io::ErrorKind::NotFound => Vec::new(),
+        other => other.map_err(|e| io_error(&src, e))?,
+    };
     sources.sort();
     // .library: the program's own definitions replace the library's.
     let mut text = format!(

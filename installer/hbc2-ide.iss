@@ -54,7 +54,7 @@ Source: "{#Compiler}\runtime\*.has"; DestDir: "{app}\compiler\runtime"; Flags: i
 Source: "{#Compiler}\fcc\rules.hbc2"; DestDir: "{app}\compiler\fcc"; Flags: ignoreversion
 Source: "{#Compiler}\lib\lib.has"; DestDir: "{app}\compiler\lib"; Flags: ignoreversion
 Source: "{#Compiler}\lib\include\*.h"; DestDir: "{app}\compiler\lib\include"; Flags: ignoreversion
-Source: "{#Compiler}\lib\src\*.c"; DestDir: "{app}\compiler\lib\src"; Flags: ignoreversion
+Source: "{#Compiler}\lib\src\*.c"; DestDir: "{app}\compiler\lib\src"; Flags: ignoreversion skipifsourcedoesntexist
 Source: "{#Compiler}\lib\asm\*.has"; DestDir: "{app}\compiler\lib\asm"; Flags: ignoreversion recursesubdirs
 Source: "{#Root}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
 

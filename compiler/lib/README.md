@@ -2,7 +2,7 @@
 
 What C programs can `#include`, and the code behind it. The compiler puts
 `include/` on the include path; every program is assembled with `lib.has`
-and the compiled `src/*.c` files; only what the program uses is kept (see
+(and the compiled `src/*.c` files, when there are some); only what the program uses is kept (see
 "Size"). `lib.has` and the generated `library.has` start with `.library`:
 a program may define a library name (`puts`, `putchar`…) and its own
 definition is used everywhere, the library's left out.
@@ -12,14 +12,14 @@ definition is used everywhere, the library's left out.
 | `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
 | `stdio.h` | `putchar`, `puts`, `printf`, `vprintf`, `perror` (output on the terminal), `sprintf`, `vsprintf` (into a buffer), `getchar`, `gets`, `scanf` (lines typed), `sscanf` (from a string) | `asm/stdio.has`, `asm/printf.has`, `asm/scanf.has`, `asm/errno.has` (`perror`) |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
-| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr strspn strcspn strpbrk strtok memcpy memmove memset memcmp memchr strerror` | `asm/string.has`, `asm/errno.has` (`strerror`), `src/string.c` (`strstr`) |
+| `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr strspn strcspn strpbrk strtok memcpy memmove memset memcmp memchr strerror` | `asm/string.has`, `asm/errno.has` (`strerror`) |
 | `errno.h` | `errno`, `EDOM`, `ERANGE` (set by `strtol`, `strtoul`) | `asm/errno.has` |
 | `time.h` | `time_t` (seconds since 1970, unsigned: to 2106), `struct tm`, `time`, `clock` (always -1), `mktime`, `localtime`, `gmtime` (the same: no time zone), `asctime`, `ctime`, `strftime` (C89 conversions and `%e`); no `difftime` (a `double`) | `asm/time.has` |
 | `limits.h` | `CHAR_BIT`, `MB_LEN_MAX`, the `_MIN`/`_MAX` of `char`, `short`, `int`, `long` | |
 | `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
-| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`, `strtol`, `strtoul`, `qsort`, `bsearch`, `malloc`, `free`, `calloc`, `realloc`; common extras: `itoa utoa ltoa ultoa` (radix 2, 8, 10, 16) | `asm/stdlib.has`, `asm/sort.has`, `asm/malloc.has`, `src/stdlib.c`, `asm/mathlib/misc` |
-| `math.h` | integer only (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/math.has` (wrappers), `asm/mathlib` |
+| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`, `strtol`, `strtoul`, `qsort`, `bsearch`, `malloc`, `free`, `calloc`, `realloc`; common extras: `itoa utoa ltoa ultoa` (radix 2, 8, 10, 16) | `asm/stdlib.has`, `asm/sort.has`, `asm/malloc.has`, `asm/math/misc` |
+| `math.h` | integer only (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/math.has` (wrappers), `asm/math` |
 
 `div`, `ldiv` (stdlib.h) are missing: they return a struct, and FCC has no
 struct return. `math.h` keeps the standard names (`sqrt`, `pow`…) free
@@ -34,7 +34,7 @@ for floating point one day.
   changes are listed at the top of each file (the port variables have their
   C names). When the originals change, copy them again and redo the
   changes.
-* `asm/mathlib/` — **copy** of the math library,
+* `asm/math/` — **copy** of the math library,
   `design_projects/ASM_p/lib/math`, without the 6 files C never reaches
   (signed arithmetic, logic and shifts: listed at the top of its
   `math.has`, which no longer includes them); `lib.has` includes its
@@ -99,14 +99,15 @@ for floating point one day.
   skips as many as the number; a new error goes before "Unknown error"),
   `perror` (through `_putchar`, like `printf`).
 * `asm/stdlib.has` — `exit`, `abs`, `labs`, the random-number wrappers,
-  and the number -> text routines that `src/stdlib.c` calls
-  (`__utoa_dec`, `__utoa_hex`…: not in a header, that file declares
-  them; they return the end of the text).
-* `src/stdlib.c` — `itoa`, `utoa`, `ltoa`, `ultoa`: radix 10 and 16 from
-  the routines above, radix 2 and 8 from shifts (no division anywhere).
-  `strtol`, `strtoul` (bases 0 and 2 to 36; one multiplication a digit,
-  no division) and `atoi`, `atol` (`strtol` in base 10).
-* `src/*.c` — library functions written in C, compiled by the build
+  `itoa`, `utoa`, `ltoa`, `ultoa` (radix 10 from the math library's
+  routines; 2, 8 and 16 from the top bits, shifted out to the left) and
+  `strtol`, `strtoul`, `atoi`, `atol` (bases 0 and 2 to 36; one
+  shift-and-add multiplication a digit, which reports the overflow for
+  `ERANGE`; no division anywhere). In C until 2026-11-03 (`src/stdlib.c`):
+  the conversion test went from 12000 to 9036 bytes.
+* `src/*.c` — library functions written in C, compiled by the build. None
+  since 2026-11-03 (`strstr` was the last): the folder is gone, and the
+  build still takes C files if it comes back
   (`hbc2_cc::build_library`). Unit numbers from 100 (`__L100_…`), so their
   labels and `static` names don't clash with the program's files (1, 2, …).
   A file's number is its place in name order: when a file is added or
@@ -120,17 +121,17 @@ Device detection (`monitor_port`, …) is in the startup code:
 (`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`), `-` to align left
 (`%-6s`), widths up to 255. No floating point. It gets its digits from
 the math library's `utoa16`, `itoa16`, `htoa16` and their 32-bit forms
-(`asm/mathlib/misc/text.has`; no division).
+(`asm/math/misc/text.has`; no division).
 
 ## Size
 
 In all, about 6.3 KB of code and data: the drivers and wrappers ≈ 6 KB
 (terminal 1.6 KB, screen 1.3 KB, `string.h` 1.1 KB, `printf` 1 KB,
-wrappers 0.7 KB), the
-compiled C files (`stdlib.c`, `string.c`). The
+wrappers 0.7 KB). The
 runtime helpers add up to ≈ 6.5 KB more (multiplication 1.4 KB,
 division 2.2 KB, shifts 0.8 KB: only those a program uses). `string.h` was in C until 2026-10-31
-(2.7 KB, 2-4 times slower), `printf` until 2026-11-03.
+(2.7 KB, 2-4 times slower), `printf`, `strstr` and the `stdlib.h`
+conversions until 2026-11-03.
 
 The assembler leaves out what a program can't reach (assembly manual,
 "Leaving out unused code"), so a program carries only what it uses: an

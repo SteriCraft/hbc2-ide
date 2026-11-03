@@ -51,71 +51,522 @@ lib_srand_mix:
 lib_srand_end:
     ret
 
-; --- Number <-> text -----------------------------------------------------
+; --- Number to text: itoa, utoa, ltoa, ultoa ------------------------------
+; char *itoa(int value, char *buf, int radix)        utoa: unsigned
+; char *ltoa(long value, char *buf, int radix)       ultoa: unsigned long
+; Radix 10: the math library's routines (signed for itoa and ltoa). Radix
+; 2, 8 and 16: lib_ntoa, on the bits of the value (unsigned, even for itoa
+; and ltoa). Any other radix: an empty text. They return buf.
 
-; Number to text, for C: the digits of itoa, utoa, ltoa, ultoa
-; (src/stdlib.c) and printf (src/printf.c). Not in a header: those
-; files declare them. Each writes value at buf, 0-terminated, and returns
-; the end of the text (the 0): the length is end - buf.
-
-; char *__itoa_dec(int value, char *buf): signed decimal, 7 bytes
-___itoa_dec:
-    lod a, [sp + 2]
-    lod b, [sp + 3]
-    lod x, [sp + 4]
-    lod y, [sp + 5]
+_itoa:
+    cal lib_itoa_args
+    cmp i, 10
+    jme lib_itoa_dec
+    jmp lib_utoa_go
+lib_itoa_dec:
     cal itoa16
-lib_text_end:                   ; returns [x:y], on the 0
-    mov a, x
-    mov b, y
+    jmp lib_itoa_buf
+
+_utoa:
+    cal lib_itoa_args
+lib_utoa_go:
+    cmp i, 10
+    jme lib_utoa_dec
+    mov c, a                    ; [a:b:c:d] = 0 : value
+    mov d, b
+    mov a, 0
+    mov b, 0
+    cal lib_ntoa
+    jmp lib_itoa_buf
+lib_utoa_dec:
+    cal utoa16
+lib_itoa_buf:                   ; returns buf
+    lod a, [sp + 4]
+    lod b, [sp + 5]
     ret
 
-; char *__utoa_dec(unsigned value, char *buf): decimal, 6 bytes
-___utoa_dec:
-    lod a, [sp + 2]
-    lod b, [sp + 3]
-    lod x, [sp + 4]
-    lod y, [sp + 5]
-    cal utoa16
-    jmp lib_text_end
+; [a:b] = value, [x:y] = buf, i = radix, for itoa and utoa (called by
+; them: the arguments are at [sp + 4] here)
+lib_itoa_args:
+    lod a, [sp + 4]
+    lod b, [sp + 5]
+    lod x, [sp + 6]
+    lod y, [sp + 7]
+    lod j, [sp + 8]
+    lod i, [sp + 9]
+    or j, 0
+    jmz lib_itoa_args_end
+    mov i, 0                    ; above 255: no radix
+lib_itoa_args_end:
+    ret
 
-; char *__utoa_hex(unsigned value, char *buf): 4 hexadecimal digits
-; (upper case, leading zeros kept), 5 bytes
-___utoa_hex:
-    lod a, [sp + 2]
-    lod b, [sp + 3]
-    lod x, [sp + 4]
-    lod y, [sp + 5]
-    cal htoa16
-    jmp lib_text_end
-
-; The long ones read the value where it is, on the stack: [i:j] -> value.
-
-; char *__ltoa_dec(long value, char *buf): signed decimal, 12 bytes
-___ltoa_dec:
-    cal lib_text_long
+_ltoa:
+    cal lib_ltoa_args
+    cmp a, 10
+    jme lib_ltoa_dec
+    jmp lib_ultoa_go
+lib_ltoa_dec:
     cal itoa32
-    jmp lib_text_end
+    jmp lib_ltoa_buf
 
-; char *__ultoa_dec(unsigned long value, char *buf): decimal, 11 bytes
-___ultoa_dec:
-    cal lib_text_long
+_ultoa:
+    cal lib_ltoa_args
+lib_ultoa_go:
+    cmp a, 10
+    jme lib_ultoa_dec
+    psh a
+    lod a, [i:j]                ; [a:b:c:d] = value
+    lod b, [i:j + 1]
+    lod c, [i:j + 2]
+    lod d, [i:j + 3]
+    pop i
+    cal lib_ntoa
+    jmp lib_ltoa_buf
+lib_ultoa_dec:
     cal utoa32
-    jmp lib_text_end
+lib_ltoa_buf:                   ; returns buf
+    lod a, [sp + 6]
+    lod b, [sp + 7]
+    ret
 
-; char *__ultoa_hex(unsigned long value, char *buf): 8 hexadecimal
-; digits, 9 bytes
-___ultoa_hex:
-    cal lib_text_long
-    cal htoa32
-    jmp lib_text_end
-
-; [i:j] -> value, [x:y] = buf, for the long ones (called by them: the
-; value is at [sp + 4] here)
-lib_text_long:
+; [i:j] -> value (where it is, on the stack), [x:y] = buf, a = radix, for
+; ltoa and ultoa (called by them: the arguments are at [sp + 4] here)
+lib_ltoa_args:
     lod x, [sp + 8]
     lod y, [sp + 9]
+    lod b, [sp + 10]
+    lod a, [sp + 11]
+    or b, 0
+    jmz lib_ltoa_args_value
+    mov a, 0                    ; above 255: no radix
+lib_ltoa_args_value:
     rsp [i:j]
     add j, 4
     adc i, 0
+    ret
+
+.bss lib_ntoa_bits 1            ; the bits of a digit: 1, 3 or 4
+.bss lib_ntoa_n 1               ; the digits still to come
+.bss lib_ntoa_any 1             ; 1 once a digit has been written
+
+; [a:b:c:d] = value (a = most significant byte), [x:y] = buf, i = radix:
+; the value in radix 2, 8 or 16 at buf (lower case, no leading zeros),
+; 0-terminated; any other radix, an empty text. Each digit is made of the
+; top bits of the value, shifted out to the left: 32 digits of 1 bit,
+; 2 bits then 10 digits of 3, or 8 digits of 4.
+lib_ntoa:
+    cmp i, 16
+    jme lib_ntoa_hex
+    cmp i, 8
+    jme lib_ntoa_oct
+    cmp i, 2
+    jme lib_ntoa_bin
+    mov a, 0
+    str [x:y], a
+    ret
+lib_ntoa_hex:
+    mov i, 4
+    str lib_ntoa_bits, i
+    mov i, 8
+    str lib_ntoa_n, i
+    mov i, 4
+    jmp lib_ntoa_start
+lib_ntoa_oct:
+    mov i, 3
+    str lib_ntoa_bits, i
+    mov i, 11
+    str lib_ntoa_n, i
+    mov i, 2                    ; the first digit: 2 bits
+    jmp lib_ntoa_start
+lib_ntoa_bin:
+    mov i, 1
+    str lib_ntoa_bits, i
+    mov i, 32
+    str lib_ntoa_n, i
+    mov i, 1
+lib_ntoa_start:
+    mov j, 0
+    str lib_ntoa_any, j
+lib_ntoa_digit:                 ; i = the bits of this digit
+    mov j, 0
+lib_ntoa_bit:                   ; j = j * 2 + the top bit of the value
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    adc j, j
+    dec i
+    jmz lib_ntoa_got
+    jmp lib_ntoa_bit
+lib_ntoa_got:                   ; j = the digit
+    lod i, lib_ntoa_n
+    dec i
+    str lib_ntoa_n, i
+    jmz lib_ntoa_put            ; the last digit is always written
+    lod i, lib_ntoa_any
+    or i, j
+    jmz lib_ntoa_next           ; a leading 0
+lib_ntoa_put:
+    mov i, 1
+    str lib_ntoa_any, i
+    cmp j, 10
+    jmf lib_ntoa_decimal
+    add j, 87                   ; 10 -> 'a'
+    jmp lib_ntoa_store
+lib_ntoa_decimal:
+    add j, '0'
+lib_ntoa_store:
+    str [x:y], j
+    add y, 1
+    adc x, 0
+lib_ntoa_next:
+    lod i, lib_ntoa_n
+    or i, 0
+    jmz lib_ntoa_end
+    lod i, lib_ntoa_bits
+    jmp lib_ntoa_digit
+lib_ntoa_end:
+    str [x:y], i                ; i = 0
+    ret
+
+; --- Text to number: strtol, strtoul, atoi, atol --------------------------
+; long strtol(const char *str, char **str_end, int base)
+; unsigned long strtoul(const char *str, char **str_end, int base)
+; int atoi(const char *s), long atol(const char *s): strtol(s, NULL, 10)
+; Spaces (' ', \t to \r), a sign, then the digits of base (2 to 36: 0-9,
+; then a-z or A-Z). Base 0: "0x" hexadecimal, "0b" binary, "0" octal, else
+; decimal. Base 16 allows "0x", base 2 "0b", only when a digit of the base
+; comes after ("0x" alone is the number 0). Out of range: errno = ERANGE
+; and the closest value (strtoul: ULONG_MAX; "-1" gives ULONG_MAX, as in C).
+; *str_end (when str_end is not NULL) = the character after the number, or
+; str when there is no number (then 0 is returned).
+
+.bss lib_strto_v 4              ; the value without its sign (MSB first)
+.bss lib_strto_base 1
+.bss lib_strto_neg 1            ; 1 after a '-'
+.bss lib_strto_over 1           ; 1 once the value is past 32 bits
+.bss lib_strto_any 1            ; 1 once a digit has been read
+
+_strtol:
+    cal lib_strto_args
+lib_strtol_result:              ; atoi and atol come here
+    lod a, lib_strto_over
+    or a, 0
+    jmz lib_strtol_fits
+    jmp lib_strtol_range
+lib_strtol_fits:
+    lod a, lib_strto_v
+    lod b, lib_strto_neg
+    or b, 0
+    jmz lib_strtol_pos
+    cmp a, 0x80                 ; '-': up to 0x80000000
+    jmf lib_strto_minus_v
+    jme lib_strtol_min
+    jmp lib_strtol_range
+lib_strtol_min:                 ; 0x80......: only 0x80000000
+    lod a, lib_strto_v + 1
+    lod b, lib_strto_v + 2
+    or a, b
+    lod b, lib_strto_v + 3
+    or a, b
+    jmz lib_strto_minus_v
+    jmp lib_strtol_range
+lib_strtol_pos:                 ; up to 0x7FFFFFFF
+    cmp a, 0x80
+    jmf lib_strto_value
+lib_strtol_range:
+    cal lib_strto_erange
+    lod a, lib_strto_neg
+    or a, 0
+    jmz lib_strtol_max
+    mov c, 0x80                 ; LONG_MIN
+    mov d, 0
+    mov a, 0
+    mov b, 0
+    ret
+lib_strtol_max:                 ; LONG_MAX
+    mov c, 0x7F
+    mov d, 0xFF
+    mov a, 0xFF
+    mov b, 0xFF
+    ret
+
+_strtoul:
+    cal lib_strto_args
+    lod a, lib_strto_over
+    or a, 0
+    jmz lib_strtoul_fits
+    cal lib_strto_erange
+    mov c, 0xFF                 ; ULONG_MAX
+    mov d, 0xFF
+    mov a, 0xFF
+    mov b, 0xFF
+    ret
+lib_strtoul_fits:
+    lod a, lib_strto_neg
+    or a, 0
+    jmz lib_strto_value
+lib_strto_minus_v:              ; [c:d]:[a:b] = -v
+    cal lib_strto_value
+    not c
+    not d
+    not a
+    not b
+    add b, 1
+    adc a, 0
+    adc d, 0
+    adc c, 0
+    ret
+lib_strto_value:                ; [c:d]:[a:b] = v
+    lod c, lib_strto_v
+    lod d, lib_strto_v + 1
+    lod a, lib_strto_v + 2
+    lod b, lib_strto_v + 3
+    ret
+
+lib_strto_erange:               ; errno = ERANGE (2)
+    mov a, 0
+    str _errno, a
+    mov a, 2
+    str _errno + 1, a
+    ret
+
+; Reads the number for strtol and strtoul, and stores the end (called by
+; them: the arguments are at [sp + 4] here)
+lib_strto_args:
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+    lod a, [sp + 8]
+    lod b, [sp + 9]
+    cal lib_strto
+    lod i, [sp + 6]
+    lod j, [sp + 7]
+    mov a, i
+    or a, j
+    jmz lib_strto_args_end      ; str_end is NULL
+    str [i:j], x
+    str [i:j + 1], y
+lib_strto_args_end:
+    ret
+
+; The int is the low half of the long: [a:b].
+_atoi:
+_atol:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    mov a, 0
+    mov b, 10
+    cal lib_strto
+    jmp lib_strtol_result
+
+; Reads the number at [x:y] in base [a:b]: lib_strto_v, _neg, _over.
+; [x:y] = the end of the number, or the start when there is none.
+lib_strto:
+    psh x, y                    ; the start
+    mov c, 0
+    str lib_strto_v, c
+    str lib_strto_v + 1, c
+    str lib_strto_v + 2, c
+    str lib_strto_v + 3, c
+    str lib_strto_neg, c
+    str lib_strto_over, c
+    str lib_strto_any, c
+    or a, 0
+    jmz lib_strto_base_lsb
+    jmp lib_strto_none
+lib_strto_base_lsb:
+    cmp b, 37
+    jmf lib_strto_base_ok
+    jmp lib_strto_none
+lib_strto_base_ok:
+    cmp b, 1
+    jme lib_strto_none
+    str lib_strto_base, b
+lib_strto_space:
+    lod a, [x:y]
+    cmp a, ' '
+    jme lib_strto_space_next
+    sub a, 9                    ; \t to \r
+    cmp a, 5
+    jmf lib_strto_space_next
+    jmp lib_strto_sign
+lib_strto_space_next:
+    add y, 1
+    adc x, 0
+    jmp lib_strto_space
+lib_strto_sign:
+    lod a, [x:y]
+    cmp a, '+'
+    jme lib_strto_signed
+    cmp a, '-'
+    jme lib_strto_minus
+    jmp lib_strto_prefix
+lib_strto_minus:
+    mov a, 1
+    str lib_strto_neg, a
+lib_strto_signed:
+    add y, 1
+    adc x, 0
+lib_strto_prefix:               ; b = base, a = the first character
+    lod b, lib_strto_base
+    lod a, [x:y]
+    cmp a, '0'
+    jme lib_strto_zero
+    or b, 0
+    jmz lib_strto_ten
+    jmp lib_strto_digits
+lib_strto_ten:
+    mov b, 10
+    jmp lib_strto_set
+lib_strto_zero:
+    lod a, [x:y + 1]
+    or a, 0x20                  ; lower case
+    cmp a, 'x'
+    jme lib_strto_x
+    cmp a, 'b'
+    jme lib_strto_b
+lib_strto_octal:                ; just the 0: base 0 becomes 8
+    or b, 0
+    jmz lib_strto_eight
+    jmp lib_strto_digits
+lib_strto_eight:
+    mov b, 8
+    jmp lib_strto_set
+lib_strto_x:
+    mov c, 16
+    jmp lib_strto_radix
+lib_strto_b:
+    mov c, 2
+lib_strto_radix:                ; c = the base of the prefix: base 0 or c?
+    or b, 0
+    jmz lib_strto_radix_digit
+    cmp b, c
+    jme lib_strto_radix_digit
+    jmp lib_strto_octal
+lib_strto_radix_digit:          ; and a digit of it after the prefix?
+    lod a, [x:y + 2]
+    cal lib_strto_digit
+    cmp a, c
+    jmf lib_strto_take
+    jmp lib_strto_octal
+lib_strto_take:
+    add y, 2
+    adc x, 0
+    mov b, c
+lib_strto_set:
+    str lib_strto_base, b
+lib_strto_digits:
+    lod a, [x:y]
+    cal lib_strto_digit
+    lod b, lib_strto_base
+    cmp a, b
+    jmf lib_strto_add
+    jmp lib_strto_end
+lib_strto_add:
+    mov b, 1
+    str lib_strto_any, b
+    lod b, lib_strto_over
+    or b, 0
+    jmz lib_strto_mul
+    jmp lib_strto_next          ; past 32 bits: the digits are just read
+lib_strto_mul:
+    mov b, a
+    lod a, lib_strto_base
+    cal lib_strto_muladd
+    jmc lib_strto_overflow
+    jmp lib_strto_next
+lib_strto_overflow:
+    mov a, 1
+    str lib_strto_over, a
+lib_strto_next:
+    add y, 1
+    adc x, 0
+    jmp lib_strto_digits
+lib_strto_end:
+    lod a, lib_strto_any
+    or a, 0
+    jmz lib_strto_none
+    pop i, j                    ; the start is not needed
+    ret
+lib_strto_none:
+    pop x, y                    ; the start
+    ret
+
+; a = the value of digit a (0-9, then a-z or A-Z for 10-35), 36 or more if
+; it is not one. Changes nothing else.
+lib_strto_digit:
+    sub a, '0'
+    cmp a, 10
+    jmf lib_strto_digit_end
+    add a, '0'
+    or a, 0x20                  ; lower case
+    sub a, 'a'
+    cmp a, 26
+    jmf lib_strto_letter
+    mov a, 255
+    ret
+lib_strto_letter:
+    add a, 10
+lib_strto_digit_end:
+    ret
+
+; v = v * a + b (a = the base, 2 to 36; b = a digit), C = 1 when the result
+; is past 32 bits (its low 32 bits are stored). Keeps x and y.
+; Shift-and-add from the base's top 1 bit (v itself). i = base * 2 + 1:
+; the 1 below the base's bits makes i 0 once they have all been shifted
+; out. j counts the bits lost at the top.
+lib_strto_muladd:
+    psh x, y
+    psh b
+    mov x, lib_strto_v.msb
+    mov y, lib_strto_v.lsb
+    mov i, a
+    add i, i
+    or i, 1
+lib_strto_mul_top:              ; the 0 bits above the top 1
+    add i, i
+    jmc lib_strto_mul_v
+    jmp lib_strto_mul_top
+lib_strto_mul_v:
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
+    mov j, 0
+lib_strto_mul_bit:
+    add i, i                    ; C = the next bit of the base
+    jmz lib_strto_mul_end       ; the 1 below them: done
+    jmc lib_strto_mul_one
+    add d, d                    ; product * 2
+    adc c, c
+    adc b, b
+    adc a, a
+    adc j, 0
+    jmp lib_strto_mul_bit
+lib_strto_mul_one:              ; product * 2 + v
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    adc j, 0
+    add d, [x:y + 3]
+    adc c, [x:y + 2]
+    adc b, [x:y + 1]
+    adc a, [x:y]
+    adc j, 0
+    jmp lib_strto_mul_bit
+lib_strto_mul_end:
+    pop i                       ; + the digit
+    add d, i
+    adc c, 0
+    adc b, 0
+    adc a, 0
+    adc j, 0
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    pop x, y
+    mov a, 0
+    sub a, j                    ; C = j is not 0
     ret

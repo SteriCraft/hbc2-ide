@@ -239,6 +239,42 @@ lib_strrchr_end:
     mov b, j
     ret
 
+; char *strstr(const char *str, const char *substr): where substr first
+; starts in str (str itself when substr is empty), NULL if nowhere.
+; [c:d] = where it may start, from str on; [x:y] walks str from there,
+; [i:j] walks substr. When str ends during a comparison, substr no longer
+; fits anywhere after.
+_strstr:
+    lod c, [sp + 2]
+    lod d, [sp + 3]
+lib_strstr_try:
+    mov x, c
+    mov y, d
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+lib_strstr_cmp:
+    lod b, [i:j]
+    or b, 0
+    jmz lib_strstr_found        ; the whole of substr matched
+    lod a, [x:y]
+    cmp a, b
+    jme lib_strstr_same
+    or a, 0
+    jmz lib_str_null            ; the end of str
+    add d, 1                    ; try the next place
+    adc c, 0
+    jmp lib_strstr_try
+lib_strstr_same:
+    add y, 1
+    adc x, 0
+    add j, 1
+    adc i, 0
+    jmp lib_strstr_cmp
+lib_strstr_found:
+    mov a, c
+    mov b, d
+    ret
+
 ; void *memcpy(void *dest, const void *src, size_t n)
 _memcpy:
     lod x, [sp + 2]
