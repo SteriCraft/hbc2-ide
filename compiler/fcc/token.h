@@ -139,6 +139,8 @@
 #define T_CASELABEL	0x120E		/* A case label */
 #define T_ARGCOMMA	0x120F		/* Links arguments to a call */
 #define T_REG		0x1210		/* name/offset for a register */
+#define T_STRUCTCOPY	0x1211		/* struct a = b: left = a, right = &b,
+					   value = the size (HBC-2) */
 
 #define T_USER		0x2000		/* Tokens for code generators */
 

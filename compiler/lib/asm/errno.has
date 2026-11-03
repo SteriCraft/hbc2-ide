@@ -1,0 +1,93 @@
+; errno (errno.h), strerror (string.h) and perror (stdio.h).
+
+.common _errno 2                ; int errno: 0 when the program starts
+
+; The texts, in the order of the numbers of errno.h; the last one is for
+; every other number. A new error: its text goes before "Unknown error",
+; and LIB_ERR_LAST goes up by one.
+.define LIB_ERR_LAST 3          ; the number of the "Unknown error" text
+.data lib_err_texts "No error", 0, "Domain error", 0, "Result out of range", 0, "Unknown error", 0
+
+; [i:j] = the text of error [a:b]. Changes a, b.
+lib_strerror:
+    mov i, lib_err_texts.msb
+    mov j, lib_err_texts.lsb
+    cmp a, 0
+    jme lib_strerror_small
+    mov b, LIB_ERR_LAST         ; 256 or more, or negative
+    jmp lib_strerror_skip
+lib_strerror_small:
+    cmp b, LIB_ERR_LAST
+    jmf lib_strerror_skip       ; b below LIB_ERR_LAST: it has a text
+    mov b, LIB_ERR_LAST
+lib_strerror_skip:              ; skips b texts
+    cmp b, 0
+    jme lib_strerror_done
+lib_strerror_char:
+    lod a, [i:j]
+    add j, 1
+    adc i, 0
+    or a, 0
+    jmz lib_strerror_next       ; past the 0 of a text
+    jmp lib_strerror_char
+lib_strerror_next:
+    dec b
+    jmp lib_strerror_skip
+lib_strerror_done:
+    ret
+
+; char *strerror(int errnum)
+_strerror:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    cal lib_strerror
+    mov a, i
+    mov b, j
+    ret
+
+; void perror(const char *s): prints "s: " (unless s is NULL or ""), the
+; text of errno, then '\n'. Every character goes through _putchar, like
+; printf.
+_perror:
+    lod i, [sp + 2]
+    lod j, [sp + 3]
+    mov a, i
+    or a, j
+    jmz lib_perror_text         ; NULL
+    lod a, [i:j]
+    or a, 0
+    jmz lib_perror_text         ; ""
+    cal lib_perror_print
+    mov b, ':'
+    cal lib_perror_putc
+    mov b, ' '
+    cal lib_perror_putc
+lib_perror_text:
+    lod a, _errno
+    lod b, _errno + 1
+    cal lib_strerror
+    cal lib_perror_print
+    mov b, '\n'
+    jmp lib_perror_putc         ; returns from there
+
+; Prints the text at [i:j] (every register may change).
+lib_perror_print:
+    lod b, [i:j]
+    or b, 0
+    jmz lib_perror_print_end
+    add j, 1
+    adc i, 0
+    psh i, j
+    cal lib_perror_putc
+    pop i, j
+    jmp lib_perror_print
+lib_perror_print_end:
+    ret
+
+; Prints b (every register may change).
+lib_perror_putc:
+    mov a, 0
+    psh b, a                    ; putchar(b)
+    cal _putchar
+    asp 2
+    ret

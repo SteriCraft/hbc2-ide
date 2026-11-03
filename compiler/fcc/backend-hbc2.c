@@ -2172,6 +2172,19 @@ unsigned gen_node(struct node *n)
 		puts("\tpop y, x");
 		pointer_access("str", s);
 		return 1;
+	case T_STRUCTCOPY:
+		/* struct a = b: &a on the stack, &b in [a:b], v bytes. The
+		   result is &a. Up to 4 bytes inline, else __structcpy. */
+		puts("\tpop y, x");
+		if (v <= 4) {
+			unsigned k;
+			puts("\tmov i, a\n\tmov j, b");
+			for (k = 0; k < v; k++)
+				printf("\tlod c, [i:j + %u]\n\tstr [x:y + %u], c\n", k, k);
+			puts("\tmov a, x\n\tmov b, y");
+		} else
+			printf("\tmov c, %u\n\tmov d, %u\n\tcal __structcpy\n", v >> 8, v & 255);
+		return 1;
 	case T_CALLNAME:
 		if (v)
 			printf("\tcal _%s + %u\n", namestr(n->snum), v);

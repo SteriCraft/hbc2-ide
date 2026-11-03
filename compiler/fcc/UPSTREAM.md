@@ -28,6 +28,21 @@ through `../msvc/compat.h`, a forced include):
   or static: the ones `add_volatile` records) gets `SIDEEFFECT`, so the
   HBC-2 backend sees every use (reads, stores, `++`, `+=`) and lists the
   volatile names for the driver's reload removal.
+* Struct and union assignment (HBC-2): `token.h` (`T_STRUCTCOPY`, left =
+  the destination lval, right = the source address, value = the size),
+  `expression.c` (`struct_assign`, called by `hier1` for `=`),
+  `expression.h`, `initializer.c` (`struct s v = w;` for a local),
+  `tree.c` (`make_rval` leaves a `T_STRUCTCOPY` as it is: an lval of the
+  destination, so `a = b = c` and `(a = b).x` work). The backend
+  (`backend-hbc2.c`) does the copy.
+* Initial values of local arrays and structs (HBC-2): `declaration.c`
+  (`one_declaration`: with `= {` or `= "…"` the storage comes after the
+  values), `initializer.c` / `initializer.h` (`ini_auto_copy`: the values
+  as hidden data under a new `label_tag`, then a `T_STRUCTCOPY` into the
+  variable).
+* `(void)` casts (HBC-2): `expression.c` (`hier10`): a `T_CAST` to `VOID`
+  (a struct value gives its address, not read); the backend's cast of
+  size 0 emits nothing.
 * Source lines for the debugger (`;#line n` lines in the HBC-2 output):
   * `frontend.c` (cc0): the name of the C file goes out with the first `cpp`
     line (`write_line`, split out of `write_token`), even when a header

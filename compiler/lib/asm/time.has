@@ -1,0 +1,1049 @@
+; time.h, written in assembly: time, clock, mktime, localtime, gmtime,
+; asctime, ctime, strftime.
+;
+; time_t = the seconds since 1970-01-01 00:00:00, unsigned 32 bits: up to
+; 2106-02-07 06:28:15. The RTC keeps the host's local time and knows no
+; time zone: localtime and gmtime are the same.
+;
+; struct tm: 9 ints, 2 bytes each, most significant byte first:
+;   0 tm_sec, 2 tm_min, 4 tm_hour, 6 tm_mday, 8 tm_mon (0-11),
+;   10 tm_year (since 1900), 12 tm_wday (0 = Sunday), 14 tm_yday (0-365),
+;   16 tm_isdst (always 0)
+
+.bss lib_tm 18                  ; what localtime and gmtime return
+.bss lib_tm_secs 4              ; a time, for the routines below
+.bss lib_asctime_buf 26         ; what asctime and ctime return
+
+.data lib_tm_days 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31
+
+; --- Calendar ----------------------------------------------------------------
+
+; C = 1 when year a (since 1900, 70 to 206) is a leap year: every 4
+; years, but not 2100.
+lib_tm_leap:
+    psh a
+    and a, 3
+    jmz lib_tm_leap_4
+    pop a
+    clc
+    ret
+lib_tm_leap_4:
+    pop a
+    cmp a, 200
+    jme lib_tm_leap_no
+    stc
+    ret
+lib_tm_leap_no:
+    clc
+    ret
+
+; c = the days of month b (0-11) of year a.
+lib_tm_mlen:
+    psh x
+    mov x, lib_tm_days.msb
+    lod c, [x:b + lib_tm_days.lsb]
+    pop x
+    cmp b, 1
+    jme lib_tm_mlen_feb
+    ret
+lib_tm_mlen_feb:
+    cal lib_tm_leap
+    adc c, 0
+    ret
+
+; [c:d] = the days of year a: 365 or 366.
+lib_tm_ylen:
+    mov c, 1
+    mov d, 109                  ; 365 = 0x16D
+    cal lib_tm_leap
+    adc d, 0
+    ret
+
+; [i:j] = the days from 1970-01-01 to day d (1-31) of month b (0-11) of
+; year a (70 to 206). Changes c, d.
+lib_tm_days_of:
+    psh a, b, x
+    mov i, 0
+    mov j, d
+    sub j, 1
+    mov x, b                    ; the months before b
+lib_tm_days_month:
+    cmp x, 0
+    jme lib_tm_days_years
+    dec x
+    mov b, x
+    cal lib_tm_mlen
+    add j, c
+    adc i, 0
+    jmp lib_tm_days_month
+lib_tm_days_years:              ; the years from 1970 to a - 1
+    mov x, a
+    mov a, 70
+lib_tm_days_year:
+    cmp a, x
+    jme lib_tm_days_end
+    cal lib_tm_ylen
+    add j, d
+    adc i, c
+    inc a
+    jmp lib_tm_days_year
+lib_tm_days_end:
+    pop a, b, x
+    ret
+
+; --- 32-bit steps on the 4 bytes at [x:y] (most significant first) ----------
+
+; v = v * a + b. Changes a, b, c, d, i, j.
+lib_tm_muladd:
+    mov i, a
+    mov j, 8
+    psh b
+    mov a, 0                    ; [a:b:c:d] = the product
+    mov b, 0
+    mov c, 0
+    mov d, 0
+lib_tm_muladd_bit:
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    add i, i                    ; C = the next bit of the multiplier
+    jmc lib_tm_muladd_add
+    jmp lib_tm_muladd_next
+lib_tm_muladd_add:
+    add d, [x:y + 3]
+    adc c, [x:y + 2]
+    adc b, [x:y + 1]
+    adc a, [x:y]
+lib_tm_muladd_next:
+    dec j
+    jmz lib_tm_muladd_end
+    jmp lib_tm_muladd_bit
+lib_tm_muladd_end:
+    pop i
+    add d, i
+    adc c, 0
+    adc b, 0
+    adc a, 0
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    ret
+
+; v = v / a (a from 1 to 128), the remainder in a. Changes b, c, d, i, j.
+lib_tm_divmod:
+    mov j, a
+    psh x, y
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
+    mov i, 0                    ; the remainder
+    mov x, 32
+lib_tm_divmod_bit:
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    adc i, i
+    cmp i, j
+    jmf lib_tm_divmod_next
+    sub i, j
+    or d, 1
+lib_tm_divmod_next:
+    dec x
+    jmz lib_tm_divmod_end
+    jmp lib_tm_divmod_bit
+lib_tm_divmod_end:
+    pop x, y
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+    mov a, i
+    ret
+
+; --- struct tm <-> time_t ---------------------------------------------------
+
+; lib_tm_secs = the time of the struct tm at [x:y], whose fields are in
+; range (tm_wday and tm_yday are not read). C = 1 when it is before 1970
+; or past 2106-02-07 06:28:15. Changes a, b, c, d, i, j.
+lib_tm_make:
+    psh x, y
+    lod a, [x:y + 10]
+    cmp a, 0
+    jme lib_tm_make_year
+    jmp lib_tm_make_out
+lib_tm_make_year:
+    lod a, [x:y + 11]
+    cmp a, 70
+    jmf lib_tm_make_out
+    cmp a, 206
+    jms lib_tm_make_out
+    lod b, [x:y + 9]
+    lod d, [x:y + 7]
+    cal lib_tm_days_of          ; [i:j] = the days
+    cmp i, 0xC2                 ; 49710 = 0xC22E days: 2106-02-07
+    jms lib_tm_make_out
+    jmf lib_tm_make_days
+    cmp j, 0x2E
+    jms lib_tm_make_out
+lib_tm_make_days:
+    psh i, j
+    lod a, [x:y + 1]            ; sec, min, hour
+    psh a
+    lod a, [x:y + 3]
+    psh a
+    lod a, [x:y + 5]
+    psh a
+    mov x, lib_tm_secs.msb
+    mov y, lib_tm_secs.lsb
+    mov a, 0
+    str [x:y], a
+    str [x:y + 1], a
+    str [x:y + 2], i
+    str [x:y + 3], j
+    pop b
+    mov a, 24
+    cal lib_tm_muladd           ; days * 24 + hour
+    pop b
+    mov a, 60
+    cal lib_tm_muladd           ; * 60 + min
+    pop b
+    mov a, 60
+    cal lib_tm_muladd           ; * 60 + sec
+    pop i, j
+    cmp i, 0xC2                 ; the last day: past 06:28:15, it went
+    jme lib_tm_make_last        ; past 32 bits (to 0xFFFFA600 at most)
+    jmp lib_tm_make_ok
+lib_tm_make_last:
+    cmp j, 0x2E
+    jme lib_tm_make_check
+    jmp lib_tm_make_ok
+lib_tm_make_check:
+    lod a, [x:y]
+    and a, [x:y + 1]
+    cmp a, 0xFF
+    jme lib_tm_make_ok
+lib_tm_make_out:
+    pop x, y
+    stc
+    ret
+lib_tm_make_ok:
+    pop x, y
+    clc
+    ret
+
+; The struct tm at [x:y] = the time in lib_tm_secs (which is lost).
+; Changes a, b, c, d, i, j.
+lib_tm_break:
+    psh x, y
+    mov x, lib_tm_secs.msb
+    mov y, lib_tm_secs.lsb
+    mov a, 60
+    cal lib_tm_divmod
+    psh a                       ; sec
+    mov a, 60
+    cal lib_tm_divmod
+    psh a                       ; min
+    mov a, 24
+    cal lib_tm_divmod
+    psh a                       ; hour
+    lod i, [x:y + 2]            ; [i:j] = the days (below 65536)
+    lod j, [x:y + 3]
+    psh i, j
+    mov a, 0                    ; 1970-01-01 was a Thursday:
+    str [x:y], a                ; wday = (days + 4) % 7
+    str [x:y + 1], a
+    add j, 4
+    adc i, 0
+    str [x:y + 2], i
+    str [x:y + 3], j
+    mov a, 7
+    cal lib_tm_divmod
+    pop i, j
+    psh a                       ; wday
+    mov a, 70
+lib_tm_break_year:              ; a = the year, [i:j] = the days left
+    cal lib_tm_ylen
+    mov b, j
+    sub b, d
+    mov b, i
+    sbb b, c
+    jmc lib_tm_break_month
+    sub j, d
+    sbb i, c
+    inc a
+    jmp lib_tm_break_year
+lib_tm_break_month:
+    psh i, j                    ; yday
+    mov b, 0
+lib_tm_break_mon:               ; b = the month
+    cal lib_tm_mlen
+    cmp i, 0
+    jme lib_tm_break_mon_low
+    jmp lib_tm_break_mon_next
+lib_tm_break_mon_low:
+    cmp j, c
+    jmf lib_tm_break_store
+lib_tm_break_mon_next:
+    sub j, c
+    sbb i, 0
+    inc b
+    jmp lib_tm_break_mon
+lib_tm_break_store:             ; the stack: yday, wday, hour, min, sec, y, x
+    inc j                       ; mday
+    mov c, a
+    mov d, b
+    lod x, [sp + 7]
+    lod y, [sp + 6]
+    mov a, 0
+    str [x:y + 10], a
+    str [x:y + 11], c           ; year
+    str [x:y + 8], a
+    str [x:y + 9], d            ; mon
+    str [x:y + 6], a
+    str [x:y + 7], j            ; mday
+    str [x:y + 16], a
+    str [x:y + 17], a           ; isdst
+    pop i, j
+    str [x:y + 14], i
+    str [x:y + 15], j           ; yday
+    pop b
+    str [x:y + 12], a
+    str [x:y + 13], b           ; wday
+    pop b
+    str [x:y + 4], a
+    str [x:y + 5], b            ; hour
+    pop b
+    str [x:y + 2], a
+    str [x:y + 3], b            ; min
+    pop b
+    str [x:y], a
+    str [x:y + 1], b            ; sec
+    pop x, y
+    ret
+
+; Puts the int at [i:j] in 0..c-1, adding what goes over to the int after
+; it (sec -> min -> hour -> mday, mon -> year). Changes a, b.
+lib_tm_carry:
+    lod a, [i:j]
+    or a, 0
+    jmn lib_tm_carry_up         ; below 0
+    jmz lib_tm_carry_low
+    jmp lib_tm_carry_down       ; 256 or more
+lib_tm_carry_low:
+    lod a, [i:j + 1]
+    cmp a, c
+    jmf lib_tm_carry_end
+lib_tm_carry_down:              ; - c, the next one + 1
+    lod b, [i:j + 1]
+    sub b, c
+    str [i:j + 1], b
+    lod b, [i:j]
+    sbb b, 0
+    str [i:j], b
+    lod b, [i:j + 3]
+    add b, 1
+    str [i:j + 3], b
+    lod b, [i:j + 2]
+    adc b, 0
+    str [i:j + 2], b
+    jmp lib_tm_carry
+lib_tm_carry_up:                ; + c, the next one - 1
+    lod b, [i:j + 1]
+    add b, c
+    str [i:j + 1], b
+    lod b, [i:j]
+    adc b, 0
+    str [i:j], b
+    lod b, [i:j + 3]
+    sub b, 1
+    str [i:j + 3], b
+    lod b, [i:j + 2]
+    sbb b, 0
+    str [i:j + 2], b
+    jmp lib_tm_carry
+lib_tm_carry_end:
+    ret
+
+; tm_year + 1 (b = 1) or - 1 (b = -1) in the struct tm at [x:y]. Changes a.
+lib_tm_year_add:
+    lod a, [x:y + 11]
+    add a, b
+    str [x:y + 11], a
+    lod a, [x:y + 10]
+    adc a, 0
+    cmp b, 1
+    jme lib_tm_year_add_end
+    sub a, 1                    ; - 1: 0xFF + carry - 1
+lib_tm_year_add_end:
+    str [x:y + 10], a
+    ret
+
+; Puts the fields of the struct tm at [x:y] in range: 61 seconds are 1
+; minute and 1 second, day 0 is the last one of the month before, and so
+; on. Changes a, b, c, d, i, j.
+lib_tm_norm:
+    mov i, x
+    mov j, y
+    mov c, 60
+    cal lib_tm_carry            ; sec -> min
+    add j, 2
+    adc i, 0
+    cal lib_tm_carry            ; min -> hour
+    add j, 2
+    adc i, 0
+    mov c, 24
+    cal lib_tm_carry            ; hour -> mday
+    add j, 4
+    adc i, 0
+    mov c, 12
+    cal lib_tm_carry            ; mon -> year
+lib_tm_norm_low:                ; mday below 1: the month before
+    lod a, [x:y + 6]
+    or a, 0
+    jmn lib_tm_norm_back
+    jmz lib_tm_norm_low0
+    jmp lib_tm_norm_high
+lib_tm_norm_low0:
+    lod a, [x:y + 7]
+    or a, 0
+    jmz lib_tm_norm_back
+    jmp lib_tm_norm_high
+lib_tm_norm_back:
+    lod b, [x:y + 9]
+    dec b
+    cmp b, 12
+    jmf lib_tm_norm_back_mon
+    mov b, -1
+    cal lib_tm_year_add
+    mov b, 11
+lib_tm_norm_back_mon:
+    str [x:y + 9], b
+    lod a, [x:y + 11]
+    cal lib_tm_mlen
+    lod b, [x:y + 7]            ; mday + its length
+    add b, c
+    str [x:y + 7], b
+    lod b, [x:y + 6]
+    adc b, 0
+    str [x:y + 6], b
+    jmp lib_tm_norm_low
+lib_tm_norm_high:               ; mday past the month: the month after
+    lod a, [x:y + 11]
+    lod b, [x:y + 9]
+    cal lib_tm_mlen
+    lod a, [x:y + 6]
+    cmp a, 0
+    jme lib_tm_norm_high0
+    jmp lib_tm_norm_next
+lib_tm_norm_high0:
+    lod a, [x:y + 7]
+    cmp a, c
+    jms lib_tm_norm_next
+    ret
+lib_tm_norm_next:
+    lod a, [x:y + 7]            ; mday - the length
+    sub a, c
+    str [x:y + 7], a
+    lod a, [x:y + 6]
+    sbb a, 0
+    str [x:y + 6], a
+    lod b, [x:y + 9]
+    inc b
+    cmp b, 12
+    jme lib_tm_norm_next_year
+    str [x:y + 9], b
+    jmp lib_tm_norm_high
+lib_tm_norm_next_year:
+    mov b, 0
+    str [x:y + 9], b
+    mov b, 1
+    cal lib_tm_year_add
+    jmp lib_tm_norm_high
+
+; --- The C functions -----------------------------------------------------------
+
+; [c:d]:[a:b] = lib_tm_secs
+lib_tm_load:
+    lod c, lib_tm_secs
+    lod d, lib_tm_secs + 1
+    lod a, lib_tm_secs + 2
+    lod b, lib_tm_secs + 3
+    ret
+
+; time_t time(time_t *t): the RTC's date and time, also put at t when t
+; is not NULL. (time_t)-1 without an RTC or before 1970.
+_time:
+    ssp 18                      ; a struct tm
+    lod d, _rtc_port
+    cmp d, 0
+    jme lib_time_none
+    add d, 6                    ; CMD = GET_TIME
+    mov a, 1
+    out d, a
+    sub d, 6
+    rsp [x:y]
+    mov a, 0
+    str [x:y + 10], a
+    str [x:y + 8], a
+    str [x:y + 6], a
+    str [x:y + 4], a
+    str [x:y + 2], a
+    str [x:y], a
+    in b, d
+    str [x:y + 11], b           ; year: since 1900, like tm_year
+    inc d
+    in b, d
+    dec b
+    str [x:y + 9], b            ; month: 1-12 -> 0-11
+    inc d
+    in b, d
+    str [x:y + 7], b            ; day
+    inc d
+    in b, d
+    str [x:y + 5], b            ; hour
+    inc d
+    in b, d
+    str [x:y + 3], b            ; minute
+    inc d
+    in b, d
+    str [x:y + 1], b            ; second
+    cal lib_tm_make
+    jmc lib_time_none
+    asp 18
+    cal lib_tm_load
+    jmp lib_time_store
+lib_time_none:
+    asp 18
+    cal lib_time_minus1
+lib_time_store:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    mov i, x
+    or i, y
+    jmz lib_time_end
+    str [x:y], c
+    str [x:y + 1], d
+    str [x:y + 2], a
+    str [x:y + 3], b
+lib_time_end:
+    ret
+
+; clock_t clock(void): -1, the HBC-2 does not count the time used.
+_clock:
+lib_time_minus1:                ; [c:d]:[a:b] = -1
+    mov a, -1
+    mov b, -1
+    mov c, -1
+    mov d, -1
+    ret
+
+; time_t mktime(struct tm *tm): puts the fields of tm in range, sets
+; tm_wday, tm_yday and tm_isdst (0), returns its time; (time_t)-1 when it
+; is before 1970 or past 2106-02-07 06:28:15.
+_mktime:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal lib_tm_norm
+    cal lib_tm_make
+    jmc lib_time_minus1
+    cal lib_tm_load
+    psh a, b, c, d
+    cal lib_tm_break
+    pop a, b, c, d
+    ret
+
+; struct tm *localtime(const time_t *t), struct tm *gmtime(const time_t *t)
+_gmtime:
+_localtime:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod a, [x:y]
+    str lib_tm_secs, a
+    lod a, [x:y + 1]
+    str lib_tm_secs + 1, a
+    lod a, [x:y + 2]
+    str lib_tm_secs + 2, a
+    lod a, [x:y + 3]
+    str lib_tm_secs + 3, a
+    mov x, lib_tm.msb
+    mov y, lib_tm.lsb
+    cal lib_tm_break
+    mov a, x
+    mov b, y
+    ret
+
+; char *ctime(const time_t *t): asctime(localtime(t))
+_ctime:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    psh b, a
+    cal _localtime
+    asp 2
+    psh b, a
+    cal _asctime
+    asp 2
+    ret
+
+; --- strftime, asctime ---------------------------------------------------------
+
+.bss lib_strf_out 2             ; where the next character goes
+.bss lib_strf_left 2            ; room left, the final 0 included (0: full)
+.bss lib_strf_tm 2              ; the struct tm
+.bss lib_strf_digits 7          ; a number written by itoa16
+
+.data lib_strf_names "Sunday", 0, "Monday", 0, "Tuesday", 0, "Wednesday", 0, "Thursday", 0, "Friday", 0, "Saturday", 0, "January", 0, "February", 0, "March", 0, "April", 0, "May", 0, "June", 0, "July", 0, "August", 0, "September", 0, "October", 0, "November", 0, "December", 0, "?", 0
+.data lib_strf_fmt_c "%a %b %e %H:%M:%S %Y", 0
+.data lib_strf_fmt_x "%m/%d/%y", 0
+.data lib_strf_fmt_X "%H:%M:%S", 0
+.data lib_strf_am "AM", 0
+.data lib_strf_pm "PM", 0
+
+; size_t strftime(char *s, size_t max, const char *fmt, const struct tm *tm)
+_strftime:
+    lod a, [sp + 4]
+    str lib_strf_left, a
+    lod a, [sp + 5]
+    str lib_strf_left + 1, a
+    lod a, [sp + 8]
+    lod b, [sp + 9]
+    lod i, [sp + 6]
+    lod j, [sp + 7]
+lib_strf_go:                    ; [a:b] = tm, [i:j] = fmt, s at [sp + 2]
+    str lib_strf_tm, a
+    str lib_strf_tm + 1, b
+    lod a, [sp + 2]
+    str lib_strf_out, a
+    lod a, [sp + 3]
+    str lib_strf_out + 1, a
+    cal lib_strf_run
+lib_strf_end:                   ; 0 when it did not fit, else the 0 and the length
+    lod x, lib_strf_left
+    lod y, lib_strf_left + 1
+    mov a, x
+    or a, y
+    jmz lib_strf_fail
+    lod x, lib_strf_out
+    lod y, lib_strf_out + 1
+    mov a, 0
+    str [x:y], a
+    mov b, y
+    sub b, [sp + 3]
+    mov a, x
+    sbb a, [sp + 2]
+    ret
+lib_strf_fail:
+    mov a, 0
+    mov b, 0
+    ret
+
+; char *asctime(const struct tm *tm): like "Sun Sep 16 01:03:52 1973\n",
+; in a buffer of 26 bytes that the next call writes again.
+_asctime:
+    mov a, 0
+    str lib_strf_left, a
+    mov a, 26
+    str lib_strf_left + 1, a
+    lod a, [sp + 2]
+    str lib_strf_tm, a
+    lod a, [sp + 3]
+    str lib_strf_tm + 1, a
+    mov a, lib_asctime_buf.msb
+    str lib_strf_out, a
+    mov a, lib_asctime_buf.lsb
+    str lib_strf_out + 1, a
+    mov i, lib_strf_fmt_c.msb
+    mov j, lib_strf_fmt_c.lsb
+    cal lib_strf_run
+    mov b, '\n'
+    cal lib_strf_putc
+    lod x, lib_strf_out
+    lod y, lib_strf_out + 1
+    mov a, 0
+    str [x:y], a
+    mov a, lib_asctime_buf.msb
+    mov b, lib_asctime_buf.lsb
+    ret
+
+; Writes the format at [i:j] (every register may change).
+lib_strf_run:
+    lod b, [i:j]
+    or b, 0
+    jmz lib_strf_run_end
+    add j, 1
+    adc i, 0
+    cmp b, '%'
+    jme lib_strf_run_conv
+    psh i, j
+    cal lib_strf_putc
+    pop i, j
+    jmp lib_strf_run
+lib_strf_run_conv:
+    lod b, [i:j]
+    or b, 0
+    jmz lib_strf_run_end        ; a % at the end is dropped
+    add j, 1
+    adc i, 0
+    psh i, j
+    cal lib_strf_conv
+    pop i, j
+    jmp lib_strf_run
+lib_strf_run_end:
+    ret
+
+; Writes b, while there is room for it and the final 0; else the room
+; left becomes 0, and nothing more is written. Changes a, x, y.
+lib_strf_putc:
+    lod x, lib_strf_left
+    lod y, lib_strf_left + 1
+    cmp x, 0
+    jme lib_strf_putc_low
+    jmp lib_strf_putc_room
+lib_strf_putc_low:
+    cmp y, 2
+    jmf lib_strf_putc_full      ; 0 or 1 left: only the 0 fits
+lib_strf_putc_room:
+    sub y, 1
+    sbb x, 0
+    str lib_strf_left, x
+    str lib_strf_left + 1, y
+    lod x, lib_strf_out
+    lod y, lib_strf_out + 1
+    str [x:y], b
+    add y, 1
+    adc x, 0
+    str lib_strf_out, x
+    str lib_strf_out + 1, y
+    ret
+lib_strf_putc_full:
+    mov a, 0
+    str lib_strf_left, a
+    str lib_strf_left + 1, a
+    ret
+
+; Writes the text at [i:j], at most c characters. Changes a, b, c.
+lib_strf_puts:
+    cmp c, 0
+    jme lib_strf_puts_end
+    lod b, [i:j]
+    or b, 0
+    jmz lib_strf_puts_end
+    add j, 1
+    adc i, 0
+    psh c, i, j
+    cal lib_strf_putc
+    pop c, i, j
+    dec c
+    jmp lib_strf_puts
+lib_strf_puts_end:
+    ret
+
+; [a:b] = the int at offset a of the struct tm. Changes x, y.
+lib_strf_get:
+    lod x, lib_strf_tm
+    lod y, lib_strf_tm + 1
+    add y, a
+    adc x, 0
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    ret
+
+; [i:j] = [a:b] / c, [a:b] = what is left (unsigned). Changes nothing else.
+lib_strf_div:
+    mov i, 0
+    mov j, 0
+lib_strf_div_loop:
+    cmp a, 0
+    jme lib_strf_div_low
+    jmp lib_strf_div_sub
+lib_strf_div_low:
+    cmp b, c
+    jmf lib_strf_div_end
+lib_strf_div_sub:
+    sub b, c
+    sbb a, 0
+    add j, 1
+    adc i, 0
+    jmp lib_strf_div_loop
+lib_strf_div_end:
+    ret
+
+; Writes [a:b] in decimal, with at least c digits: d before them ('0' or
+; ' ') to fill. Every register may change.
+lib_strf_dec:
+    psh c, d
+    mov x, lib_strf_digits.msb
+    mov y, lib_strf_digits.lsb
+    cal itoa16                  ; [x:y] ends on the 0
+    mov a, y
+    sub a, lib_strf_digits.lsb  ; a = the length
+    pop c, d
+lib_strf_dec_pad:
+    cmp c, a
+    jms lib_strf_dec_fill
+    mov i, lib_strf_digits.msb
+    mov j, lib_strf_digits.lsb
+    mov c, 255
+    jmp lib_strf_puts
+lib_strf_dec_fill:
+    psh a, c, d
+    mov b, d
+    cal lib_strf_putc
+    pop a, c, d
+    dec c
+    jmp lib_strf_dec_pad
+
+; Writes the int at offset a of the struct tm plus b, with 2 digits
+; (zeros before). Every register may change.
+lib_strf_2:
+    mov c, b
+    cal lib_strf_get
+    add b, c
+    adc a, 0
+lib_strf_2v:                    ; writes [a:b] with 2 digits
+    mov c, 2
+lib_strf_cv:                    ; with c digits
+    mov d, '0'
+    jmp lib_strf_dec
+
+; Writes name a (0-6: the days, 7-18: the months; else "?"), at most c
+; characters.
+lib_strf_name:
+    mov i, lib_strf_names.msb
+    mov j, lib_strf_names.lsb
+    cmp a, 19
+    jmf lib_strf_name_skip
+    mov a, 19
+lib_strf_name_skip:
+    cmp a, 0
+    jme lib_strf_puts
+lib_strf_name_char:
+    lod b, [i:j]
+    add j, 1
+    adc i, 0
+    or b, 0
+    jmz lib_strf_name_next
+    jmp lib_strf_name_char
+lib_strf_name_next:
+    dec a
+    jmp lib_strf_name_skip
+
+; a = the name number of the day (tm_wday), 19 when out of range
+lib_strf_day:
+    mov a, 12
+    cal lib_strf_get
+    cmp a, 0
+    jme lib_strf_day_low
+    mov b, 19
+lib_strf_day_low:
+    cmp b, 7
+    jmf lib_strf_day_end
+    mov b, 19
+lib_strf_day_end:
+    mov a, b
+    ret
+
+; a = the name number of the month (7 + tm_mon), 19 when out of range
+lib_strf_month:
+    mov a, 8
+    cal lib_strf_get
+    cmp a, 0
+    jme lib_strf_month_low
+    mov b, 12
+lib_strf_month_low:
+    cmp b, 12
+    jmf lib_strf_month_end
+    mov b, 12
+lib_strf_month_end:
+    mov a, b
+    add a, 7
+    ret
+
+; Writes conversion b (every register may change).
+lib_strf_conv:
+    cmp b, 'a'
+    jme lib_strf_a
+    cmp b, 'A'
+    jme lib_strf_A
+    cmp b, 'b'
+    jme lib_strf_b
+    cmp b, 'B'
+    jme lib_strf_B
+    cmp b, 'c'
+    jme lib_strf_c
+    cmp b, 'd'
+    jme lib_strf_d
+    cmp b, 'e'
+    jme lib_strf_e
+    cmp b, 'H'
+    jme lib_strf_H
+    cmp b, 'I'
+    jme lib_strf_I
+    cmp b, 'j'
+    jme lib_strf_j
+    cmp b, 'm'
+    jme lib_strf_m
+    cmp b, 'M'
+    jme lib_strf_M
+    cmp b, 'p'
+    jme lib_strf_p
+    cmp b, 'S'
+    jme lib_strf_S
+    cmp b, 'U'
+    jme lib_strf_U
+    cmp b, 'w'
+    jme lib_strf_w
+    cmp b, 'W'
+    jme lib_strf_W
+    cmp b, 'x'
+    jme lib_strf_x
+    cmp b, 'X'
+    jme lib_strf_X
+    cmp b, 'y'
+    jme lib_strf_y
+    cmp b, 'Y'
+    jme lib_strf_Y
+    cmp b, 'Z'
+    jme lib_strf_Z
+    jmp lib_strf_putc           ; %% and unknown ones: the character
+
+lib_strf_a:                     ; Sun
+    cal lib_strf_day
+    mov c, 3
+    jmp lib_strf_name
+lib_strf_A:                     ; Sunday
+    cal lib_strf_day
+    mov c, 255
+    jmp lib_strf_name
+lib_strf_b:                     ; Jan
+    cal lib_strf_month
+    mov c, 3
+    jmp lib_strf_name
+lib_strf_B:                     ; January
+    cal lib_strf_month
+    mov c, 255
+    jmp lib_strf_name
+lib_strf_c:                     ; Sun Jan  1 00:00:00 2000
+    mov i, lib_strf_fmt_c.msb
+    mov j, lib_strf_fmt_c.lsb
+    jmp lib_strf_run
+lib_strf_d:                     ; 01-31
+    mov a, 6
+    mov b, 0
+    jmp lib_strf_2
+lib_strf_e:                     ; " 1"-"31" (C99)
+    mov a, 6
+    cal lib_strf_get
+    mov c, 2
+    mov d, ' '
+    jmp lib_strf_dec
+lib_strf_H:                     ; 00-23
+    mov a, 4
+    mov b, 0
+    jmp lib_strf_2
+lib_strf_I:                     ; 01-12
+    mov a, 4
+    cal lib_strf_get
+    mov c, 12
+    cal lib_strf_div
+    mov c, a
+    or c, b
+    jmz lib_strf_I_12
+    jmp lib_strf_2v
+lib_strf_I_12:
+    mov b, 12
+    jmp lib_strf_2v
+lib_strf_j:                     ; 001-366
+    mov a, 14
+    cal lib_strf_get
+    add b, 1
+    adc a, 0
+    mov c, 3
+    jmp lib_strf_cv
+lib_strf_m:                     ; 01-12
+    mov a, 8
+    mov b, 1
+    jmp lib_strf_2
+lib_strf_M:                     ; 00-59
+    mov a, 2
+    mov b, 0
+    jmp lib_strf_2
+lib_strf_p:                     ; AM, PM
+    mov a, 4
+    cal lib_strf_get
+    mov i, lib_strf_am.msb
+    mov j, lib_strf_am.lsb
+    cmp a, 0
+    jme lib_strf_p_low
+    jmp lib_strf_p_pm
+lib_strf_p_low:
+    cmp b, 12
+    jmf lib_strf_p_write
+lib_strf_p_pm:
+    mov i, lib_strf_pm.msb
+    mov j, lib_strf_pm.lsb
+lib_strf_p_write:
+    mov c, 255
+    jmp lib_strf_puts
+lib_strf_S:                     ; 00-60
+    mov a, 0
+    mov b, 0
+    jmp lib_strf_2
+lib_strf_w:                     ; 0-6, Sunday = 0
+    mov a, 12
+    cal lib_strf_get
+    mov c, 1
+    jmp lib_strf_cv
+lib_strf_U:                     ; 00-53, weeks from the first Sunday
+    mov a, 12
+    cal lib_strf_get
+    mov d, b
+    jmp lib_strf_week
+lib_strf_W:                     ; 00-53, weeks from the first Monday
+    mov a, 12
+    cal lib_strf_get
+    mov d, b                    ; d = (wday + 6) % 7
+    add d, 6
+    cmp d, 7
+    jmf lib_strf_week
+    sub d, 7
+lib_strf_week:                  ; (yday + 7 - d) / 7
+    psh d
+    mov a, 14
+    cal lib_strf_get
+    pop d
+    add b, 7
+    adc a, 0
+    sub b, d
+    sbb a, 0
+    mov c, 7
+    cal lib_strf_div
+    mov a, i
+    mov b, j
+    jmp lib_strf_2v
+lib_strf_x:                     ; 01/31/00
+    mov i, lib_strf_fmt_x.msb
+    mov j, lib_strf_fmt_x.lsb
+    jmp lib_strf_run
+lib_strf_X:                     ; 23:59:59
+    mov i, lib_strf_fmt_X.msb
+    mov j, lib_strf_fmt_X.lsb
+    jmp lib_strf_run
+lib_strf_y:                     ; 00-99
+    mov a, 10
+    cal lib_strf_get
+    mov c, 100
+    cal lib_strf_div
+    jmp lib_strf_2v
+lib_strf_Y:                     ; 2000
+    mov a, 10
+    cal lib_strf_get
+    add b, 0x6C                 ; + 1900 = 0x076C
+    adc a, 0x07
+    mov c, 1
+    jmp lib_strf_cv
+lib_strf_Z:                     ; the time zone: not known, nothing
+    ret

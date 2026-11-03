@@ -33,10 +33,11 @@ Section 11 describes the runtime helpers, in `compiler/runtime`.
 | `$0x0000` | `_start`, the startup code (section 8) |
 | after it | code and `.data` (initialized variables, strings), placed by the assembler |
 | after that | the `.bss` area: variables without an initial value, cleared at startup |
+| from `__bss_end` | the heap of `malloc` (`stdlib.h`), growing up, at most to 256 bytes below SP |
 | up to `$0xFDFF` | the stack, growing down from `$0xFE00` |
 | `$0xFE00`-`$0xFFFF` | interrupt vector table |
 
-Nothing stops the stack from growing into the `.bss` area.
+Nothing stops the stack from growing into the heap or the `.bss` area.
 
 ## 3. Registers
 
@@ -387,6 +388,11 @@ into registers. The right operand is in the working register.
   85-253, `__divul` 109-251 (2 to 7 times faster than the first versions,
   2026-10-31).
 
+Struct and union assignment (`a = b`, `struct s v = w;`) copies the bytes:
+inline up to 4 bytes, else `__structcpy` (`assign.has`): source in
+`[a:b]`, destination in `[x:y]`, size in `[c:d]`; it gives the destination
+in `[a:b]`.
+
 `switch` jumps to `__switch<type>` with the value in the working register and
 `[x:y]` = the address of the table: the number of cases (2 bytes), then for
 each case its value (the size of the type) and the address of its code, then
@@ -398,7 +404,8 @@ The Fuzix Compiler Kit compiles C89, without:
 
 * `float` and `double` (HBC-2 choice),
 * bitfields,
-* structures passed or returned by value,
+* structures passed or returned by value (assignment works: `a = b`,
+  `a = *p`, `struct s v = w;`),
 * K&R function definitions (`int f(a) int a; { … }`).
 
 Other limits:
@@ -411,7 +418,11 @@ Other limits:
 * A decimal constant from 32768 to 65535 is an `unsigned int` (standard C
   makes it a `long`): `x / 40000` is an unsigned division. Write `40000L`
   for a `long`.
-* A cast to `(void)` to drop a result is refused.
+* Initial values of a local array or struct (`int t[3] = {1, 2, 3};`,
+  `char s[] = "ab";`) must be constants, as in C89. They are kept as
+  hidden data, copied into the variable each time the declaration is
+  passed: `char buf[200] = {0};` costs 200 bytes of data, prefer
+  `memset` or `static` there.
 
 ## 13. The C library
 

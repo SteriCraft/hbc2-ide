@@ -6,3 +6,4 @@ extern struct node *expression_tree(unsigned comma);
 extern struct node *hier0(unsigned comma);	/* needed for primary bracketed */
 extern void expression_typed(unsigned type);
 extern struct node *logic_expression(unsigned *t);
+extern struct node *struct_assign(struct node *l, struct node *r);

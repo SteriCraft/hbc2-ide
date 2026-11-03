@@ -1,0 +1,288 @@
+; qsort and bsearch (stdlib.h), written in assembly. The comparison
+; function is a C function: called with its two pointers pushed (the
+; second first, ABI.md section 5), it returns in [a:b] a value below 0,
+; 0 or above 0, and may change every register.
+
+; [a:b] = [c:d] * [i:j], the low 16 bits (shift and add). Changes c, d, x.
+lib_sort_mul:
+    mov a, 0
+    mov b, 0
+    mov x, 16
+lib_sort_mul_bit:
+    add b, b                    ; [a:b] * 2
+    adc a, a
+    add d, d                    ; C = the next bit of [c:d], from the top
+    adc c, c
+    jmc lib_sort_mul_add
+    jmp lib_sort_mul_next
+lib_sort_mul_add:
+    add b, j
+    adc a, i
+lib_sort_mul_next:
+    dec x
+    jmz lib_sort_mul_end
+    jmp lib_sort_mul_bit
+lib_sort_mul_end:
+    ret
+
+; --- qsort -----------------------------------------------------------------
+; void qsort(void *base, size_t n, size_t size,
+;            int (*cmp)(const void *, const void *))
+;
+; Shell sort with Knuth's gaps (1, 4, 13, 40, 121...: h = 3h + 1): no
+; recursion, no memory taken, about n^1.25 comparisons. Not stable (equal
+; elements may change order), like most qsort.
+;
+; The locals (12 bytes):
+;   0-1   h: the gap, in elements
+;   2-3   gap: h * size, in bytes
+;   4-5   lo: base + gap, the first element that has one h before it
+;   6-7   p: the next element to put in its place
+;   8-9   count: the elements left for p
+;   10-11 q: where the element of p is now
+; The return address is at [sp + 12], then base (14-15), n (16-17), size
+; (18-19), cmp (20-21).
+
+_qsort:
+    ssp 12
+    lod a, [sp + 18]
+    or a, [sp + 19]
+    jmz lib_qsort_end           ; size 0: nothing to move
+    lod a, [sp + 16]
+    or a, 0
+    jmz lib_qsort_few
+    jmp lib_qsort_start
+lib_qsort_few:
+    lod b, [sp + 17]
+    cmp b, 2
+    jmf lib_qsort_end           ; 0 or 1 element: sorted
+lib_qsort_start:
+    mov c, 0                    ; [c:d] = h = 1
+    mov d, 1
+lib_qsort_first:                ; the largest h of the gaps with 3h + 1 >= n
+    mov a, c
+    mov b, d
+    cal lib_qsort_next
+    jmc lib_qsort_pass
+    mov i, a
+    mov j, b
+    sub j, [sp + 17]
+    sbb i, [sp + 16]
+    jmc lib_qsort_grow          ; 3h + 1 below n
+    jmp lib_qsort_pass
+lib_qsort_grow:
+    mov c, a
+    mov d, b
+    jmp lib_qsort_first
+
+lib_qsort_pass:                 ; one pass with the gap h = [c:d]
+    str [sp + 0], c
+    str [sp + 1], d
+    lod a, [sp + 16]            ; count = n - h
+    lod b, [sp + 17]
+    sub b, d
+    sbb a, c
+    str [sp + 8], a
+    str [sp + 9], b
+    lod i, [sp + 18]
+    lod j, [sp + 19]
+    cal lib_sort_mul            ; gap = h * size
+    str [sp + 2], a
+    str [sp + 3], b
+    add b, [sp + 15]            ; lo = p = base + gap
+    adc a, [sp + 14]
+    str [sp + 4], a
+    str [sp + 5], b
+    str [sp + 6], a
+    str [sp + 7], b
+
+lib_qsort_elem:                 ; the next p, while count is not 0
+    lod c, [sp + 8]
+    lod d, [sp + 9]
+    sub d, 1
+    sbb c, 0
+    jmc lib_qsort_pass_end
+    str [sp + 8], c
+    str [sp + 9], d
+    lod a, [sp + 6]             ; q = p
+    lod b, [sp + 7]
+    str [sp + 10], a
+    str [sp + 11], b
+    add b, [sp + 19]            ; p + size
+    adc a, [sp + 18]
+    str [sp + 6], a
+    str [sp + 7], b
+
+lib_qsort_insert:               ; moves q down by gap while the one there is larger
+    lod a, [sp + 10]            ; [a:b] = q
+    lod b, [sp + 11]
+    mov c, a
+    mov d, b
+    sub d, [sp + 5]
+    sbb c, [sp + 4]
+    jmc lib_qsort_elem          ; q below lo: nothing before it
+    mov c, a                    ; [c:d] = r = q - gap
+    mov d, b
+    sub d, [sp + 3]
+    sbb c, [sp + 2]
+    lod x, [sp + 20]            ; cmp(r, q)
+    lod y, [sp + 21]
+    psh b, a
+    psh d, c
+    cal [x:y]
+    asp 4
+    or a, 0
+    jmn lib_qsort_elem          ; r < q: in place
+    or a, b
+    jmz lib_qsort_elem          ; r = q: in place
+    lod i, [sp + 10]            ; [i:j] = q
+    lod j, [sp + 11]
+    mov x, i                    ; [x:y] = r
+    mov y, j
+    sub y, [sp + 3]
+    sbb x, [sp + 2]
+    str [sp + 10], x            ; q = r
+    str [sp + 11], y
+    lod c, [sp + 18]            ; swaps size bytes
+    lod d, [sp + 19]
+lib_qsort_swap:
+    lod a, [x:y]
+    lod b, [i:j]
+    str [x:y], b
+    str [i:j], a
+    add y, 1
+    adc x, 0
+    add j, 1
+    adc i, 0
+    sub d, 1
+    sbb c, 0
+    mov a, c
+    or a, d
+    jmz lib_qsort_insert
+    jmp lib_qsort_swap
+
+lib_qsort_pass_end:             ; h = the gap before it, or the end after h = 1
+    lod c, [sp + 0]
+    lod d, [sp + 1]
+    mov a, c
+    or a, 0
+    jmz lib_qsort_h_low
+    jmp lib_qsort_smaller
+lib_qsort_h_low:
+    cmp d, 1
+    jme lib_qsort_end
+lib_qsort_smaller:              ; the largest gap below h
+    mov a, 0
+    mov b, 1
+lib_qsort_prev:
+    mov x, a
+    mov y, b
+    cal lib_qsort_next
+    mov i, a
+    mov j, b
+    sub j, d
+    sbb i, c
+    jmc lib_qsort_prev          ; 3g + 1 below h: g = 3g + 1
+    mov c, x
+    mov d, y
+    jmp lib_qsort_pass
+
+lib_qsort_end:
+    asp 12
+    ret
+
+; [a:b] = 3 * [a:b] + 1, C = 1 when that is past 16 bits. Changes i, j.
+lib_qsort_next:
+    mov i, a
+    mov j, b
+    add b, b
+    adc a, a
+    jmc lib_qsort_next_end
+    add b, j
+    adc a, i
+    jmc lib_qsort_next_end
+    add b, 1
+    adc a, 0
+lib_qsort_next_end:
+    ret
+
+; --- bsearch ---------------------------------------------------------------
+; void *bsearch(const void *key, const void *base, size_t n, size_t size,
+;               int (*cmp)(const void *key, const void *element))
+;
+; base must be sorted in the order of cmp. Returns an element equal to
+; key (any of them when there are several), NULL if none. Halves base..n
+; at each step: at most 17 comparisons.
+;
+; The locals (4 bytes): mid (0-1), half (2-3). The return address is at
+; [sp + 4], then key (6-7), base (8-9), n (10-11), size (12-13),
+; cmp (14-15). base and n are changed in place.
+
+_bsearch:
+    ssp 4
+lib_bsearch_loop:
+    lod c, [sp + 10]            ; [c:d] = n
+    lod d, [sp + 11]
+    mov a, c
+    or a, d
+    jmz lib_bsearch_none
+    shr d                       ; half = n / 2
+    mov a, c
+    and a, 1
+    jmz lib_bsearch_half
+    or d, 0x80
+lib_bsearch_half:
+    shr c
+    str [sp + 2], c
+    str [sp + 3], d
+    lod i, [sp + 12]
+    lod j, [sp + 13]
+    cal lib_sort_mul            ; mid = base + half * size
+    add b, [sp + 9]
+    adc a, [sp + 8]
+    str [sp + 0], a
+    str [sp + 1], b
+    lod x, [sp + 14]            ; cmp(key, mid)
+    lod y, [sp + 15]
+    lod c, [sp + 6]
+    lod d, [sp + 7]
+    psh b, a
+    psh d, c
+    cal [x:y]
+    asp 4
+    mov c, a
+    or c, b
+    jmz lib_bsearch_found
+    or a, 0
+    jmn lib_bsearch_lower
+    lod a, [sp + 0]             ; key after mid: base = mid + size,
+    lod b, [sp + 1]
+    add b, [sp + 13]
+    adc a, [sp + 12]
+    str [sp + 8], a
+    str [sp + 9], b
+    lod a, [sp + 10]            ; n = n - half - 1
+    lod b, [sp + 11]
+    sub b, [sp + 3]
+    sbb a, [sp + 2]
+    sub b, 1
+    sbb a, 0
+    str [sp + 10], a
+    str [sp + 11], b
+    jmp lib_bsearch_loop
+lib_bsearch_lower:              ; key before mid: n = half
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    str [sp + 10], a
+    str [sp + 11], b
+    jmp lib_bsearch_loop
+lib_bsearch_found:
+    lod a, [sp + 0]
+    lod b, [sp + 1]
+    asp 4
+    ret
+lib_bsearch_none:
+    mov a, 0
+    mov b, 0
+    asp 4
+    ret

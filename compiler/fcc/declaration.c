@@ -70,6 +70,20 @@ unsigned one_declaration(register unsigned s, unsigned type, unsigned name, unsi
 
 	if (s == S_REGISTER)
 		sym->data.offset = offset;
+	/* A local array or struct with { } or a string (HBC-2): the values
+	   go in hidden data, copied in at each pass (its storage comes
+	   after: an array without a size gets one from its values) */
+	if (s == S_AUTO && token == T_EQ &&
+	    (IS_ARRAY(type) || (IS_STRUCT(type) && !PTR(type)))) {
+		next_token();
+		if (token == T_LCURLY || token == T_STRING) {
+			ini_auto_copy(sym, type);
+			return 1;
+		}
+		sym->data.offset = assign_storage(type, S_AUTO);
+		initializers(sym, type, s);	/* struct s v = w; */
+		return 1;
+	}
 	if (s == S_AUTO)
 		sym->data.offset = assign_storage(type, S_AUTO);
 	if (s == S_LSTATIC)

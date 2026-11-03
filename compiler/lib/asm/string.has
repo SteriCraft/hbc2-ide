@@ -362,3 +362,127 @@ lib_memchr_loop:
     add y, 1
     adc x, 0
     jmp lib_memchr_loop
+
+; --- strspn, strcspn, strpbrk, strtok: sets of characters -----------------
+
+; C = 1 when a (not 0) is in the text at [i:j]. Changes b.
+lib_str_in:
+    psh i, j
+lib_str_in_loop:
+    lod b, [i:j]
+    or b, 0
+    jmz lib_str_in_no
+    cmp a, b
+    jme lib_str_in_yes
+    add j, 1
+    adc i, 0
+    jmp lib_str_in_loop
+lib_str_in_no:
+    pop i, j
+    clc
+    ret
+lib_str_in_yes:
+    pop i, j
+    stc
+    ret
+
+; [x:y] goes over the characters that are in the set at [i:j] (c = 0) or
+; that are not in it (c = 1); it stops on the first other one, or on the
+; 0. Changes a, b.
+lib_str_span:
+    lod a, [x:y]
+    or a, 0
+    jmz lib_str_span_end
+    cal lib_str_in
+    mov b, 0
+    adc b, 0                    ; b = 1 in the set, 0 not
+    cmp b, c
+    jme lib_str_span_end
+    add y, 1
+    adc x, 0
+    jmp lib_str_span
+lib_str_span_end:
+    ret
+
+; size_t strspn(const char *s, const char *accept): the length of the
+; start of s made of characters of accept.
+_strspn:
+    mov c, 0
+lib_strspn_go:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    cal lib_str_span
+    mov b, y                    ; [a:b] = where it stopped - s
+    sub b, [sp + 3]
+    mov a, x
+    sbb a, [sp + 2]
+    ret
+
+; size_t strcspn(const char *s, const char *reject): the length of the
+; start of s made of characters not in reject.
+_strcspn:
+    mov c, 1
+    jmp lib_strspn_go
+
+; char *strpbrk(const char *s, const char *accept): the first character
+; of s that is in accept, NULL if none.
+_strpbrk:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    mov c, 1
+    cal lib_str_span
+    lod a, [x:y]                ; [x:y], or NULL when it is on the 0
+    or a, 0
+    jmz lib_str_null
+    jmp lib_str_found
+
+; char *strtok(char *str, const char *delim): the next word of str, the
+; words being separated by characters of delim. The first call gives str,
+; the next ones NULL to go on in the same text. The character after each
+; word is changed into a 0. NULL when there is no word left.
+.bss lib_strtok_next 2          ; where the next call goes on (0: nowhere)
+
+_strtok:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    mov a, x
+    or a, y
+    jmz lib_strtok_saved
+    jmp lib_strtok_go
+lib_strtok_saved:               ; str is NULL: go on where the last call was
+    lod x, lib_strtok_next
+    lod y, lib_strtok_next + 1
+    mov a, x
+    or a, y
+    jmz lib_str_null            ; no text given yet
+lib_strtok_go:
+    lod i, [sp + 4]             ; delim
+    lod j, [sp + 5]
+    mov c, 0
+    cal lib_str_span            ; skips the separators
+    lod a, [x:y]
+    or a, 0
+    jmz lib_strtok_none         ; no word left
+    psh x, y                    ; the word
+    mov c, 1
+    cal lib_str_span            ; goes to its end
+    lod a, [x:y]
+    or a, 0
+    jmz lib_strtok_save         ; the last word: the next call stays on the 0
+    mov a, 0
+    str [x:y], a                ; ends the word
+    add y, 1
+    adc x, 0
+lib_strtok_save:
+    str lib_strtok_next, x
+    str lib_strtok_next + 1, y
+    pop a, b                    ; [a:b] = the word
+    ret
+lib_strtok_none:
+    str lib_strtok_next, x
+    str lib_strtok_next + 1, y
+    jmp lib_str_null

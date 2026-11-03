@@ -22,3 +22,92 @@ _puts:
     mov a, 0
     mov b, 0
     ret
+
+; --- Input: the line typed on the keyboard ------------------------------
+; getchar gives the characters of the line read by term_readline, then
+; '\n', then reads the next line. scanf (asm/scanf.has) looks at the next
+; character before using it up: lib_stdin_peek keeps it in lib_stdin_back,
+; and getchar gives it first.
+
+.bss lib_stdin_next 2           ; the next character of the line; 0: read a new line
+.bss lib_stdin_back 2           ; 1, the character: read by lib_stdin_peek, not used up
+
+; b = the next character typed (a = 0), used up. Changes every register.
+lib_stdin_read:
+    lod x, lib_stdin_next
+    lod y, lib_stdin_next + 1
+    mov a, x
+    or a, y
+    jmz lib_stdin_line
+lib_stdin_char:
+    mov a, 0
+    lod b, [x:y]
+    cmp b, 0
+    jme lib_stdin_eol
+    add y, 1
+    adc x, 0
+    str lib_stdin_next, x
+    str lib_stdin_next + 1, y
+    ret
+lib_stdin_eol:                  ; after the line: '\n', and a new line next time
+    str lib_stdin_next, a
+    str lib_stdin_next + 1, a
+    mov b, '\n'
+    ret
+lib_stdin_line:
+    cal lib_term_start
+    cal term_readline
+    mov x, term_line.msb
+    mov y, term_line.lsb
+    jmp lib_stdin_char
+
+; b = the next character typed (a = 0), not used up: the next
+; lib_stdin_peek or getchar gives it again. Changes every register.
+lib_stdin_peek:
+    lod a, lib_stdin_back
+    cmp a, 0
+    jme lib_stdin_peek_read
+    lod b, lib_stdin_back + 1
+    mov a, 0
+    ret
+lib_stdin_peek_read:
+    cal lib_stdin_read
+    str lib_stdin_back + 1, b
+    mov a, 1
+    str lib_stdin_back, a
+    mov a, 0
+    ret
+
+; int getchar(void)
+_getchar:
+    cal lib_stdin_peek
+    str lib_stdin_back, a       ; used up (a = 0)
+    ret
+
+; char *gets(char *s): a new line, without the '\n'; what was left of the
+; line before is dropped.
+_gets:
+    cal lib_term_start
+    cal term_readline
+    mov a, 0
+    str lib_stdin_next, a
+    str lib_stdin_next + 1, a
+    str lib_stdin_back, a
+    mov i, term_line.msb
+    mov j, term_line.lsb
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+lib_gets_copy:
+    lod a, [i:j]
+    str [x:y], a
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    cmp a, 0
+    jme lib_gets_end
+    jmp lib_gets_copy
+lib_gets_end:
+    lod a, [sp + 2]             ; returns s
+    lod b, [sp + 3]
+    ret

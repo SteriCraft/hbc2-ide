@@ -219,6 +219,10 @@ static unsigned transitive(register unsigned op)
 struct node *make_rval(register struct node *n)
 {
 	register unsigned nt = n->type;
+	/* A struct assignment stays the address of its left side: nothing
+	   reads the struct (HBC-2, see struct_assign) */
+	if (n->op == T_STRUCTCOPY)
+		return n;
 	if (n->flags & LVAL) {
 		if (IS_ARRAY(nt)) {
 			if (PTR(nt) == array_num_dimensions(nt)) {

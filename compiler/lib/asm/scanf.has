@@ -1,0 +1,690 @@
+; scanf and sscanf (stdio.h), written in assembly: one engine, like
+; printf. sscanf reads a string, scanf the lines typed on the keyboard
+; (lib_stdin_peek, asm/stdio.has: the character after the last field is
+; left for the next getchar or scanf).
+;
+; int scanf(const char *fmt, ...)
+; int sscanf(const char *s, const char *fmt, ...)
+;
+; The format: a space (' ', \t to \r) uses up any spaces of the input; a
+; character other than % must come next; % starts a conversion: * (read,
+; not stored), a width (up to 255), h or l, then
+;   d u      decimal                    o   octal
+;   x X p    hexadecimal ("0x" allowed) i   from the text, as strtol base 0
+;   c        width characters (1)       s   up to a space
+;   [set]    the characters in set: ]...], ^ for the others, a-z ranges
+;   n        the characters read so far (nothing read, not counted)
+;   %        a %
+; Numbers may have a sign. All but c, [ and n first skip spaces. The
+; number does not fit: the low bits are kept.
+; Returns the fields stored; EOF (-1) when the input ends before the
+; first conversion.
+;
+; Where the characters come from is lib_scan_src: 0 for the keyboard,
+; else the next character of the string. The characters used up are
+; counted in lib_scan_chars (%n). No callback runs inside the engine, so
+; they can be global.
+;
+; The locals (26 bytes, [sp + n] in the engine itself; 2 more in the
+; lib_scan_ routines it calls, above their return address):
+;   0-1   fmt: the next character of the format
+;   2-3   ap: the next argument
+;   4-5   count: the fields stored (the result)
+;   6-7   width: the characters the field may still take (65535: no width)
+;   8     skip: 1 for *
+;   9     l: 1 for a long
+;   10    the conversion character
+;   11    base
+;   12    neg: 1 after a '-'
+;   13    got: 1 once the field has a digit, or a character of a set
+;   14-17 value (most significant byte first)
+;   18-19 unused
+;   20    done: 1 after the first conversion (for EOF)
+;   21-22 dest: where the next character of c, s, [ goes
+;   23-24 set: its first character, in the format
+;   25    1 for [^
+; The return address is at [sp + 26].
+
+.bss lib_scan_src 2             ; 0: the keyboard, else the next character of the string
+.bss lib_scan_chars 2           ; the characters used up (%n)
+.bss lib_scan_key 2             ; lib_stdin_peek, set by scanf: sscanf alone
+                                ; does not bring in the keyboard and terminal
+
+; int sscanf(const char *s, const char *fmt, ...)
+_sscanf:
+    rsp [x:y]                   ; ap = the first argument after fmt
+    add y, 6
+    adc x, 0
+    lod c, [sp + 2]             ; s
+    lod d, [sp + 3]
+    lod i, [sp + 4]             ; fmt
+    lod j, [sp + 5]
+    jmp lib_scan_start
+
+; int scanf(const char *fmt, ...)
+_scanf:
+    rsp [x:y]
+    add y, 4
+    adc x, 0
+    lod i, [sp + 2]
+    lod j, [sp + 3]
+    mov c, lib_stdin_peek.msb
+    mov d, lib_stdin_peek.lsb
+    str lib_scan_key, c
+    str lib_scan_key + 1, d
+    mov c, 0                    ; the keyboard
+    mov d, 0
+
+; The engine: [i:j] = fmt, [x:y] = ap, [c:d] = the string (0: keyboard).
+lib_scan_start:
+    ssp 26
+    str [sp + 0], i
+    str [sp + 1], j
+    str [sp + 2], x
+    str [sp + 3], y
+    str lib_scan_src, c
+    str lib_scan_src + 1, d
+    mov a, 0
+    str [sp + 4], a             ; count = 0
+    str [sp + 5], a
+    str [sp + 20], a            ; done = 0
+    str lib_scan_chars, a
+    str lib_scan_chars + 1, a
+
+lib_scan_loop:
+    lod x, [sp + 0]
+    lod y, [sp + 1]
+    lod b, [x:y]
+    cmp b, 0
+    jme lib_scan_end
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    cmp b, '%'
+    jme lib_scan_spec
+    cal lib_scan_isspace
+    jme lib_scan_white
+lib_scan_literal:               ; b must come next
+    str [sp + 10], b
+    cal lib_scan_peek
+    jme lib_scan_eof
+    lod a, [sp + 10]
+    cmp a, b
+    jme lib_scan_literal_ok
+    jmp lib_scan_end            ; something else: the end
+lib_scan_literal_ok:
+    cal lib_scan_next
+    jmp lib_scan_loop
+lib_scan_white:
+    cal lib_scan_skip
+    jmp lib_scan_loop
+
+lib_scan_eof:                   ; the input ended: EOF before any conversion
+    lod a, [sp + 20]
+    cmp a, 0
+    jme lib_scan_minus
+lib_scan_end:
+    lod a, [sp + 4]             ; [a:b] = count
+    lod b, [sp + 5]
+    asp 26
+    ret
+lib_scan_minus:
+    mov a, 0xFF
+    mov b, 0xFF
+    asp 26
+    ret
+
+; --- A conversion: *, the width, h or l, the character -------------------
+; [x:y] = fmt (after the %)
+
+lib_scan_spec:
+    mov a, 0
+    str [sp + 8], a             ; skip
+    str [sp + 9], a             ; l
+    mov a, 0xFF                 ; no width
+    str [sp + 6], a
+    str [sp + 7], a
+    lod b, [x:y]
+    cmp b, '*'
+    jme lib_scan_star
+    jmp lib_scan_width
+lib_scan_star:
+    mov a, 1
+    str [sp + 8], a
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+lib_scan_width:
+    mov c, 0                    ; c = the width
+    mov d, 0                    ; d = 1 once there is a digit
+lib_scan_width_digit:
+    mov a, b
+    sub a, '0'
+    cmp a, 10
+    jmf lib_scan_width_add
+    jmp lib_scan_width_end
+lib_scan_width_add:             ; c = c * 10 + a
+    mov i, c
+    add c, c
+    add c, c
+    add c, i
+    add c, c
+    add c, a
+    mov d, 1
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+    jmp lib_scan_width_digit
+lib_scan_width_end:
+    cmp d, 0
+    jme lib_scan_size
+    mov a, 0
+    str [sp + 6], a
+    str [sp + 7], c
+lib_scan_size:
+    cmp b, 'l'
+    jme lib_scan_long
+    cmp b, 'h'
+    jme lib_scan_size_next
+    jmp lib_scan_conv
+lib_scan_long:
+    mov a, 1
+    str [sp + 9], a
+lib_scan_size_next:
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+lib_scan_conv:
+    cmp b, 0
+    jme lib_scan_end            ; a % at the end
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    str [sp + 10], b
+    cmp b, 'n'
+    jme lib_scan_n
+    cmp b, 'c'
+    jme lib_scan_c
+    cmp b, '['
+    jme lib_scan_set
+    cal lib_scan_skip           ; the others skip spaces first
+    lod b, [sp + 10]
+    cmp b, 's'
+    jme lib_scan_s
+    cmp b, '%'
+    jme lib_scan_literal
+    mov c, 10
+    cmp b, 'd'
+    jme lib_scan_number
+    cmp b, 'u'
+    jme lib_scan_number
+    mov c, 0
+    cmp b, 'i'
+    jme lib_scan_number
+    mov c, 8
+    cmp b, 'o'
+    jme lib_scan_number
+    mov c, 16
+    cmp b, 'x'
+    jme lib_scan_number
+    cmp b, 'X'
+    jme lib_scan_number
+    cmp b, 'p'
+    jme lib_scan_number
+    jmp lib_scan_end            ; unknown: the end
+
+; --- Fields stored ---------------------------------------------------------
+
+lib_scan_stored:                ; count + 1 (not for *), done
+    lod a, [sp + 8]
+    cmp a, 0
+    jme lib_scan_count
+    jmp lib_scan_done
+lib_scan_count:
+    lod b, [sp + 5]
+    add b, 1
+    str [sp + 5], b
+    lod a, [sp + 4]
+    adc a, 0
+    str [sp + 4], a
+lib_scan_done:
+    mov a, 1
+    str [sp + 20], a
+    jmp lib_scan_loop
+
+; %n: the characters used up so far, into an int (a long with l)
+lib_scan_n:
+    lod a, [sp + 8]
+    cmp a, 0
+    jme lib_scan_n_store
+    jmp lib_scan_loop
+lib_scan_n_store:
+    cal lib_scan_arg
+    lod a, lib_scan_chars
+    lod b, lib_scan_chars + 1
+    lod c, [sp + 9]
+    cmp c, 0
+    jme lib_scan_n_int
+    mov c, 0
+    str [x:y], c
+    str [x:y + 1], c
+    add y, 2
+    adc x, 0
+lib_scan_n_int:
+    str [x:y], a
+    str [x:y + 1], b
+    jmp lib_scan_loop
+
+; --- Numbers ---------------------------------------------------------------
+
+lib_scan_number:                ; c = the base (0: from the text)
+    str [sp + 11], c
+    mov a, 0
+    str [sp + 12], a            ; neg
+    str [sp + 13], a            ; got
+    str [sp + 14], a            ; value
+    str [sp + 15], a
+    str [sp + 16], a
+    str [sp + 17], a
+    cal lib_scan_fpeek
+    jme lib_scan_eof
+    cmp b, '-'
+    jme lib_scan_minus_sign
+    cmp b, '+'
+    jme lib_scan_sign
+    jmp lib_scan_prefix
+lib_scan_minus_sign:
+    mov a, 1
+    str [sp + 12], a
+lib_scan_sign:
+    cal lib_scan_fnext
+lib_scan_prefix:
+    cal lib_scan_fpeek
+    jme lib_scan_number_end
+    lod a, [sp + 11]
+    cmp a, 16
+    jme lib_scan_prefix_zero
+    cmp a, 0
+    jme lib_scan_prefix_zero
+    jmp lib_scan_digit
+lib_scan_prefix_zero:           ; base 0 or 16: "0x"; base 0: "0" octal
+    cmp b, '0'
+    jme lib_scan_zero
+    cmp a, 0
+    jme lib_scan_decimal
+    jmp lib_scan_digit
+lib_scan_decimal:
+    mov a, 10
+    str [sp + 11], a
+    jmp lib_scan_digit
+lib_scan_zero:                  ; the 0 is a digit
+    mov a, 1
+    str [sp + 13], a
+    cal lib_scan_fnext
+    cal lib_scan_fpeek
+    jme lib_scan_number_end
+    cmp b, 'x'
+    jme lib_scan_hex
+    cmp b, 'X'
+    jme lib_scan_hex
+    lod a, [sp + 11]
+    cmp a, 0
+    jme lib_scan_octal
+    jmp lib_scan_digit
+lib_scan_octal:
+    mov a, 8
+    str [sp + 11], a
+    jmp lib_scan_digit
+lib_scan_hex:
+    mov a, 16
+    str [sp + 11], a
+    cal lib_scan_fnext
+
+lib_scan_digits:
+    cal lib_scan_fpeek
+    jme lib_scan_number_end
+lib_scan_digit:                 ; b = a character: a digit of the base?
+    mov a, b
+    sub a, '0'
+    cmp a, 10
+    jmf lib_scan_digit_value
+    mov a, b
+    or a, 0x20                  ; lower case
+    sub a, 'a'
+    cmp a, 26
+    jmf lib_scan_digit_letter
+    jmp lib_scan_number_end
+lib_scan_digit_letter:
+    add a, 10
+lib_scan_digit_value:
+    lod c, [sp + 11]
+    cmp a, c
+    jmf lib_scan_digit_add
+    jmp lib_scan_number_end
+lib_scan_digit_add:             ; value = value * base + the digit
+    mov b, 1
+    str [sp + 13], b
+    mov b, a
+    lod a, [sp + 11]
+    rsp [x:y]
+    add y, 14
+    adc x, 0
+    cal lib_tm_muladd           ; asm/time.has
+    cal lib_scan_fnext
+    jmp lib_scan_digits
+
+lib_scan_number_end:
+    lod a, [sp + 13]
+    cmp a, 0
+    jme lib_scan_end            ; no digit: the end
+    lod a, [sp + 12]
+    cmp a, 0
+    jme lib_scan_number_store
+    mov a, 0                    ; value = -value
+    sub a, [sp + 17]
+    str [sp + 17], a
+    mov a, 0
+    sbb a, [sp + 16]
+    str [sp + 16], a
+    mov a, 0
+    sbb a, [sp + 15]
+    str [sp + 15], a
+    mov a, 0
+    sbb a, [sp + 14]
+    str [sp + 14], a
+lib_scan_number_store:
+    lod a, [sp + 8]
+    cmp a, 0
+    jme lib_scan_number_put
+    jmp lib_scan_done           ; *: not stored
+lib_scan_number_put:
+    cal lib_scan_arg
+    lod a, [sp + 9]
+    cmp a, 0
+    jme lib_scan_number_int
+    lod a, [sp + 14]
+    str [x:y], a
+    lod a, [sp + 15]
+    str [x:y + 1], a
+    add y, 2
+    adc x, 0
+lib_scan_number_int:
+    lod a, [sp + 16]
+    str [x:y], a
+    lod a, [sp + 17]
+    str [x:y + 1], a
+    jmp lib_scan_count
+
+; --- Characters ------------------------------------------------------------
+
+; %c: width characters (1 without a width), no 0 after them
+lib_scan_c:
+    lod a, [sp + 6]
+    cmp a, 0xFF
+    jme lib_scan_c_one
+    jmp lib_scan_c_go
+lib_scan_c_one:
+    mov a, 0
+    str [sp + 6], a
+    mov a, 1
+    str [sp + 7], a
+lib_scan_c_go:
+    cal lib_scan_dest
+    cal lib_scan_fpeek
+    jme lib_scan_eof
+lib_scan_c_char:
+    cal lib_scan_put
+    cal lib_scan_fnext
+    cal lib_scan_fpeek
+    jme lib_scan_stored
+    jmp lib_scan_c_char
+
+; %s: up to a space, then a 0
+lib_scan_s:
+    cal lib_scan_dest
+    cal lib_scan_fpeek
+    jme lib_scan_eof
+lib_scan_s_char:
+    cal lib_scan_isspace
+    jme lib_scan_s_end
+    cal lib_scan_put
+    cal lib_scan_fnext
+    cal lib_scan_fpeek
+    jme lib_scan_s_end
+    jmp lib_scan_s_char
+lib_scan_s_end:
+    mov b, 0
+    cal lib_scan_put
+    jmp lib_scan_stored
+
+; %[set]: the characters of the set (at least one), then a 0
+lib_scan_set:                   ; [x:y] = fmt, after the [
+    mov a, 0
+    str [sp + 13], a            ; got
+    lod b, [x:y]
+    cmp b, '^'
+    jme lib_scan_set_not
+    jmp lib_scan_set_start
+lib_scan_set_not:
+    mov a, 1
+    add y, 1
+    adc x, 0
+lib_scan_set_start:
+    str [sp + 25], a
+    str [sp + 23], x
+    str [sp + 24], y
+    lod b, [x:y]                ; the first one is in the set, even ]
+    cmp b, 0
+    jme lib_scan_end
+lib_scan_set_skip:              ; on to the ] that ends it
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+    cmp b, 0
+    jme lib_scan_end            ; no ]: the end
+    cmp b, ']'
+    jme lib_scan_set_go
+    jmp lib_scan_set_skip
+lib_scan_set_go:
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    cal lib_scan_dest
+    cal lib_scan_fpeek
+    jme lib_scan_eof
+lib_scan_set_char:
+    cal lib_scan_inset
+    jme lib_scan_set_take
+    jmp lib_scan_set_end
+lib_scan_set_take:
+    mov a, 1
+    str [sp + 13], a
+    cal lib_scan_put
+    cal lib_scan_fnext
+    cal lib_scan_fpeek
+    jme lib_scan_set_end
+    jmp lib_scan_set_char
+lib_scan_set_end:
+    lod a, [sp + 13]
+    cmp a, 0
+    jme lib_scan_end            ; none: the end
+    mov b, 0
+    cal lib_scan_put
+    jmp lib_scan_stored
+
+; --- Routines of the engine (its locals at [sp + 2 + n]) ------------------
+
+; [x:y] = the next argument (a pointer), also kept as dest; ap + 2.
+; Changes a, i, j.
+lib_scan_arg:
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod x, [i:j]
+    lod y, [i:j + 1]
+    add j, 2
+    adc i, 0
+    str [sp + 4], i
+    str [sp + 5], j
+    str [sp + 23], x
+    str [sp + 24], y
+    ret
+
+; dest = the next argument, unless *.
+lib_scan_dest:
+    lod a, [sp + 10]
+    cmp a, 0
+    jme lib_scan_arg
+    ret
+
+; b at dest, dest + 1 (nothing for *). Changes a, x, y; keeps b.
+lib_scan_put:
+    lod a, [sp + 10]
+    cmp a, 0
+    jme lib_scan_put_go
+    ret
+lib_scan_put_go:
+    lod x, [sp + 23]
+    lod y, [sp + 24]
+    str [x:y], b
+    add y, 1
+    adc x, 0
+    str [sp + 23], x
+    str [sp + 24], y
+    ret
+
+; b = the next character of the field; E set at the end of the input or
+; of the width.
+lib_scan_fpeek:
+    lod a, [sp + 8]
+    or a, [sp + 9]
+    jmz lib_scan_fpeek_end
+    jmp lib_scan_peek
+lib_scan_fpeek_end:
+    cmp a, a                    ; E
+    ret
+
+; Uses up the character of lib_scan_fpeek: width - 1.
+lib_scan_fnext:
+    lod a, [sp + 9]
+    sub a, 1
+    str [sp + 9], a
+    lod a, [sp + 8]
+    sbb a, 0
+    str [sp + 8], a
+    jmp lib_scan_next
+
+; E set when b is in the set (not in it, after ^). Keeps b; changes a,
+; c, d, x, y.
+lib_scan_inset:
+    lod x, [sp + 25]
+    lod y, [sp + 26]
+    lod a, [x:y]                ; the first one, even ]
+    jmp lib_scan_inset_one
+lib_scan_inset_next:
+    lod a, [x:y]
+    cmp a, ']'
+    jme lib_scan_inset_no
+lib_scan_inset_one:             ; a = a character of the set: a range a-d?
+    lod c, [x:y + 1]
+    cmp c, '-'
+    jme lib_scan_inset_range
+lib_scan_inset_single:
+    cmp a, b
+    jme lib_scan_inset_yes
+    add y, 1
+    adc x, 0
+    jmp lib_scan_inset_next
+lib_scan_inset_range:
+    lod d, [x:y + 2]
+    cmp d, ']'
+    jme lib_scan_inset_single   ; "-]": the - is a character
+    cmp b, a
+    jmf lib_scan_inset_skip
+    cmp b, d
+    jms lib_scan_inset_skip
+    jmp lib_scan_inset_yes
+lib_scan_inset_skip:
+    add y, 3
+    adc x, 0
+    jmp lib_scan_inset_next
+lib_scan_inset_yes:
+    mov c, 1
+    jmp lib_scan_inset_end
+lib_scan_inset_no:
+    mov c, 0
+lib_scan_inset_end:
+    lod a, [sp + 27]            ; ^: the other way
+    xor c, a
+    cmp c, 1
+    ret
+
+; --- The input (no locals: called at any depth) ---------------------------
+
+; b = the next character of the input, not used up; E set at its end
+; (the 0 of the string; the keyboard has no end). Changes every register.
+lib_scan_peek:
+    lod x, lib_scan_src
+    lod y, lib_scan_src + 1
+    mov a, x
+    or a, y
+    jmz lib_scan_peek_key
+    lod b, [x:y]
+    cmp b, 0
+    ret
+lib_scan_peek_key:
+    lod x, lib_scan_key
+    lod y, lib_scan_key + 1
+    cal [x:y]                   ; lib_stdin_peek (asm/stdio.has)
+    mov a, 1
+    cmp a, 0                    ; E clear
+    ret
+
+; Uses up the character of lib_scan_peek. Changes a, b, x, y.
+lib_scan_next:
+    lod x, lib_scan_src
+    lod y, lib_scan_src + 1
+    mov a, x
+    or a, y
+    jmz lib_scan_next_key
+    add y, 1
+    adc x, 0
+    str lib_scan_src, x
+    str lib_scan_src + 1, y
+    jmp lib_scan_next_count
+lib_scan_next_key:
+    str lib_stdin_back, a       ; a = 0: used up
+lib_scan_next_count:
+    lod b, lib_scan_chars + 1
+    add b, 1
+    str lib_scan_chars + 1, b
+    lod b, lib_scan_chars
+    adc b, 0
+    str lib_scan_chars, b
+    ret
+
+; Uses up the spaces of the input.
+lib_scan_skip:
+    cal lib_scan_peek
+    jme lib_scan_skip_end
+    cal lib_scan_isspace
+    jme lib_scan_skip_one
+lib_scan_skip_end:
+    ret
+lib_scan_skip_one:
+    cal lib_scan_next
+    jmp lib_scan_skip
+
+; E set when b is a space: ' ', '\t' to '\r'. Changes a.
+lib_scan_isspace:
+    cmp b, ' '
+    jme lib_scan_isspace_end
+    mov a, b
+    sub a, 9                    ; '\t' to '\r': 0 to 4 (below '\t' wraps above)
+    cmp a, 4
+    jms lib_scan_isspace_end    ; E clear
+    cmp a, a                    ; E
+lib_scan_isspace_end:
+    ret

@@ -1,0 +1,306 @@
+; malloc, free, calloc, realloc (stdlib.h), written in assembly.
+;
+; The heap starts at __bss_end (the end of the program's variables) and
+; grows up toward the stack, keeping LIB_HEAP_MARGIN * 256 bytes below SP
+; for it. It is a chain of blocks, one after the other, up to
+; lib_heap_top:
+;   header: 2 bytes, the size of the block (header included, even), most
+;           significant byte first; bit 0 = 1 when the block is used
+;   data:   what malloc returns (the block + 2)
+; free only clears bit 0. malloc looks for the first free block big
+; enough (first fit), joining the free blocks that follow each other as it
+; goes, and cuts what is left into a new free block. Free blocks at the
+; end give their room back: the top comes down. No alignment is needed.
+
+.define LIB_HEAP_MARGIN 1       ; * 256 bytes kept free below SP
+
+.bss lib_heap_top 2             ; the end of the last block; 0 before the first malloc
+
+; void *malloc(size_t n)
+_malloc:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+; [a:b] = n -> [a:b] = the data of a block of n bytes or more, 0 when
+; there is no room. Changes every register.
+lib_malloc:
+    add b, 3                    ; header + n, rounded up to even
+    adc a, 0
+    jmc lib_heap_none
+    and b, 0xFE
+    psh a, b                    ; the block size: [sp] = LSB, [sp + 1] = MSB
+    mov x, __bss_end.msb        ; [x:y] = the first block
+    mov y, __bss_end.lsb
+    lod a, lib_heap_top
+    or a, lib_heap_top + 1
+    jmz lib_malloc_start
+    jmp lib_malloc_walk
+lib_malloc_start:               ; the first malloc: an empty heap
+    str lib_heap_top, x
+    str lib_heap_top + 1, y
+lib_malloc_walk:                ; [x:y] = a block, or the top
+    lod c, lib_heap_top
+    lod d, lib_heap_top + 1
+    cmp x, c
+    jme lib_malloc_walk_low
+    jmp lib_malloc_block
+lib_malloc_walk_low:
+    cmp y, d
+    jme lib_malloc_extend
+lib_malloc_block:
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    mov c, b
+    and c, 1
+    jmz lib_malloc_free
+    sub b, 1                    ; used: on to the next one
+    add y, b
+    adc x, a
+    jmp lib_malloc_walk
+lib_malloc_free:
+    cal lib_heap_join
+    jme lib_malloc_extend       ; free up to the top: the block goes there
+    mov d, b                    ; [c:d] = its size - the size wanted
+    sub d, [sp]
+    mov c, a
+    sbb c, [sp + 1]
+    jmc lib_malloc_next         ; too small
+; Takes the free block [x:y], [c:d] bytes too big (even): what is left
+; becomes a free block. The size wanted is at [sp].
+lib_malloc_split:
+    mov a, c
+    or a, d
+    jmz lib_malloc_take
+    lod b, [sp]
+    lod a, [sp + 1]
+    mov i, x
+    mov j, y
+    add j, b
+    adc i, a
+    str [i:j], c                ; the free block after it
+    str [i:j + 1], d
+lib_malloc_take:                ; [x:y] = the block, its size at [sp]
+    lod a, [sp + 1]
+    lod b, [sp]
+    or b, 1
+    str [x:y], a
+    str [x:y + 1], b
+    asp 2
+    mov a, x                    ; [a:b] = the data
+    mov b, y
+    add b, 2
+    adc a, 0
+    ret
+lib_malloc_next:
+    mov x, i
+    mov y, j
+    jmp lib_malloc_walk
+lib_malloc_extend:              ; [x:y] = the end of the heap
+    lod d, [sp]
+    lod c, [sp + 1]
+    cal lib_heap_grow
+    jmc lib_malloc_none
+    jmp lib_malloc_take
+lib_malloc_none:
+    asp 2
+lib_heap_none:                  ; returns 0 (NULL)
+    mov a, 0
+    mov b, 0
+    ret
+
+; [x:y] = a free block, [a:b] = its size (bit 0 clear). Joins the free
+; blocks that follow it, writes the header: [a:b] = the size, [i:j] =
+; the block after it. E is set when that is the top. Changes c, d.
+lib_heap_join:
+    mov i, x
+    mov j, y
+    add j, b
+    adc i, a
+    lod c, lib_heap_top
+    lod d, lib_heap_top + 1
+    cmp i, c
+    jme lib_heap_join_low
+    jmp lib_heap_join_next
+lib_heap_join_low:
+    cmp j, d
+    jme lib_heap_join_end       ; E: the top
+lib_heap_join_next:             ; E is clear from here on (ALU ops keep it)
+    lod d, [i:j + 1]
+    mov c, d
+    and c, 1
+    jmz lib_heap_join_add
+lib_heap_join_end:
+    str [x:y], a
+    str [x:y + 1], b
+    ret
+lib_heap_join_add:              ; the next block is free: it joins
+    lod c, [i:j]
+    add b, d
+    adc a, c
+    jmp lib_heap_join
+
+; [x:y] = the last block (or the top), [c:d] = its new size: the top
+; becomes [x:y] + [c:d] when that leaves LIB_HEAP_MARGIN * 256 bytes
+; below SP. C is set when there is no room (the top is left as it was).
+; Changes c, d, i, j.
+lib_heap_grow:
+    mov i, x
+    mov j, y
+    add j, d
+    adc i, c
+    jmc lib_heap_grow_end
+    rsp [c:d]
+    sub c, LIB_HEAP_MARGIN
+    jmc lib_heap_grow_end
+    sub d, j                    ; C = SP - margin < the new top
+    sbb c, i
+    jmc lib_heap_grow_end
+    str lib_heap_top, i
+    str lib_heap_top + 1, j
+lib_heap_grow_end:
+    ret
+
+; void free(void *p): nothing for NULL. Returns 0 in [a:b] (for realloc).
+_free:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    mov a, x
+    or a, y
+    jmz lib_heap_none
+    sub y, 1                    ; [x:y] = the LSB of the header
+    sbb x, 0
+    lod a, [x:y]
+    and a, 0xFE
+    str [x:y], a
+    jmp lib_heap_none
+
+; void *calloc(size_t n, size_t size): n * size bytes set to 0; NULL when
+; the product does not fit in 16 bits.
+_calloc:
+    lod c, [sp + 2]
+    lod d, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    mov a, 0                    ; [a:b] = [c:d] * [i:j], from the top bit
+    mov b, 0
+    mov x, 16
+lib_calloc_bit:
+    add b, b
+    adc a, a
+    jmc lib_heap_none
+    add d, d
+    adc c, c
+    jmc lib_calloc_add
+    jmp lib_calloc_next
+lib_calloc_add:
+    add b, j
+    adc a, i
+    jmc lib_heap_none
+lib_calloc_next:
+    dec x
+    jmz lib_calloc_alloc
+    jmp lib_calloc_bit
+lib_calloc_alloc:
+    psh a, b
+    cal lib_malloc
+    pop c, d                    ; [c:d] = the byte count
+    mov x, a
+    mov y, b
+    mov i, a
+    or i, b
+    jmz lib_calloc_end          ; no room: NULL
+    mov i, 0
+lib_calloc_clear:
+    sub d, 1
+    sbb c, 0
+    jmc lib_calloc_end
+    str [x:y], i
+    add y, 1
+    adc x, 0
+    jmp lib_calloc_clear
+lib_calloc_end:
+    ret
+
+; void *realloc(void *p, size_t n): the block of p with n bytes, its
+; contents kept (up to the smaller size). Grows or shrinks in place when
+; it can: the free blocks after it, or the top when it is the last one;
+; else moves to a new block and frees the old one. realloc(NULL, n) is
+; malloc(n); realloc(p, 0) frees p and returns NULL. NULL when there is
+; no room: p is left as it was.
+_realloc:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod a, [sp + 4]
+    lod b, [sp + 5]
+    mov c, x
+    or c, y
+    jmz lib_malloc              ; realloc(NULL, n)
+    mov c, a
+    or c, b
+    jmz _free                   ; realloc(p, 0): free(p), NULL
+    add b, 3                    ; the block size, as malloc
+    adc a, 0
+    jmc lib_heap_none
+    and b, 0xFE
+    psh a, b                    ; [sp] = the size wanted; p at [sp + 4], n at [sp + 6]
+    sub y, 2                    ; [x:y] = the block of p
+    sbb x, 0
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    and b, 0xFE
+    cal lib_heap_join           ; with the free blocks after it
+    jme lib_realloc_last
+lib_realloc_fit:                ; [a:b] = its size
+    mov d, b
+    sub d, [sp]
+    mov c, a
+    sbb c, [sp + 1]
+    jmc lib_realloc_move
+    jmp lib_malloc_split
+lib_realloc_last:               ; the last block: the top moves
+    lod d, [sp]
+    lod c, [sp + 1]
+    cal lib_heap_grow           ; keeps [a:b]
+    jmc lib_realloc_fit
+    jmp lib_malloc_take
+lib_realloc_move:               ; too small where it is
+    or b, 1                     ; used again (lib_heap_join cleared bit 0)
+    str [x:y + 1], b
+    sub b, 3                    ; the data size: size - 2 (and bit 0)
+    sbb a, 0
+    str [sp], b                 ; in place of the size wanted
+    str [sp + 1], a
+    lod a, [sp + 6]
+    lod b, [sp + 7]
+    cal lib_malloc
+    mov c, a
+    or c, b
+    jmz lib_malloc_none         ; no room: p is kept
+    lod d, [sp]
+    lod c, [sp + 1]
+    lod i, [sp + 4]             ; [i:j] = p
+    lod j, [sp + 5]
+    mov x, a                    ; [x:y] = the new block
+    mov y, b
+    psh a, b
+lib_realloc_copy:
+    sub d, 1
+    sbb c, 0
+    jmc lib_realloc_copied
+    lod a, [i:j]
+    str [x:y], a
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    jmp lib_realloc_copy
+lib_realloc_copied:
+    pop a, b
+    lod x, [sp + 4]             ; frees p: bit 0 of its header
+    lod y, [sp + 5]
+    sub y, 1
+    sbb x, 0
+    lod c, [x:y]
+    and c, 0xFE
+    str [x:y], c
+    asp 2
+    ret

@@ -7,6 +7,11 @@
 #define NULL ((void *)0)
 #endif
 
+#ifndef __SIZE_T
+#define __SIZE_T
+typedef unsigned size_t;
+#endif
+
 
 // Ends the program: status goes where main's result goes ([a:b]).
 void           exit(int status);
@@ -37,7 +42,8 @@ void           srand(unsigned seed);              // same seed, same numbers
 // or str when there is no digit (then 0 is returned); 0 and str for a
 // base out of range too. When the number does not fit: strtol gives
 // 2147483647 or -2147483648, strtoul 4294967295. strtoul("-1", ...) is
-// 4294967295: a '-' negates the unsigned value. No errno.
+// 4294967295: a '-' negates the unsigned value. errno = ERANGE
+// when the number does not fit (errno.h).
 long           strtol(const char *str, char **str_end, int base);
 unsigned long  strtoul(const char *str, char **str_end, int base);
 
@@ -54,5 +60,41 @@ char*          itoa(int value, char *buf, int radix);            // 17 (radix 2)
 char*          utoa(unsigned value, char *buf, int radix);       // 17 (radix 2)
 char*          ltoa(long value, char *buf, int radix);           // 33 (radix 2)
 char*          ultoa(unsigned long value, char *buf, int radix); // 33 (radix 2)
+
+
+// --- Memory --------------------------------------------------------------
+// The heap: from the end of the program's variables up toward the stack,
+// keeping 256 bytes free below it (the stack can still grow further
+// down into the heap: nothing checks). 2 bytes taken per block, sizes
+// rounded up to even. NULL when there is no room.
+
+void*          malloc(size_t n);                   // malloc(0): a block of 0 bytes
+void           free(void *p);                      // free(NULL): nothing
+void*          calloc(size_t n, size_t size);      // set to 0; NULL if n * size > 65535
+// The contents are kept up to the smaller size. In place when it can
+// (shrinking, the free room after it); else moved, and p freed. NULL p:
+// malloc(n). n == 0: free(p), returns NULL. NULL on failure: p is kept.
+void*          realloc(void *p, size_t n);
+
+
+// --- Sorting and searching --------------------------------------------
+// cmp(a, b) compares two elements: below 0 when a goes first, 0 when they
+// are equal, above 0 when b goes first. For ints:
+//     int cmp_int(const void *a, const void *b)
+//     {
+//         int x = *(const int *)a, y = *(const int *)b;
+//         return x < y ? -1 : x > y;
+//     }
+// (x - y overflows for values far apart, such as 30000 and -30000.)
+
+// Sorts the n elements of size bytes at base (Shell sort: no recursion,
+// no memory taken). Equal elements may change order.
+void           qsort(void *base, size_t n, size_t size,
+                     int (*cmp)(const void *, const void *));
+
+// An element of base equal to key, NULL if none: base must be sorted in
+// the order of cmp, which gets key first. At most 17 comparisons.
+void*          bsearch(const void *key, const void *base, size_t n, size_t size,
+                       int (*cmp)(const void *, const void *));
 
 #endif

@@ -27,7 +27,39 @@ of each program's code and the number of instructions it ran.
   and a few out of range, against plain C (the `is…` must give exactly
   0 or 1).
 * `printf.c`: every `printf` format, widths and padding, the counts.
+* `sprintf.c`: `sprintf`, `vsprintf`, `vprintf` (the formats of
+  `printf.c`, the final 0, a `sprintf` inside a `printf`, through the
+  program's own `putchar`).
+* `sort.c`: `qsort` (0 to 300 elements: permutations, sorted, reversed,
+  equal values; 5-byte records, strings; the comparison function checks
+  every pointer it gets), `bsearch` (every element found, the others
+  not), `strspn`, `strcspn`, `strpbrk`, `strtok`.
+* `time.c`: `time.h`: well-known dates (2038, 2100 not a leap year, the
+  last second of 2106), 300 round trips against plain C, `mktime` putting
+  fields in range and its limits, `asctime`, `ctime`, every `strftime`
+  conversion, `max`.
+* `scanf.c` (with `scanf.keys`): `sscanf`: every conversion, signs,
+  bases and `%i` prefixes, 32-bit values, widths, sets (ranges, `^`, `]`
+  first), literals, `%%`, `*`, `%n`, the results on failure (0, EOF,
+  the count so far); `scanf` from typed lines, the character it leaves
+  for `getchar`, reading on into the next line, then `gets`.
+* `malloc.c`: `malloc`, `free`, `calloc`, `realloc`: blocks apart, a
+  freed block used again, first fit and the rest cut off, free blocks
+  joined, `calloc` set to 0 and its overflow, too big, `realloc` in place
+  (shrinking, the free blocks after it, at the top) or moved (the old
+  block free again; failure keeps it), the whole heap filled (256 bytes
+  kept below the stack) and given back, 600 random steps checking every
+  block's bytes.
+* `structcopy.c`: struct and union assignment: sizes 1 to 300 bytes
+  (inline and `__structcpy`), globals, locals, through pointers, arrays of
+  structs (the address computed once), `a = b = c`, `struct s v = w;`,
+  nested structs.
+* `localinit.c`: initial values of local arrays and structs (`{ }`,
+  strings, sizes from the values, the rest at 0, nested, 2D), copied
+  again at each pass and in recursion; `(void)` casts.
 * `random.c`, `convert.c`: `stdlib.h` random numbers and number <-> text.
+* `errno.c`: `limits.h` (values and types), `errno` set by `strtol` and
+  `strtoul`, `strerror`, `perror` (`errno.screen`).
 * `math.c`: `math.h`, `abs`, `labs`, each against plain C on edge and
   pseudo-random values (also `sizeof a / sizeof a[0]`).
 * `peephole.c`: code shapes for the peephole rules (`../fcc/rules.hbc2`)

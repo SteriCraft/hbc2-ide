@@ -178,6 +178,30 @@ static void ini_array(struct symbol *sym, unsigned type, unsigned depth, unsigne
 }
 
 /*
+ *	A local array or struct with { } or a string (HBC-2): the values are
+ *	written as hidden data (like a local static), then a T_STRUCTCOPY
+ *	copies them into the variable each time the declaration is passed.
+ *	The variable gets its storage after the values: an array without a
+ *	size takes the size they give it.
+ */
+void ini_auto_copy(struct symbol *sym, unsigned type)
+{
+    unsigned label = ++label_tag;
+    register struct node *n;
+
+    header(H_DATA, label, target_alignof(type, S_LSTATIC));
+    initializers(sym, type, S_LSTATIC);
+    footer(H_DATA, label, 0);
+    type = sym->type;
+    sym->data.offset = assign_storage(type, S_AUTO);
+    n = sf_tree(T_STRUCTCOPY, make_symbol(sym), make_label(label));
+    n->type = type;
+    n->value = type_sizeof(type);
+    n->flags |= LVAL|NORETURN;
+    write_tree(n);
+}
+
+/*
  *	Initialize an object.
  */
 void initializers(struct symbol *sym, register unsigned type, register unsigned storage)
@@ -192,6 +216,13 @@ void initializers(struct symbol *sym, register unsigned type, register unsigned 
     }
     /* No complex stack initializers, for now at least */
     if (storage == S_AUTO || storage == S_REGISTER) {
+        /* struct s v = w; (HBC-2) */
+        if (IS_STRUCT(type) && !PTR(type) && token != T_LCURLY) {
+            register struct node *n = struct_assign(make_symbol(sym), expression_tree(0));
+            n->flags |= NORETURN|SIDEEFFECT;
+            write_tree(n);
+            return;
+        }
         error("not a valid auto initializer");
         return;
     }

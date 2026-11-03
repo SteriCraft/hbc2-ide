@@ -419,6 +419,18 @@ static struct node *hier10(void)
 		require(T_RPAREN);
 		if (t == UNKNOWN || name)
 			badtype();
+		if (t == VOID) {
+			/* (void)f(): the value is dropped (HBC-2). A struct is
+			   not read: its address will do. */
+			r = make_rval(hier10());
+			if (r->op == T_DEREF && IS_STRUCT(r->type) && !PTR(r->type)) {
+				struct node *a = r->right;
+				free_node(r);
+				r = a;
+			}
+			r->type = type_canonical(r->type);
+			return typed_tree(T_CAST, VOID, NULL, r);
+		}
 		return typeconv(make_rval(hier10()), t, 0);
 	case T_SIZEOF:
 		return get_sizeof();
@@ -675,6 +687,38 @@ static struct node *hier1a(void)
 }
 
 /*
+ *	Struct (or union) assignment, a = b (HBC-2): l is the lval a, r the
+ *	rval b: the T_DEREF of b's address, or another struct assignment
+ *	(a = b = c). The T_STRUCTCOPY node copies the bytes and gives the
+ *	address of a, as an lval of a (make_rval leaves it so): a = b = c
+ *	and (a = b).x work.
+ */
+struct node *struct_assign(struct node *l, struct node *r)
+{
+	register struct node *n;
+	l->type = type_canonical(l->type);
+	if (type_canonical(r->type) != l->type ||
+	    (r->op != T_DEREF && r->op != T_STRUCTCOPY)) {
+		if (type_canonical(r->type) == l->type)
+			error("struct value not supported here");	/* f(), c ? a : b */
+		else
+			typemismatch();
+		free_tree(r);
+		return l;
+	}
+	if (r->op == T_DEREF) {
+		n = r->right;		/* the address of b */
+		free_node(r);
+		r = n;
+	}
+	n = sf_tree(T_STRUCTCOPY, l, r);
+	n->type = l->type;
+	n->value = type_sizeof(l->type);
+	n->flags |= LVAL;
+	return n;
+}
+
+/*
  *	Assignment between an lval on the left and an rval on the right
  *
  *	Handle pointer scaling on += and -= by emitting the maths into the
@@ -699,6 +743,8 @@ static struct node *hier1(void)
 		/* You can't assign to an array/offset, you assign to
 		   the underlying type */
 		l->type = type_canonical(l->type);
+		if (IS_STRUCT(l->type) && !PTR(l->type))
+			return struct_assign(l, r);
 		if (!IS_SIMPLE(l->type) && !PTR(l->type)) {
 			badtype();
 			return l;

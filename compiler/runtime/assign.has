@@ -488,3 +488,30 @@ __eqopl_load:
 __eqopl_store:
     pop y, x
     jmp __eqopl_store_xy
+
+; ----- struct assignment (a = b for structs and unions, more than 4 bytes)
+; Copies [c:d] bytes (not 0) from [a:b] to [x:y]. Result: [a:b] = [x:y].
+; Changes c, d, i, j.
+
+__structcpy:
+    psh x
+    psh y
+    mov i, a
+    mov j, b
+__structcpy_loop:
+    lod a, [i:j]
+    str [x:y], a
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    sub d, 1
+    sbb c, 0
+    mov a, c
+    or a, d
+    jmz __structcpy_end
+    jmp __structcpy_loop
+__structcpy_end:
+    pop b
+    pop a
+    ret

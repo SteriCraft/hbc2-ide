@@ -1,6 +1,7 @@
 /* stdlib.h functions written in C. */
 
 #include <stdlib.h>
+#include <errno.h>
 
 /* --- Number to text: itoa, utoa, ltoa, ultoa ----------------------------
    Radix 10 and 16 take their digits from the math library's routines
@@ -168,20 +169,26 @@ long strtol(const char *str, char **str_end, int base)
 {
     unsigned long v = parse(str, str_end, base);
     if (parse_neg) {
-        if (parse_over || v > 0x80000000UL)
+        if (parse_over || v > 0x80000000UL) {
+            errno = ERANGE;
             return (long)0x80000000UL;  /* -2147483648 */
+        }
         return (long)(0 - v);
     }
-    if (parse_over || v > 0x7FFFFFFFUL)
+    if (parse_over || v > 0x7FFFFFFFUL) {
+        errno = ERANGE;
         return 0x7FFFFFFFL;
+    }
     return (long)v;
 }
 
 unsigned long strtoul(const char *str, char **str_end, int base)
 {
     unsigned long v = parse(str, str_end, base);
-    if (parse_over)
+    if (parse_over) {
+        errno = ERANGE;
         return 0xFFFFFFFFUL;
+    }
     return parse_neg ? 0 - v : v;
 }
 

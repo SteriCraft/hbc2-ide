@@ -1,14 +1,24 @@
-; printf, written in assembly (it replaces src/printf.c: 2.5 KB of
-; compiled C). The minimal set (ROADMAP decision 14): %d %u %x %X %c %s %%,
-; l for long, a width (up to 255), 0 for zero padding, - to align left.
-; Unknown conversions print their character; a % at the end is dropped.
-; Every character goes through _putchar, so a program's own putchar is
-; used (tests/multi/override).
+; printf, vprintf, sprintf, vsprintf, written in assembly (they replace
+; src/printf.c: 2.5 KB of compiled C). The minimal set (ROADMAP decision
+; 14): %d %u %x %X %c %s %%, l for long, a width (up to 255), 0 for zero
+; padding, - to align left. Unknown conversions print their character; a %
+; at the end is dropped. printf and vprintf send every character through
+; _putchar, so a program's own putchar is used (tests/multi/override);
+; sprintf and vsprintf write them at buf, then a 0.
 ;
 ; int printf(const char *fmt, ...)
+; int vprintf(const char *fmt, va_list ap)
+; int sprintf(char *buf, const char *fmt, ...)
+; int vsprintf(char *buf, const char *fmt, va_list ap)
 ;
-; The locals (28 bytes, [sp + n] in printf itself; 2 more in the lib_printf_
-; routines it calls, above their return address):
+; Each one loads fmt, ap and buf, then goes on at lib_printf_start, the
+; engine they share. Where the characters go is lib_printf_out: 0 for
+; _putchar, else the next byte of buf. The engine saves it in its locals
+; and puts it back at the end, so a printf inside a sprintf (a program's
+; putchar that calls sprintf) works.
+;
+; The locals (30 bytes, [sp + n] in the engine itself; 2 more in the
+; lib_printf_ routines it calls, above their return address):
 ;   0-1   fmt: the next character of the format
 ;   2-3   ap: the next argument
 ;   4-5   count: the characters printed (the result)
@@ -21,20 +31,59 @@
 ;   12-13 text: what the field prints
 ;   14-15 len: its length
 ;   16-27 digits: 12 bytes (itoa32: a sign, 10 digits and the 0)
-; The return address is at [sp + 28], fmt at [sp + 30], the arguments
-; after it from [sp + 32].
+;   28-29 the lib_printf_out of the caller
+; The return address is at [sp + 30].
 
-_printf:
-    ssp 28
-    lod a, [sp + 30]            ; fmt
-    str [sp + 0], a
-    lod a, [sp + 31]
-    str [sp + 1], a
+.bss lib_printf_out 2           ; 0: _putchar, else where the next character goes
+
+; int vprintf(const char *fmt, va_list ap)
+_vprintf:
+    lod x, [sp + 4]             ; ap
+    lod y, [sp + 5]
+    jmp lib_printf_screen
+
+; int sprintf(char *buf, const char *fmt, ...)
+_sprintf:
     rsp [x:y]                   ; ap = the first argument after fmt
-    add y, 32
+    add y, 6
     adc x, 0
+    jmp lib_printf_buf
+
+; int vsprintf(char *buf, const char *fmt, va_list ap)
+_vsprintf:
+    lod x, [sp + 6]             ; ap
+    lod y, [sp + 7]
+lib_printf_buf:
+    lod c, [sp + 2]             ; buf
+    lod d, [sp + 3]
+    lod i, [sp + 4]             ; fmt
+    lod j, [sp + 5]
+    jmp lib_printf_start
+
+; int printf(const char *fmt, ...)
+_printf:
+    rsp [x:y]                   ; ap = the first argument after fmt
+    add y, 4
+    adc x, 0
+lib_printf_screen:
+    lod i, [sp + 2]             ; fmt
+    lod j, [sp + 3]
+    mov c, 0                    ; out: _putchar
+    mov d, 0
+
+; The engine: [i:j] = fmt, [x:y] = ap, [c:d] = buf (0: _putchar).
+lib_printf_start:
+    ssp 30
+    str [sp + 0], i
+    str [sp + 1], j
     str [sp + 2], x
     str [sp + 3], y
+    lod a, lib_printf_out       ; the caller's out, back at the end
+    str [sp + 28], a
+    lod a, lib_printf_out + 1
+    str [sp + 29], a
+    str lib_printf_out, c
+    str lib_printf_out + 1, d
     mov a, 0
     str [sp + 4], a             ; count = 0
     str [sp + 5], a
@@ -62,9 +111,21 @@ lib_printf_char:                ; prints b, count + 1
     jmp lib_printf_loop
 
 lib_printf_end:
+    lod x, lib_printf_out
+    lod y, lib_printf_out + 1
+    mov a, x
+    or a, y
+    jmz lib_printf_restore
+    mov a, 0
+    str [x:y], a                ; sprintf: the 0 after the text
+lib_printf_restore:
+    lod a, [sp + 28]
+    str lib_printf_out, a
+    lod a, [sp + 29]
+    str lib_printf_out + 1, a
     lod a, [sp + 4]             ; [a:b] = count
     lod b, [sp + 5]
-    asp 28
+    asp 30
     ret
 
 ; --- A conversion: the flags, the width, l, the character ----------------
@@ -353,8 +414,20 @@ lib_printf_zeros:               ; -0042: the sign before the zeros
 
 ; --- Routines called by printf (its locals are 2 bytes further) -----------
 
-; Prints b (every register may change).
+; Prints b, or stores it at lib_printf_out (every register may change).
 lib_printf_putc:
+    lod x, lib_printf_out
+    lod y, lib_printf_out + 1
+    mov a, x
+    or a, y
+    jmz lib_printf_putchar
+    str [x:y], b                ; sprintf: one more character in buf
+    add y, 1
+    adc x, 0
+    str lib_printf_out, x
+    str lib_printf_out + 1, y
+    ret
+lib_printf_putchar:
     mov a, 0
     psh b, a                    ; putchar(b)
     cal _putchar
