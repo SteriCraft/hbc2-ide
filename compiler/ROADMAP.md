@@ -6,7 +6,7 @@ The user only says "go to the roadmap": read this file, continue at **Next**, up
 
 ## Status
 
-- **Phase:** steps 1-13 done (step 13 = EEPROM, 2026-10-31) (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 66 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 340 bytes, hello world 1.7 KB, with printf 5.1 KB (lib/README.md "Size").
+- **Phase:** steps 1-13 done (step 13 = EEPROM, 2026-10-31) (step 11 = linker, details in `LINKER.md`; step 12 = backend speed-ups + string.h in asm, 2026-10-31). 66 test programs (programs.rs, multi-file ones included) pass + `tests/build.rs`. Tests: `cargo test -p hbc2-cc --release` (needs `compiler/build.cmd` first). Unreached code is left out: an empty `main` is 269 bytes, hello world 1.1 KB, with printf 2.7 KB (lib/README.md "Size").
 - **Next:** nothing planned. Ask the user what comes next; the candidates (EEPROM next to a RAM program in the IDE, float, backend ideas…) are in the repo's `TODO.md`, "C compiler". The IDE builds through `hbc2_cc::build_program`; keep that the one entry point.
 
 ## Notes files (read only when needed)
@@ -86,7 +86,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
   - [x] 8a. `hbc2.h` + `asm/hbc2.has` wrappers, driver copies in `lib/asm`, device detection in crt0 (`runtime/devices.has`), `exit` (stdlib.h), `-I lib/include` in both drivers, `build_library()`, tests/hardware.c (+ `.screen` / `.keys` support in programs.rs, all tests now run with monitor + RTC + keyboard).
   - [x] 8b. stdio.h: `putchar`/`puts` in asm (`asm/stdio.has`, first output clears the screen: `lib_term_start`), `getchar`/`gets` in C (`src/stdio.c`, line-buffered on term_readline). tests/stdio.c.
   - [x] 8c. string.h (14 functions, in C: `src/string.c`; in asm since step 12: `asm/string.has`) + stddef.h. tests/strings.c (mutation-checked).
-  - [x] 8d. printf (decision 14, `src/printf.c`) + stdarg.h. tests/printf.c (mutation-checked).
+  - [x] 8d. printf (decision 14, `src/printf.c`) + stdarg.h. tests/printf.c (mutation-checked). In asm since 2026-11-03: `lib/asm/printf.has` (2.5 KB → 965 B; printf test 4870 → 3731 bytes, 52k → 44k ticks; mutation-checked).
 - [x] 9. Multi-file builds: `hbc2_cc::build_program(sources, library, dir)` (`.c` + `.has`), static renaming in `compile()` (both drivers), `-I` source folder, C-level error messages, library statics (`next`, `field`). Tests: `tests/multi/files`, `tests/build.rs` (mutation-checked).
 - [x] 10. IDE (decision 16, see "IDE integration (step 10)" below):
   - [x] 10a. `hbc2 cc <files…> [-o out.bin] [--dir build] [--symbols]`; `hbc2 run main.c …` builds first.

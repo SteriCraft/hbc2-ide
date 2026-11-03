@@ -92,7 +92,7 @@ fn errors() {
     assert!(e.contains("main.c:2:1: error: not defined: 'f'"), "{e}");
 
     // the same static name in two files, the names of the library's statics
-    // (printf.c, stdio.c), and a .has file: builds
+    // (stdio.c's next), and a .has file: builds
     build(
         "ok",
         &[

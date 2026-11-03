@@ -1,0 +1,418 @@
+; printf, written in assembly (it replaces src/printf.c: 2.5 KB of
+; compiled C). The minimal set (ROADMAP decision 14): %d %u %x %X %c %s %%,
+; l for long, a width (up to 255), 0 for zero padding, - to align left.
+; Unknown conversions print their character; a % at the end is dropped.
+; Every character goes through _putchar, so a program's own putchar is
+; used (tests/multi/override).
+;
+; int printf(const char *fmt, ...)
+;
+; The locals (28 bytes, [sp + n] in printf itself; 2 more in the lib_printf_
+; routines it calls, above their return address):
+;   0-1   fmt: the next character of the format
+;   2-3   ap: the next argument
+;   4-5   count: the characters printed (the result)
+;   6     width, then the number of padding characters
+;   7     pad: ' ' or '0'
+;   8     left: 1 for -
+;   9     neg: 1 when a '-' goes before the padding or the digits
+;   10    the conversion character
+;   11    l: 1 for a long
+;   12-13 text: what the field prints
+;   14-15 len: its length
+;   16-27 digits: 12 bytes (itoa32: a sign, 10 digits and the 0)
+; The return address is at [sp + 28], fmt at [sp + 30], the arguments
+; after it from [sp + 32].
+
+_printf:
+    ssp 28
+    lod a, [sp + 30]            ; fmt
+    str [sp + 0], a
+    lod a, [sp + 31]
+    str [sp + 1], a
+    rsp [x:y]                   ; ap = the first argument after fmt
+    add y, 32
+    adc x, 0
+    str [sp + 2], x
+    str [sp + 3], y
+    mov a, 0
+    str [sp + 4], a             ; count = 0
+    str [sp + 5], a
+
+lib_printf_loop:                ; [x:y] = fmt, b = its character
+    lod x, [sp + 0]
+    lod y, [sp + 1]
+    lod b, [x:y]
+    cmp b, 0
+    jme lib_printf_end
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    cmp b, '%'
+    jme lib_printf_spec
+lib_printf_char:                ; prints b, count + 1
+    cal lib_printf_putc
+    lod b, [sp + 5]
+    add b, 1
+    str [sp + 5], b
+    lod a, [sp + 4]
+    adc a, 0
+    str [sp + 4], a
+    jmp lib_printf_loop
+
+lib_printf_end:
+    lod a, [sp + 4]             ; [a:b] = count
+    lod b, [sp + 5]
+    asp 28
+    ret
+
+; --- A conversion: the flags, the width, l, the character ----------------
+; [x:y] = fmt (after the %), c = pad, d = left
+
+lib_printf_spec:
+    mov c, ' '
+    mov d, 0
+lib_printf_flags:
+    lod b, [x:y]
+    cmp b, '0'
+    jme lib_printf_zero
+    cmp b, '-'
+    jme lib_printf_minus
+    jmp lib_printf_width
+lib_printf_zero:
+    mov c, '0'
+    jmp lib_printf_flag_next
+lib_printf_minus:
+    mov d, 1
+lib_printf_flag_next:
+    add y, 1
+    adc x, 0
+    jmp lib_printf_flags
+
+lib_printf_width:               ; a = width, b = the character
+    cmp d, 0
+    jme lib_printf_pad_set
+    mov c, ' '                  ; - wins over 0
+lib_printf_pad_set:
+    str [sp + 7], c
+    str [sp + 8], d
+    mov a, 0
+lib_printf_width_digit:
+    cmp b, '0'
+    jmf lib_printf_width_end    ; below '0'
+    cmp b, '9'
+    jms lib_printf_width_end    ; above '9'
+    mov c, a                    ; width * 10 + the digit
+    shl a
+    shl a
+    add a, c
+    shl a
+    sub b, '0'
+    add a, b
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+    jmp lib_printf_width_digit
+lib_printf_width_end:
+    str [sp + 6], a
+    mov a, 0
+    cmp b, 'l'
+    jme lib_printf_long
+    jmp lib_printf_conv
+lib_printf_long:
+    mov a, 1
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+lib_printf_conv:
+    str [sp + 11], a
+    cmp b, 0
+    jme lib_printf_end          ; a % at the end: stop there
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    str [sp + 10], b
+    mov a, 0
+    str [sp + 9], a             ; neg = 0
+    cmp b, 'd'
+    jme lib_printf_number
+    cmp b, 'u'
+    jme lib_printf_number
+    cmp b, 'x'
+    jme lib_printf_number
+    cmp b, 'X'
+    jme lib_printf_number
+    cmp b, 'c'
+    jme lib_printf_c
+    cmp b, 's'
+    jme lib_printf_s
+    jmp lib_printf_char         ; %% and unknown ones: the character
+
+; --- %c and %s: padded with spaces -----------------------------------------
+
+lib_printf_c:
+    cal lib_printf_arg16
+    str [sp + 16], b            ; digits[0] = the character
+    mov a, ' '
+    str [sp + 7], a
+    rsp [x:y]
+    add y, 16
+    adc x, 0
+    mov c, 0
+    mov d, 1
+    jmp lib_printf_text_set
+
+lib_printf_s:
+    cal lib_printf_arg16
+    mov x, a                    ; [x:y] = s
+    mov y, b
+    mov a, ' '
+    str [sp + 7], a
+    mov c, 0                    ; [c:d] = its length
+    mov d, 0
+    mov i, x
+    mov j, y
+lib_printf_s_len:
+    lod a, [i:j]
+    cmp a, 0
+    jme lib_printf_text_set
+    add j, 1
+    adc i, 0
+    add d, 1
+    adc c, 0
+    jmp lib_printf_s_len
+
+; --- Numbers -----------------------------------------------------------------
+; The digits go to digits ([sp + 16]); [x:y] is left on their 0. A
+; negative %d gets its '-' from itoa: it is taken off and printed by the
+; field, before or after the padding.
+
+lib_printf_number:
+    lod a, [sp + 11]
+    cmp a, 0
+    jme lib_printf_short
+    lod i, [sp + 2]             ; long: [i:j] -> the argument, ap + 4
+    lod j, [sp + 3]
+    mov c, i
+    mov d, j
+    add d, 4
+    adc c, 0
+    str [sp + 2], c
+    str [sp + 3], d
+    rsp [x:y]
+    add y, 16
+    adc x, 0
+    lod a, [sp + 10]
+    cmp a, 'd'
+    jme lib_printf_ld
+    cmp a, 'u'
+    jme lib_printf_lu
+    cal htoa32
+    jmp lib_printf_digits
+lib_printf_ld:
+    cal itoa32
+    jmp lib_printf_digits
+lib_printf_lu:
+    cal utoa32
+    jmp lib_printf_digits
+
+lib_printf_short:
+    cal lib_printf_arg16        ; [a:b] = the argument
+    rsp [x:y]
+    add y, 16
+    adc x, 0
+    lod c, [sp + 10]
+    cmp c, 'd'
+    jme lib_printf_d
+    cmp c, 'u'
+    jme lib_printf_u
+    cal htoa16
+    jmp lib_printf_digits
+lib_printf_d:
+    cal itoa16
+    jmp lib_printf_digits
+lib_printf_u:
+    cal utoa16
+
+lib_printf_digits:              ; [x:y] = the end, [i:j] = digits, c = length
+    rsp [i:j]
+    add j, 16
+    adc i, 0
+    mov c, y
+    sub c, j
+    lod a, [sp + 10]
+    cmp a, 'u'
+    jme lib_printf_num_text
+    cmp a, 'd'
+    jme lib_printf_sign_check
+lib_printf_hex_zeros:           ; no leading zeros (the last one stays)
+    cmp c, 1
+    jme lib_printf_hex_case
+    lod b, [i:j]
+    cmp b, '0'
+    jme lib_printf_hex_skip
+    jmp lib_printf_hex_case
+lib_printf_hex_skip:
+    add j, 1
+    adc i, 0
+    dec c
+    jmp lib_printf_hex_zeros
+lib_printf_hex_case:
+    cmp a, 'x'
+    jme lib_printf_lower
+    jmp lib_printf_num_text
+lib_printf_lower:               ; lower case: the digits already have the bit
+    mov x, i
+    mov y, j
+    mov d, c
+lib_printf_lower_loop:
+    lod b, [x:y]
+    or b, 0x20
+    str [x:y], b
+    add y, 1
+    adc x, 0
+    dec d
+    jmz lib_printf_num_text
+    jmp lib_printf_lower_loop
+
+lib_printf_sign_check:
+    lod b, [i:j]
+    cmp b, '-'
+    jme lib_printf_negative
+    jmp lib_printf_num_text
+lib_printf_negative:
+    mov b, 1
+    str [sp + 9], b             ; neg = 1
+    add j, 1
+    adc i, 0
+    dec c
+
+lib_printf_num_text:            ; [x:y] = the text, [c:d] = its length
+    mov x, i
+    mov y, j
+    mov d, c
+    mov c, 0
+
+; --- The field ---------------------------------------------------------------
+; [x:y] = the text, [c:d] = its length. Prints the sign, the padding and
+; the text; count + the larger of the width and len + neg.
+
+lib_printf_text_set:
+    str [sp + 12], x
+    str [sp + 13], y
+    str [sp + 14], c
+    str [sp + 15], d
+    add d, [sp + 9]             ; [c:d] = len + neg
+    adc c, 0
+    lod a, [sp + 6]             ; a = width
+    cmp c, 0
+    jme lib_printf_fits
+    jmp lib_printf_no_pad
+lib_printf_fits:
+    cmp d, a
+    jmf lib_printf_padded       ; shorter than the width
+lib_printf_no_pad:
+    mov a, 0
+    str [sp + 6], a             ; no padding, count + len + neg
+    jmp lib_printf_count
+lib_printf_padded:               ; c = 0
+    mov b, a
+    sub a, d                    ; padding = width - (len + neg)
+    str [sp + 6], a
+    mov d, b                    ; count + width
+lib_printf_count:
+    lod b, [sp + 5]
+    add b, d
+    str [sp + 5], b
+    lod b, [sp + 4]
+    adc b, c
+    str [sp + 4], b
+
+    lod a, [sp + 7]
+    cmp a, '0'
+    jme lib_printf_zeros
+    lod a, [sp + 8]
+    cmp a, 0
+    jme lib_printf_right
+    cal lib_printf_sign         ; left: -42 then the spaces
+    cal lib_printf_text
+    cal lib_printf_pad
+    jmp lib_printf_loop
+lib_printf_right:               ; right: the spaces then -42
+    cal lib_printf_pad
+    cal lib_printf_sign
+    cal lib_printf_text
+    jmp lib_printf_loop
+lib_printf_zeros:               ; -0042: the sign before the zeros
+    cal lib_printf_sign
+    cal lib_printf_pad
+    cal lib_printf_text
+    jmp lib_printf_loop
+
+; --- Routines called by printf (its locals are 2 bytes further) -----------
+
+; Prints b (every register may change).
+lib_printf_putc:
+    mov a, 0
+    psh b, a                    ; putchar(b)
+    cal _putchar
+    asp 2
+    ret
+
+; [a:b] = the next 16-bit argument, ap + 2. Changes x, y.
+lib_printf_arg16:
+    lod x, [sp + 4]
+    lod y, [sp + 5]
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    add y, 2
+    adc x, 0
+    str [sp + 4], x
+    str [sp + 5], y
+    ret
+
+; Prints '-' when neg.
+lib_printf_sign:
+    lod a, [sp + 11]
+    cmp a, 0
+    jme lib_printf_sign_end
+    mov b, '-'
+    jmp lib_printf_putc
+lib_printf_sign_end:
+    ret
+
+; Prints pad, as many times as [sp + 6] says (which ends at 0).
+lib_printf_pad:
+    lod a, [sp + 8]
+    cmp a, 0
+    jme lib_printf_pad_end
+    dec a
+    str [sp + 8], a
+    lod b, [sp + 9]
+    cal lib_printf_putc
+    jmp lib_printf_pad
+lib_printf_pad_end:
+    ret
+
+; Prints the text: len characters from text.
+lib_printf_text:
+    lod c, [sp + 16]
+    lod d, [sp + 17]
+    sub d, 1
+    sbb c, 0
+    jmc lib_printf_text_end     ; len was 0
+    str [sp + 16], c
+    str [sp + 17], d
+    lod x, [sp + 14]
+    lod y, [sp + 15]
+    lod b, [x:y]
+    add y, 1
+    adc x, 0
+    str [sp + 14], x
+    str [sp + 15], y
+    cal lib_printf_putc
+    jmp lib_printf_text
+lib_printf_text_end:
+    ret

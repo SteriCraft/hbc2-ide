@@ -10,7 +10,7 @@ definition is used everywhere, the library's left out.
 | Header | Content | Code |
 |---|---|---|
 | `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
-| `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `src/stdio.c`, `src/printf.c` |
+| `stdio.h` | `putchar`, `puts`, `printf` (output on the terminal), `getchar`, `gets` (lines typed) | `asm/stdio.has`, `asm/printf.has`, `src/stdio.c` |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
 | `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr memcpy memmove memset memcmp memchr` | `asm/string.has`, `src/string.c` (`strstr`) |
 | `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
@@ -44,15 +44,18 @@ for floating point one day.
 * `asm/hbc2.has` — the C wrappers: they read the C arguments from the stack
   (`../ABI.md`, section 9) and call the driver routines.
 * `asm/stdio.has` — `putchar`, `puts`.
+* `asm/printf.has` — `printf` (in C until 2026-11-03: 2.5 KB, now 965
+  bytes). Its state is in 28 bytes of locals on the stack; every
+  character goes through `_putchar`, so a program's own `putchar` is used.
 * `asm/ctype.has` — `ctype.h`, written by the project's author: range
   compares on the low byte, false (or unchanged) when the high byte is
   not 0 (`EOF`). The `is…` functions share their exits (`ctype_true`,
   `ctype_false`); `isgraph` jumps to `isprint` (a tail call). 668 bytes
   in all, 9 to 24 instructions a call.
 * `asm/stdlib.has` — `exit`, `abs`, `labs`, the random-number wrappers,
-  and the number -> text routines that `src/stdlib.c` and
-  `src/printf.c` call (`__utoa_dec`, `__utoa_hex`…: not in a header,
-  those files declare them; they return the end of the text).
+  and the number -> text routines that `src/stdlib.c` calls
+  (`__utoa_dec`, `__utoa_hex`…: not in a header, that file declares
+  them; they return the end of the text).
 * `src/stdlib.c` — `itoa`, `utoa`, `ltoa`, `ultoa`: radix 10 and 16 from
   the routines above, radix 2 and 8 from shifts (no division anywhere).
   `strtol`, `strtoul` (bases 0 and 2 to 36; one multiplication a digit,
@@ -69,25 +72,25 @@ Device detection (`monitor_port`, …) is in the startup code:
 
 `printf` has the minimal set: `%d %u %x %X %c %s %%`, `l` for `long`
 (`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`), `-` to align left
-(`%-6s`). No floating point. It gets its digits from `__utoa_dec`,
-`__ultoa_dec`, `__utoa_hex` and `__ultoa_hex` (`asm/stdlib.has`; no division: 3.5 times faster than with `/` and `%`, for 0.3 KB
-more).
+(`%-6s`), widths up to 255. No floating point. It gets its digits from
+the math library's `utoa16`, `itoa16`, `htoa16` and their 32-bit forms
+(`asm/mathlib/misc/text.has`; no division).
 
 ## Size
 
-In all, about 7.7 KB of code and data: the drivers and wrappers ≈ 5 KB
-(terminal 1.6 KB, screen 1.3 KB, `string.h` 1.1 KB, wrappers 0.7 KB), the
-compiled C files ≈ 2.8 KB (`printf.c` 2.5 KB, `stdio.c` 0.3 KB, plus
-`stdlib.c`). The
+In all, about 6.3 KB of code and data: the drivers and wrappers ≈ 6 KB
+(terminal 1.6 KB, screen 1.3 KB, `string.h` 1.1 KB, `printf` 1 KB,
+wrappers 0.7 KB), the
+compiled C files (`stdio.c` 0.3 KB, `stdlib.c`, `string.c`). The
 runtime helpers add up to ≈ 6.5 KB more (multiplication 1.4 KB,
 division 2.2 KB, shifts 0.8 KB: only those a program uses). `string.h` was in C until 2026-10-31
-(2.7 KB, 2-4 times slower).
+(2.7 KB, 2-4 times slower), `printf` until 2026-11-03.
 
 The assembler leaves out what a program can't reach (assembly manual,
 "Leaving out unused code"), so a program carries only what it uses: an
-empty `main` is 340 bytes (startup, device detection, `exit`), hello world
-with `puts` 1.7 KB (the terminal and screen drivers), with `printf`
-5.1 KB. `hbc2 cc … --map` shows what was kept.
+empty `main` is 269 bytes (startup, device detection, `exit`), hello world
+with `puts` 1.1 KB (the terminal and screen drivers), with `printf`
+2.7 KB (3.8 KB with the C `printf`). `hbc2 cc … --map` shows what was kept.
 
 ## Tests
 
