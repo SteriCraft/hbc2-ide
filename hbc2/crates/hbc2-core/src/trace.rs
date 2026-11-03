@@ -30,7 +30,10 @@
 //! An invalid opcode is a NOP and gets a normal line. A valid opcode with an
 //! invalid addressing mode gets a normal line with H set and I cleared (the
 //! CPU stops there).
+//!
+//! [`compare`] finds the first line where two traces differ (`hbc2 compare`).
 
+use std::fmt;
 use std::io::{self, Write};
 
 use crate::cpu::Cpu;
@@ -241,4 +244,269 @@ fn hex8(out: &mut Vec<u8>, value: u8) {
 fn hex16(out: &mut Vec<u8>, value: u16) {
     hex8(out, (value >> 8) as u8);
     hex8(out, value as u8);
+}
+
+/// Number of identical lines shown before a difference.
+pub const CONTEXT_LINES: usize = 3;
+
+/// The first difference between two traces (see [`compare`]).
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TraceDiff {
+    /// Line number in the files, from 1 (1 = header).
+    pub line: usize,
+    /// The `n` column of the line (`None` for the header).
+    pub n: Option<String>,
+    pub kind: DiffKind,
+    /// Up to [`CONTEXT_LINES`] lines before it (the same in both traces).
+    pub before: Vec<String>,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum DiffKind {
+    /// Both traces have the line; these columns differ.
+    Columns(Vec<ColumnDiff>),
+    /// The first trace ends before this line; `other` is the second's.
+    FirstEnds { other: String },
+    /// The second trace ends before this line; `other` is the first's.
+    SecondEnds { other: String },
+}
+
+/// A column that differs. `None`: the line has no such column.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct ColumnDiff {
+    pub name: String,
+    pub first: Option<String>,
+    pub second: Option<String>,
+}
+
+/// Compares two traces (file contents) line by line; `None`: identical.
+/// Columns are named after the first trace's header (`#k` past its end).
+/// `\r\n` line endings are accepted.
+pub fn compare(first: &str, second: &str) -> Option<TraceDiff> {
+    let first: Vec<&str> = first.lines().collect();
+    let second: Vec<&str> = second.lines().collect();
+    let names: Vec<&str> = first.first().map_or(Vec::new(), |h| h.split(',').collect());
+    let n_of = |k: usize, line: &str| (k > 0).then(|| line.split(',').next().unwrap().to_string());
+    for k in 0..first.len().max(second.len()) {
+        let (kind, n) = match (first.get(k), second.get(k)) {
+            (Some(a), Some(b)) if a == b => continue,
+            (Some(a), Some(b)) => (DiffKind::Columns(columns(&names, a, b)), n_of(k, a)),
+            (None, Some(b)) => (
+                DiffKind::FirstEnds {
+                    other: b.to_string(),
+                },
+                n_of(k, b),
+            ),
+            (Some(a), None) => (
+                DiffKind::SecondEnds {
+                    other: a.to_string(),
+                },
+                n_of(k, a),
+            ),
+            (None, None) => unreachable!(),
+        };
+        let before = first[k.saturating_sub(CONTEXT_LINES)..k.min(first.len())]
+            .iter()
+            .map(|l| l.to_string())
+            .collect();
+        return Some(TraceDiff {
+            line: k + 1,
+            n,
+            kind,
+            before,
+        });
+    }
+    None
+}
+
+fn columns(names: &[&str], a: &str, b: &str) -> Vec<ColumnDiff> {
+    let a: Vec<&str> = a.split(',').collect();
+    let b: Vec<&str> = b.split(',').collect();
+    (0..a.len().max(b.len()))
+        .filter(|&i| a.get(i) != b.get(i))
+        .map(|i| ColumnDiff {
+            name: names
+                .get(i)
+                .map_or_else(|| format!("#{}", i + 1), |s| s.to_string()),
+            first: a.get(i).map(|s| s.to_string()),
+            second: b.get(i).map(|s| s.to_string()),
+        })
+        .collect()
+}
+
+/// A difference with the names of the two traces, for display.
+pub struct DiffReport<'a> {
+    pub diff: &'a TraceDiff,
+    pub first: &'a str,
+    pub second: &'a str,
+}
+
+impl fmt::Display for DiffReport<'_> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        let d = self.diff;
+        match &d.n {
+            Some(n) => writeln!(f, "traces differ at n={n} (line {} of the files)", d.line)?,
+            None => writeln!(f, "traces differ in the header (line {})", d.line)?,
+        }
+        match &d.kind {
+            DiffKind::Columns(columns) => {
+                let width = columns
+                    .iter()
+                    .map(|c| c.name.len())
+                    .max()
+                    .unwrap_or(0)
+                    .max(6);
+                let show = |v: &Option<String>| match v.as_deref() {
+                    Some("") => "(empty)".to_string(),
+                    Some(v) => v.to_string(),
+                    None => "(missing)".to_string(),
+                };
+                let rows: Vec<(&str, String, String)> = columns
+                    .iter()
+                    .map(|c| (c.name.as_str(), show(&c.first), show(&c.second)))
+                    .collect();
+                let values = rows
+                    .iter()
+                    .map(|r| r.1.len())
+                    .chain([self.first.len()])
+                    .max()
+                    .unwrap_or(0);
+                writeln!(
+                    f,
+                    "  {:width$}  {:values$}  |  {}",
+                    "column", self.first, self.second
+                )?;
+                for (name, first, second) in rows {
+                    writeln!(f, "  {name:width$}  {first:values$}  |  {second}")?;
+                }
+            }
+            DiffKind::FirstEnds { other } => {
+                writeln!(
+                    f,
+                    "  {} ends here; {} goes on with:",
+                    self.first, self.second
+                )?;
+                writeln!(f, "  {other}")?;
+            }
+            DiffKind::SecondEnds { other } => {
+                writeln!(
+                    f,
+                    "  {} ends here; {} goes on with:",
+                    self.second, self.first
+                )?;
+                writeln!(f, "  {other}")?;
+            }
+        }
+        if !d.before.is_empty() {
+            writeln!(f, "previous lines:")?;
+            for line in &d.before {
+                writeln!(f, "  {line}")?;
+            }
+        }
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    const TRACE: &str = "\
+n,pc,ir,a,b,c,d,i,j,x,y,sp,flags,mem_w,io_w
+0,0000,,00,00,00,00,00,00,00,00,FE00,04,,
+1,0000,748003,03,00,00,00,00,00,00,00,FE00,04,,
+2,0003,748800,03,00,00,00,00,00,00,00,FE00,04,,
+3,0006,74985A,03,00,00,5A,00,00,00,00,FE00,04,,
+4,0009,749010,03,00,10,5A,00,00,00,00,FE00,04,,
+5,000C,8440,03,00,10,5A,00,00,00,00,FDFF,04,FDFF=03,
+";
+
+    fn report(diff: &TraceDiff) -> String {
+        DiffReport {
+            diff,
+            first: "a.csv",
+            second: "b.csv",
+        }
+        .to_string()
+    }
+
+    #[test]
+    fn identical_traces() {
+        assert_eq!(compare(TRACE, TRACE), None);
+        assert_eq!(compare(TRACE, &TRACE.replace('\n', "\r\n")), None);
+        assert_eq!(compare("", ""), None);
+    }
+
+    #[test]
+    fn one_register_differs() {
+        let other = TRACE.replace("4,0009,749010,03,00,10,", "4,0009,749010,03,00,11,");
+        let diff = compare(TRACE, &other).unwrap();
+        assert_eq!(diff.line, 6);
+        assert_eq!(diff.n.as_deref(), Some("4"));
+        assert_eq!(
+            diff.kind,
+            DiffKind::Columns(vec![ColumnDiff {
+                name: "c".into(),
+                first: Some("10".into()),
+                second: Some("11".into()),
+            }])
+        );
+        let lines: Vec<&str> = TRACE.lines().collect();
+        assert_eq!(diff.before, &lines[2..5]);
+
+        let text = report(&diff);
+        assert!(
+            text.starts_with("traces differ at n=4 (line 6 of the files)\n"),
+            "{text}"
+        );
+        let table = "\n  column  a.csv  |  b.csv\n  c       10     |  11\n";
+        assert!(text.contains(table), "{text}");
+        assert!(text.contains("previous lines:\n  1,0000,"), "{text}");
+    }
+
+    #[test]
+    fn one_trace_shorter() {
+        let lines: Vec<&str> = TRACE.lines().collect();
+        let short = lines[..5].join("\n") + "\n";
+
+        let diff = compare(&short, TRACE).unwrap();
+        assert_eq!(diff.line, 6);
+        assert_eq!(diff.n.as_deref(), Some("4"));
+        assert_eq!(
+            diff.kind,
+            DiffKind::FirstEnds {
+                other: lines[5].into()
+            }
+        );
+        assert_eq!(diff.before, &lines[2..5]);
+        assert!(report(&diff).contains("a.csv ends here; b.csv goes on with:"));
+
+        let diff = compare(TRACE, &short).unwrap();
+        assert_eq!(
+            diff.kind,
+            DiffKind::SecondEnds {
+                other: lines[5].into()
+            }
+        );
+        assert!(report(&diff).contains("b.csv ends here; a.csv goes on with:"));
+    }
+
+    #[test]
+    fn missing_column_and_header() {
+        let other = TRACE.replace("FDFF=03,", "FDFF=03");
+        let diff = compare(TRACE, &other).unwrap();
+        assert_eq!(
+            diff.kind,
+            DiffKind::Columns(vec![ColumnDiff {
+                name: "io_w".into(),
+                first: Some("".into()),
+                second: None,
+            }])
+        );
+        assert!(report(&diff).contains("\n  io_w    (empty)  |  (missing)\n"));
+
+        let diff = compare(TRACE, &TRACE.replacen("flags", "f", 1)).unwrap();
+        assert_eq!((diff.line, diff.n.clone()), (1, None));
+        assert!(diff.before.is_empty());
+    }
 }

@@ -20,4 +20,6 @@ pub use cpu::{Cpu, CpuState, Flags};
 pub use iod::{Interrupt, Iod};
 pub use isa::{AddrMode, Flag, Opcode, Register};
 pub use machine::{Breakpoints, Machine, MachineConfig, MachineError, RunResult, StopReason};
-pub use trace::{NoProbe, Probe, TRACE_HEADER, TraceWriter};
+pub use trace::{
+    ColumnDiff, DiffKind, DiffReport, NoProbe, Probe, TRACE_HEADER, TraceDiff, TraceWriter,
+};

@@ -27,11 +27,18 @@ usage:
         write an execution trace (CSV, one line per instruction) until
         line N or until the CPU halts (H set); no peripherals unless
         --peripherals (output default: the input with the extension .csv)
+  hbc2 compare <a.csv> <b.csv>
+        compare two traces; at the first line that differs, print its n,
+        the columns that differ and the 3 lines before it; exit code 0 if
+        identical, 1 if they differ, 2 on error
   hbc2 bench [--seconds N] [--hz N]
         measure emulation speed (flat out, or paced on the emulator thread)";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.first().map(String::as_str) == Some("compare") {
+        return compare(&args[1..]);
+    }
     let result = match args.first().map(String::as_str) {
         Some("asm") => asm(&args[1..]),
         Some("bench") => bench(&args[1..]),
@@ -45,6 +52,37 @@ fn main() -> ExitCode {
         Err(message) => {
             eprintln!("{message}");
             ExitCode::FAILURE
+        }
+    }
+}
+
+/// `hbc2 compare a.csv b.csv`: 0 identical, 1 different, 2 error.
+fn compare(args: &[String]) -> ExitCode {
+    let [first, second] = args else {
+        eprintln!("{USAGE}");
+        return ExitCode::from(2);
+    };
+    let read = |path: &str| std::fs::read_to_string(path).map_err(|e| format!("{path}: {e}"));
+    let (a, b) = match (read(first), read(second)) {
+        (Ok(a), Ok(b)) => (a, b),
+        (Err(e), _) | (_, Err(e)) => {
+            eprintln!("{e}");
+            return ExitCode::from(2);
+        }
+    };
+    match hbc2_core::trace::compare(&a, &b) {
+        None => {
+            println!("traces are identical ({} lines)", a.lines().count());
+            ExitCode::SUCCESS
+        }
+        Some(diff) => {
+            let report = hbc2_core::DiffReport {
+                diff: &diff,
+                first,
+                second,
+            };
+            print!("{report}");
+            ExitCode::from(1)
         }
     }
 }
