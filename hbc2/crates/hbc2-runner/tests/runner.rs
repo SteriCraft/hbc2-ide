@@ -405,3 +405,91 @@ fn step_out_runs_until_the_routine_returns() {
     assert_eq!(s.cpu.reg(Register::A), 2);
     assert_eq!(s.stop, None);
 }
+
+fn trace_file(name: &str) -> (std::fs::File, std::path::PathBuf) {
+    let path = std::env::temp_dir().join(format!("hbc2-runner-{}-{name}.csv", std::process::id()));
+    (std::fs::File::create(&path).unwrap(), path)
+}
+
+/// The lines of a trace file after the header.
+fn trace_lines(path: &Path) -> Vec<String> {
+    let text = std::fs::read_to_string(path).unwrap();
+    let mut lines = text.lines().map(str::to_string);
+    assert_eq!(lines.next().as_deref(), Some(hbc2_core::TRACE_HEADER));
+    lines.collect()
+}
+
+#[test]
+fn trace_records_steps_until_stopped() {
+    let runner = counter();
+    let (file, path) = trace_file("steps");
+    runner.trace_start(file, path.clone(), 1000);
+    assert!(!runner.sync().trace.as_ref().unwrap().started);
+    runner.step(3);
+    assert_eq!(runner.sync().trace.as_ref().unwrap().lines, 3);
+    runner.trace_stop();
+    let snapshot = runner.sync();
+    assert!(snapshot.trace.is_none());
+    assert_eq!(snapshot.trace_ends, 1);
+    let end = snapshot.trace_end.as_ref().unwrap();
+    assert_eq!(
+        (end.lines, &end.reason),
+        (3, &hbc2_runner::TraceEndReason::Stopped)
+    );
+    let lines = trace_lines(&path);
+    assert_eq!(lines.len(), 4);
+    assert_eq!(lines[0], "0,0000,,00,00,00,00,00,00,00,00,FE00,04,,");
+    assert!(lines[2].starts_with("2,0001,"), "add a, 1: {}", lines[2]);
+    assert!(lines[2].contains(",01,00,"), "A = 1: {}", lines[2]);
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn trace_stops_at_its_limit_while_running() {
+    let runner = counter();
+    runner.set_speed(Speed::Fastest);
+    let (file, path) = trace_file("limit");
+    runner.trace_start(file, path.clone(), 50);
+    runner.run();
+    let snapshot = wait_until(&runner, |s| s.trace_ends == 1);
+    let end = snapshot.trace_end.as_ref().unwrap();
+    assert_eq!(
+        (end.lines, &end.reason),
+        (50, &hbc2_runner::TraceEndReason::Limit)
+    );
+    assert_eq!(snapshot.state, RunState::Running, "only the trace stops");
+    let lines = trace_lines(&path);
+    assert_eq!(lines.len(), 51);
+    assert!(lines[50].starts_with("50,"));
+    runner.pause();
+    let _ = std::fs::remove_file(path);
+}
+
+#[test]
+fn trace_waits_through_a_reload_and_ends_on_reset() {
+    let runner = Runner::new(machine("_start:\n    hlt\n", no_peripherals()));
+    let (file, path) = trace_file("reset");
+    runner.trace_start(file, path.clone(), 1000);
+    // Not started yet: loading the program (as Run does) keeps it.
+    runner.load(machine(COUNTER, no_peripherals()));
+    runner.step(1);
+    let snapshot = runner.sync();
+    assert_eq!(snapshot.trace_ends, 0);
+    assert_eq!(snapshot.trace.as_ref().unwrap().lines, 1);
+    runner.power_cycle();
+    let snapshot = runner.sync();
+    assert!(snapshot.trace.is_none());
+    let end = snapshot.trace_end.as_ref().unwrap();
+    assert_eq!(
+        (end.lines, &end.reason),
+        (1, &hbc2_runner::TraceEndReason::Reset)
+    );
+    let lines = trace_lines(&path);
+    assert_eq!(lines.len(), 2);
+    assert!(
+        lines[1].starts_with("1,0000,"),
+        "cli of the loaded program: {}",
+        lines[1]
+    );
+    let _ = std::fs::remove_file(path);
+}

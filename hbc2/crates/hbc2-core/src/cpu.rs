@@ -18,6 +18,7 @@ use crate::board::Board;
 use crate::isa::{
     AddrMode, Flag, IVT_START, Instruction, Opcode, PROGRAM_START, Register, STACK_RESET,
 };
+use crate::trace::{NoProbe, Probe};
 
 /// The 8-bit flag register.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
@@ -154,6 +155,13 @@ impl Cpu {
     /// (an instruction was executed, or an interrupt jumped to its handler).
     #[inline(always)]
     pub fn tick(&mut self, board: &mut Board) -> bool {
+        self.tick_with(board, &mut NoProbe)
+    }
+
+    /// [`Cpu::tick`], reporting RAM and port writes, instructions and
+    /// interrupt entries to `probe`.
+    #[inline(always)]
+    pub fn tick_with<P: Probe>(&mut self, board: &mut Board, probe: &mut P) -> bool {
         match self.state {
             CpuState::InterruptAcknowledge => {
                 // Step 4: the IOD lowered INT and put port + data on the buses.
@@ -163,7 +171,7 @@ impl Cpu {
                 board.inr = false;
                 let port = board.address_bus as u8;
                 let data = board.data_bus;
-                self.enter_interrupt(board, port, data);
+                self.enter_interrupt(board, probe, port, data);
                 true
             }
             CpuState::Executing => {
@@ -178,37 +186,46 @@ impl Cpu {
                     if let Some((port, data)) = self.pending_software_interrupt.take() {
                         board.address_bus = port as u16;
                         board.data_bus = data;
-                        self.enter_interrupt(board, port, data);
+                        self.enter_interrupt(board, probe, port, data);
                         return true;
                     }
                 }
                 if self.flags.get(Flag::Halt) {
                     return false;
                 }
-                self.execute_next(board)
+                self.execute_next(board, probe)
             }
         }
     }
 
     /// Pushes I and PC, loads the data into I, disables interrupts and jumps
     /// to the handler found in the interrupt vector table.
-    fn enter_interrupt(&mut self, board: &mut Board, port: u8, data: u8) {
-        self.push(board, self.reg(Register::I));
-        self.push_address(board, self.pc);
+    fn enter_interrupt<P: Probe>(&mut self, board: &mut Board, probe: &mut P, port: u8, data: u8) {
+        let interrupted = self.pc;
+        self.push(board, probe, self.reg(Register::I));
+        self.push_address(board, probe, interrupted);
         self.set_reg(Register::I, data);
         self.flags.set(Flag::Interrupt, false);
         self.flags.set(Flag::Halt, false);
         self.pc = board.ram.read_u16(IVT_START + port as u16 * 2);
         self.call_depth = self.call_depth.wrapping_add(1);
         self.state = CpuState::Executing;
+        probe.interrupt(self, interrupted);
+    }
+
+    /// Every RAM write of the CPU goes through here.
+    #[inline(always)]
+    fn write<P: Probe>(board: &mut Board, probe: &mut P, address: u16, value: u8) {
+        board.ram.write(address, value);
+        probe.mem_write(address, value);
     }
 
     // ----- Stack (grows downward). PSH: STK = STK - 1, $(STK) = R1. POP: R1 = $(STK), STK = STK + 1.
 
     #[inline(always)]
-    fn push(&mut self, board: &mut Board, value: u8) {
+    fn push<P: Probe>(&mut self, board: &mut Board, probe: &mut P, value: u8) {
         self.sp = self.sp.wrapping_sub(1);
-        board.ram.write(self.sp, value);
+        Self::write(board, probe, self.sp, value);
     }
 
     #[inline(always)]
@@ -220,9 +237,9 @@ impl Cpu {
 
     /// Pushes LSB then MSB, so that RET / IRT pop the MSB first (as the manual describes).
     #[inline(always)]
-    fn push_address(&mut self, board: &mut Board, address: u16) {
-        self.push(board, address as u8);
-        self.push(board, (address >> 8) as u8);
+    fn push_address<P: Probe>(&mut self, board: &mut Board, probe: &mut P, address: u16) {
+        self.push(board, probe, address as u8);
+        self.push(board, probe, (address >> 8) as u8);
     }
 
     #[inline(always)]
@@ -302,7 +319,7 @@ impl Cpu {
     /// Fetch, decode and execute the instruction at PC. Returns false when
     /// the instruction is invalid: the CPU stops there.
     #[inline(always)]
-    fn execute_next(&mut self, board: &mut Board) -> bool {
+    fn execute_next<P: Probe>(&mut self, board: &mut Board, probe: &mut P) -> bool {
         let address = self.pc;
         let i = Instruction::fetched(board.ram.read_u32(address));
         self.ir = i;
@@ -311,19 +328,28 @@ impl Cpu {
         if i.stops() {
             self.flags.set(Flag::Halt, true);
             self.flags.set(Flag::Interrupt, false);
+            probe.instruction(self, address, i);
             return false;
         }
         self.pc = address.wrapping_add(i.size());
 
         // An invalid opcode is a NOP. A valid one has a valid mode here.
         if let (Some(op), Some(mode)) = (i.opcode(), i.mode()) {
-            self.execute(board, op, mode, i);
+            self.execute(board, probe, op, mode, i);
         }
+        probe.instruction(self, address, i);
         true
     }
 
     #[inline(always)]
-    fn execute(&mut self, board: &mut Board, op: Opcode, mode: AddrMode, i: Instruction) {
+    fn execute<P: Probe>(
+        &mut self,
+        board: &mut Board,
+        probe: &mut P,
+        op: Opcode,
+        mode: AddrMode,
+        i: Instruction,
+    ) {
         use AddrMode as M;
         use Opcode as O;
 
@@ -400,7 +426,7 @@ impl Cpu {
                         };
                         let value = board.ram.read(address);
                         let result = apply(self, value);
-                        board.ram.write(address, result);
+                        Self::write(board, probe, address, result);
                     }
                     _ => {}
                 }
@@ -414,7 +440,7 @@ impl Cpu {
                 M::Imm16 => {
                     let result = !board.ram.read(i.vx());
                     self.set_zn(result);
-                    board.ram.write(i.vx(), result);
+                    Self::write(board, probe, i.vx(), result);
                 }
                 _ => {}
             },
@@ -451,14 +477,16 @@ impl Cpu {
                 _ => {}
             },
             O::Str => match mode {
-                M::RegRam => board.ram.write(i.vx(), self.r(i.r1())),
-                M::RamRegImmReg => board.ram.write(self.pointer_address(i), self.r(i.r3())),
-                M::StackOffset => board.ram.write(self.stack_address(i), self.r(i.r1())),
+                M::RegRam => Self::write(board, probe, i.vx(), self.r(i.r1())),
+                M::RamRegImmReg => {
+                    Self::write(board, probe, self.pointer_address(i), self.r(i.r3()))
+                }
+                M::StackOffset => Self::write(board, probe, self.stack_address(i), self.r(i.r1())),
                 _ => {}
             },
             O::Psh => {
                 if mode == M::Reg {
-                    self.push(board, self.r(i.r1()));
+                    self.push(board, probe, self.r(i.r1()));
                 }
             }
             O::Pop => {
@@ -469,7 +497,7 @@ impl Cpu {
             }
             O::Psf => {
                 if mode == M::None {
-                    self.push(board, self.flags.0);
+                    self.push(board, probe, self.flags.0);
                 }
             }
             // All 8 flags are restored, Interrupt and Halt included.
@@ -525,7 +553,7 @@ impl Cpu {
             O::Cal => {
                 if let Some(target) = self.jump_target(mode, i) {
                     // Return address = the instruction after CAL.
-                    self.push_address(board, self.pc);
+                    self.push_address(board, probe, self.pc);
                     self.pc = target;
                     self.call_depth = self.call_depth.wrapping_add(1);
                 }
@@ -572,6 +600,7 @@ impl Cpu {
                     board.address_bus = port as u16;
                     board.data_bus = value;
                     board.iod.cpu_write(port, value);
+                    probe.io_write(port, value);
                 }
             }
 

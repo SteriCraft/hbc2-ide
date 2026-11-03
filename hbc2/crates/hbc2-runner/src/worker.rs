@@ -1,5 +1,8 @@
 //! The emulator thread: owns the machine, handles commands, keeps the pace.
 
+use std::fs::File;
+use std::io::BufWriter;
+use std::path::PathBuf;
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
@@ -7,9 +10,9 @@ use std::time::{Duration, Instant};
 use chrono::{Datelike, Timelike};
 use hbc2_core::peripherals::rtc::DateTime;
 use hbc2_core::peripherals::{Eeprom, Monitor};
-use hbc2_core::{Machine, RunResult, StopReason};
+use hbc2_core::{Machine, NoProbe, Probe, RunResult, StopReason, TraceWriter};
 
-use crate::{Command, RunState, Shared, Snapshot, Speed};
+use crate::{Command, RunState, Shared, Snapshot, Speed, TraceEnd, TraceEndReason, TraceStatus};
 
 /// Most cycles run between two looks at the command channel
 /// (about 1-2 ms of work in a release build).
@@ -59,6 +62,16 @@ pub(crate) struct Worker {
     /// Copies reused while the peripheral content does not change.
     monitor_copy: Option<(u64, Arc<Monitor>)>,
     eeprom_copy: Option<(u64, Arc<Eeprom>)>,
+
+    trace: Option<Trace>,
+    trace_ends: u64,
+    trace_end: Option<Arc<TraceEnd>>,
+}
+
+struct Trace {
+    writer: TraceWriter<BufWriter<File>>,
+    path: PathBuf,
+    limit: u64,
 }
 
 enum Flow {
@@ -88,6 +101,9 @@ impl Worker {
             sleep: None,
             monitor_copy: None,
             eeprom_copy: None,
+            trace: None,
+            trace_ends: 0,
+            trace_end: None,
         };
         worker.sync_rtc(false);
         worker
@@ -114,7 +130,11 @@ impl Worker {
                         }
                         continue;
                     }
-                    Err(RecvTimeoutError::Disconnected) => return, // the Runner is gone
+                    Err(RecvTimeoutError::Disconnected) => {
+                        // The Runner is gone.
+                        self.end_trace(TraceEndReason::Stopped);
+                        return;
+                    }
                 },
                 RunState::Running => {
                     if let Some(duration) = self.sleep.take() {
@@ -123,7 +143,10 @@ impl Worker {
                     match self.commands.try_recv() {
                         Ok(command) => Some(command),
                         Err(TryRecvError::Empty) => None,
-                        Err(TryRecvError::Disconnected) => return,
+                        Err(TryRecvError::Disconnected) => {
+                            self.end_trace(TraceEndReason::Stopped);
+                            return;
+                        }
                     }
                 }
             };
@@ -153,7 +176,7 @@ impl Worker {
                 self.pause();
                 self.stop = None;
                 for _ in 0..instructions {
-                    self.machine.step();
+                    self.step();
                 }
             }
             Command::StepWithin(addresses) => self.step_to(Goal::Within(addresses)),
@@ -168,6 +191,7 @@ impl Worker {
             Command::PowerCycle => {
                 self.pause();
                 self.stop = None;
+                self.trace_reset();
                 self.machine.power_on();
                 self.sync_rtc(false);
                 self.forget_copies();
@@ -176,6 +200,7 @@ impl Worker {
             Command::Load(machine) => {
                 self.pause();
                 self.stop = None;
+                self.trace_reset();
                 self.machine = *machine;
                 self.sync_rtc(false);
                 self.forget_copies();
@@ -203,7 +228,19 @@ impl Worker {
                 shared.publish(snapshot.clone());
                 let _ = reply.send(snapshot);
             }
-            Command::Shutdown => return Flow::Exit,
+            Command::TraceStart { file, path, limit } => {
+                self.end_trace(TraceEndReason::Stopped);
+                self.trace = Some(Trace {
+                    writer: TraceWriter::new(BufWriter::new(file), Some(limit)),
+                    path,
+                    limit,
+                });
+            }
+            Command::TraceStop => self.end_trace(TraceEndReason::Stopped),
+            Command::Shutdown => {
+                self.end_trace(TraceEndReason::Stopped);
+                return Flow::Exit;
+            }
         }
         Flow::Continue
     }
@@ -212,7 +249,7 @@ impl Worker {
     fn step_to(&mut self, goal: Goal) {
         self.pause();
         self.stop = None;
-        self.machine.step();
+        self.step();
         match goal.next(&self.machine) {
             Next::Go => {
                 self.goal = Some(goal);
@@ -221,6 +258,60 @@ impl Worker {
             Next::Done => {}
             Next::Breakpoint => self.stop = Some(StopReason::Breakpoint(self.machine.cpu.pc)),
         }
+    }
+
+    /// One instruction (see `Machine::step`), traced if a trace is on.
+    fn step(&mut self) -> u64 {
+        let ticks = match &mut self.trace {
+            Some(trace) => {
+                trace.writer.start(&self.machine.cpu);
+                self.machine.step_with(&mut trace.writer)
+            }
+            None => self.machine.step(),
+        };
+        self.check_trace();
+        ticks
+    }
+
+    /// Ends the trace if it is full or a write failed.
+    fn check_trace(&mut self) {
+        if let Some(trace) = &self.trace {
+            if let Some(error) = trace.writer.error() {
+                let message = error.to_string();
+                self.end_trace(TraceEndReason::Error(message));
+            } else if trace.writer.is_full() {
+                self.end_trace(TraceEndReason::Limit);
+            }
+        }
+    }
+
+    /// Before a reset or a reload: a trace that has started ends; one still
+    /// waiting for its first instruction keeps waiting.
+    fn trace_reset(&mut self) {
+        if self.trace.as_ref().is_some_and(|t| t.writer.is_started()) {
+            self.end_trace(TraceEndReason::Reset);
+        }
+    }
+
+    /// Closes the trace file, if a trace is on. A trace that never started
+    /// still gets its header and line 0.
+    fn end_trace(&mut self, reason: TraceEndReason) {
+        let Some(mut trace) = self.trace.take() else {
+            return;
+        };
+        trace.writer.start(&self.machine.cpu);
+        let lines = trace.writer.lines();
+        let reason = match trace.writer.finish() {
+            Ok(_) => reason,
+            Err(e) => TraceEndReason::Error(e.to_string()),
+        };
+        self.trace_ends += 1;
+        self.trace_end = Some(Arc::new(TraceEnd {
+            path: trace.path,
+            lines,
+            reason,
+        }));
+        self.dirty = true;
     }
 
     fn resume(&mut self) {
@@ -288,10 +379,21 @@ impl Worker {
             }
         };
 
-        let (result, reached) = match &self.goal {
-            Some(goal) => run_to(&mut self.machine, budget, goal),
-            None => (self.machine.run(budget), false),
+        let (result, reached) = match &mut self.trace {
+            Some(trace) => {
+                trace.writer.start(&self.machine.cpu);
+                let probe = &mut trace.writer;
+                match &self.goal {
+                    Some(goal) => run_to(&mut self.machine, budget, goal, probe),
+                    None => (self.machine.run_with(budget, probe), false),
+                }
+            }
+            None => match &self.goal {
+                Some(goal) => run_to(&mut self.machine, budget, goal, &mut NoProbe),
+                None => (self.machine.run(budget), false),
+            },
         };
+        self.check_trace();
         self.paced_ticks += result.ticks;
         self.meter_ticks += result.ticks;
         self.report_host_time();
@@ -359,6 +461,14 @@ impl Worker {
             rtc: peripherals.rtc.clone(),
             keyboard: peripherals.keyboard.clone(),
             eeprom,
+            trace: self.trace.as_ref().map(|t| TraceStatus {
+                path: t.path.clone(),
+                lines: t.writer.lines(),
+                started: t.writer.is_started(),
+                limit: t.limit,
+            }),
+            trace_ends: self.trace_ends,
+            trace_end: self.trace_end.clone(),
         })
     }
 }
@@ -411,10 +521,15 @@ impl Goal {
 
 /// Runs about `budget` cycles, one instruction at a time, until `goal` is
 /// reached (then returns true) or a breakpoint stops it.
-fn run_to(machine: &mut Machine, budget: u64, goal: &Goal) -> (RunResult, bool) {
+fn run_to<P: Probe>(
+    machine: &mut Machine,
+    budget: u64,
+    goal: &Goal,
+    probe: &mut P,
+) -> (RunResult, bool) {
     let mut ticks = 0;
     while ticks < budget {
-        ticks += machine.step();
+        ticks += machine.step_with(probe);
         match goal.next(machine) {
             Next::Go => {}
             Next::Done => return (RunResult { ticks, stop: None }, true),

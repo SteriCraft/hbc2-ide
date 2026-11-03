@@ -244,6 +244,14 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui.add(shortcut_button("Reset", key(Command::Reset))).clicked() {
                     actions.push(Action::Reset);
                 }
+                let trace_label = if state.snapshot.trace.is_some() {
+                    "Stop the trace"
+                } else {
+                    "Record a trace…"
+                };
+                if ui.button(trace_label).clicked() {
+                    actions.push(Action::ToggleTrace);
+                }
                 ui.separator();
                 ui.menu_button("Clock speed", |ui| {
                     let current: Speed = state.settings.speed.into();
@@ -359,6 +367,7 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             {
                 actions.push(Action::Reset);
             }
+            trace_button(ui, &s, actions);
             ui.separator();
             ui.toggle_value(&mut state.settings.monitor_window, "🖥 Monitor")
                 .on_hover_text("Show or hide the monitor window");
@@ -1100,6 +1109,41 @@ fn build_settings(ui: &mut egui::Ui, settings: &mut Settings) {
     );
 }
 
+/// Toolbar: starts a trace, or shows the one being recorded and stops it.
+fn trace_button(ui: &mut egui::Ui, s: &hbc2_runner::Snapshot, actions: &mut Vec<Action>) {
+    let response = match &s.trace {
+        None => ui
+            .button("⏺ Trace")
+            .on_hover_text("Record an execution trace (CSV, one line per instruction)"),
+        Some(trace) => {
+            let red = egui::Color32::from_rgb(0xE0, 0x40, 0x40);
+            let text = if trace.started {
+                format!("⏹ Trace · {}", crate::views::cpu::group_digits(trace.lines))
+            } else {
+                "⏹ Trace · waiting".to_string()
+            };
+            let hover = if trace.started {
+                format!(
+                    "Recording to {} ({} lines of at most {}). Click to stop.",
+                    trace.path.display(),
+                    crate::views::cpu::group_digits(trace.lines),
+                    crate::views::cpu::group_digits(trace.limit)
+                )
+            } else {
+                format!(
+                    "Recording to {}: starts with the next instruction run. Click to stop.",
+                    trace.path.display()
+                )
+            };
+            ui.add(Button::new(RichText::new(text).color(egui::Color32::WHITE)).fill(red))
+                .on_hover_text(hover)
+        }
+    };
+    if response.clicked() {
+        actions.push(Action::ToggleTrace);
+    }
+}
+
 fn emulator_settings(ui: &mut egui::Ui, settings: &mut Settings) {
     settings_section(ui, "Startup");
     ui.horizontal(|ui| {
@@ -1128,6 +1172,18 @@ fn emulator_settings(ui: &mut egui::Ui, settings: &mut Settings) {
             "When the emulator pauses, show the line, disassembly and memory of the next \
              instruction.",
         );
+    settings_section(ui, "Trace");
+    ui.horizontal(|ui| {
+        ui.label("Stop a trace after");
+        ui.add(
+            egui::DragValue::new(&mut settings.emulator.trace_limit)
+                .range(1..=u64::MAX)
+                .speed(1000.0),
+        );
+        ui.label("lines");
+    })
+    .response
+    .on_hover_text("A trace file line is about 60 bytes: 1,000,000 lines make about 60 MB.");
     settings_section(ui, "Peripherals of new projects");
     let peripherals = &mut settings.emulator.new_project_peripherals;
     ui.checkbox(&mut peripherals.monitor, "Monitor");

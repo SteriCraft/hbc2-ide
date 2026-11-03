@@ -5,6 +5,7 @@ use crate::cpu::{Cpu, CpuState};
 use crate::isa::{Flag, RAM_SIZE};
 use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
+use crate::trace::{NoProbe, Probe};
 
 /// Which peripherals are plugged in.
 #[derive(Clone, Debug)]
@@ -159,7 +160,13 @@ impl Machine {
     /// One clock cycle. Returns true when the PC moved to a new instruction.
     #[inline(always)]
     pub fn tick(&mut self) -> bool {
-        let advanced = self.cpu.tick(&mut self.board);
+        self.tick_with(&mut NoProbe)
+    }
+
+    /// [`Machine::tick`], reporting what the CPU does to `probe`.
+    #[inline(always)]
+    pub fn tick_with<P: Probe>(&mut self, probe: &mut P) -> bool {
+        let advanced = self.cpu.tick_with(&mut self.board, probe);
         if let Some(port) = self.board.iod.take_pending_write() {
             self.peripherals.port_written(port, &mut self.board);
         }
@@ -172,9 +179,14 @@ impl Machine {
     /// jump into an interrupt handler. When halted with nothing pending,
     /// runs a single cycle. Returns the number of cycles run.
     pub fn step(&mut self) -> u64 {
+        self.step_with(&mut NoProbe)
+    }
+
+    /// [`Machine::step`], reporting what the CPU does to `probe`.
+    pub fn step_with<P: Probe>(&mut self, probe: &mut P) -> u64 {
         // The longest path is a hardware interrupt handshake (2 cycles).
         for n in 1..=4 {
-            if self.tick() || self.cpu.is_halted() {
+            if self.tick_with(probe) || self.cpu.is_halted() {
                 return n;
             }
         }
@@ -189,8 +201,13 @@ impl Machine {
     /// the budget is counted without being simulated: those cycles would
     /// change nothing.
     pub fn run(&mut self, max_ticks: u64) -> RunResult {
+        self.run_with(max_ticks, &mut NoProbe)
+    }
+
+    /// [`Machine::run`], reporting what the CPU does to `probe`.
+    pub fn run_with<P: Probe>(&mut self, max_ticks: u64, probe: &mut P) -> RunResult {
         for n in 1..=max_ticks {
-            if self.tick() {
+            if self.tick_with(probe) {
                 if self.breakpoints.contains(self.cpu.pc) {
                     return RunResult {
                         ticks: n,

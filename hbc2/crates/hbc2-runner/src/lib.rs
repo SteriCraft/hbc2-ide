@@ -13,12 +13,18 @@
 //! a pointer, so the GUI can never freeze the emulation, and the emulation
 //! can never freeze the GUI.
 //!
+//! Trace: [`Runner::trace_start`] records every instruction to a CSV file
+//! (see `hbc2_core::trace`), while running or stepping, until
+//! [`Runner::trace_stop`], a reset, a reload, or the line limit.
+//!
 //! Speed: the thread runs the machine in short slices and sleeps between
 //! them to match the chosen clock frequency ([`Speed::Hz`]), or never sleeps
 //! ([`Speed::Fastest`]). A halted CPU waiting for an interrupt costs nothing.
 
 mod worker;
 
+use std::fs::File;
+use std::path::PathBuf;
 use std::sync::mpsc::{self, Sender};
 use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
@@ -87,6 +93,43 @@ pub struct Snapshot {
     pub rtc: Option<Rtc>,
     pub keyboard: Option<Keyboard>,
     pub eeprom: Option<Arc<Eeprom>>,
+    /// The trace being recorded, if any.
+    pub trace: Option<TraceStatus>,
+    /// Increases each time a trace ends; [`Snapshot::trace_end`] tells how.
+    pub trace_ends: u64,
+    pub trace_end: Option<Arc<TraceEnd>>,
+}
+
+/// A trace being recorded.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TraceStatus {
+    pub path: PathBuf,
+    /// Number of the last line written (0: only the starting state).
+    pub lines: u64,
+    /// False until the first instruction runs: nothing is written yet.
+    pub started: bool,
+    pub limit: u64,
+}
+
+/// How a trace ended.
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub struct TraceEnd {
+    pub path: PathBuf,
+    /// Number of the last line written.
+    pub lines: u64,
+    pub reason: TraceEndReason,
+}
+
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub enum TraceEndReason {
+    /// [`Runner::trace_stop`].
+    Stopped,
+    /// The line limit was reached.
+    Limit,
+    /// The machine was reset or replaced after the trace had started.
+    Reset,
+    /// Writing the file failed.
+    Error(String),
 }
 
 /// A function run on the emulator thread with full access to the machine.
@@ -115,6 +158,12 @@ enum Command {
         pressed: bool,
     },
     Exec(MachineFn),
+    TraceStart {
+        file: File,
+        path: PathBuf,
+        limit: u64,
+    },
+    TraceStop,
     /// Publishes a snapshot right away and sends it back.
     Sync(Sender<Arc<Snapshot>>),
     Shutdown,
@@ -276,6 +325,20 @@ impl Runner {
     /// A key of the HBC-2 keyboard was pressed or released.
     pub fn key(&self, scan_code: u8, pressed: bool) {
         self.send(Command::Key { scan_code, pressed });
+    }
+
+    /// Starts recording a trace into `file` (created by the caller, so it
+    /// can report errors right away), replacing any trace being recorded.
+    /// Line 0 is the state when the next instruction is about to run; a
+    /// reset or reload before that keeps the trace waiting, one after it
+    /// ends the trace. The trace ends by itself after line `limit`.
+    pub fn trace_start(&self, file: File, path: PathBuf, limit: u64) {
+        self.send(Command::TraceStart { file, path, limit });
+    }
+
+    /// Stops the trace and closes its file.
+    pub fn trace_stop(&self) {
+        self.send(Command::TraceStop);
     }
 
     /// Runs `f` on the emulator thread with full access to the machine, for

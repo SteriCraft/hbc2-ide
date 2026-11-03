@@ -106,6 +106,8 @@ pub enum Action {
     ExportImage,
     LoadImage,
     SaveEeprom,
+    /// Starts recording an execution trace (asks for the file), or stops it.
+    ToggleTrace,
     SetTarget(TargetSetting),
     /// Leave out unused code in an assembly project, or keep everything.
     SetStrip(bool),
@@ -277,6 +279,8 @@ pub struct State {
     followed: Option<(u64, u16)>,
     /// Last breakpoint stop written to the console.
     reported_stop: Option<(u64, hbc2_core::StopReason)>,
+    /// `Snapshot::trace_ends` already reported in the console.
+    reported_trace_ends: u64,
     last_disk_check: f64,
     quit_confirmed: bool,
     title: String,
@@ -450,6 +454,7 @@ impl Ide {
                 tab_rects: Vec::new(),
                 followed: None,
                 reported_stop: None,
+                reported_trace_ends: 0,
                 last_disk_check: 0.0,
                 quit_confirmed: false,
                 title: String::new(),
@@ -752,6 +757,12 @@ impl Ide {
                 place.unwrap_or_default(),
                 crate::views::cpu::group_digits(s.ticks)
             ));
+        }
+        if s.trace_ends != self.state.reported_trace_ends {
+            self.state.reported_trace_ends = s.trace_ends;
+            if let Some(end) = &s.trace_end {
+                self.state.report_trace_end(end);
+            }
         }
         if s.ticks > 0 && self.state.settings.follow_pc && self.state.follows_execution() {
             let key = (s.ticks, s.cpu.pc);
@@ -1314,6 +1325,7 @@ impl Ide {
                 state.console.info("The machine was reset.");
             }
             Action::ExportImage => state.export_image(),
+            Action::ToggleTrace => state.toggle_trace(),
             Action::LoadImage => state.load_image(),
             Action::SaveEeprom => state.save_eeprom(),
             Action::SetTarget(target) => {
@@ -2086,6 +2098,66 @@ impl State {
                     .console
                     .error(format!("Cannot write {}: {e}", path.display())),
             }
+        }
+    }
+
+    /// Stops the trace being recorded, or asks for a file and starts one.
+    fn toggle_trace(&mut self) {
+        if self.emulator.runner.sync().trace.is_some() {
+            self.emulator.runner.trace_stop();
+            return;
+        }
+        let mut dialog = rfd::FileDialog::new()
+            .set_title("Record an execution trace")
+            .add_filter("CSV trace", &["csv"])
+            .set_file_name("trace.csv");
+        if let Some(project) = &self.project {
+            dialog = dialog.set_directory(&project.root);
+        }
+        let Some(path) = dialog.save_file() else {
+            return;
+        };
+        match std::fs::File::create(&path) {
+            Ok(file) => {
+                let limit = self.settings.emulator.trace_limit.max(1);
+                self.emulator.runner.trace_start(file, path.clone(), limit);
+                self.console.info(format!(
+                    "Recording a trace to {} (at most {} lines). It starts with the next \
+                     instruction run.",
+                    path.display(),
+                    crate::views::cpu::group_digits(limit)
+                ));
+            }
+            Err(e) => self.message(
+                "Cannot create the trace file",
+                format!("{}: {e}", path.display()),
+            ),
+        }
+    }
+
+    fn report_trace_end(&mut self, end: &hbc2_runner::TraceEnd) {
+        use hbc2_runner::TraceEndReason as R;
+        let lines = crate::views::cpu::group_digits(end.lines);
+        let path = end.path.display();
+        match &end.reason {
+            R::Stopped => self
+                .console
+                .success(format!("Trace written to {path} ({lines} lines).")),
+            R::Reset => self.console.info(format!(
+                "The machine was reset: trace stopped, {path} ({lines} lines)."
+            )),
+            R::Limit => {
+                let text = format!(
+                    "The trace reached its limit of {lines} lines and stopped: {path}. \
+                     The limit is in Settings, Emulator."
+                );
+                self.console.warning(text.clone());
+                self.dialog = Some(Dialog::Message {
+                    title: "Trace stopped".into(),
+                    text,
+                });
+            }
+            R::Error(e) => self.message("Trace stopped", format!("Cannot write {path}: {e}")),
         }
     }
 

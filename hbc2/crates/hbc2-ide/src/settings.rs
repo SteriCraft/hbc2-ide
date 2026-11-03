@@ -263,13 +263,29 @@ pub struct BuildSettings {
 }
 
 /// Settings dialog, Emulator page (Follow PC is [`Settings::follow_pc`]).
-#[derive(Clone, Copy, Debug, Default, PartialEq, Serialize, Deserialize)]
+#[derive(Clone, Copy, Debug, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct EmulatorSettings {
     /// Clock when the IDE starts (`None`: as it was left).
     pub startup_speed: Option<SpeedSetting>,
     /// Peripherals plugged in a new project.
     pub new_project_peripherals: Peripherals,
+    /// A trace stops by itself after this many lines.
+    pub trace_limit: u64,
+}
+
+impl EmulatorSettings {
+    pub const DEFAULT_TRACE_LIMIT: u64 = 1_000_000;
+}
+
+impl Default for EmulatorSettings {
+    fn default() -> Self {
+        EmulatorSettings {
+            startup_speed: None,
+            new_project_peripherals: Peripherals::default(),
+            trace_limit: EmulatorSettings::DEFAULT_TRACE_LIMIT,
+        }
+    }
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

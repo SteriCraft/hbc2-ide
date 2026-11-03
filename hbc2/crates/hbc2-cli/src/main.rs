@@ -7,7 +7,7 @@ use std::time::{Duration, Instant};
 use hbc2_asm::{Program, Target};
 use hbc2_core::isa::{PROGRAM_START, encode};
 use hbc2_core::peripherals::Eeprom;
-use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
+use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register, TraceWriter};
 
 const USAGE: &str = "\
 usage:
@@ -23,6 +23,10 @@ usage:
   hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom [file.has | eeprom.bin]]
         run headless, then print the CPU state (C files: built as with cc;
         with --eeprom and no file, built for the EEPROM and started from it)
+  hbc2 trace <main.has | ram.bin> --max N [-o trace.csv] [--peripherals]
+        write an execution trace (CSV, one line per instruction) until
+        line N or until the CPU halts (H set); no peripherals unless
+        --peripherals (output default: the input with the extension .csv)
   hbc2 bench [--seconds N] [--hz N]
         measure emulation speed (flat out, or paced on the emulator thread)";
 
@@ -33,6 +37,7 @@ fn main() -> ExitCode {
         Some("bench") => bench(&args[1..]),
         Some("cc") => cc(&args[1..]),
         Some("run") => run(&args[1..]),
+        Some("trace") => trace(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -370,5 +375,53 @@ fn run(args: &[String]) -> Result<(), String> {
     } else if cpu.is_stopped() {
         println!("stopped: hlt with interrupts off");
     }
+    Ok(())
+}
+
+fn trace(args: &[String]) -> Result<(), String> {
+    let path = input(args)?;
+    let max: u64 = match option(args, "--max") {
+        Some(value) => value
+            .parse()
+            .map_err(|_| format!("invalid value for --max: {value}"))?,
+        None => return Err("trace: --max N is required".into()),
+    };
+    let output = option(args, "-o")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| Path::new(path).with_extension("csv"));
+
+    let ram = if is_source(path) {
+        assemble(path, Target::Ram, false)?.image
+    } else {
+        std::fs::read(path).map_err(|e| format!("{path}: {e}"))?
+    };
+    let config = if has(args, "--peripherals") {
+        MachineConfig::default()
+    } else {
+        MachineConfig {
+            monitor: false,
+            rtc: false,
+            keyboard: false,
+            eeprom: None,
+        }
+    };
+    let mut machine = Machine::new(config, Some(&ram)).map_err(|e| e.to_string())?;
+
+    let file = std::fs::File::create(&output).map_err(|e| format!("{}: {e}", output.display()))?;
+    let mut writer = TraceWriter::new(std::io::BufWriter::new(file), Some(max));
+    writer.start(&machine.cpu);
+    while !writer.is_full() && writer.error().is_none() && !machine.cpu.is_halted() {
+        machine.step_with(&mut writer);
+    }
+    let lines = writer.lines();
+    writer
+        .finish()
+        .map_err(|e| format!("{}: {e}", output.display()))?;
+    let end = if machine.cpu.is_halted() {
+        "CPU halted"
+    } else {
+        "--max reached"
+    };
+    println!("{path} -> {} ({lines} lines, {end})", output.display());
     Ok(())
 }
