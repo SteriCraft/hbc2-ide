@@ -291,13 +291,23 @@ fn divide_32() {
 fn divide_by_zero() {
     // all bits set, the remainder is the left operand (signed too)
     for l in values16(40) {
-        for (helper, want) in [("__divu", 0xFFFF), ("__div", 0xFFFF), ("__remu", l), ("__rem", l)] {
+        for (helper, want) in [
+            ("__divu", 0xFFFF),
+            ("__div", 0xFFFF),
+            ("__remu", l),
+            ("__rem", l),
+        ] {
             let m = call(helper, &args16(l, 0), &[]);
             assert_eq!(r16(&m, A, B), want, "{helper}({l:#06x}, 0)");
         }
     }
     for l in values32(40) {
-        for (helper, want) in [("__divul", u32::MAX), ("__divl", u32::MAX), ("__remul", l), ("__reml", l)] {
+        for (helper, want) in [
+            ("__divul", u32::MAX),
+            ("__divl", u32::MAX),
+            ("__remul", l),
+            ("__reml", l),
+        ] {
             let m = call(helper, &args32(l, 0), &[]);
             assert_eq!(r32(&m), want, "{helper}({l:#010x}, 0)");
         }

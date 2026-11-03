@@ -29,3 +29,6 @@ compiler/build/
 
 # Claude Code local settings
 .claude/
+
+# installer output (installer.cmd)
+installer/output/

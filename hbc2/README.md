@@ -32,6 +32,16 @@ cargo run --release --bin hbc2 -- bench                  # emulation speed in MH
 cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on the emulator thread
 ```
 
+## Installer (Windows)
+
+`installer.cmd` (at the root of the repository) builds the programs and
+`installer/output/HBC-2-IDE-<version>-setup.exe` with Inno Setup 6
+(`winget install JRSoftware.InnoSetup`). The C compiler must be built first
+(`compiler/build.cmd`). The installer puts the IDE, `hbc2.exe` and the
+compiler's files (`compiler/`) in one folder, `Program Files\HBC-2 IDE` by
+default (it asks for administrator rights); the IDE finds the compiler
+next to its executable. The version is the workspace's (`Cargo.toml`).
+
 ## The IDE
 
 - A project is a folder with a `main.has`, where assembly starts. File ▸ New

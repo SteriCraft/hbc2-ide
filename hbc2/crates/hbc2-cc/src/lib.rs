@@ -33,12 +33,23 @@ use hbc2_asm::{FileSystem, Options, Program, SymbolKind, Target, assemble_with};
 use lines::LineMaps;
 use messages::{c_diagnostic, plain, tool_messages};
 
-/// The `compiler` folder of the repository (or `HBC2_COMPILER_DIR`).
+/// The compiler's folder: `HBC2_COMPILER_DIR` when set, else the `compiler`
+/// folder next to the program (where the installer puts it), else the
+/// `compiler` folder of the repository.
 pub fn compiler_dir() -> PathBuf {
-    match std::env::var_os("HBC2_COMPILER_DIR") {
-        Some(dir) => PathBuf::from(dir),
-        None => Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../compiler"),
-    }
+    static DIR: std::sync::OnceLock<PathBuf> = std::sync::OnceLock::new();
+    DIR.get_or_init(|| {
+        if let Some(dir) = std::env::var_os("HBC2_COMPILER_DIR") {
+            // absolute: the tools may run in another folder
+            return std::path::absolute(&dir).unwrap_or(dir.into());
+        }
+        let installed = std::env::current_exe()
+            .ok()
+            .and_then(|exe| Some(exe.parent()?.join("compiler")))
+            .filter(|dir| dir.is_dir());
+        installed.unwrap_or_else(|| Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../compiler"))
+    })
+    .clone()
 }
 
 /// `compiler/runtime`: the startup code and runtime.has.
@@ -501,13 +512,23 @@ pub fn compile(
         diagnostics.extend(tool_messages(&stage.messages, severity, source, &include));
         stage.ok
     };
+    // cpp writes its swap file in its current folder: it runs in the
+    // output's folder, as the program's folder may not be writable (Program
+    // Files), so it is given absolute paths
+    let abs_source = absolute(source)?;
+    let abs_folder = abs_source.parent().unwrap_or(Path::new(".")).to_path_buf();
+    let work = absolute(output)?
+        .parent()
+        .unwrap_or(Path::new("."))
+        .to_path_buf();
     let result = (|| -> Result<bool, String> {
         let cpp = tool_command(&tool("cpp")?)
+            .current_dir(&work)
             .args(["-E", "-D__hbc2__"])
             // #include "x.h": next to the C file first
-            .arg(format!("-I{}", folder.display()))
+            .arg(format!("-I{}", abs_folder.display()))
             .arg(format!("-I{}", include[1].display()))
-            .arg(source)
+            .arg(&abs_source)
             .stdout(File::create(&pre).map_err(|e| format!("{}: {e}", pre.display()))?)
             .stderr(Stdio::piped())
             .output()
