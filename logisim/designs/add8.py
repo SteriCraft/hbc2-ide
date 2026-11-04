@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""8-bit adder from two 74283 (4-bit adders) -> circuits/add8_ttl.circ
+"""8-bit adder from two 74283 (4-bit adders) -> circuits/alu/add8.circ
 
     add8_s, add8_cout = add8_a + add8_b + add8_cin
 
@@ -8,9 +8,9 @@ short jog. Every chip pin leaves toward the left on a nested rail, where it
 meets the A, B or S bus through a 1-bit tap. Bit wires never cross each
 other; they only cross the bus lines.
 
-    python add8_ttl.py           # write, check
-    python add8_ttl.py --test    # ... and run it in Logisim against the Python model
-    python add8_ttl.py --png     # ... and draw it next to the .circ
+    python add8.py           # write, check
+    python add8.py --test    # ... and run it in Logisim against the emulator (hbc2 vectors)
+    python add8.py --png     # ... and draw it next to the .circ
 """
 
 import sys
@@ -20,7 +20,7 @@ ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
 from circgen import Project, nested_rails  # noqa: E402
 
-OUT = ROOT / "circuits" / "add8_ttl.circ"
+OUT = ROOT / "circuits" / "alu" / "add8.circ"     # practice module, kept next to alu
 
 p = Project()
 c = p.circuit("add8")
