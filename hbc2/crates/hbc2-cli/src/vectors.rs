@@ -784,11 +784,13 @@ const SEQ_MODULES: &[SeqModule] = &[
     SeqModule { name: "flags_cpu", inputs: FLAGS_IN, outputs: FLAGS_OUT, buses: FLAGS_BUSES, sets: flags_cpu_sets },
 ];
 
+mod addr;
 mod regs;
 
-/// Every sequential module: the flag register and the register section (vectors/regs.rs).
+/// Every sequential module: the flag register, the register section
+/// (vectors/regs.rs) and the address section (vectors/addr.rs).
 fn seq_modules() -> impl Iterator<Item = &'static SeqModule> {
-    SEQ_MODULES.iter().chain(regs::MODULES)
+    SEQ_MODULES.iter().chain(regs::MODULES).chain(addr::MODULES)
 }
 
 fn names() -> String {

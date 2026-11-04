@@ -1,0 +1,9 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT08,quad 2-input AND,2,SN74HCT08N,74HCT08D (Nexperia),addr,1
+74HCT86,quad 2-input XOR,4,CD74HCT86E,74HCT86D (Nexperia),addr,1
+74HCT153,dual 4-to-1 multiplexer,8,CD74HCT153E,74HCT153D (Nexperia),addr,2
+74HCT157,quad 2-to-1 multiplexer,4,CD74HCT157E,74HCT157D (Nexperia),addr,1
+74HCT283,4-bit binary adder,4,CD74HCT283E,CD74HCT283M96 (TI),addr,1
+74HCT377,"octal D flip-flop, data enable",6,CD74HCT377E,CD74HCT377M96 (TI),addr,1
+74HCT541,"octal buffer, tri-state",6,SN74HCT541N,74HCT541D (Nexperia),addr,1
+total,7 part numbers,34,,,,8

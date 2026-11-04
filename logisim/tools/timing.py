@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Worst-case delays of the ALU, flag-register and register-section paths, from the "Delays" table of
+"""Worst-case delays of the ALU, flag-register, register-section and address-section paths, from the "Delays" table of
 logisim/notes/chips.md (TI datasheets, CL = 50 pF).
 
 Each path is a start (t = 0, or the latest of other paths) followed by a
@@ -18,6 +18,7 @@ them here when a module changes.
     python timing.py            # the ALU table
     python timing.py --section flags   # the flag register, within one 500 ns step
     python timing.py --section regs    # the register section and the end-to-end ALU step
+    python timing.py --section addr    # PC, SP, the address adder and latch
     python timing.py --limit 250   # ... and exit 1 if a shown path is over 250 ns at max 25 °C
 """
 
@@ -179,22 +180,25 @@ FLAGS = {
 # included); the sections not built yet are estimates, listed with each bus.
 PIN_PF = {"in": 10, "out": 20}
 WIRE_PF_PER_PIN = 2
-WIRE_PF_BUS = {"bus_a": 20, "bus_b": 20, "bus_data": 20}       # others: 5 (local)
+WIRE_PF_BUS = {"bus_a": 20, "bus_b": 20, "bus_data": 20, "bus_addr": 20}   # others: 5 (local)
 SLOPE = {"bus": (0.07, 0.10, 0.13), "std": (0.105, 0.15, 0.20)}
 DRIVE = {"74HCT541": "bus", "74HCT574": "bus", "74HCT240": "bus", "74HCT670": "std", "74HCT153": "std"}
 CIRCUITS = Path(__file__).resolve().parent.parent / "circuits"
 # bus: [(file, top circuit, net), or ("est", inputs, outputs, what)]
 BUSES = {
     "bus_a": [("registers/regs.circ", "regs", "regs_a"), ("alu/alu.circ", "alu", "alu_a"),
-              ("est", 1, 0, "address path: adder input, R1 high byte (not built)")],
+              ("addr/addr.circ", "addr", "addr_bus_a")],
     "bus_b": [("registers/regs.circ", "regs", "regs_b"), ("alu/alu.circ", "alu", "alu_b"),
-              ("est", 1, 0, "address path: adder input, R2 low byte (not built)")],
+              ("addr/addr.circ", "addr", "addr_bus_b")],
     "bus_data": [("registers/regs.circ", "regs", "regs_bus_in"), ("registers/regs.circ", "regs", "regs_bus_out"),
                  ("flags/flags.circ", "flags", "flags_bus_in"), ("flags/flags.circ", "flags", "flags_bus_out"),
                  ("est", 4, 0, "IR: opcode, byte 1, V1, V2 latches (not built)"),
-                 ("est", 2, 2, "PC: load hi / lo, drive hi / lo for CAL (not built)"),
-                 ("est", 2, 2, "SP: load hi / lo, drive hi / lo for RSP (not built)"),
+                 ("addr/addr.circ", "addr", "addr_bus_out"),
                  ("est", 0, 3, "RAM, ROM, I/O port data (not built)")],
+    # the low byte (the worst: the IVT reads it back)
+    "bus_addr": [("addr/addr.circ", "addr", "addr_bus_addr_lo"), ("addr/addr.circ", "addr", "addr_bus_addr_lo_in"),
+                 ("est", 4, 2, "RAM and ROM address inputs, the IOD (in and out), the pending port latch "
+                               "(377 in, 541 out) (not built)")],
 }
 # nets local to the register section, driven by the index multiplexers
 REGS_F = "registers/regs.circ"
@@ -357,8 +361,81 @@ REGS = {
         ("74HCT670", "hold D, WA after /WE", "all 8 chips"),
     ]),
 }
-SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS}
-PATHS = {**PATHS, **FLAGS, **REGS}
+# Address section (designs/addr.py, notes/addr-decisions.md), one 500 ns step.
+# sum = BASE + (OFFSET xor inv) + cin through a 4 x 74HCT283 ripple; the
+# latch, PC and SP (74HCT377) load it on the next edge. The slowest sum bit is
+# bit 15 (the last 283's top sum), and PC's bits 15..9 go through the reset
+# AND (74HCT08), so the PC is the worst destination.
+RIPPLE = [
+    ("74HCT283", "A/B → C4", "U: bits 3..0"),
+    ("74HCT283", "Cin → C4", "bits 7..4"),
+    ("74HCT283", "Cin → C4", "bits 11..8"),
+    ("74HCT283", "Cin → S3", "bits 15..12: sum bit 15"),
+]
+TO_PC = [
+    ("74HCT08", "A/B → Y", "reset AND, PC bits 15..9"),
+    ("74HCT377", "setup D, /E → CP", "PC"),
+]
+ADDR = {
+    "a_ctl": (False, "control unit outputs", [], [
+        ("74HCT574", "CP → Q", "control register"),
+    ]),
+    "a_off": (True, "control (OFFSET select) → sum → PC setup", ["a_ctl"], [
+        ("74HCT157", "S → Y", "OFFSET low byte: V2 / V1"),
+        ("74HCT86", "A/B → Y", "inversion"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_base": (True, "control (BASE select) → sum → PC setup", ["a_ctl"], [
+        ("74HCT153", "S → Y", "BASE"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_ir": (True, "V1 / V2 (IR) → sum → PC setup", [], [
+        ("74HCT574", "CP → Q", "IR, V1 / V2 latch"),
+        ("74HCT157", "I → Y", "OFFSET"),
+        ("74HCT86", "A/B → Y", "inversion"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_pc": (True, "PC / SP → BASE → sum → PC setup (PC + 1, SP − 1 ...)", [], [
+        ("74HCT377", "CP → Q", "PC / SP, loaded on the edge"),
+        ("74HCT153", "I → Y", "BASE"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_regs": (True, "**regs_a / regs_b → sum → PC setup** (Reg16, mode 4, IN / OUT)", ["r_op"], [
+        ("74HCT153", "I → Y", "BASE"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_ivt": (True, "bus_addr low byte (the IOD's port) → IVT → sum → PC setup, from the bus being valid", [], [
+        ("74HCT153", "I → Y", "BASE: IVT, p0 → bit 1"),
+        *RIPPLE, *TO_PC,
+    ]),
+    "a_iod": (True, "**the IOD must drive bus_addr by** (vector step)", [], [
+        ("@", 500, "the next edge"),
+        ("-", "74HCT153", "I → Y", "BASE: IVT"),
+        ("-", "74HCT283", "A/B → C4", "bits 3..0"),
+        ("-", "74HCT283", "Cin → C4", "bits 7..4"),
+        ("-", "74HCT283", "Cin → C4", "bits 11..8"),
+        ("-", "74HCT283", "Cin → S3", "bits 15..12"),
+        ("-", "74HCT08", "A/B → Y", "reset AND"),
+        ("-", "74HCT377", "setup D, /E → CP", "PC"),
+    ]),
+    "a_lat": (True, "clk → latch → bus_addr valid (memory gets the margin, to the register-write limit)", [], [
+        ("74HCT377", "CP → Q", "address latch"),
+        ("74HCT541", "A → Y", "latch drivers", ("bus_addr",)),
+    ]),
+    "a_lat_oe": (True, "control → latch drivers on → bus_addr", ["a_ctl"], [
+        ("74HCT541", "OE → Y", "latch drivers", ("bus_addr",)),
+    ]),
+    "a_bus_oe": (False, "control → PC / SP driver on", ["a_ctl"], [
+        ("74HCT541", "OE → Y", "PC / SP drivers", ("bus_data",)),
+    ]),
+    "a_bus_q": (False, "PC / SP loaded on the edge → driver", [], [
+        ("74HCT377", "CP → Q", "PC / SP"),
+        ("74HCT541", "A → Y", "PC / SP drivers", ("bus_data",)),
+    ]),
+    "a_bus": (True, "PC / SP → bus_data (CAL, interrupt entry, RSP)", ["a_bus_oe", "a_bus_q"], []),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR}
+PATHS = {**PATHS, **FLAGS, **REGS, **ADDR}
 
 # ---- pass criterion --------------------------------------------------------------------
 # name: (op, bound). "<=": the path must end by the bound; ">=": it must last
@@ -380,6 +457,11 @@ LIMITS = {
     "w_wa": ("<=", "w_fall_min"), "w_en": ("<=", "w_fall_min"),
     "w_pulse": (">=", ("74HCT670", "/WE pulse width")),
     "w_rise": ("<=", STEP),                  # D and WA change at the next edge
+    # address section
+    "a_off": ("<=", STEP), "a_base": ("<=", STEP), "a_ir": ("<=", STEP), "a_pc": ("<=", STEP),
+    "a_regs": ("<=", STEP), "a_ivt": ("<=", STEP),
+    "a_lat": ("<=", "w_data"), "a_lat_oe": ("<=", "w_data"),   # a memory read must reach the data bus by then
+    "a_bus": ("<=", "w_data"),               # RSP: SP into a register (C10, P3); also the memory write data
 }
 
 
@@ -478,7 +560,7 @@ def main(argv=None):
         else:
             cells += ["—", "—", "—"]
         print(f"| {label} | {via[n]} | " + " | ".join(cells) + " |")
-    if args.section == "regs":
+    if args.section in ("regs", "addr"):
         print("\n| Bus (worst bit) | Inputs | 3-state outputs | Load (pF) | Extra delay, bus driver (max 25 / 85 °C, ns) "
               "| Extra delay, standard output (max 25 / 85 °C, ns) | Counted (worst bit of each) |")
         print("|---|---|---|---|---|---|---|")

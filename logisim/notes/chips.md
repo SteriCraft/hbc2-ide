@@ -61,6 +61,20 @@ One table per module, so a module's parts can be read (and bought) on their own.
 | 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 3 |
 | 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) | 8 |
 
+### Address (PC, SP, adder, latch)
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT08 | quad 2-input AND | 7408 | SN74HCT08N | 74HCT08D (Nexperia) | 2 |
+| 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) | 4 |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 8 |
+| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) | 4 |
+| 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) | 4 |
+| 74HCT377 | octal D flip-flop, data enable | 74377 | CD74HCT377E | CD74HCT377M96 (TI) | 6 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 6 |
+
+The 74HCT377 was added on 2026-11-04 for this section. TI lists CD74HCT377E (PDIP) and CD74HCT377M96 (SOIC, tape and reel) as active in the datasheet's package addendum (SCHS184C); the tube SOIC CD74HCT377M is obsolete. Stock not checked yet (Gianni's Octopart survey predates it).
+
 ### Not in a circuit yet
 
 Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 and 74HCT10 are the clock generator's (control-requirements.md C6).
