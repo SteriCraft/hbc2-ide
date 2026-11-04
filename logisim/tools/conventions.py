@@ -19,10 +19,9 @@ Checks:
 
 File organisation (logisim/notes/conventions.md):
   errors    logisim/cpu.circ holding anything but `main`; a module file
-            circuits/<dir>/<m>.circ holding anything but <m> and test_<m>;
-            library path absolute or not found
-  warnings  module file whose folder is not named after it; .circ file
-            elsewhere under logisim/
+            circuits/<unit>/<m>.circ holding anything but <m> and test_<m>;
+            unit folder not snake_case; library path absolute or not found
+  warnings  .circ file elsewhere under logisim/
 
 Library files loaded by the file are checked too, each once (--no-libs to
 skip them).
@@ -187,11 +186,11 @@ def check_file_layout(proj: nl.Project) -> list[circcheck.Issue]:
                 add("error", f"{rel.as_posix()} has no circuit named {m!r}")
             if extra:
                 add("error", f"{rel.as_posix()} must hold only {m} and test_{m}, not {', '.join(sorted(extra))}")
-            if parts[1] != m:
-                add("warning", f"{rel.as_posix()}: module {m} is not in its own folder circuits/{m}/")
+            if not SNAKE.match(parts[1]):
+                add("error", f"folder circuits/{parts[1]}/ is not lowercase snake_case")
         else:
             add("warning", f"{rel.as_posix()} is not where the file layout puts .circ files "
-                           f"(logisim/cpu.circ or logisim/circuits/<module>/<module>.circ)")
+                           f"(logisim/cpu.circ or logisim/circuits/<unit>/<module>.circ)")
     for desc, lib in proj.file_libs.values():
         path = desc[5:]
         if re.match(r"^([A-Za-z]:|[\\/])", path):
