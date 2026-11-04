@@ -473,7 +473,7 @@ def nested_rails(pins: dict, toward: str, first: int = 20, pitch: int = 20) -> d
 
 
 def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict, ends: dict,
-               first: int = 20) -> None:
+               first: int = 20, pitch: int = 20) -> None:
     """The add_sub8 wiring style for a chip facing east: every pin in
     `signals` leaves its edge (top pins up, bottom pins down) on a nested
     rail, then runs left to:
@@ -484,15 +484,20 @@ def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict
                       added to ends[line] (draw the line through them later)
       ("gnd", None) / ("vcc", None)  a Ground / Power facing west, 10 px left
                       of the chip's anchor
+      ("tunnel", name)  a 1-bit tunnel facing east, 10 px left of the anchor
+                      (use pitch=30 so the tunnel boxes don't touch)
     A line is a bus when it is a key of `taps`, a 1-bit line when it is a key
     of `ends`."""
     ys = [p.loc[1] for p in chip.ports]
     for edge_y, away in ((min(ys), -1), (max(ys), 1)):     # top edge, bottom edge
         pins = {n: chip[n] for n in signals if chip[n][1] == edge_y}
-        for name, depth in nested_rails(pins, toward="left", first=first).items():
+        for name, depth in nested_rails(pins, toward="left", first=first, pitch=pitch).items():
             line, bit = signals[name]
             y = edge_y + away * depth
-            if line in ("gnd", "vcc"):
+            if line == "tunnel":
+                end = (chip.loc[0] - 10, y)
+                c.tunnel(end, bit, facing="east")
+            elif line in ("gnd", "vcc"):
                 end = (chip.loc[0] - 10, y)
                 c.add("#Wiring", "Ground" if line == "gnd" else "Power", end, facing="west")
             elif line in taps:
