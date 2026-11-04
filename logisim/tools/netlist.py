@@ -793,12 +793,12 @@ def flat_text(d: dict) -> str:
 # --------------------------------------------------------------------------
 def resolve_file(arg: str) -> Path:
     p = Path(arg)
-    if p.exists():
+    if p.is_file():
         return p
     stem = Path(arg).stem
     for cand in (LOGISIM_DIR / arg, LOGISIM_DIR / f"{arg}.circ", CIRCUITS_DIR / arg, CIRCUITS_DIR / f"{arg}.circ",
                  CIRCUITS_DIR / stem / f"{stem}.circ", *CIRCUITS_DIR.glob(f"*/{stem}.circ")):
-        if cand.exists():
+        if cand.is_file():
             return cand
     raise SystemExit(f"error: circuit file not found: {arg}")
 
