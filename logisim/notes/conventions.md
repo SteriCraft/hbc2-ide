@@ -18,6 +18,14 @@ These rules come from the user and apply to every circuit I create or modify. If
 - A test bench is named `test_<module>`. It may use non-TTL parts.
 - `main` only connects modules and holds no logic.
 
+## Files (added 2026-11-04)
+- One .circ per module, in its own folder: `logisim/circuits/<module>/<module>.circ`. It holds the module and its `test_<module>` bench, nothing else. No `modules/` folder.
+- `logisim/cpu.circ` holds only `main`. It loads the modules as Logisim libraries (Project > Load Library > Logisim Library) with relative paths. A module that uses another module loads it the same way, e.g. alu.circ loads `..\add_sub8\add_sub8.circ`.
+- When saving, Logisim writes library paths relative to the file, with `..\` and backslashes on Windows (seen in `LibraryManager.toRelative`). Write them the same way so a save in Logisim changes nothing.
+- **Change one module at a time, with a git commit before and after each module change.**
+- **If a module's ports change, tell the user which files instantiate it** (`tools/usages.py <module>`): those instances need rewiring.
+- Exception: the user asked for add8 (practice) in `circuits/alu/add8.circ`. conventions.py warns about it, see open-points.md.
+
 ## Signal names: `<module>_<signal>`, lowercase snake_case
 - Pins and tunnels inside a module: `add_sub8_a`, `add_sub8_b_inv`.
 - Global signals: `clk`, `rst_n`.
@@ -44,7 +52,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 - A custom symbol shows the module name and the real port names. Update it whenever a port changes.
 
 ## Verification (each module)
-1. Run `conventions.py`: it reports forbidden parts, names and labels, and floating inputs.
+1. Run `conventions.py`: it reports forbidden parts, names and labels, file layout, and floating inputs. It follows library files.
    - A floating chip input is an error.
    - A floating input on a subcircuit instance is only a warning, since such circuits are work in progress (e.g. `alu`).
    - Also run `circcheck.py` for wiring.

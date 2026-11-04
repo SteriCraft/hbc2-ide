@@ -11,6 +11,6 @@ Placed facing east at (X, Y): top pins are at y = Y-30, bottom pins at Y+30, and
 
 circgen accepts `S1` as an alias for `∑1`.
 
-A, B and S bits alternate on both edges. If one 4-bit splitter feeds each bus of a chip, 1-bit wires have to cross each other, whatever the layout. **Decision (user, 2026-11-04):** keep 1-bit taps on vertical bus lines for the 74283 (add8_ttl layout). Pins leave on nested rails toward the left, so only bus lines cross bit wires.
+A, B and S bits alternate on both edges. If one 4-bit splitter feeds each bus of a chip, 1-bit wires have to cross each other, whatever the layout. **Decision (user, 2026-11-04):** keep 1-bit taps on vertical bus lines for the 74283 (add8 layout, circuits/alu/add8.circ). Pins leave on nested rails toward the left, so only bus lines cross bit wires.
 
 Stack two chips with the high nibble above, so the carry C4 → CIN is a short jog. In add8 the high nibble is U1 (top) and the low nibble is U2: the numbering follows position, not bit order.
