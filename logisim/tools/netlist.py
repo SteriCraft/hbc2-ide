@@ -759,6 +759,12 @@ def flatten(top: Circuit) -> dict:
                     j = count.get(k, 0)
                     count[k] = j + 1
                     uf.union(node(path, circ, ci, 0, i), node(path, circ, ci, k + 1, j))
+            elif c.kind == "sub" and chip_model(c.sub):     # a chip model is a chip, not a circuit
+                for pi, p in enumerate(c.ports):
+                    for b in range(p.width):
+                        terminals.append((node(path, circ, ci, pi, b),
+                                          {"ref": ref, "type": chip_model(c.sub), "pin": p.pin,
+                                           "name": p.name, "dir": p.dir}))
             elif c.kind == "sub":
                 child_path = path + (c.ident,)
                 expand(c.sub, child_path)

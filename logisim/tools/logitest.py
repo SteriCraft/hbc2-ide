@@ -115,13 +115,14 @@ def _cell(v, width):
     return _fmt(v, width)
 
 
-def write_sequences(path: Path, inputs: dict, outputs: dict, sets: list) -> int:
+def write_sequences(path: Path, inputs: dict, outputs: dict, sets: list, buses=()) -> int:
     """Sequential test vector: Logisim's <set> and <seq> columns. sets is a
     list of sequences; each sequence is a list of rows, run in order without
     resetting the circuit in between. A row is a dict: every input by name,
     and the outputs to check (missing or None = don't care, FLOAT = high
     impedance). An input keeps its value only if the row repeats it.
-    Returns the number of rows."""
+    `buses`: outputs that are tri-state buses; they may never be don't care,
+    so a clash (E) always fails (see run_vectors). Returns the number of rows."""
     names = list(inputs) + list(outputs)
     widths = {**inputs, **outputs}
     head = ["<set>", "<seq>"] + [f"{n}[{w}]" if w > 1 else n for n, w in widths.items()]
@@ -133,6 +134,9 @@ def write_sequences(path: Path, inputs: dict, outputs: dict, sets: list) -> int:
                 missing = [n for n in inputs if n not in row]
                 if missing:
                     raise ValueError(f"set {k} row {j}: no value for input {', '.join(missing)}")
+                blind = [n for n in buses if row.get(n) is None]
+                if blind:
+                    raise ValueError(f"set {k} row {j}: bus {', '.join(blind)} is don't care (give a value or FLOAT)")
                 cells = [str(k), str(j)] + [_cell(row.get(n), widths[n]) for n in names]
                 f.write(" ".join(cells) + "\n")
                 rows += 1
@@ -140,7 +144,7 @@ def write_sequences(path: Path, inputs: dict, outputs: dict, sets: list) -> int:
 
 
 def check_sequences(circ_file, circuit: str, inputs: dict, outputs: dict, sets: list,
-                    keep: str | None = None) -> bool:
+                    keep: str | None = None, buses=()) -> bool:
     """Run sequences (see write_sequences) on `circuit`; True when all pass.
     Use it for chip models, whose reference is the datasheet's function table."""
     pins = _pins(circ_file, circuit)
@@ -151,13 +155,18 @@ def check_sequences(circ_file, circuit: str, inputs: dict, outputs: dict, sets: 
             raise SystemExit(f"error: pin {n} is {pins[n]} bits wide, not {w}")
     with tempfile.TemporaryDirectory() as tmp:
         vec = Path(keep) if keep else Path(tmp) / f"{circuit}.vec"
-        n = write_sequences(vec, inputs, outputs, sets)
+        n = write_sequences(vec, inputs, outputs, sets, buses)
         print(f"{circuit}: running {len(sets)} sequences, {n} rows")
         return run_vectors(circ_file, circuit, vec)
 
 
 def run_vectors(circ_file, circuit: str, vec_file, show: int = 10, timeout: int = 600) -> bool:
-    """Run a vector file in Logisim. Prints the summary and the first failures."""
+    """Run a vector file in Logisim. Prints the summary and the first failures.
+    Any E (two drivers disagree) in an output is reported as BUS CONTENTION.
+    Logisim passes an E where the vector says don't care, so bus outputs are
+    always given a value or <FLOAT> (write_sequences buses=, and hbc2 vectors
+    SeqModule::buses); and it shows no E when the drivers agree, so the tests
+    use varied data."""
     circ_file, vec_file = Path(circ_file).resolve(), Path(vec_file).resolve()
     proc = subprocess.run([logisim_exe(), "-w", circuit, str(vec_file), str(circ_file)],
                           capture_output=True, text=True, errors="replace", timeout=timeout,
@@ -175,6 +184,13 @@ def run_vectors(circ_file, circuit: str, vec_file, show: int = 10, timeout: int 
         heads = re.findall(r"Error on test vector (\d+):", proc.stderr)
         details = re.findall(r"(?:^  .*\n?)+", proc.stdout.replace("\r\n", "\n"), re.M)
         errs = [f"vector {h}: " + d.strip().replace("\n  ", "; ") for h, d in zip(heads, details)]
+        # E = two drivers disagree on a net: bus contention, whatever was expected
+        clash = {}
+        for h, d in zip(heads, details):
+            for name in re.findall(r"(\S+) = [^(]*E[^(]*\(expected", d):
+                clash.setdefault(name, []).append(h)
+        for name, vs in clash.items():
+            print(f"  BUS CONTENTION on {name} (E) in {len(vs)} vectors, first: vector {vs[0]}")
         for e in errs[:show]:
             print("  " + e.strip().replace("\n", "\n  "))
         if len(errs) > show:

@@ -333,8 +333,12 @@ const MODULES: &[Module] = &[
 /// Expected value of one output in a sequential row.
 #[derive(Clone, Copy)]
 enum Out {
-    /// Don't care.
+    /// Don't care. Never on a bus output (SeqModule::buses).
     X,
+    /// Not known to the model (a register never written since power-up).
+    /// Written as don't care, like X, but allowed on a bus: something drives
+    /// it, the model just doesn't know the value.
+    U,
     V(u32),
     /// High impedance (tri-state output off).
     Z,
@@ -348,6 +352,11 @@ struct SeqModule {
     name: &'static str,
     inputs: &'static [(&'static str, u32)],
     outputs: &'static [(&'static str, u32)],
+    /// Outputs that are (or show) a tri-state bus. Logisim shows two drivers
+    /// that disagree as E, which fails any expected value or <FLOAT>, but
+    /// passes a don't care. So a bus output is always checked: a value, Z
+    /// (nothing drives it) or U (driven, value unknown); X is refused.
+    buses: &'static [&'static str],
     sets: fn() -> Vec<Vec<Row>>,
 }
 
@@ -360,18 +369,33 @@ fn write_seq(m: &SeqModule, w: &mut impl Write) -> std::io::Result<()> {
             .map(|&(n, width)| if width > 1 { format!("{n}[{width}]") } else { n.to_string() }),
     );
     writeln!(w, "{}", header.join(" "))?;
+    for b in m.buses {
+        assert!(m.outputs.iter().any(|&(n, _)| n == *b), "{}: bus {b} is not an output", m.name);
+    }
+    let is_bus: Vec<bool> = m.outputs.iter().map(|&(n, _)| m.buses.contains(&n)).collect();
+    let mut unknown = 0;
     for (k, set) in (m.sets)().iter().enumerate() {
         for (j, (ins, outs)) in set.iter().enumerate() {
             assert_eq!((ins.len(), outs.len()), (m.inputs.len(), m.outputs.len()), "{}: bad row", m.name);
+            for ((&(n, _), v), &bus) in m.outputs.iter().zip(outs).zip(&is_bus) {
+                match v {
+                    Out::X if bus => panic!("{}: set {} row {}: bus {n} is don't care", m.name, k + 1, j + 1),
+                    Out::U if bus => unknown += 1,
+                    _ => {}
+                }
+            }
             let mut cells = vec![(k + 1).to_string(), (j + 1).to_string()];
             cells.extend(m.inputs.iter().zip(ins).map(|(&(_, wd), &v)| format!("{:0wd$b}", v, wd = wd as usize)));
             cells.extend(m.outputs.iter().zip(outs).map(|(&(_, wd), v)| match v {
                 Out::V(v) => format!("{:0wd$b}", v, wd = wd as usize),
-                Out::X => "x".repeat(wd as usize),
+                Out::X | Out::U => "x".repeat(wd as usize),
                 Out::Z => "<FLOAT>".to_string(),
             }));
             writeln!(w, "{}", cells.join(" "))?;
         }
+    }
+    if unknown > 0 {
+        eprintln!("{}: {unknown} bus values unknown to the model (power-up): contention not checked there", m.name);
     }
     w.flush()
 }
@@ -398,6 +422,7 @@ const FLAGS_IN: &[(&str, u32)] = &[
     ("flags_bus_in", 8),
     ("flags_oe_n", 1),
 ];
+const FLAGS_BUSES: &[&str] = &["flags_bus_out"];
 const FLAGS_OUT: &[(&str, u32)] = &[
     ("flag_c", 1),
     ("flag_e", 1),
@@ -755,8 +780,8 @@ fn flags_cpu_sets() -> Vec<Vec<Row>> {
 }
 
 const SEQ_MODULES: &[SeqModule] = &[
-    SeqModule { name: "flags", inputs: FLAGS_IN, outputs: FLAGS_OUT, sets: flags_sets },
-    SeqModule { name: "flags_cpu", inputs: FLAGS_IN, outputs: FLAGS_OUT, sets: flags_cpu_sets },
+    SeqModule { name: "flags", inputs: FLAGS_IN, outputs: FLAGS_OUT, buses: FLAGS_BUSES, sets: flags_sets },
+    SeqModule { name: "flags_cpu", inputs: FLAGS_IN, outputs: FLAGS_OUT, buses: FLAGS_BUSES, sets: flags_cpu_sets },
 ];
 
 mod regs;

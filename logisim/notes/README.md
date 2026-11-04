@@ -43,7 +43,7 @@ Register section (circuits/registers/, designs/regs.py):
 
 | Module | Chips | Test (vs emulator) |
 |---|---|---|
-| `regs` (8 registers, two read ports, write path, operand latches, A/B buses, data bus drivers) | 8 × 74HCT670, 4 × 74HCT153, 3 × 74HCT574, 2 × 74HCT541, 74HCT240, 74HCT32 (19) | 30,756 / 30,756 (`regs`, model) and 148,864 / 148,864 (`regs_cpu`, the real CPU) |
+| `regs` (8 registers, two read ports, write path, operand latches, A/B buses, data bus drivers) | 8 × 74HCT670, 4 × 74HCT153, 3 × 74HCT574, 2 × 74HCT541, 74HCT32 (18) | 30,756 / 30,756 (`regs`, model) and 148,864 / 148,864 (`regs_cpu`, the real CPU) |
 
 Chip models (circuits/chips/, rules in conventions.md; the circuit inside is named `ttl<part>`): `74574` (2,064 / 2,064 datasheet rows); `test_74670` checks Logisim's own 74670 (912 / 912).
 

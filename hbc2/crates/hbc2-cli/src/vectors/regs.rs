@@ -34,9 +34,14 @@ pub const REGS_IN: &[(&str, u32)] = &[
     ("regs_r1", 3),
     ("regs_r2", 3),
     ("regs_r3", 3),
+    ("regs_r1_2_n", 1), // not bit 2 of each field, from the IR (control-requirements.md C8)
+    ("regs_r2_2_n", 1),
+    ("regs_r3_2_n", 1),
     ("regs_alu_r", 8),
     ("regs_bus_in", 8),
 ];
+/// All three outputs are tri-state buses: bus A, bus B, the data bus.
+const REGS_BUSES: &[&str] = &["regs_a", "regs_b", "regs_bus_out"];
 pub const REGS_OUT: &[(&str, u32)] = &[("regs_a", 8), ("regs_b", 8), ("regs_bus_out", 8)];
 
 /// What drives bus A.
@@ -62,6 +67,8 @@ enum B {
     Latch,
     /// The constant 0000000c.
     Const(u8),
+    /// Nothing drives bus B (regs_b_sel = 11, latch and constant off).
+    Off,
 }
 
 /// One step's inputs.
@@ -133,6 +140,9 @@ impl Step {
             self.f[0] as u32,
             self.f[1] as u32,
             self.f[2] as u32,
+            (self.f[0] as u32 >> 2 & 1) ^ 1,
+            (self.f[1] as u32 >> 2 & 1) ^ 1,
+            (self.f[2] as u32 >> 2 & 1) ^ 1,
             self.alu_r as u32,
             self.bus as u32,
         ]
@@ -149,7 +159,7 @@ struct Model {
 }
 
 fn out(v: Option<u8>) -> Out {
-    v.map_or(Out::X, |v| Out::V(v as u32))
+    v.map_or(Out::U, |v| Out::V(v as u32))
 }
 
 impl Model {
@@ -166,6 +176,7 @@ impl Model {
         match s.b {
             B::Latch => self.lat,
             B::Const(c) => Some(c),
+            B::Off => None,
             _ => self.regs[s.b_index().unwrap() as usize],
         }
     }
@@ -178,7 +189,8 @@ impl Model {
         } else {
             Out::Z
         };
-        vec![a, out(self.bus_b(s)), bus]
+        let b = if s.b == B::Off { Out::Z } else { out(self.bus_b(s)) };
+        vec![a, b, bus]
     }
     /// The rows of one step; the model is updated (write, then the edge).
     fn step(&mut self, rows: &mut Vec<Row>, s: Step) {
@@ -199,7 +211,7 @@ impl Model {
     /// Writes `values` into the 8 registers through the control unit's index.
     fn load(&mut self, rows: &mut Vec<Row>, values: [u8; 8], f: [u8; 3]) {
         for (k, &v) in values.iter().enumerate() {
-            self.step(rows, Step { we: true, a: A::Cu(k as u8), bus: v, ..Step::new(f) });
+            self.step(rows, Step { we: true, a: A::Cu(k as u8), b: B::Off, bus: v, ..Step::new(f) });
         }
     }
 }
@@ -588,6 +600,6 @@ fn sequence(what: &str, i: hbc2_core::isa::Instruction, c: &Run) -> Vec<Row> {
 }
 
 pub const MODULES: &[SeqModule] = &[
-    SeqModule { name: "regs", inputs: REGS_IN, outputs: REGS_OUT, sets: regs_sets },
-    SeqModule { name: "regs_cpu", inputs: REGS_IN, outputs: REGS_OUT, sets: regs_cpu_sets },
+    SeqModule { name: "regs", inputs: REGS_IN, outputs: REGS_OUT, buses: REGS_BUSES, sets: regs_sets },
+    SeqModule { name: "regs_cpu", inputs: REGS_IN, outputs: REGS_OUT, buses: REGS_BUSES, sets: regs_cpu_sets },
 ];

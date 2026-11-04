@@ -200,7 +200,7 @@ def check_model(circ: nl.Circuit, add) -> list:
 def summary(circ: nl.Circuit, st: dict) -> list[str]:
     lines = []
     if st["chips"]:
-        lines.append("chips: " + ", ".join(f"{n} x {p} (74HCT{p[2:]})" for p, n in sorted(st["chips"].items())))
+        lines.append("chips: " + ", ".join(f"{n} x {p} (74HCT{p.removeprefix('ttl')[2:]})" for p, n in sorted(st["chips"].items())))
     for out, title in ((False, "inputs"), (True, "outputs")):
         ps = [f"{lab or '?'}[{w}]" if w > 1 else (lab or "?") for o, lab, w in st["ports"] if o == out]
         if ps:

@@ -19,6 +19,7 @@ them here when a module changes.
 from __future__ import annotations
 
 import argparse
+import math
 import re
 import sys
 from pathlib import Path
@@ -149,15 +150,119 @@ FLAGS = {
         ("74HCT175", "CLK → Q", "flags: flip-flop"),
     ]),
     "f_psf": (True, "clk → flags_bus_out (PSF, already enabled)", ["f_q"], [
-        ("74HCT541", "A → Y", "U6"),
+        ("74HCT541", "A → Y", "U6", ("bus_data",)),
     ]),
     "f_oe": (True, "flags_oe_n → flags_bus_out", [], [
-        ("74HCT541", "OE → Y", "U6"),
+        ("74HCT541", "OE → Y", "U6", ("bus_data",)),
     ]),
     "f_rst": (True, "rst_n → flags", [], [
         ("74HCT175", "/MR → Q", "flags: clear"),
     ]),
 }
+# ---- bus loading -----------------------------------------------------------------------
+# chips.md delays are at CL = 50 pF. A stage given a 4th element (the nets it
+# drives) gets the extra delay of the load on its worst bit beyond 50 pF.
+#   pins: 10 pF per input (CI max), 20 pF per 3-state output, enabled or
+#         not (CO, CD74HC670 datasheet; the 541 and 574 are similar);
+#   wiring: 2 pF per pin (stub) + a backbone: 20 pF for the buses that run
+#         across the boards, 5 pF for the nets local to one section;
+#   slope: SN74HCT541 (6 mA bus driver) 50 -> 150 pF at 4.5 V: tpd 13/23/29 ->
+#         20/33/42 ns, so 0.07 / 0.10 / 0.13 ns per pF (typ, max 25, max 85 °C).
+#         Standard outputs (4 mA: 670, 153 ...) have no 150 pF data: scaled
+#         by drive, 6 / 4 x that = 0.105 / 0.15 / 0.20 ns per pF.
+# The pins are counted on the built circuits (netlist.py flatten, chip models
+# included); the sections not built yet are estimates, listed with each bus.
+PIN_PF = {"in": 10, "out": 20}
+WIRE_PF_PER_PIN = 2
+WIRE_PF_BUS = {"bus_a": 20, "bus_b": 20, "bus_data": 20}       # others: 5 (local)
+SLOPE = {"bus": (0.07, 0.10, 0.13), "std": (0.105, 0.15, 0.20)}
+DRIVE = {"74HCT541": "bus", "74HCT574": "bus", "74HCT240": "bus", "74HCT670": "std", "74HCT153": "std"}
+CIRCUITS = Path(__file__).resolve().parent.parent / "circuits"
+# bus: [(file, top circuit, net), or ("est", inputs, outputs, what)]
+BUSES = {
+    "bus_a": [("registers/regs.circ", "regs", "regs_a"), ("alu/alu.circ", "alu", "alu_a"),
+              ("est", 1, 0, "address path: adder input, R1 high byte (not built)")],
+    "bus_b": [("registers/regs.circ", "regs", "regs_b"), ("alu/alu.circ", "alu", "alu_b"),
+              ("est", 1, 0, "address path: adder input, R2 low byte (not built)")],
+    "bus_data": [("registers/regs.circ", "regs", "regs_bus_in"), ("registers/regs.circ", "regs", "regs_bus_out"),
+                 ("flags/flags.circ", "flags", "flags_bus_in"), ("flags/flags.circ", "flags", "flags_bus_out"),
+                 ("est", 4, 0, "IR: opcode, byte 1, V1, V2 latches (not built)"),
+                 ("est", 2, 2, "PC: load hi / lo, drive hi / lo for CAL (not built)"),
+                 ("est", 2, 2, "SP: load hi / lo, drive hi / lo for RSP (not built)"),
+                 ("est", 0, 3, "RAM, ROM, I/O port data (not built)")],
+}
+# nets local to the register section, driven by the index multiplexers
+REGS_F = "registers/regs.circ"
+BUSES.update({
+    "a_idx": [(REGS_F, "regs", "regs_a_idx")],       # RA of copy A + WA of all 8
+    "b_idx": [(REGS_F, "regs", "regs_b_idx")],
+    "a_re_lo": [(REGS_F, "regs", "regs_a_re_lo_n")],     # /RE of 2 670s + the 32 (write enable)
+    "a_re_hi": [(REGS_F, "regs", "regs_a_re_hi_n")],
+    "b_re_lo": [(REGS_F, "regs", "regs_b_re_lo_n")],
+    "b_re_hi": [(REGS_F, "regs", "regs_b_re_hi_n")],
+})
+BUS_AB = ("bus_a", "bus_b")
+IDX = ("a_idx", "b_idx")
+RE = ("a_re_lo", "a_re_hi", "b_re_lo", "b_re_hi")
+
+
+def bus_pins(bus):
+    """(inputs, outputs, [(what, inputs, outputs)]) on the worst bit of a bus."""
+    import netlist
+    flat = {}
+    per_bit: dict[int, list[int]] = {}
+    parts = []
+    for src in BUSES[bus]:
+        if src[0] == "est":
+            _, i, o, what = src
+            parts.append((what, i, o))
+            for b in range(8):
+                per_bit.setdefault(b, [0, 0])
+                per_bit[b][0] += i
+                per_bit[b][1] += o
+            continue
+        f, top, net = src
+        if (f, top) not in flat:
+            flat[(f, top)] = netlist.flatten(netlist.Project(CIRCUITS / f).circuits[top])["nets"]
+        worst = (0, 0)
+        for n in flat[(f, top)]:
+            pin = [t for t in n["terminals"] if t["pin"] is None and t["ref"].startswith(net + "[")]
+            m = re.fullmatch(re.escape(net) + r"(?:_(\d))?", n["name"])
+            if pin:
+                b = int(pin[0]["ref"][len(net) + 1:-1])
+            elif m:
+                b = int(m.group(1) or 0)
+            else:
+                continue
+            chips = [t for t in n["terminals"] if t["pin"] is not None]
+            i = sum(t["dir"] == "in" for t in chips)
+            o = len(chips) - i
+            per_bit.setdefault(b, [0, 0])
+            per_bit[b][0] += i
+            per_bit[b][1] += o
+            worst = max(worst, (i, o), key=sum)
+        parts.append((f"{top}: {net}", *worst))
+    i, o = max(per_bit.values(), key=lambda v: v[0] * PIN_PF["in"] + v[1] * PIN_PF["out"])
+    return i, o, parts
+
+
+def bus_pf(bus):
+    i, o, _ = bus_pins(bus)
+    return i * PIN_PF["in"] + o * PIN_PF["out"] + (i + o) * WIRE_PF_PER_PIN + WIRE_PF_BUS.get(bus, 5)
+
+
+_PF = {}
+
+
+def derate(part, nets):
+    """Extra delay (typ, max 25, max 85) of a stage driving the heaviest of nets."""
+    for n in nets:
+        if n not in _PF:
+            _PF[n] = bus_pf(n)
+    c = max(_PF[n] for n in nets)
+    return tuple(math.ceil(k * max(0, c - 50)) for k in SLOPE[DRIVE[part]])
+
+
 # Register section (designs/regs.py, notes/registers-decisions.md), one 500 ns
 # step from the rising edge of clk. Two kinds of extra stages:
 #   ("@", ns, what)        a fixed time in the step (the write phase clk_wr_n)
@@ -167,26 +272,21 @@ REGS = {
         ("74HCT574", "CP → Q", "IR fields, control register"),
     ]),
     "r_ra": (True, "index → word read (bits 1..0)", ["r_ctl"], [
-        ("74HCT153", "S → Y", "U6 / U15: index multiplexer"),
-        ("74HCT670", "read address → Q", "port A / B"),
+        ("74HCT153", "S → Y", "U1 / U11: index multiplexer", IDX),
+        ("74HCT670", "read address → Q", "port A / B", BUS_AB),
     ]),
-    "r_re_lo": (True, "bank enable, words 0–3 (bit 2)", ["r_ctl"], [
-        ("74HCT153", "I → Y", "U11 / U19: bit 2"),
-        ("74HCT670", "/RE → Q", "port A / B"),
-    ]),
-    "r_re_hi": (True, "bank enable, words 4–7 (not bit 2)", ["r_ctl"], [
-        ("74HCT240", "A → Y", "U1: not bit 2"),
-        ("74HCT153", "I → Y", "U11 / U19"),
-        ("74HCT670", "/RE → Q", "port A / B"),
+    "r_re": (True, "bank enable (bit 2, or not bit 2 from the IR)", ["r_ctl"], [
+        ("74HCT153", "I → Y", "U6 / U15: bank /RE", RE),
+        ("74HCT670", "/RE → Q", "port A / B", BUS_AB),
     ]),
     "r_lat": (True, "operand latch onto bus A / B", ["r_ctl"], [
-        ("74HCT574", "OE → Q", "U10 / U18 (data from the edge: CP → Q 41)"),
+        ("74HCT574", "OE → Q", "U10 / U18 (data from the edge: CP → Q 41)", BUS_AB),
     ]),
     "r_const": (True, "constant 00 / 01 onto bus B", ["r_ctl"], [
-        ("74HCT541", "OE → Y", "U9"),
+        ("74HCT541", "OE → Y", "U9", ("bus_b",)),
     ]),
     "r_op": (True, "**operands valid** on regs_a / regs_b (alu_a, alu_b, address path)",
-             ["r_ra", "r_re_lo", "r_re_hi", "r_lat", "r_const"], []),
+             ["r_ra", "r_re", "r_lat", "r_const"], []),
     "r_flags": (True, "**end to end**: register read → ALU (alu_z) → flag register setup", ["r_op"], [
         ("path", "z", "ALU, slowest flag"),
         ("74HCT153", "I → Y", "flags: D2, ALU input"),
@@ -197,27 +297,49 @@ REGS = {
         ("74HCT574", "setup D → CP", "U5: result latch"),
     ]),
     "r_dbus": (True, "register → data bus (STR, PSH, OUT, INT)", ["r_op"], [
-        ("74HCT541", "A → Y", "U14"),
+        ("74HCT541", "A → Y", "U14", ("bus_data",)),
     ]),
     "r_resbus": (True, "result latch → data bus (enable)", ["r_ctl"], [
-        ("74HCT574", "OE → Q", "U5"),
+        ("74HCT574", "OE → Q", "U5", ("bus_data",)),
     ]),
-    "w_wa": (True, "write address + setup, before /WE falls (≤ 250)", ["r_ctl"], [
-        ("74HCT153", "S → Y", "U6: index multiplexer"),
+    # The write strobe comes from the clock generator (control-requirements.md C6):
+    # osc (4 MHz) -> 74HCT74 FF1 = clk; FF2 = clk sampled on the falling osc
+    # edge; clk_wr_n = NAND3(not clk, osc, FF2) (74HCT10), low from the clk
+    # fall (osc rise, 250) to the osc fall (375). Minimum delays are taken as 0:
+    # t = 0 is clk rising, up to 35 ns after its osc edge, so the osc fall can
+    # come 35 ns early (375 - 35 = 340), and the clk fall 35 ns early or late.
+    "w_wa": (True, "write address + setup, before /WE falls (≤ 215, the earliest fall)", ["r_ctl"], [
+        ("74HCT153", "S → Y", "U1: index multiplexer", ("a_idx",)),
         ("74HCT670", "setup WA → /WE", "all 8 chips"),
     ]),
-    "w_bank": (True, "bank enable at the /WE gate (≤ 250)", ["r_ctl"], [
-        ("74HCT240", "A → Y", "U1: not bit 2"),
-        ("74HCT153", "I → Y", "U11: /RE words 4–7 = U4 input"),
+    "w_en": (True, "bank write enable, stable before clk_wr_n falls (≤ 215)", ["r_ctl"], [
+        ("74HCT153", "I → Y", "U6: /RE words 4–7", ("a_re_hi",)),
+        ("74HCT32", "A/B → Y", "U4: regs_we_n OR /RE"),
     ]),
-    "w_fall": (True, "/WE falls", [], [
-        ("@", 250, "clk_wr_n falls"),
-        ("74HCT32", "A/B → Y", "U4: regs_wr_n"),
+    "w_fall_min": (True, "/WE falls, earliest", [], [
+        ("@", 215, "clk falls 35 early, no gate delay"),
+    ]),
+    "w_fall": (True, "/WE falls, latest", [], [
+        ("@", 250, "osc rises"),
+        ("74HCT74", "CLK → Q", "FF1: clk falls (35 late)"),
+        ("74HCT10", "A/B/C → Y", "clk_wr_n"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
     ]),
-    "w_rise": (True, "/WE rises, + hold (≤ 500)", [], [
-        ("@", 375, "clk_wr_n rises"),
-        ("74HCT32", "A/B → Y", "U4: regs_wr_n"),
+    "w_rise_min": (True, "/WE rises, earliest (D setup is to this edge)", [], [
+        ("@", 340, "osc falls 35 before 375, no gate delay"),
+    ]),
+    "w_data": (True, "**data on bus_data valid by** (the earliest rise − setup)", [], [
+        ("@", 325, "340 − 670 setup D → /WE 15"),
+    ]),
+    # the two ends move together with clk: the pulse is 125 ns of osc minus
+    # what can delay its start only (FF1, the NAND, the OR)
+    "w_pulse": (True, "/WE pulse, shortest (≥ 25)", [], [
+        ("@", 125, "osc rise to osc fall − FF1 35 − NAND 30 − OR 30 = 30"),
+        ("@", -95, "start delays"),
+    ]),
+    "w_rise": (True, "/WE rises, latest, + hold (≤ 500)", [], [
+        ("@", 375, "osc falls"),
+        ("74HCT10", "A/B/C → Y", "clk_wr_n"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
         ("74HCT670", "hold D, WA after /WE", "all 8 chips"),
     ]),
@@ -232,7 +354,7 @@ def compute(table):
 
     def run(stages):
         t, names = (0, 0, 0), []
-        for part, p, what in stages:
+        for part, p, what, *nets in stages:
             if part == "@":                          # a fixed time in the step
                 d = (p, p, p)
                 names.append(f"{what} ({p})")
@@ -241,7 +363,12 @@ def compute(table):
                 names.append(f"[{PATHS[p][1]}] ({d[2]})")
             else:
                 d = table[(part, p)]
-                names.append(f"{part[5:]} {p} ({d[2]})")
+                if nets:                             # driving a loaded bus
+                    extra = derate(part, nets[0])
+                    d = tuple(a + b for a, b in zip(d, extra))
+                    names.append(f"{part[5:]} {p} ({d[2] - extra[2]} + {extra[2]} load)")
+                else:
+                    names.append(f"{part[5:]} {p} ({d[2]})")
             t = tuple(a + b for a, b in zip(t, d))
         return t, names
 
@@ -284,6 +411,15 @@ def main(argv=None):
         if hot:
             cells[2] = f"**{cells[2]}**"
         print(f"| {label} | {via[n]} | " + " | ".join(cells) + " |")
+    if args.section == "regs":
+        print("\n| Bus (worst bit) | Inputs | 3-state outputs | Load (pF) | Extra delay, bus driver / standard output (max 85 °C, ns) | Counted (worst bit of each) |")
+        print("|---|---|---|---|---|---|")
+        for bus in BUSES:
+            i, o, parts = bus_pins(bus)
+            c = bus_pf(bus)
+            ex = [math.ceil(SLOPE[k][2] * max(0, c - 50)) for k in ("bus", "std")]
+            what = "; ".join(f"{w}: {a} in, {b} out" for w, a, b in parts)
+            print(f"| {bus} | {i} | {o} | {c} | {ex[0]} / {ex[1]} | {what} |")
     if args.limit:
         print(f"\n{len(over)} paths over {args.limit} ns at max 85 °C" + (": " + "; ".join(over) if over else ""))
     sys.exit(1 if over else 0)

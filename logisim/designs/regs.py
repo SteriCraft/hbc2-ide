@@ -16,11 +16,16 @@ by /RE, straight from the index multiplexers:
     74HCT153 half      D0..D3 (by regs_x_sel)       output
     idx bit 0 / 1      the sources' bits 0 / 1       RA (and WA for port A)
     /RE words 0-3      the sources' bit 2            (CU: regs_cu_bank_n_0; B off: 1)
-    /RE words 4-7      not bit 2 (74HCT240)          (CU: regs_cu_bank_n_1; B off: 1)
+    /RE words 4-7      not bit 2 (from the IR)       (CU: regs_cu_bank_n_1; B off: 1)
 
-Write: /WE of a bank = clk_wr_n OR regs_we_n OR /RE of that bank on port A
+The IR supplies bit 2 of R1, R2 and R3 already inverted (regs_r1_2_n ...,
+control-requirements.md C8): an inverter here would be on the critical
+read path (28 ns), the IR inverts before its latch, during the fetch.
+
+Write: /WE of a bank = clk_wr_n OR (regs_we_n OR /RE of that bank on port A)
 (74HCT32), so the write index is port A's index, and a write can't happen
-with port A off.
+with port A off. The bracket is made first, from control signals that are
+stable long before the strobe, so clk_wr_n goes through one gate only.
 
 Latches (74HCT574 model, clocked by clk on every edge, no enable):
 result (alu_r -> data bus, regs_res_oe_n), operand A (data bus -> bus A,
@@ -74,13 +79,9 @@ def bits(prefix, n=8):
 
 
 R = {f: bits(f, 3) for f in ("r1", "r2", "r3")}
-NOT2 = {f: f"{P}{f}_2_n" for f in R}                  # not bit 2, from the 74HCT240
+NOT2 = {f: f"{P}{f}_2_n" for f in R}                  # not bit 2, from the IR
 
 # ---- index selection ---------------------------------------------------------------
-# 74HCT240: n1Y = not 1A (half 1 always on); half 2 unused (off, inputs tied low)
-chip("74240", 0, 0, {"n1G": "gnd", "1A1": R["r1"][2], "n1Y1": NOT2["r1"], "1A2": R["r2"][2],
-                     "n1Y2": NOT2["r2"], "1A3": R["r3"][2], "n1Y3": NOT2["r3"], "1A4": "gnd",
-                     "n2G": "vcc", "2A1": "gnd", "2A2": "gnd", "2A3": "gnd", "2A4": "gnd"}, "not bit 2")
 
 
 def mux(col, row, sel, halves, note):
@@ -94,14 +95,14 @@ def mux(col, row, sel, halves, note):
 
 A_SRC = ("r1", "r2", "r3")                            # + the control unit's index (11)
 B_SRC = ("r2", "r1", "r3")                            # + off (11)
-mux(0, 1, P + "a_sel", [([R[f][k] for f in A_SRC] + [f"{P}cu_idx_{k}"], f"{P}a_idx_{k}") for k in (0, 1)],
+mux(0, 0, P + "a_sel", [([R[f][k] for f in A_SRC] + [f"{P}cu_idx_{k}"], f"{P}a_idx_{k}") for k in (0, 1)],
     "port A / write index")
-mux(0, 2, P + "a_sel", [([R[f][2] for f in A_SRC] + [P + "cu_bank_n_0"], P + "a_re_lo_n"),
+mux(0, 1, P + "a_sel", [([R[f][2] for f in A_SRC] + [P + "cu_bank_n_0"], P + "a_re_lo_n"),
                         ([NOT2[f] for f in A_SRC] + [P + "cu_bank_n_1"], P + "a_re_hi_n")],
     "port A banks")
-mux(0, 3, P + "b_sel", [([R[f][k] for f in B_SRC] + ["gnd"], f"{P}b_idx_{k}") for k in (0, 1)],
+mux(0, 2, P + "b_sel", [([R[f][k] for f in B_SRC] + ["gnd"], f"{P}b_idx_{k}") for k in (0, 1)],
     "port B index")
-mux(0, 4, P + "b_sel", [([R[f][2] for f in B_SRC] + ["vcc"], P + "b_re_lo_n"),
+mux(0, 3, P + "b_sel", [([R[f][2] for f in B_SRC] + ["vcc"], P + "b_re_lo_n"),
                         ([NOT2[f] for f in B_SRC] + ["vcc"], P + "b_re_hi_n")],
     "port B banks (11 = off)")
 
@@ -118,10 +119,10 @@ for col, port in ((1, "a"), (2, "b")):
         chip("74670", col, row, pins, f"port {port.upper()}, {words}, bits {4 * nib + 3}..{4 * nib}")
 
 # ---- write enables: 74HCT32 ------------------------------------------------------------
-chip("7432", 3, 0, {"1A": "clk_wr_n", "1B": P + "we_n", "1Y": P + "wr_n",
-                    "2A": P + "wr_n", "2B": P + "a_re_lo_n", "2Y": P + "we_lo_n",
-                    "3A": P + "wr_n", "3B": P + "a_re_hi_n", "3Y": P + "we_hi_n",
-                    "4A": "gnd", "4B": "gnd"}, "/WE per bank")
+chip("7432", 3, 0, {"1A": P + "we_n", "1B": P + "a_re_lo_n", "1Y": P + "en_lo_n",
+                    "2A": "clk_wr_n", "2B": P + "en_lo_n", "2Y": P + "we_lo_n",
+                    "3A": P + "we_n", "3B": P + "a_re_hi_n", "3Y": P + "en_hi_n",
+                    "4A": "clk_wr_n", "4B": P + "en_hi_n", "4Y": P + "we_hi_n"}, "/WE per bank")
 
 # ---- 74HCT541: constant onto bus B, bus A onto the data bus ----------------------------
 chip("74541", 3, 1, {"nOE1": P + "const_oe_n", "nOE2": "gnd", "A1": P + "const_0",
@@ -146,7 +147,8 @@ for i, u in enumerate(sorted(chips, key=lambda u: (u.loc[1] if u.lib == "#TTL" e
 TOP = [("clk", 1), ("clk_wr_n", 1), (P + "we_n", 1), (P + "a_sel", 2), (P + "cu_idx", 2),
        (P + "cu_bank_n", 2), (P + "b_sel", 2), (P + "a_lat_oe_n", 1), (P + "b_lat_oe_n", 1),
        (P + "const_oe_n", 1), (P + "const_0", 1), (P + "a_bus_oe_n", 1), (P + "res_oe_n", 1)]
-LEFT = [(P + "r1", 3), (P + "r2", 3), (P + "r3", 3), (P + "alu_r", 8), (P + "bus_in", 8)]
+LEFT = [(P + "r1", 3), (P + "r2", 3), (P + "r3", 3), (P + "r1_2_n", 1), (P + "r2_2_n", 1), (P + "r3_2_n", 1),
+        (P + "alu_r", 8), (P + "bus_in", 8)]
 RIGHT = [(P + "a", 8), (P + "b", 8), (P + "bus_out", 8)]
 X_IN, y = 220, 120
 for name, w in TOP + LEFT:

@@ -92,11 +92,11 @@ Two-flag events, two steps each: interrupt entry = 1010 with 0 (I), then 1111 wi
 | single-flag write → flip-flop (I) | 574 CP → Q (41) → 157 S → Y (36) → 153 I → Y (43) → 86 A/B → Y (40) → 175 setup D → CLK (25) | 77 | 148 | 185 |
 | flags_bus_in → flip-flop (I), from the bus being valid | 153 I → Y (43) → 86 A/B → Y (40) → 175 setup D → CLK (25) | 47 | 86 | 108 |
 | clk → flag_c ... flag_h | 175 CLK → Q (41) | 13 | 33 | 41 |
-| clk → flags_bus_out (PSF, already enabled) | 175 CLK → Q (41) → 541 A → Y (29) | 26 | 56 | 70 |
-| flags_oe_n → flags_bus_out | 541 OE → Y (38) | 21 | 30 | 38 |
+| clk → flags_bus_out (PSF, already enabled) | 175 CLK → Q (41) → 541 A → Y (29 + 49 load) | 52 | 93 | 119 |
+| flags_oe_n → flags_bus_out | 541 OE → Y (38 + 49 load) | 47 | 67 | 87 |
 | rst_n → flags | 175 /MR → Q (44) | 17 | 35 | 44 |
 
-Worst case: an ALU flag into the register, 366 ns of the 500 ns step at 2 MHz (134 ns margin). The prompt quoted alu_s at 321 ns: that was before fix F2; S/E/F now take 84–89 ns, and alu_z (257 ns) is the slowest ALU output.
+The data-bus rows include its load (about 420 pF, registers-decisions.md section 6), added 2026-11-04. Worst case: an ALU flag into the register, 366 ns of the 500 ns step at 2 MHz (134 ns margin). The prompt quoted alu_s at 321 ns: that was before fix F2; S/E/F now take 84–89 ns, and alu_z (257 ns) is the slowest ALU output.
 
 ## Tests
 

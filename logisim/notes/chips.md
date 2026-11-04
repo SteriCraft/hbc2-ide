@@ -57,18 +57,19 @@ One table per module, so a module's parts can be read (and bought) on their own.
 |---|---|---|---|---|---|
 | 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) | 1 |
 | 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 4 |
-| 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) | 1 |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 2 |
 | 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 3 |
 | 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) | 8 |
 
 ### Not in a circuit yet
 
-Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.
+Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 and 74HCT10 are the clock generator's (control-requirements.md C6).
 
 | Part | Function | Logisim | DIP | SOIC | Qty |
 |---|---|---|---|---|---|
 | 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
+| 74HCT10 | triple 3-input NAND | 7410 | CD74HCT10E | 74HCT10D (Nexperia) | 0 |
+| 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 0 |
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 
@@ -84,9 +85,11 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 |---|---|---|---|---|---|
 | 74HCT02 | A/B → Y | 8 | 21 | 26 | CD74HCT02, SCHS400 |
 | 74HCT08 | A/B → Y | 15 | 24 | 30 | SN74HCT08, SCLS063G |
+| 74HCT10 | A/B/C → Y | 9 | 24 | 30 | CD74HCT10, SCHS404 (typ: 5 V, 15 pF) |
 | 74HCT11 | A/B/C → Y | 11 | 28 | 35 | CD74HCT11, SCHS405 |
 | 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
 | 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
+| 74HCT74 | CLK → Q | 20 | 28 | 35 | SN74HCT74, SCLS122 (Q or /Q; fmax 20 MHz at 85 °C) |
 | 74HCT85 | A/B → A>B, A<B | 15 | 37 | 46 | CD74HCT85 |
 | 74HCT85 | A/B → A=B | 17 | 40 | 50 | CD74HCT85 |
 | 74HCT85 | cascade in → A>B, A<B | 12 | 30 | 38 | CD74HCT85 |
