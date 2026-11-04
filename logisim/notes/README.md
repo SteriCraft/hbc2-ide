@@ -18,13 +18,15 @@ Modules done so far (all in circuits/alu/, each made by designs/<module>.py):
 
 | Module | Chips | Test (vs emulator) |
 |---|---|---|
-| `add_sub8` | 2 × 74HCT283, 3 × 74HCT86, 1 × 74HCT08 | 524,288 / 524,288 |
-| `arith8` (ADD ADC SUB SBB INC DEC) | add_sub8 + 2 × 74HCT157 | 1,048,576 / 1,048,576 |
+| `add_sub8` (ADD ADC SUB SBB; INC DEC with b = 01) | 3 × 74HCT283, 3 × 74HCT86, 2 × 74HCT157, 1 × 74HCT08 (carry select) | 524,288 / 524,288 |
 | `logic8` (AND OR XOR) | 2 × 74HCT08, 2 × 74HCT32, 2 × 74HCT86 | 65,536 / 65,536 |
 | `shift8` (shifts, C select) | 1 × 74HCT153 | 2,048 / 2,048 |
-| `flags8` (Z N S E F) | 74HCT27, 74HCT11, 74HCT02 | 512 / 512 |
+| `flags8` (Z N) | 74HCT27, 74HCT11 | 256 / 256 |
+| `cmp8` (S E F of CMP) | 2 × 74HCT85 | 65,536 / 65,536 |
 | `rmux8` (result bus, NOT) | 6 × 74HCT541, 74HCT240, 74HCT138, 74HCT11 | 65,760 sampled |
-| `alu` (all of the above) | none of its own; 27 chips in total | see alu-report.md |
+| `alu` (all of the above) | none of its own; 29 chips in total | see alu-report.md |
+
+`arith8` (add_sub8 + 2 × 74HCT157 for B := 01) was removed on 2026-11-04: INC and DEC now take b = 01 from the control unit (alu-decisions.md D16).
 
 `logisim/cpu.circ` holds only an empty `main` and loads alu and add_sub8 as libraries.
 

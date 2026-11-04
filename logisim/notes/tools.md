@@ -38,7 +38,7 @@ circgen API, in short:
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.
-- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, arith8, shift8, flags8, rmux8, alu.
+- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, shift8, flags8, cmp8, rmux8, alu.
 - `eval` uses `hbc2_core::alu` where it exists. Otherwise `exec(op, a, b, carry)` runs the real CPU on that instruction (Reg mode) and returns the register and the flags. A flag missing from the instruction's flag list comes back None, written `x`. The emulator is never changed.
 - A module whose inputs are too many for an exhaustive test gives its own `rows` (rmux8). The limit is 2^21; logitest runs big files in chunks of 524,288 rows (2^21 rows take about 10 minutes).
 - `logitest.check_emulator(file, circuit, module=None)` rebuilds the CLI (`cargo build --release -p hbc2-cli`), writes the vectors, checks the pin names and widths, and runs them.

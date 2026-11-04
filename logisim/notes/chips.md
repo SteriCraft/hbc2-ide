@@ -27,6 +27,7 @@ Sourcing rules, for every section:
 | 74HCT11 | triple 3-input AND | 7411 | CD74HCT11E | 74HCT11D (Nexperia) |
 | 74HCT27 | triple 3-input NOR | 7427 | CD74HCT27E | 74HCT27D (Nexperia) |
 | 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) |
+| 74HCT85 | 4-bit magnitude comparator | 7485 | CD74HCT85E | CD74HCT85M or CD74HCT85M96 (TI) |
 | 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) |
 | 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) |
 | 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) |
@@ -35,7 +36,7 @@ Sourcing rules, for every section:
 | 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) |
 
-All DIP references are TI and active. For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
+The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 
 ## Delays
 
@@ -52,6 +53,10 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 | 74HCT11 | A/B/C → Y | 11 | 28 | 35 | CD74HCT11, SCHS405 |
 | 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
 | 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
+| 74HCT85 | A/B → A>B, A<B | 15 | 37 | 46 | CD74HCT85 |
+| 74HCT85 | A/B → A=B | 17 | 40 | 50 | CD74HCT85 |
+| 74HCT85 | cascade in → A>B, A<B | 12 | 30 | 38 | CD74HCT85 |
+| 74HCT85 | cascade in → A=B | 13 | 31 | 39 | CD74HCT85 (see note) |
 | 74HCT86 | A/B → Y | 13 | 32 | 40 | CD74HCT86, SCHS410A |
 | 74HCT138 | A/B/C → Y | 23 | 36 | 45 | SN74HCT138, SCLS171F |
 | 74HCT138 | G → Y | 22 | 33 | 42 | SN74HCT138, SCLS171F |
@@ -74,6 +79,7 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 
 Notes:
 - The CD74HCT153 datasheet lists "I to Y" twice for the HCT types, at 24/30 ns (typ 9) and at 34/43 ns (typ 14). The table keeps the slower one.
+- The CD74HCT85 datasheet names its last row "(A > B) IN to (A = B) OUT". It is read here as the cascade path to A=B.
 - The CD74HCT240 gives no HCT typical for the enable time. 12 ns is the HC typical.
 - At 5 V instead of 4.5 V, everything is about 10 % faster. Every Max 85 °C figure is about 1.25 × the Max 25 °C one.
 - The Nexperia SOIC parts are in the same range, but they are specified differently (typ at 4.5 V and 50 pF). Check their datasheet before relying on a SOIC timing.
@@ -86,7 +92,7 @@ Notes:
 
 ## Real 74HCT parts missing from Logisim
 
-- **74HCT688** (8-bit equality comparator): would give A = B in one chip. CMP uses the subtractor instead (alu-decisions.md D6).
+- **74HCT688** (8-bit equality comparator): would give A = B in one chip, but it would need a home-made model. cmp8 uses two 74HCT85 instead, which give S, E and F (alu-decisions.md D15).
 - **74HCT4078** (8-input NOR/OR): would give Z in one chip instead of 74HCT27 + 74HCT11. Not used: the 4078 is mostly sold as HC, and the 27 + 11 cost one chip more but no new model.
 - **74HCT540** (inverting 541): the 74HCT240 does the same job here.
 - **74HCT154** (4-to-16 decoder): would remove the 7411 gate behind the shift-right enable.

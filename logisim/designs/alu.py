@@ -3,23 +3,26 @@
 
 Groups the ALU blocks (each a library file in circuits/alu/):
 
-    arith8   ADD ADC SUB SBB INC DEC (add_sub8 + B or 01)
+    add_sub8 ADD ADC SUB SBB (INC / DEC = ADD / SUB with b = 01)
     logic8   AND OR XOR
     shift8   SHL / SHR / ASR wiring, carry select, ASR fill
     rmux8    result multiplexer (tri-state buffers, NOT a)
-    flags8   Z N, and S E F for CMP
+    flags8   Z N of the result
+    cmp8     S E F (CMP), from a and b
 
 alu_op (op3 op2 op1 op0) drives them directly, without any glue logic:
 
-    op3 = 0: arithmetic, op0 = sub, op1 = use_c, op2 = one (B := 01)
-        0000 ADD   0001 SUB/CMP   0010 ADC   0011 SBB   0100 INC   0101 DEC
-        (0110 / 0111: a + 1 + cin / a - 1 - cin, unused)
+    op3 = 0: arithmetic, op0 = sub, op1 = use_c, op2 ignored (01xx = 00xx)
+        0000 ADD (INC with b = 01)   0001 SUB, CMP (DEC with b = 01)
+        0010 ADC   0011 SBB
     op3 = 1: 1000 AND  1001 OR  1010 XOR  1011 NOT  1100 SHL  1110 SHR  1111 ASR
         (1101 = ASR)
 
+INC and DEC need the control unit to put 01 on alu_b (alu-decisions.md D16).
+
 Outputs: alu_r and every flag the ALU can produce. The control unit decides
 which flags to store: C Z N for arithmetic and SHL/ASR, Z N for logic and SHR,
-S E F for CMP (alu_op 0001).
+S E F for CMP. cmp8 compares a and b whatever alu_op is.
 
 The blocks talk through tunnels named alu_<signal>; inputs on the left,
 alu_r on the right, flags at the bottom.
@@ -41,7 +44,7 @@ OUT = ROOT / "circuits" / "alu" / f"{M}.circ"
 
 p = Project()
 c = p.circuit(M)
-lib = {m: p.library(OUT.parent / f"{m}.circ") for m in ("arith8", "logic8", "shift8", "rmux8", "flags8")}
+lib = {m: p.library(OUT.parent / f"{m}.circ") for m in ("add_sub8", "logic8", "shift8", "rmux8", "flags8", "cmp8")}
 
 STEP = {"left": (-20, 0), "right": (20, 0), "top": (0, -20), "bottom": (0, 20)}
 FACING = {"left": "east", "right": "west", "top": "south", "bottom": "north"}
@@ -56,13 +59,13 @@ def link(u, module, port, side, signal, width=1):
 
 
 # ---- blocks ----------------------------------------------------------------------
-u = c.sub(lib["arith8"], "arith8", (1000, 300))
-for port, sig in (("one", "op_2"), ("sub", "op_0"), ("use_c", "op_1"), ("cin", "cin")):
-    link(u, "arith8", port, "top", sig)
-link(u, "arith8", "a", "left", "a", 8)
-link(u, "arith8", "b", "left", "b", 8)
-link(u, "arith8", "s", "right", "sum", 8)
-link(u, "arith8", "c", "bottom", "c_add")
+u = c.sub(lib["add_sub8"], "add_sub8", (1000, 300))
+for port, sig in (("sub", "op_0"), ("use_c", "op_1"), ("cin", "cin")):
+    link(u, "add_sub8", port, "top", sig)
+link(u, "add_sub8", "a", "left", "a", 8)
+link(u, "add_sub8", "b", "left", "b", 8)
+link(u, "add_sub8", "s", "right", "sum", 8)
+link(u, "add_sub8", "c", "bottom", "c_add")
 
 u = c.sub(lib["logic8"], "logic8", (1000, 620))
 link(u, "logic8", "a", "left", "a", 8)
@@ -87,8 +90,12 @@ r_out = u["rmux8_r"]
 
 u = c.sub(lib["flags8"], "flags8", (1820, 760))
 link(u, "flags8", "r", "left", "r", 8)
-link(u, "flags8", "c", "left", "c_add")
-flag_ports = {f: u[f"flags8_{f}"] for f in ("n", "f", "z", "e", "s")}
+flag_ports = {f: u[f"flags8_{f}"] for f in ("n", "z")}
+
+u = c.sub(lib["cmp8"], "cmp8", (2100, 760))
+link(u, "cmp8", "a", "left", "a", 8)
+link(u, "cmp8", "b", "left", "b", 8)
+flag_ports.update({f: u[f"cmp8_{f}"] for f in ("s", "e", "f")})
 
 # ---- inputs, left: op also split into its bits ------------------------------------
 X_IN = 220

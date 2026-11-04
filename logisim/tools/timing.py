@@ -40,16 +40,25 @@ def delays(path: Path = CHIPS_MD) -> dict[tuple[str, str], tuple[int, int, int]]
 # name: (shown, label, start, stages); start = names of earlier paths (latest one wins)
 # A stage is (part, datasheet path, what it does here).
 PATHS = {
-    "sum": (True, "alu_r, arithmetic (bit 7)", [], [
-        ("74HCT157", "S → Y", "arith8: B or 01, select = op2"),
+    "b_c4": (False, "b to low C4", [], [
         ("74HCT86", "A/B → Y", "add_sub8: b xor sub"),
-        ("74HCT283", "A/B → C4", "low nibble carry"),
-        ("74HCT283", "Cin → S3", "high nibble, bit 7"),
-        ("74HCT541", "A → Y", "rmux8: sum buffer"),
+        ("74HCT283", "A/B → C4", "U6: low nibble carry"),
     ]),
-    "cin": (False, "carry in of the low 283", [], [
-        ("74HCT08", "A/B → Y", "use_c and cin"),
-        ("74HCT86", "A/B → Y", "xor sub"),
+    "cin_c4": (False, "carry in to low C4", [], [
+        ("74HCT08", "A/B → Y", "add_sub8: use_c and cin"),
+        ("74HCT86", "A/B → Y", "add_sub8: xor sub"),
+        ("74HCT283", "Cin → C4", "U6: low nibble carry"),
+    ]),
+    "hi_s": (False, "high nibble sums", [], [
+        ("74HCT86", "A/B → Y", "add_sub8: b xor sub"),
+        ("74HCT283", "A/B → S", "U2 / U3: both carries in"),
+        ("74HCT157", "I → Y", "U4: data"),
+    ]),
+    "select": (False, "carry select", ["b_c4", "cin_c4"], [
+        ("74HCT157", "S → Y", "U4: low C4 picks cin 0 / 1"),
+    ]),
+    "sum": (True, "alu_r, arithmetic (bit 7)", ["select", "hi_s"], [
+        ("74HCT541", "A → Y", "rmux8: sum buffer"),
     ]),
     "en138": (False, "decoder output", [], [
         ("74HCT138", "A/B/C → Y", "rmux8: op2..op0"),
@@ -58,43 +67,45 @@ PATHS = {
         ("74HCT86", "A/B → Y", "logic8: slowest of 08/32/86"),
         ("74HCT541", "A → Y", "rmux8"),
     ]),
-    "logic": (True, "alu_r, AND OR XOR", ["logic_data", "logic_en"], []),
     "logic_en": (False, "logic enable", ["en138"], [
         ("74HCT541", "OE → Y", "rmux8: buffer enable"),
+    ]),
+    "logic": (True, "alu_r, AND OR XOR", ["logic_data", "logic_en"], []),
+    "not_data": (False, "NOT data", [], [
+        ("74HCT240", "A → Y", "rmux8: not a"),
     ]),
     "not_en": (False, "NOT enable", ["en138"], [
         ("74HCT240", "OE → Y", "rmux8: 240 enable"),
     ]),
-    "not_data": (False, "NOT data", [], [
-        ("74HCT240", "A → Y", "rmux8: not a"),
-    ]),
     "not": (True, "alu_r, NOT", ["not_data", "not_en"], []),
-    "shift_en": (False, "shift-right enable", ["en138"], [
-        ("74HCT11", "A/B/C → Y", "rmux8: and3 of nY5..nY7"),
-        ("74HCT541", "OE → Y", "rmux8: sr buffer enable"),
-    ]),
     "shift_data": (False, "shift data", [], [
         ("74HCT153", "I → Y", "shift8: ASR fill"),
         ("74HCT541", "A → Y", "rmux8: sr buffer"),
     ]),
+    "shift_en": (False, "shift-right enable", ["en138"], [
+        ("74HCT11", "A/B/C → Y", "rmux8: and3 of nY5..nY7"),
+        ("74HCT541", "OE → Y", "rmux8: sr buffer enable"),
+    ]),
     "shift": (True, "alu_r, shifts", ["shift_data", "shift_en"], []),
-    "f": (True, "alu_f (borrow), carry out", [], [
-        ("74HCT157", "S → Y", "arith8: B or 01"),
-        ("74HCT86", "A/B → Y", "add_sub8: b xor sub"),
-        ("74HCT283", "A/B → C4", "low nibble"),
-        ("74HCT283", "Cin → C4", "high nibble"),
+    "c_add": (True, "adder carry / borrow", ["b_c4", "cin_c4"], [
+        ("74HCT157", "S → Y", "U7: carry select"),
         ("74HCT86", "A/B → Y", "add_sub8: C4 xor sub"),
     ]),
-    "c": (True, "alu_c", ["f"], [
+    "c": (True, "alu_c", ["c_add"], [
         ("74HCT153", "I → Y", "shift8: C select"),
     ]),
     "n": (True, "alu_n", ["sum"], []),
-    "z": (True, "alu_z, alu_e", ["sum", "logic", "logic_en", "not", "shift"], [
+    "z": (True, "alu_z", ["sum", "logic", "not", "shift"], [
         ("74HCT27", "A/B/C → Y", "flags8: nor3 ×3"),
         ("74HCT11", "A/B/C → Y", "flags8: and3"),
     ]),
-    "s": (True, "alu_s", ["z", "f"], [
-        ("74HCT02", "A/B → Y", "flags8: nor(c, z)"),
+    "s": (True, "alu_s, alu_f", [], [
+        ("74HCT85", "A/B → A>B, A<B", "cmp8 U1: bits 3..0"),
+        ("74HCT85", "cascade in → A>B, A<B", "cmp8 U2: bits 7..4"),
+    ]),
+    "e": (True, "alu_e", [], [
+        ("74HCT85", "A/B → A=B", "cmp8 U1: bits 3..0"),
+        ("74HCT85", "cascade in → A=B", "cmp8 U2: bits 7..4"),
     ]),
 }
 

@@ -124,43 +124,38 @@ fn opt(b: Option<bool>) -> Option<u32> {
 
 /// What the ALU computes for one 4-bit `alu_op`.
 ///
-/// op3 = 0: the adder (arith8). op0 = sub, op1 = use_c, op2 = one (B := 01).
+/// op3 = 0: the adder (add_sub8). op0 = sub, op1 = use_c; op2 is ignored,
+/// so 01xx are aliases of 00xx. INC and DEC are ADD and SUB with b = 01,
+/// which the control unit puts on B (checked against the emulator here).
 /// op3 = 1: op2..op0 pick logic or shift through the 74HCT138.
 fn alu_reference(op: u32, a: u8, b: u8, cin: bool) -> Run {
     use Opcode as O;
+    let op = if op & 0b1000 == 0 { op & 0b0011 } else { op };
     let instr = match op {
-        0b0000 => Some(O::Add),
-        0b0001 => Some(O::Sub), // and CMP: same ALU operation, other flags kept
-        0b0010 => Some(O::Adc),
-        0b0011 => Some(O::Sbb),
-        0b0100 => Some(O::Inc),
-        0b0101 => Some(O::Dec),
-        0b1000 => Some(O::And),
-        0b1001 => Some(O::Or),
-        0b1010 => Some(O::Xor),
-        0b1011 => Some(O::Not),
-        0b1100 => Some(O::Shl),
-        0b1101 => Some(O::Asr), // alias of 1111
-        0b1110 => Some(O::Shr),
-        0b1111 => Some(O::Asr),
-        _ => None,
+        0b0000 => O::Add,
+        0b0001 => O::Sub, // and CMP: same ALU operation, other flags kept
+        0b0010 => O::Adc,
+        0b0011 => O::Sbb,
+        0b1000 => O::And,
+        0b1001 => O::Or,
+        0b1010 => O::Xor,
+        0b1011 => O::Not,
+        0b1100 => O::Shl,
+        0b1101 => O::Asr, // alias of 1111
+        0b1110 => O::Shr,
+        _ => O::Asr,
     };
-    match instr {
-        Some(i) => {
-            let mut run = exec(i, a, b, cin);
-            if op == 0b0001 {
-                let cmp = exec(O::Cmp, a, b, cin);
-                (run.s, run.e, run.f) = (cmp.s, cmp.e, cmp.f);
-            }
-            run
-        }
-        // 0110 / 0111: unused codes, a + 1 + cin / a - 1 - cin (no instruction)
-        _ => {
-            let (r, c) = if op & 1 == 0 { alu::add(a, 1, cin) } else { alu::sub(a, 1, cin) };
-            let (z, n) = alu::zn(r);
-            Run { r, c: Some(c), z: Some(z), n: Some(n), s: None, e: None, f: None }
-        }
+    let mut run = exec(instr, a, b, cin);
+    if op == 0b0001 {
+        let cmp = exec(O::Cmp, a, b, cin);
+        (run.s, run.e, run.f) = (cmp.s, cmp.e, cmp.f);
     }
+    if op <= 0b0001 && b == 1 {
+        // INC / DEC on the emulator = this row (ADD / SUB with b = 01)
+        let id = exec(if op == 0 { O::Inc } else { O::Dec }, a, 0, cin);
+        assert_eq!((id.r, id.c, id.z, id.n), (run.r, run.c, run.z, run.n), "INC/DEC != ADD/SUB 01, a = {a:02X}");
+    }
+    run
 }
 
 /// Small deterministic generator for the sampled modules (xorshift).
@@ -214,26 +209,6 @@ const MODULES: &[Module] = &[
         rows: None,
     },
     Module {
-        name: "arith8",
-        inputs: &[
-            ("arith8_one", 1),
-            ("arith8_sub", 1),
-            ("arith8_use_c", 1),
-            ("arith8_cin", 1),
-            ("arith8_a", 8),
-            ("arith8_b", 8),
-        ],
-        outputs: &[("arith8_s", 8), ("arith8_c", 1)],
-        // one = 0: ADD/SUB/ADC/SBB with B. one = 1: B := 01, so INC (sub = 0)
-        // and DEC (sub = 1); with use_c too, a + 1 + cin / a - 1 - cin.
-        eval: |v| {
-            let (one, sub, use_c, cin) = (v[0] as u32, v[1] as u32, v[2] as u32, v[3] != 0);
-            let run = alu_reference(one << 2 | use_c << 1 | sub, v[4] as u8, v[5] as u8, cin);
-            vec![Some(run.r as u32), opt(run.c)]
-        },
-        rows: None,
-    },
-    Module {
         name: "shift8",
         inputs: &[("shift8_sel", 1), ("shift8_asr", 1), ("shift8_c_add", 1), ("shift8_a", 8)],
         outputs: &[("shift8_shl", 8), ("shift8_sr", 8), ("shift8_c", 1)],
@@ -254,22 +229,23 @@ const MODULES: &[Module] = &[
     },
     Module {
         name: "flags8",
-        inputs: &[("flags8_c", 1), ("flags8_r", 8)],
-        outputs: &[("flags8_z", 1), ("flags8_n", 1), ("flags8_s", 1), ("flags8_e", 1), ("flags8_f", 1)],
-        // r, c = result and borrow of SUB a, b. z, n come from SUB, s, e, f
-        // from CMP, on an (a, b) pair giving that r and c. r = 0 with a
-        // borrow can't happen: don't care.
+        inputs: &[("flags8_r", 8)],
+        outputs: &[("flags8_z", 1), ("flags8_n", 1)],
+        // Z and N of a result, as the CPU sets them (ADD r, 0).
         eval: |v| {
-            let (c, r) = (v[0] != 0, v[1] as u8);
-            let (a, b) = match (c, r) {
-                (false, _) => (r, 0),
-                (true, 0) => return vec![None; 5],
-                (true, _) => (r.wrapping_sub(1), 0xFF),
-            };
-            let sub = exec(Opcode::Sub, a, b, false);
-            assert_eq!((sub.r, sub.c), (r, Some(c)));
-            let cmp = exec(Opcode::Cmp, a, b, false);
-            vec![opt(sub.z), opt(sub.n), opt(cmp.s), opt(cmp.e), opt(cmp.f)]
+            let run = exec(Opcode::Add, v[0] as u8, 0, false);
+            vec![opt(run.z), opt(run.n)]
+        },
+        rows: None,
+    },
+    Module {
+        name: "cmp8",
+        inputs: &[("cmp8_a", 8), ("cmp8_b", 8)],
+        outputs: &[("cmp8_s", 1), ("cmp8_e", 1), ("cmp8_f", 1)],
+        // CMP a, b on the CPU: S = a > b, E = a = b, F = a < b (unsigned).
+        eval: |v| {
+            let run = exec(Opcode::Cmp, v[0] as u8, v[1] as u8, false);
+            vec![opt(run.s), opt(run.e), opt(run.f)]
         },
         rows: None,
     },
