@@ -1,15 +1,17 @@
 #!/usr/bin/env python3
-"""Worst-case delays of the ALU paths, from the "Delays" table of
+"""Worst-case delays of the ALU and flag-register paths, from the "Delays" table of
 logisim/notes/chips.md (TI datasheets, CL = 50 pF).
 
 Each path is a start (t = 0, or the latest of other paths) followed by a
 list of chip stages. The three columns (typ, max 25 °C, max 85 °C) are
-added up separately. Prints a Markdown table for alu-report.md.
+added up separately. Prints a Markdown table for alu-report.md
+(--section alu) or flags-decisions.md (--section flags).
 
 The paths are written by hand from the circuits (designs/*.py): change
 them here when a module changes.
 
-    python timing.py            # the table
+    python timing.py            # the ALU table
+    python timing.py --section flags   # the flag register, within one 500 ns step
     python timing.py --limit 250   # ... and exit 1 if a max 85 °C is over 250 ns
 """
 
@@ -109,6 +111,55 @@ PATHS = {
     ]),
 }
 
+# Flag register (designs/flags.py), one clock step: the step starts on the
+# clock edge that loads the operand / control registers (74HCT574 CP -> Q)
+# and ends with the 74HCT175 setup before the next edge. The ALU paths above
+# start when the operands are valid, so the register delay is added after
+# them (sums don't depend on order).
+FLAGS = {
+    "f_alu": (True, "ALU flag → flip-flop (C Z N S E F)", ["c", "z", "n", "s", "e"], [
+        ("74HCT574", "CP → Q", "operand register, before the ALU"),
+        ("74HCT153", "I → Y", "flags: D2, ALU input"),
+        ("74HCT175", "setup D → CLK", "flags: flip-flop"),
+    ]),
+    "f_sel": (False, "flags_op to the selects", [], [
+        ("74HCT574", "CP → Q", "control register: flags_op"),
+        ("74HCT138", "A/B/C → Y", "U1 / U7: decode"),
+        ("74HCT11", "A/B/C → Y", "pair selects"),
+    ]),
+    "f_ctl": (True, "flags_op → flip-flop (I, the slowest)", ["f_sel"], [
+        ("74HCT153", "S → Y", "flags: next value"),
+        ("74HCT86", "A/B → Y", "U12: not I"),
+        ("74HCT175", "setup D → CLK", "flags: flip-flop"),
+    ]),
+    "f_bit": (True, "single-flag write → flip-flop (I)", [], [
+        ("74HCT574", "CP → Q", "control register: flags_op_1"),
+        ("74HCT157", "S → Y", "bit-write lane"),
+        ("74HCT153", "I → Y", "flags: D0"),
+        ("74HCT86", "A/B → Y", "U12: not I"),
+        ("74HCT175", "setup D → CLK", "flags: flip-flop"),
+    ]),
+    "f_bus": (True, "flags_bus_in → flip-flop (I), from the bus being valid", [], [
+        ("74HCT153", "I → Y", "flags: D1"),
+        ("74HCT86", "A/B → Y", "U12: not I"),
+        ("74HCT175", "setup D → CLK", "flags: flip-flop"),
+    ]),
+    "f_q": (True, "clk → flag_c ... flag_h", [], [
+        ("74HCT175", "CLK → Q", "flags: flip-flop"),
+    ]),
+    "f_psf": (True, "clk → flags_bus_out (PSF, already enabled)", ["f_q"], [
+        ("74HCT541", "A → Y", "U6"),
+    ]),
+    "f_oe": (True, "flags_oe_n → flags_bus_out", [], [
+        ("74HCT541", "OE → Y", "U6"),
+    ]),
+    "f_rst": (True, "rst_n → flags", [], [
+        ("74HCT175", "/MR → Q", "flags: clear"),
+    ]),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS}
+PATHS = {**PATHS, **FLAGS}
+
 
 def compute(table):
     done: dict[str, tuple[int, int, int]] = {}
@@ -141,7 +192,8 @@ def compute(table):
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="ALU path delays from chips.md.")
+    ap = argparse.ArgumentParser(description="ALU and flag-register path delays from chips.md.")
+    ap.add_argument("--section", choices=SECTIONS, default="alu", help="which paths to show (default alu)")
     ap.add_argument("--limit", type=int, help="exit 1 if a shown path is over this at max 85 °C")
     args = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
@@ -150,7 +202,7 @@ def main(argv=None):
     print("| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |")
     print("|---|---|---|---|---|")
     over = []
-    for n, (shown, label, _, _) in PATHS.items():
+    for n, (shown, label, _, _) in SECTIONS[args.section].items():
         if not shown:
             continue
         t = done[n]

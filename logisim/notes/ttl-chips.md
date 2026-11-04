@@ -45,3 +45,14 @@ Uses:
 | 74240 | VCC n2G n1Y1 2A4 n1Y2 2A3 n1Y3 2A2 n1Y4 2A1 | n1G 1A1 n2Y4 1A2 n2Y3 1A3 n2Y2 1A4 n2Y1 GND | inverting, two 4-bit halves; mixed edges, so rail style |
 
 Uses: add_sub8 U4/U7 (157: carry select), shift8 U1 (153), flags8 U1-U2, cmp8 U1-U2 (85), rmux8 U1 (138), U2 (11), U3 (240), U4-U9 (541).
+
+## Flag register and chip models (placed facing south: the datasheet's top view)
+
+Facing south, pins 1 .. n/2 run down the left side and the rest back up the right, as in the datasheet drawing. designs/flags.py wires every pin to a tunnel with `pin_tunnels`, by pin name or number.
+
+| Chip | Pins (datasheet numbers) | Notes |
+|---|---|---|
+| 74175 | 1 /MR, 2 Q1, 3 /Q1, 4 D1, 5 D2, 6 /Q2, 7 Q2, 8 GND, 9 CLK, 10 Q3, 11 /Q3, 12 D3, 13 D4, 14 /Q4, 15 Q4, 16 VCC | Logisim names: nCLR, Q1, nQ1 ... Clears to 0, no preset: the I flag is stored inverted and read from /Q |
+| 74138 | 1 A, 2 B, 3 C, 4 /G2A, 5 /G2B, 6 G1, 7 /Y7, 8 GND, 9 /Y6 .. 15 /Y0, 16 VCC | flags U1 (G1 = 5 V, /G2A = op3), U7 (G1 = op3) |
+| 74574 (model) | 1 /OE, 2-9 D0-D7, 10 GND, 11 CP, 12-19 Q7-Q0, 20 VCC | circuits/chips/74574.circ; Q pins run backwards (pin 12 = Q7) |
+| 74670 | 1 D1, 2 D2, 3 D3, 4 RA1, 5 RA0, 6 Q3, 7 Q2, 8 GND, 9 Q1, 10 Q0, 11 /RE, 12 /WE, 13 WA1, 14 WA0, 15 D0, 16 VCC | TI numbers D0-D3 / Q0-Q3; Logisim names them D1-D4 / Q1-Q4. Write is transparent while /WE is low |

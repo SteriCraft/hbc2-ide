@@ -32,6 +32,7 @@ Sourcing rules, for every section:
 | 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) |
 | 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) |
 | 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) |
+| 74HCT175 | quad D flip-flop with clear | 74175 | CD74HCT175E | CD74HCT175M96 (TI) |
 | 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) |
 | 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) |
@@ -67,6 +68,9 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 | 74HCT153 | E → Y | 11 | 27 | 34 | CD74HCT153, SCHS151C |
 | 74HCT157 | I → Y | 12 | 25 | 31 | CD74HCT157, SCHS153C |
 | 74HCT157 | S → Y | 15 | 29 | 36 | CD74HCT157, SCHS153C |
+| 74HCT175 | CLK → Q | 13 | 33 | 41 | CD74HCT175, SCHS160C |
+| 74HCT175 | /MR → Q | 17 | 35 | 44 | CD74HCT175, SCHS160C |
+| 74HCT175 | setup D → CLK | 20 | 20 | 25 | CD74HCT175, SCHS160C (a minimum; no typ, 25 °C value repeated) |
 | 74HCT240 | A → Y | 9 | 22 | 28 | CD74HCT240, SCHS167G |
 | 74HCT240 | OE → Y | 12 | 30 | 38 | CD74HCT240, SCHS167G (typ: HC value) |
 | 74HCT283 | Cin → S0 | 13 | 31 | 39 | CD74HCT283, SCHS176E |
