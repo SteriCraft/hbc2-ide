@@ -5,7 +5,12 @@
 Circuit roles come from the name:
   main        only connects modules: subcircuits and wiring parts
   test_<m>    test bench: any component, no naming rules
-  other       a module: #TTL chips, RAM/ROM, wiring parts, subcircuits
+  <part>      in circuits/chips/<part>.circ: a chip model (a 74HCT chip
+              missing from #TTL). Generic gates, flip-flops and tri-state
+              buffers are allowed there and only there; pins carry the
+              datasheet names. Instances of a model count as chips.
+  other       a module: #TTL chips, chip models, RAM/ROM, wiring parts,
+              subcircuits
 
 Checks:
   errors    forbidden component in a module or in main, unlabelled pin,
@@ -52,8 +57,15 @@ MODULE_WIRING_OK = WIRING_OK | {"Constant"}   # tied to GND/5V, e.g. 01 for INC
 MEMORY_OK = {"RAM", "ROM"}
 
 
-def role(name: str) -> str:
+def role(name: str, circ: nl.Circuit | None = None) -> str:
+    if circ is not None and nl.chip_model(circ):
+        return "chip"
     return "main" if name == "main" else "test" if name.startswith("test_") else "module"
+
+
+def model_of(c: nl.Comp) -> str | None:
+    """Part name when the component is an instance of a chip model."""
+    return nl.chip_model(c.sub) if c.kind == "sub" and c.sub is not None else None
 
 
 def _comps(circ: nl.Circuit):
@@ -77,12 +89,16 @@ def _allowed(kind: str, lib: str, name: str, circ: nl.Circuit) -> bool:
 
 
 def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
-    kind = role(circ.name)
+    kind = role(circ.name, circ)
     issues: list[circcheck.Issue] = []
 
     def add(level, where, text):
         issues.append(circcheck.Issue(level, circ.name, where, text))
 
+    if kind == "chip":
+        return check_model(circ, add), {"role": kind, "chips": Counter(), "ports": [
+            (c.attrs.get("type") == "output", c.label, nl.parse_int(c.attrs.get("width"), 1))
+            for c in circ.comps if c.kind == "pin"]}
     if not SNAKE.match(circ.name):
         add("error", (0, 0), f"circuit name {circ.name!r} is not lowercase snake_case")
     if kind == "test" and circ.name[5:] not in circ.project.circuits:
@@ -94,6 +110,10 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
             add("error", loc, f"{name} ({lib}) at {loc} is not allowed in {'main' if kind == 'main' else 'a module'}")
         if lib == "#TTL":
             chips.append((name, loc, a.get("label", ""), a.get("facing", "east")))
+        if lib.startswith("file#") or lib == "":
+            sub = next((c for c in circ.comps if c.kind == "sub" and c.loc == loc and c.name == name), None)
+            if sub is not None and model_of(sub):
+                chips.append((name, loc, a.get("label", ""), a.get("facing", "east")))
         if kind == "test" or lib != "#Wiring" or name not in ("Pin", "Tunnel"):
             continue
         label, width = a.get("label", ""), nl.parse_int(a.get("width"), 1)
@@ -141,7 +161,7 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
                 add("warning", c.loc, f"splitter at {c.loc}: end {k} carries non-contiguous bits {bits}")
 
     # floating inputs: errors on chips, warnings on subcircuits (work in progress)
-    subs = {p.loc for c in circ.comps if c.kind == "sub" for p in c.ports}
+    subs = {p.loc for c in circ.comps if c.kind == "sub" and not model_of(c) for p in c.ports}
     wiring, _ = circcheck.check_circuit(circ)
     for i in wiring:
         if "floating" in i.text:
@@ -149,6 +169,32 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
             issues.append(circcheck.Issue(level, i.circuit, i.where, i.text))
 
     return issues, {"role": kind, "chips": Counter(c[0] for c in chips), "ports": ports}
+
+
+def check_model(circ: nl.Circuit, add) -> list:
+    """A chip model: generic parts allowed, pins named after the datasheet,
+    a VCC and a GND pin left unconnected inside, a DIP symbol."""
+    issues = []
+    add = lambda level, where, text: issues.append(circcheck.Issue(level, circ.name, where, text))  # noqa: E731
+    labels = [c.label for c in circ.comps if c.kind == "pin"]
+    for need in ("VCC", "GND"):
+        if need not in labels:
+            add("error", (0, 0), f"chip model {circ.name} has no {need} pin (the datasheet pinout includes it)")
+    for lab, n in Counter(labels).items():
+        if n > 1:
+            add("error", (0, 0), f"pin label {lab!r} is used {n} times")
+    circ.build()
+    for c in circ.comps:
+        if c.kind == "pin" and c.label in ("VCC", "GND") and any(
+                c.loc in (a, b) for a, b in circ.wires):
+            add("error", c.loc, f"pin {c.label} is wired: VCC and GND stay unconnected inside, like #TTL chips")
+        if c.kind == "unsupported":
+            add("error", c.loc, f"{c.name} ({c.lib}) is not known to netlist.py: add its ports to GENERIC")
+    if circ.elem.find("appear") is None:
+        add("error", (0, 0), f"chip model {circ.name} has no DIP symbol (circgen Circuit.dip_symbol)")
+    wiring, _ = circcheck.check_circuit(circ)
+    issues += [i for i in wiring if "floating" in i.text]
+    return issues
 
 
 def summary(circ: nl.Circuit, st: dict) -> list[str]:

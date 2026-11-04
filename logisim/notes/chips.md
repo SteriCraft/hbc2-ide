@@ -35,6 +35,8 @@ Sourcing rules, for every section:
 | 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) |
 | 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) |
+| 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) |
+| 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) |
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 
@@ -76,6 +78,12 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 | 74HCT283 | A/B → S | 21 | 49 | 61 | CD74HCT283, SCHS176E |
 | 74HCT541 | A → Y | 13 | 23 | 29 | SN74HCT541, SCLS306E |
 | 74HCT541 | OE → Y | 21 | 30 | 38 | SN74HCT541, SCLS306E |
+| 74HCT574 | CP → Q | 15 | 33 | 41 | CD74HCT574, SCHS183E |
+| 74HCT574 | OE → Q | 12 | 30 | 38 | CD74HCT574, SCHS183E (setup D → CP 15, hold 5, at 85 °C) |
+| 74HCT670 | read address → Q | 17 | 40 | 50 | CD74HCT670, SCHS195C |
+| 74HCT670 | /WE → Q | 21 | 50 | 63 | CD74HCT670, SCHS195C |
+| 74HCT670 | D → Q | 21 | 50 | 63 | CD74HCT670, SCHS195C (write transparent) |
+| 74HCT670 | /RE → Q | 16 | 38 | 48 | CD74HCT670, SCHS195C |
 
 Notes:
 - The CD74HCT153 datasheet lists "I to Y" twice for the HCT types, at 24/30 ns (typ 9) and at 34/43 ns (typ 14). The table keeps the slower one.
@@ -88,11 +96,22 @@ Notes:
 
 - **74181 / 74182** (4-bit ALU / carry lookahead): sold only as LS/F/S TTL, which are obsolete. No HCT version found. Two 74181s would have done add, sub, the logic operations and A = B on their own.
 - **74381** (4-bit ALU): S/LS only.
-- Some parts can't be checked from their Logisim name alone (7413, 7418, 7419, 7421, 7451, 7454, 74670, 747266). Check them before use.
+- Some parts can't be checked from their Logisim name alone (7413, 7418, 7419, 7421, 7451, 7454, 747266). Check them before use. The 74670 is checked: it is a 74HCT part (below).
+
+## In #TTL or modelled (checked 2026-11-04, Logisim-evolution 5.0)
+
+| Part | In #TTL | Note |
+|---|---|---|
+| 7474, 74138, 74153, 74157, 74161, 74175, 74193, 74377, 74541, 74670 | yes | |
+| 74574 | **no** | modelled: [circuits/chips/74574.circ](../circuits/chips/74574.circ), from cd74hct574.pdf |
+
+Logisim's 74670 was checked against the CD74HCT670 datasheet (cd74hc670.pdf, which covers HCT) by [circuits/chips/test_74670.circ](../circuits/chips/test_74670.circ): writes are transparent while /WE is low (the addressed word follows D), reads with /RE high are high impedance. It needs no model.
+
+Chip models live in `circuits/chips/`, one file per part, with the datasheet next to them. Rules: chips.md "Rules", conventions.md "Components".
 
 ## Real 74HCT parts missing from Logisim
 
-- **74HCT688** (8-bit equality comparator): would give A = B in one chip, but it would have needed a model (not allowed then). cmp8 uses two 74HCT85 instead, and keeps them, which give S, E and F (alu-decisions.md D15).
+- **74HCT688** (8-bit equality comparator): would give A = B in one chip, but it would have needed a model (not allowed then). cmp8 uses two 74HCT85 instead, which give S, E and F, and keeps them (alu-decisions.md D15).
 - **74HCT4078** (8-input NOR/OR): would give Z in one chip instead of 74HCT27 + 74HCT11. Not used: the 4078 is mostly sold as HC, and the 27 + 11 cost one chip more but no new model.
 - **74HCT540** (inverting 541): the 74HCT240 does the same job here.
 - **74HCT154** (4-to-16 decoder): would remove the 7411 gate behind the shift-right enable.

@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Bill of materials of a circuit, from the .circ files.
 
-Counts every #TTL chip of a circuit and of the subcircuits it instantiates
+Counts every chip of a circuit (#TTL parts and instances of the chip models
+in circuits/chips/) and of the subcircuits it instantiates
 (each instance counts), then takes the orderable references from the
 "Parts in use" table of logisim/notes/chips.md. A chip missing from that
 table is an error, so the circuits can only use parts that were checked.
@@ -54,7 +55,8 @@ def parts_table(path: Path = CHIPS_MD) -> dict[str, dict]:
 def count(circ: nl.Circuit, chips: Counter, where: dict, n: int = 1):
     """Add the chips of circ (times n instances) and of its subcircuits."""
     for c in circ.comps:
-        if c.kind == "ttl":
+        model = nl.chip_model(c.sub) if c.kind == "sub" and c.sub is not None else None
+        if c.kind == "ttl" or model:
             chips[c.name] += n
             where[c.name].add(circ.name)
         elif c.kind == "sub" and c.sub is not None:

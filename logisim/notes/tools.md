@@ -35,14 +35,24 @@ circgen API, in short:
 - `rails_left(c, chip, signals, line_x, taps, ends, pitch=20)`: the add_sub8 style for any chip facing east. Each pin goes to a bus tap, a 1-bit line, Ground/Power (`"gnd"`/`"vcc"`) or a tunnel (`("tunnel", name)`, use pitch=30). Edges come from the real pin positions (the 74153 is taller).
 - `c.move(dx, dy)` shifts the whole drawing, so a script can reproduce a layout Gianni shifted by hand (add_sub8: 210, 90; alu: 160, 30, before the 2026-11-04 rebuild).
 - Vertical splitters (facing north/south) put end 0 at the right: use ends `[[7 - k] for k in range(8)]` to have bit 0 on the left.
+- Chips facing south are drawn as the datasheet's top view (pin 1 top left). `pin_tunnels(c, chip, {pin: signal})` puts a tunnel on each pin listed (`"gnd"`/`"vcc"` give Ground/Power), on every side; `bus_tunnels(c, at, name, width, output=False)` gives a module pin with a splitter to tunnels `name_k`. See designs/flags.py.
+
+## Chip models (circuits/chips/)
+A chip missing from #TTL is a circuit named after the part, in `circuits/chips/<part>.circ`, with its datasheet next to it (rules: conventions.md "Components").
+- `c.dip_symbol(title, order)`: DIP symbol, pins in datasheet order (`order[0]` = pin 1), pin number and name on each, VCC and GND included. The anchor is pin 1.
+- `t.model(chip, loc, label="U1")`: an instance of a model of the same file, with `u["D0"]` port locations (used by the `test_<part>` bench).
+- netlist.py marks a model as kind "chip" (`chip_model`), numbers its ports by DIP pin (shown `pin:name`), and knows the generic parts allowed inside a model (NOT Gate, Controlled Buffer, Register, D Flip-Flop: kind "generic").
+- conventions.py checks a model (VCC/GND pins present and unwired, unique pin names, a DIP symbol, only allowed parts) and treats its instances as chips (`U<n>`, floating inputs are errors); bom.py counts them.
+- Done: `74574` (designs/74574.py, 2,064 datasheet rows). `test_74670.circ` (designs/test_74670.py) checks Logisim's own 74670 against its datasheet (912 rows), so it has no model.
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.
-- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, shift8, flags8, cmp8, rmux8, alu.
+- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, shift8, flags8, cmp8, rmux8, alu; sequential: flags, flags_cpu.
 - `eval` uses `hbc2_core::alu` where it exists. Otherwise `exec(op, a, b, carry)` runs the real CPU on that instruction (Reg mode) and returns the register and the flags. A flag missing from the instruction's flag list comes back None, written `x`. The emulator is never changed.
 - A module whose inputs are too many for an exhaustive test gives its own `rows` (rmux8). The limit is 2^21; logitest runs big files in chunks of 524,288 rows (2^21 rows take about 10 minutes).
 - `logitest.check_emulator(file, circuit, module=None)` rebuilds the CLI (`cargo build --release -p hbc2-cli`), writes the vectors, checks the pin names and widths, and runs them.
 - `logitest.check(..., model=...)` with a Python model still exists, for quick experiments only. It is not the reference.
+- Sequential circuits use Logisim's `<set>` / `<seq>` columns: each set starts from power-up and its rows run in order. `logitest.write_sequences(path, inputs, outputs, sets)` writes them from Python, `check_sequences(file, circuit, inputs, outputs, sets)` runs them; `logitest.FLOAT` expects high impedance. `hbc2 vectors` writes sequences for its sequential modules (flags, flags_cpu).
 
 ## Logisim CLI
 - `C:\Program Files\logisim-evolution\logisim-evolution.exe -w <circuit> <vectors> <file.circ>`.

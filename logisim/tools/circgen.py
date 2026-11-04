@@ -104,6 +104,8 @@ class Part:
             c = nl.Comp(kind="sub", name=name, lib="file#", loc=loc, attrs=self.attrs, sub=lib[name])
             nl.make_ports(None, c)
             self.ports = c.ports
+        elif (lib, name) in nl.GENERIC:
+            kind = "generic"
         elif lib == "#TTL" and name in nl.TTL:
             kind = "ttl"
         elif lib == "#Wiring" and name == "Splitter":
@@ -116,6 +118,8 @@ class Part:
             c = nl.Comp(kind=kind, name=name, lib=lib or "", loc=loc, attrs=self.attrs)
             if kind == "ttl":
                 nl.make_ttl(c)
+            elif kind == "generic":
+                nl.make_generic(c)
             elif kind == "splitter":
                 nl.make_splitter(c)
             else:
@@ -251,6 +255,46 @@ def symbol_xml(name: str, sides: dict, pins: dict) -> str:
     return "    <appear>\n" + "".join(f"      {ln}\n" for ln in L) + "    </appear>"
 
 
+def dip_symbol_xml(title: str, order: list, pins: dict) -> str:
+    """<appear> block of a chip model, drawn like Logisim's TTL chips: pins
+    1..n/2 along the bottom from the left, n/2+1..n along the top from the
+    right, 20 px apart. Each pin shows its number and its datasheet name.
+
+    order: pin labels in pin-number order (pin 1 first).
+    pins:  {label: (loc of the Pin in the circuit, width, is_output)}
+    The anchor is pin 1."""
+    n = len(order)
+    if n % 2 or sorted(order) != sorted(pins):
+        raise ValueError(f"DIP symbol of {title}: pins {sorted(order)} vs circuit pins {sorted(pins)}")
+    half = n // 2
+    W, H, x0, y0 = half * 20, 80, 50, 50
+    L = [f'<rect fill="none" height="{H}" stroke="#000000" stroke-width="2" width="{W}" x="{x0}" y="{y0}"/>',
+         f'<rect fill="none" height="16" stroke="#000000" stroke-width="2" width="6" x="{x0}" y="{y0 + H // 2 - 8}"/>']
+    T = ('<text dominant-baseline="alphabetic" font-family="Dialog" font-size="{s}" '
+         'text-anchor="middle" x="{x}" y="{y}">{t}</text>')
+    ports = []
+    for i, lab in enumerate(order):
+        num = i + 1
+        if i < half:                                  # bottom, left to right
+            x, y = x0 + 20 * i + 10, y0 + H + 10
+            L.append(f'<rect height="10" stroke="none" width="3" x="{x - 1}" y="{y0 + H}"/>')
+            L.append(T.format(s=8, x=x, y=y0 + H - 4, t=num))
+            L.append(T.format(s=8, x=x, y=y0 + H - 14, t=_esc(lab)))
+        else:                                         # top, right to left
+            x, y = x0 + W - 20 * (i - half) - 10, y0 - 10
+            L.append(f'<rect height="10" stroke="none" width="3" x="{x - 1}" y="{y}"/>')
+            L.append(T.format(s=8, x=x, y=y0 + 10, t=num))
+            L.append(T.format(s=8, x=x, y=y0 + 20, t=_esc(lab)))
+        ports.append((x, y, lab))
+    L.append('<text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" font-weight="bold" '
+             f'text-anchor="middle" x="{x0 + W // 2}" y="{y0 + H // 2 + 5}">{_esc(title)}</text>')
+    L.append(f'<circ-anchor facing="east" x="{ports[0][0]}" y="{ports[0][1]}"/>')
+    for x, y, lab in ports:
+        (px, py), _, out = pins[lab]
+        L.append(f'<circ-port dir="{"out" if out else "in"}" pin="{px},{py}" x="{x}" y="{y}"/>')
+    return "    <appear>\n" + "".join(f"      {ln}\n" for ln in L) + "    </appear>"
+
+
 # --------------------------------------------------------------------------
 # Circuit
 # --------------------------------------------------------------------------
@@ -260,6 +304,7 @@ class Circuit:
         self.parts: list[Part] = []
         self.wires: list[tuple[Pt, Pt]] = []
         self._symbol: dict | None = None
+        self._dip: tuple | None = None
 
     # ---- generic ----
     def add(self, lib: "str | Library | None", name: str, loc: Pt, **attrs) -> Part:
@@ -331,6 +376,28 @@ class Circuit:
         """Custom symbol: each list names the pins (by label) on that side.
         Conventions: data in left, outputs right, control top, flags bottom."""
         self._symbol = {"top": list(top), "left": list(left), "right": list(right), "bottom": list(bottom)}
+
+    def model(self, chip: "Circuit", loc: Pt, label: str = "") -> Part:
+        """Instance of a chip model drawn in the same project (its test
+        bench). part[n] / part["D0"] give the pin locations, from the DIP
+        symbol: pin 1 is the anchor, at loc."""
+        if chip._dip is None:
+            raise ValueError(f"{chip.name} has no DIP symbol")
+        order = chip._dip[1]
+        widths = {p.label: (int(p.attrs.get("width", 1)), p.attrs.get("type") == "output")
+                  for p in chip.parts if p.lib == "#Wiring" and p.name == "Pin"}
+        half = len(order) // 2
+        part = self.add(None, chip.name, loc, **({"label": label} if label else {}))
+        for i, lab in enumerate(order):
+            dx, dy = (20 * i, 0) if i < half else (20 * half - 20 * (i - half) - 20, -100)
+            w, out = widths[lab]
+            part.ports.append(nl.Port(lab, (loc[0] + dx, loc[1] + dy), w, "out" if out else "in", i + 1))
+        return part
+
+    def dip_symbol(self, title: str, order: list) -> None:
+        """Symbol of a chip model (circuits/chips/): a DIP outline with the
+        pins in datasheet order, `order` = pin labels from pin 1 to pin n."""
+        self._dip = (title, list(order))
 
     def text(self, loc: Pt, text: str, **attrs) -> None:
         self.add("#Base", "Text", loc, text=text, **attrs)
@@ -430,7 +497,7 @@ class Circuit:
         return sorted(out)
 
     def xml(self) -> str:
-        custom = self._symbol is not None
+        custom = self._symbol is not None or self._dip is not None
         lines = [f'  <circuit name="{_esc(self.name)}">',
                  f'    <a name="appearance" val="{"custom" if custom else "logisim_evolution"}"/>',
                  f'    <a name="circuit" val="{_esc(self.name)}"/>',
@@ -439,7 +506,7 @@ class Circuit:
         if custom:
             pins = {p.label: (p.loc, int(p.attrs.get("width", 1)), p.attrs.get("type") == "output")
                     for p in self.parts if p.lib == "#Wiring" and p.name == "Pin"}
-            lines.append(symbol_xml(self.name, self._symbol, pins))
+            lines.append(dip_symbol_xml(*self._dip, pins) if self._dip else symbol_xml(self.name, self._symbol, pins))
         lines += [p.xml() for p in self.parts]
         lines += [f'    <wire from="({a[0]},{a[1]})" to="({b[0]},{b[1]})"/>' for a, b in self._split_wires()]
         lines.append("  </circuit>")
@@ -509,6 +576,55 @@ def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict
             else:
                 raise KeyError(f"{chip.label}: {name} goes to unknown line {line!r}")
             c.wire(end, (chip[name][0], y), chip[name])
+
+
+def pin_tunnels(c: "Circuit", chip: Part, names: dict, first: int = 20, stagger: int = 30) -> None:
+    """Wire chip pins to tunnels: a stub straight out of the chip, then a
+    tunnel. names maps a pin (number or name) to a tunnel label, or to
+    "gnd" / "vcc" for a Ground / Power. Works for chips on any facing: pins
+    on the left or right side get 20 px stubs (tunnel text runs sideways);
+    top and bottom pins alternate between two depths so the tunnel boxes
+    don't touch."""
+    xs = {p.loc[0] for p in chip.ports}
+    ys = {p.loc[1] for p in chip.ports}
+    TUNNEL = {(-1, 0): "east", (1, 0): "west", (0, 1): "north", (0, -1): "south"}
+    CONST = {(-1, 0): "west", (1, 0): "east", (0, 1): "south", (0, -1): "north"}
+    if len(xs) == 2:                                           # pins on the left and right sides
+        stubs = [(k, (-1 if chip[k][0] == min(xs) else 1, 0), first) for k in names]
+    else:                                                      # pins on the top and bottom
+        stubs = []
+        for edge_y, away in ((max(ys), 1), (min(ys), -1)):
+            row = sorted((k for k in names if chip[k][1] == edge_y), key=lambda k: chip[k][0])
+            stubs += [(k, (0, away), first + stagger * (i % 2)) for i, k in enumerate(row)]
+    for k, d, depth in stubs:
+        x, y = chip[k]
+        end = (x + d[0] * depth, y + d[1] * depth)
+        c.wire((x, y), end)
+        if names[k] in ("gnd", "vcc"):
+            c.add("#Wiring", "Ground" if names[k] == "gnd" else "Power", end, facing=CONST[d])
+        else:
+            c.tunnel(end, names[k], facing=TUNNEL[d])
+
+
+def bus_tunnels(c: "Circuit", at: Pt, label: str, width: int, output: bool = False, gap: int = 20) -> None:
+    """A pin `label` at `at`, split into 1-bit tunnels named label_0,
+    label_1, ... (bit 0 first, going down). An input pin faces east
+    (tunnels on its right), an output pin faces west (tunnels on its left).
+    A 1-bit pin gets one tunnel named `label`."""
+    x, y = at
+    s = -1 if output else 1
+    (c.output if output else c.input)(at, label, width)
+    if width == 1:
+        c.wire(at, (x + 20 * s, y))
+        c.tunnel((x + 20 * s, y), label, facing="east" if output else "west")
+        return
+    c.wire(at, (x + 20 * s, y))
+    sp = c.splitter((x + 20 * s, y), width, [[k] for k in range(width)], facing="west" if output else "east",
+                    appear="left" if output else "right", spacing=gap // 10)
+    for k in range(width):
+        e = sp[f"end{k}"]
+        c.wire(e, (e[0] + 20 * s, e[1]))
+        c.tunnel((e[0] + 20 * s, e[1]), f"{label}_{k}", facing="east" if output else "west")
 
 
 # --------------------------------------------------------------------------

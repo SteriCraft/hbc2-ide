@@ -146,8 +146,9 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[Issue], dict]:
             continue
         c, p = plist[0]
         if c.kind == "pin":
-            add("warning", loc, f"pin {c.ident} is not connected")
-        elif c.kind in ("ttl", "sub") and p.dir == "in" and p.name not in ("VCC", "GND"):
+            if not (c.label in ("VCC", "GND") and nl.chip_model(circ)):   # unconnected by design
+                add("warning", loc, f"pin {c.ident} is not connected")
+        elif c.kind in ("ttl", "sub", "generic") and p.dir == "in" and p.name not in ("VCC", "GND"):
             add("warning", loc, f"input {c.ident}.{nl.port_label(c, p)} is not connected (floating)")
         elif c.kind == "splitter" and p.width:
             add("warning", loc, f"splitter {c.ident} {p.name} is not connected")
@@ -163,7 +164,7 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[Issue], dict]:
             p = c.ports[pi]
             if c.kind in ("const", "power", "ground"):
                 consts.append(c)
-            elif (c.kind in ("ttl", "sub") and p.dir == "out") or \
+            elif (c.kind in ("ttl", "sub", "generic") and p.dir == "out") or \
                     (c.kind == "pin" and c.attrs.get("type") != "output"):
                 drivers.append(f"{c.ident}.{nl.port_label(c, p)}")
         if consts and (drivers or len(consts) > 1):

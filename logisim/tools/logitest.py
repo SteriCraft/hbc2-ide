@@ -106,6 +106,56 @@ def write_vectors(path: Path, inputs: dict, outputs: dict, model, rows) -> int:
     return len(rows)
 
 
+FLOAT = "Z"     # expected value of an output that must be high impedance (tri-state off)
+
+
+def _cell(v, width):
+    if v == FLOAT:
+        return "<FLOAT>"
+    return _fmt(v, width)
+
+
+def write_sequences(path: Path, inputs: dict, outputs: dict, sets: list) -> int:
+    """Sequential test vector: Logisim's <set> and <seq> columns. sets is a
+    list of sequences; each sequence is a list of rows, run in order without
+    resetting the circuit in between. A row is a dict: every input by name,
+    and the outputs to check (missing or None = don't care, FLOAT = high
+    impedance). An input keeps its value only if the row repeats it.
+    Returns the number of rows."""
+    names = list(inputs) + list(outputs)
+    widths = {**inputs, **outputs}
+    head = ["<set>", "<seq>"] + [f"{n}[{w}]" if w > 1 else n for n, w in widths.items()]
+    rows = 0
+    with open(path, "w", encoding="utf-8") as f:
+        f.write(" ".join(head) + "\n")
+        for k, seq in enumerate(sets, 1):
+            for j, row in enumerate(seq, 1):
+                missing = [n for n in inputs if n not in row]
+                if missing:
+                    raise ValueError(f"set {k} row {j}: no value for input {', '.join(missing)}")
+                cells = [str(k), str(j)] + [_cell(row.get(n), widths[n]) for n in names]
+                f.write(" ".join(cells) + "\n")
+                rows += 1
+    return rows
+
+
+def check_sequences(circ_file, circuit: str, inputs: dict, outputs: dict, sets: list,
+                    keep: str | None = None) -> bool:
+    """Run sequences (see write_sequences) on `circuit`; True when all pass.
+    Use it for chip models, whose reference is the datasheet's function table."""
+    pins = _pins(circ_file, circuit)
+    for n, w in list(inputs.items()) + list(outputs.items()):
+        if n not in pins:
+            raise SystemExit(f"error: {circuit} has no pin {n}; pins: {', '.join(sorted(pins))}")
+        if pins[n] != w:
+            raise SystemExit(f"error: pin {n} is {pins[n]} bits wide, not {w}")
+    with tempfile.TemporaryDirectory() as tmp:
+        vec = Path(keep) if keep else Path(tmp) / f"{circuit}.vec"
+        n = write_sequences(vec, inputs, outputs, sets)
+        print(f"{circuit}: running {len(sets)} sequences, {n} rows")
+        return run_vectors(circ_file, circuit, vec)
+
+
 def run_vectors(circ_file, circuit: str, vec_file, show: int = 10, timeout: int = 600) -> bool:
     """Run a vector file in Logisim. Prints the summary and the first failures."""
     circ_file, vec_file = Path(circ_file).resolve(), Path(vec_file).resolve()
@@ -195,6 +245,8 @@ def check_emulator(circ_file, circuit: str, module: str | None = None, keep: str
             head = f.readline().split()
         pins = _pins(circ_file, circuit)
         for cell in head:
+            if cell.lower() in ("<set>", "<seq>"):       # sequential vectors (flags)
+                continue
             name, _, w = cell.partition("[")
             width = int(w.rstrip("]")) if w else 1
             if name not in pins:

@@ -35,6 +35,16 @@ from pathlib import Path
 
 LOGISIM_DIR = Path(__file__).resolve().parent.parent
 CIRCUITS_DIR = LOGISIM_DIR / "circuits"
+CHIPS_DIR = CIRCUITS_DIR / "chips"     # home-made models of 74HCT chips missing from #TTL
+
+
+def chip_model(circ) -> str | None:
+    """Part name ("74574") when circ is a chip model, i.e. the circuit named
+    like its file in circuits/chips/; None otherwise."""
+    path = circ.project.path.resolve()
+    if path.parent == CHIPS_DIR.resolve() and circ.name == path.stem and not circ.name.startswith("test_"):
+        return circ.name
+    return None
 
 
 def all_circ_files() -> list[Path]:
@@ -242,7 +252,7 @@ class Port:
 
 @dataclass
 class Comp:
-    kind: str           # pin tunnel splitter ttl sub const power ground io ignored unsupported
+    kind: str           # pin tunnel splitter ttl sub generic const power ground io ignored unsupported
     name: str           # factory name, e.g. "Pin", "74283", "add8"
     lib: str            # library description, e.g. "#Wiring"; "" for subcircuits
     loc: tuple[int, int]
@@ -435,6 +445,31 @@ WIRING_SINGLE = {  # factory name -> (kind, default width, direction)
     "Pull Resistor": ("io", 0, "inout"),
 }
 IO_SINGLE = {"LED": ("io", 1, "in"), "Button": ("io", 1, "out")}
+
+# Generic components, allowed only inside chip models (circuits/chips/).
+# (library, name) -> [(port, (dx, dy) facing east, direction, data width?)]
+# Offsets read from the logisim-evolution 5.0.0 classes (configurePorts /
+# updatePorts). D Flip-Flop and Register: the "logisim_evolution" appearance
+# (set it explicitly), no facing.
+GENERIC = {
+    ("#Gates", "NOT Gate"): [("Y", (0, 0), "out", True), ("A", (-30, 0), "in", True)],
+    ("#Gates", "Controlled Buffer"): [("Y", (0, 0), "out", True), ("A", (-20, 0), "in", True),
+                                      ("EN", (-10, 10), "in", False)],
+    ("#Memory", "Register"): [("D", (0, 30), "in", True), ("Q", (60, 30), "out", True),
+                              ("CLK", (0, 70), "in", False), ("EN", (0, 50), "in", False),
+                              ("CLR", (30, 90), "in", False)],
+    ("#Memory", "D Flip-Flop"): [("D", (-10, 10), "in", False), ("CLK", (-10, 50), "in", False),
+                                 ("Q", (50, 10), "out", False), ("nQ", (50, 50), "out", False),
+                                 ("R", (20, 60), "in", False), ("S", (20, 0), "in", False)],
+}
+
+
+def make_generic(c: "Comp"):
+    width = parse_int(c.attrs.get("width"), 1)
+    facing = c.attrs.get("facing", "east")
+    for name, (dx, dy), d, wide in GENERIC[(c.lib, c.name)]:
+        rx, ry = rotate(dx, dy, "east", facing)
+        c.ports.append(Port(name, (c.loc[0] + rx, c.loc[1] + ry), width if wide else 1, d))
 IGNORED = {"Text", "Label", "Image"}
 
 
@@ -453,17 +488,33 @@ def make_ports(circ: Circuit, c: Comp):
         make_splitter(c)
     elif c.kind == "ttl":
         make_ttl(c)
+    elif c.kind == "generic":
+        make_generic(c)
     elif c.kind == "sub":
         child = c.sub
         child.build()
         frm, iface = child.interface()
         facing = a.get("facing", "east")
+        numbers = dip_numbers(iface) if chip_model(child) else {}
         for (dx, dy), pin in iface:
             rx, ry = rotate(dx, dy, frm, facing)
             out = pin.attrs.get("type") == "output"
             c.ports.append(Port(pin.label or f"pin@{pin.loc[0]},{pin.loc[1]}", (loc[0] + rx, loc[1] + ry),
-                                parse_int(pin.attrs.get("width"), 1), "out" if out else "in"))
+                                parse_int(pin.attrs.get("width"), 1), "out" if out else "in",
+                                numbers.get((dx, dy))))
             c.sub_pins.append(child.comps.index(pin))
+
+
+def dip_numbers(iface) -> dict:
+    """Pin numbers of a chip model's symbol, drawn like Logisim's TTL chips:
+    pins 1..n/2 along the bottom from the left, then n/2+1..n along the top
+    from the right. {offset: number}"""
+    offs = [o for o, _ in iface]
+    bottom = sorted((o for o in offs if o[1] == max(y for _, y in offs)), key=lambda o: o[0])
+    top = sorted((o for o in offs if o[1] == min(y for _, y in offs)), key=lambda o: -o[0])
+    if len(bottom) != len(top) or len(bottom) + len(top) != len(offs):
+        return {}
+    return {o: i + 1 for i, o in enumerate(bottom + top)}
 
 
 def make_splitter(c: Comp):
@@ -602,6 +653,8 @@ class Project:
                 c.kind = "ttl"
             elif lib == "#I/O" and name in IO_SINGLE:
                 c.kind = "io"
+            elif (lib, name) in GENERIC:
+                c.kind = "generic"
             if name in IGNORED:
                 c.kind = "ignored"
             if c.kind == "unsupported":
@@ -615,7 +668,7 @@ class Project:
 # Per-circuit netlist
 # --------------------------------------------------------------------------
 def port_label(c: Comp, p: Port) -> str:
-    if c.kind == "ttl":
+    if c.kind == "ttl" or p.pin:
         return f"{p.pin}:{p.name}"
     return p.name
 

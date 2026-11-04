@@ -1,0 +1,561 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="5.0.0" version="1.0">
+  This file is intended to be loaded by Logisim-evolution v5.0.0(https://github.com/logisim-evolution/).
+
+  <lib desc="#Wiring" name="0">
+    <tool name="Pin">
+      <a name="appearance" val="classic"/>
+    </tool>
+  </lib>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#Plexers" name="2"/>
+  <lib desc="#Arithmetic" name="3"/>
+  <lib desc="#FPArithmetic" name="4"/>
+  <lib desc="#Memory" name="5"/>
+  <lib desc="#I/O" name="6"/>
+  <lib desc="#TTL" name="7"/>
+  <lib desc="#TCL" name="8"/>
+  <lib desc="#Base" name="9"/>
+  <lib desc="#BFH-Praktika" name="10"/>
+  <lib desc="#Input/Output-Extra" name="11"/>
+  <lib desc="#Soc" name="12"/>
+  <main name="74574"/>
+  <options>
+    <a name="gateUndefined" val="ignore"/>
+    <a name="simlimit" val="1000"/>
+    <a name="simrand" val="0"/>
+  </options>
+  <mappings>
+    <tool map="Button2" name="Poke Tool"/>
+    <tool map="Button3" name="Menu Tool"/>
+    <tool map="Ctrl Button1" name="Menu Tool"/>
+  </mappings>
+  <toolbar>
+    <tool name="Poke Tool"/>
+    <tool name="Edit Tool"/>
+    <tool name="Wiring Tool"/>
+    <tool name="Text Tool"/>
+    <sep/>
+    <tool name="Pin"/>
+    <tool name="Pin">
+      <a name="facing" val="west"/>
+      <a name="type" val="output"/>
+    </tool>
+  </toolbar>
+  <circuit name="74574">
+    <a name="appearance" val="custom"/>
+    <a name="circuit" val="74574"/>
+    <a name="circuitnamedboxfixedsize" val="true"/>
+    <a name="simulationFrequency" val="1.0"/>
+    <appear>
+      <rect fill="none" height="80" stroke="#000000" stroke-width="2" width="200" x="50" y="50"/>
+      <rect fill="none" height="16" stroke="#000000" stroke-width="2" width="6" x="50" y="82"/>
+      <rect height="10" stroke="none" width="3" x="59" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="60" y="126">1</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="60" y="116">/OE</text>
+      <rect height="10" stroke="none" width="3" x="79" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="80" y="126">2</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="80" y="116">D0</text>
+      <rect height="10" stroke="none" width="3" x="99" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="100" y="126">3</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="100" y="116">D1</text>
+      <rect height="10" stroke="none" width="3" x="119" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="120" y="126">4</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="120" y="116">D2</text>
+      <rect height="10" stroke="none" width="3" x="139" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="140" y="126">5</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="140" y="116">D3</text>
+      <rect height="10" stroke="none" width="3" x="159" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="160" y="126">6</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="160" y="116">D4</text>
+      <rect height="10" stroke="none" width="3" x="179" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="180" y="126">7</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="180" y="116">D5</text>
+      <rect height="10" stroke="none" width="3" x="199" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="200" y="126">8</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="200" y="116">D6</text>
+      <rect height="10" stroke="none" width="3" x="219" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="220" y="126">9</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="220" y="116">D7</text>
+      <rect height="10" stroke="none" width="3" x="239" y="130"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="240" y="126">10</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="240" y="116">GND</text>
+      <rect height="10" stroke="none" width="3" x="239" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="240" y="60">11</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="240" y="70">CP</text>
+      <rect height="10" stroke="none" width="3" x="219" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="220" y="60">12</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="220" y="70">Q7</text>
+      <rect height="10" stroke="none" width="3" x="199" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="200" y="60">13</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="200" y="70">Q6</text>
+      <rect height="10" stroke="none" width="3" x="179" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="180" y="60">14</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="180" y="70">Q5</text>
+      <rect height="10" stroke="none" width="3" x="159" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="160" y="60">15</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="160" y="70">Q4</text>
+      <rect height="10" stroke="none" width="3" x="139" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="140" y="60">16</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="140" y="70">Q3</text>
+      <rect height="10" stroke="none" width="3" x="119" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="120" y="60">17</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="120" y="70">Q2</text>
+      <rect height="10" stroke="none" width="3" x="99" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="100" y="60">18</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="100" y="70">Q1</text>
+      <rect height="10" stroke="none" width="3" x="79" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="80" y="60">19</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="80" y="70">Q0</text>
+      <rect height="10" stroke="none" width="3" x="59" y="40"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="60" y="60">20</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="8" text-anchor="middle" x="60" y="70">VCC</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" font-weight="bold" text-anchor="middle" x="150" y="95">74HCT574</text>
+      <circ-anchor facing="east" x="60" y="140"/>
+      <circ-port dir="in" pin="370,320" x="60" y="140"/>
+      <circ-port dir="in" pin="100,210" x="80" y="140"/>
+      <circ-port dir="in" pin="100,230" x="100" y="140"/>
+      <circ-port dir="in" pin="100,250" x="120" y="140"/>
+      <circ-port dir="in" pin="100,270" x="140" y="140"/>
+      <circ-port dir="in" pin="100,290" x="160" y="140"/>
+      <circ-port dir="in" pin="100,310" x="180" y="140"/>
+      <circ-port dir="in" pin="100,330" x="200" y="140"/>
+      <circ-port dir="in" pin="100,350" x="220" y="140"/>
+      <circ-port dir="in" pin="100,490" x="240" y="140"/>
+      <circ-port dir="in" pin="100,390" x="240" y="40"/>
+      <circ-port dir="out" pin="500,350" x="220" y="40"/>
+      <circ-port dir="out" pin="500,330" x="200" y="40"/>
+      <circ-port dir="out" pin="500,310" x="180" y="40"/>
+      <circ-port dir="out" pin="500,290" x="160" y="40"/>
+      <circ-port dir="out" pin="500,270" x="140" y="40"/>
+      <circ-port dir="out" pin="500,250" x="120" y="40"/>
+      <circ-port dir="out" pin="500,230" x="100" y="40"/>
+      <circ-port dir="out" pin="500,210" x="80" y="40"/>
+      <circ-port dir="in" pin="100,450" x="60" y="40"/>
+    </appear>
+    <comp lib="0" loc="(200,200)" name="Splitter">
+      <a name="appear" val="left"/>
+      <a name="bit0" val="0"/>
+      <a name="bit1" val="1"/>
+      <a name="bit2" val="2"/>
+      <a name="bit3" val="3"/>
+      <a name="bit4" val="4"/>
+      <a name="bit5" val="5"/>
+      <a name="bit6" val="6"/>
+      <a name="bit7" val="7"/>
+      <a name="facing" val="west"/>
+      <a name="fanout" val="8"/>
+      <a name="incoming" val="8"/>
+      <a name="spacing" val="2"/>
+    </comp>
+    <comp lib="0" loc="(100,210)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D0"/>
+    </comp>
+    <comp lib="0" loc="(100,230)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D1"/>
+    </comp>
+    <comp lib="0" loc="(100,250)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D2"/>
+    </comp>
+    <comp lib="0" loc="(100,270)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D3"/>
+    </comp>
+    <comp lib="0" loc="(100,290)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D4"/>
+    </comp>
+    <comp lib="0" loc="(100,310)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D5"/>
+    </comp>
+    <comp lib="0" loc="(100,330)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D6"/>
+    </comp>
+    <comp lib="0" loc="(100,350)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="D7"/>
+    </comp>
+    <comp lib="5" loc="(280,170)" name="Register">
+      <a name="appearance" val="logisim_evolution"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(100,390)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="CP"/>
+    </comp>
+    <comp lib="0" loc="(270,220)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(310,260)" name="Ground"/>
+    <comp lib="1" loc="(380,200)" name="Controlled Buffer">
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="1" loc="(370,240)" name="NOT Gate">
+      <a name="facing" val="north"/>
+    </comp>
+    <comp lib="0" loc="(370,320)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="north"/>
+      <a name="label" val="/OE"/>
+    </comp>
+    <comp lib="0" loc="(420,200)" name="Splitter">
+      <a name="appear" val="right"/>
+      <a name="bit0" val="0"/>
+      <a name="bit1" val="1"/>
+      <a name="bit2" val="2"/>
+      <a name="bit3" val="3"/>
+      <a name="bit4" val="4"/>
+      <a name="bit5" val="5"/>
+      <a name="bit6" val="6"/>
+      <a name="bit7" val="7"/>
+      <a name="facing" val="east"/>
+      <a name="fanout" val="8"/>
+      <a name="incoming" val="8"/>
+      <a name="spacing" val="2"/>
+    </comp>
+    <comp lib="0" loc="(500,210)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q0"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,230)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q1"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,250)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q2"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,270)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q3"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,290)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q4"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,310)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q5"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,330)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q6"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(500,350)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="Q7"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(100,450)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="VCC"/>
+    </comp>
+    <comp lib="0" loc="(100,490)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="GND"/>
+    </comp>
+    <comp lib="9" loc="(310,140)" name="Text">
+      <a name="text" val="74HCT574 (TI SCHS183E): edge-triggered, outputs off when /OE is high"/>
+    </comp>
+    <wire from="(100,210)" to="(180,210)"/>
+    <wire from="(100,230)" to="(180,230)"/>
+    <wire from="(100,250)" to="(180,250)"/>
+    <wire from="(100,270)" to="(180,270)"/>
+    <wire from="(100,290)" to="(180,290)"/>
+    <wire from="(100,310)" to="(180,310)"/>
+    <wire from="(100,330)" to="(180,330)"/>
+    <wire from="(100,350)" to="(180,350)"/>
+    <wire from="(100,390)" to="(250,390)"/>
+    <wire from="(200,200)" to="(280,200)"/>
+    <wire from="(250,240)" to="(250,390)"/>
+    <wire from="(250,240)" to="(280,240)"/>
+    <wire from="(270,220)" to="(280,220)"/>
+    <wire from="(340,200)" to="(360,200)"/>
+    <wire from="(370,210)" to="(370,240)"/>
+    <wire from="(370,270)" to="(370,320)"/>
+    <wire from="(380,200)" to="(420,200)"/>
+    <wire from="(440,210)" to="(500,210)"/>
+    <wire from="(440,230)" to="(500,230)"/>
+    <wire from="(440,250)" to="(500,250)"/>
+    <wire from="(440,270)" to="(500,270)"/>
+    <wire from="(440,290)" to="(500,290)"/>
+    <wire from="(440,310)" to="(500,310)"/>
+    <wire from="(440,330)" to="(500,330)"/>
+    <wire from="(440,350)" to="(500,350)"/>
+  </circuit>
+  <circuit name="test_74574">
+    <a name="appearance" val="logisim_evolution"/>
+    <a name="circuit" val="test_74574"/>
+    <a name="circuitnamedboxfixedsize" val="true"/>
+    <a name="simulationFrequency" val="1.0"/>
+    <comp loc="(400,400)" name="74574">
+      <a name="label" val="U1"/>
+    </comp>
+    <comp lib="0" loc="(400,420)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="oe_n"/>
+    </comp>
+    <comp lib="0" loc="(420,450)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_0"/>
+    </comp>
+    <comp lib="0" loc="(440,420)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_1"/>
+    </comp>
+    <comp lib="0" loc="(460,450)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_2"/>
+    </comp>
+    <comp lib="0" loc="(480,420)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_3"/>
+    </comp>
+    <comp lib="0" loc="(500,450)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_4"/>
+    </comp>
+    <comp lib="0" loc="(520,420)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_5"/>
+    </comp>
+    <comp lib="0" loc="(540,450)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_6"/>
+    </comp>
+    <comp lib="0" loc="(560,420)" name="Tunnel">
+      <a name="facing" val="north"/>
+      <a name="label" val="d_7"/>
+    </comp>
+    <comp lib="0" loc="(420,280)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_0"/>
+    </comp>
+    <comp lib="0" loc="(440,250)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_1"/>
+    </comp>
+    <comp lib="0" loc="(460,280)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_2"/>
+    </comp>
+    <comp lib="0" loc="(480,250)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_3"/>
+    </comp>
+    <comp lib="0" loc="(500,280)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_4"/>
+    </comp>
+    <comp lib="0" loc="(520,250)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_5"/>
+    </comp>
+    <comp lib="0" loc="(540,280)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_6"/>
+    </comp>
+    <comp lib="0" loc="(560,250)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="q_7"/>
+    </comp>
+    <comp lib="0" loc="(580,280)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="cp"/>
+    </comp>
+    <comp lib="0" loc="(100,100)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="oe_n"/>
+    </comp>
+    <comp lib="0" loc="(120,100)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="oe_n"/>
+    </comp>
+    <comp lib="0" loc="(100,160)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="cp"/>
+    </comp>
+    <comp lib="0" loc="(120,160)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="cp"/>
+    </comp>
+    <comp lib="0" loc="(100,220)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="d"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(120,220)" name="Splitter">
+      <a name="appear" val="right"/>
+      <a name="bit0" val="0"/>
+      <a name="bit1" val="1"/>
+      <a name="bit2" val="2"/>
+      <a name="bit3" val="3"/>
+      <a name="bit4" val="4"/>
+      <a name="bit5" val="5"/>
+      <a name="bit6" val="6"/>
+      <a name="bit7" val="7"/>
+      <a name="facing" val="east"/>
+      <a name="fanout" val="8"/>
+      <a name="incoming" val="8"/>
+      <a name="spacing" val="2"/>
+    </comp>
+    <comp lib="0" loc="(160,230)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_0"/>
+    </comp>
+    <comp lib="0" loc="(160,250)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_1"/>
+    </comp>
+    <comp lib="0" loc="(160,270)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_2"/>
+    </comp>
+    <comp lib="0" loc="(160,290)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_3"/>
+    </comp>
+    <comp lib="0" loc="(160,310)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_4"/>
+    </comp>
+    <comp lib="0" loc="(160,330)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_5"/>
+    </comp>
+    <comp lib="0" loc="(160,350)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_6"/>
+    </comp>
+    <comp lib="0" loc="(160,370)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="d_7"/>
+    </comp>
+    <comp lib="0" loc="(900,100)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="q"/>
+      <a name="type" val="output"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(880,100)" name="Splitter">
+      <a name="appear" val="left"/>
+      <a name="bit0" val="0"/>
+      <a name="bit1" val="1"/>
+      <a name="bit2" val="2"/>
+      <a name="bit3" val="3"/>
+      <a name="bit4" val="4"/>
+      <a name="bit5" val="5"/>
+      <a name="bit6" val="6"/>
+      <a name="bit7" val="7"/>
+      <a name="facing" val="west"/>
+      <a name="fanout" val="8"/>
+      <a name="incoming" val="8"/>
+      <a name="spacing" val="2"/>
+    </comp>
+    <comp lib="0" loc="(840,110)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_0"/>
+    </comp>
+    <comp lib="0" loc="(840,130)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_1"/>
+    </comp>
+    <comp lib="0" loc="(840,150)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_2"/>
+    </comp>
+    <comp lib="0" loc="(840,170)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_3"/>
+    </comp>
+    <comp lib="0" loc="(840,190)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_4"/>
+    </comp>
+    <comp lib="0" loc="(840,210)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_5"/>
+    </comp>
+    <comp lib="0" loc="(840,230)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_6"/>
+    </comp>
+    <comp lib="0" loc="(840,250)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="q_7"/>
+    </comp>
+    <wire from="(100,100)" to="(120,100)"/>
+    <wire from="(100,160)" to="(120,160)"/>
+    <wire from="(100,220)" to="(120,220)"/>
+    <wire from="(140,230)" to="(160,230)"/>
+    <wire from="(140,250)" to="(160,250)"/>
+    <wire from="(140,270)" to="(160,270)"/>
+    <wire from="(140,290)" to="(160,290)"/>
+    <wire from="(140,310)" to="(160,310)"/>
+    <wire from="(140,330)" to="(160,330)"/>
+    <wire from="(140,350)" to="(160,350)"/>
+    <wire from="(140,370)" to="(160,370)"/>
+    <wire from="(400,400)" to="(400,420)"/>
+    <wire from="(420,280)" to="(420,300)"/>
+    <wire from="(420,400)" to="(420,450)"/>
+    <wire from="(440,250)" to="(440,300)"/>
+    <wire from="(440,400)" to="(440,420)"/>
+    <wire from="(460,280)" to="(460,300)"/>
+    <wire from="(460,400)" to="(460,450)"/>
+    <wire from="(480,250)" to="(480,300)"/>
+    <wire from="(480,400)" to="(480,420)"/>
+    <wire from="(500,280)" to="(500,300)"/>
+    <wire from="(500,400)" to="(500,450)"/>
+    <wire from="(520,250)" to="(520,300)"/>
+    <wire from="(520,400)" to="(520,420)"/>
+    <wire from="(540,280)" to="(540,300)"/>
+    <wire from="(540,400)" to="(540,450)"/>
+    <wire from="(560,250)" to="(560,300)"/>
+    <wire from="(560,400)" to="(560,420)"/>
+    <wire from="(580,280)" to="(580,300)"/>
+    <wire from="(840,110)" to="(860,110)"/>
+    <wire from="(840,130)" to="(860,130)"/>
+    <wire from="(840,150)" to="(860,150)"/>
+    <wire from="(840,170)" to="(860,170)"/>
+    <wire from="(840,190)" to="(860,190)"/>
+    <wire from="(840,210)" to="(860,210)"/>
+    <wire from="(840,230)" to="(860,230)"/>
+    <wire from="(840,250)" to="(860,250)"/>
+    <wire from="(880,100)" to="(900,100)"/>
+  </circuit>
+</project>
