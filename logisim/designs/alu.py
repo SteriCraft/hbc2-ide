@@ -1,20 +1,28 @@
 #!/usr/bin/env python3
 """ALU -> circuits/alu/alu.circ
 
-For now the ALU does ADD / ADC / SUB / SBB through add_sub8
-(circuits/alu/add_sub8.circ, loaded as a Logisim library) and sets the
-C, N and Z flags:
+Groups the ALU blocks (each a library file in circuits/alu/):
 
-    alu_c = add_sub8_c   (carry, or borrow after SUB/SBB)
-    alu_n = s bit 7
-    alu_z = nor of the 8 bits of s:
-            U1 (74HCT27) nor3(s0, s1, gnd), nor3(s2, s3, s4), nor3(s5, s6, s7)
-            U2 (74HCT11) and3 of the three
+    arith8   ADD ADC SUB SBB INC DEC (add_sub8 + B or 01)
+    logic8   AND OR XOR
+    shift8   SHL / SHR / ASR wiring, carry select, ASR fill
+    rmux8    result multiplexer (tri-state buffers, NOT a)
+    flags8   Z N, and S E F for CMP
 
-Layout follows the conventions: control on top, data in on the left, result
-on the right, flags at the bottom, in the schematic and in the symbol. U1's
-pins leave left on nested rails toward the s bus (1-bit taps) and three
-lines carrying its outputs down to U2.
+alu_op (op3 op2 op1 op0) drives them directly, without any glue logic:
+
+    op3 = 0: arithmetic, op0 = sub, op1 = use_c, op2 = one (B := 01)
+        0000 ADD   0001 SUB/CMP   0010 ADC   0011 SBB   0100 INC   0101 DEC
+        (0110 / 0111: a + 1 + cin / a - 1 - cin, unused)
+    op3 = 1: 1000 AND  1001 OR  1010 XOR  1011 NOT  1100 SHL  1110 SHR  1111 ASR
+        (1101 = ASR)
+
+Outputs: alu_r and every flag the ALU can produce. The control unit decides
+which flags to store: C Z N for arithmetic and SHL/ASR, Z N for logic and SHR,
+S E F for CMP (alu_op 0001).
+
+The blocks talk through tunnels named alu_<signal>; inputs on the left,
+alu_r on the right, flags at the bottom.
 
     python alu.py           # write, check
     python alu.py --test    # ... and run it in Logisim against the emulator (hbc2 vectors)
@@ -26,97 +34,87 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "tools"))
-from circgen import Project, nested_rails  # noqa: E402
+from circgen import Project  # noqa: E402
 
 M = "alu"
 OUT = ROOT / "circuits" / "alu" / f"{M}.circ"
 
 p = Project()
-add_sub8 = p.library(OUT.parent / "add_sub8.circ")
 c = p.circuit(M)
+lib = {m: p.library(OUT.parent / f"{m}.circ") for m in ("arith8", "logic8", "shift8", "rmux8", "flags8")}
 
-u = c.sub(add_sub8, "add_sub8", (500, 300))
-port = lambda n: u[f"add_sub8_{n}"]       # noqa: E731
-
-# ---- control, top; data, left -----------------------------------------------
-for n in ("sub", "use_c", "cin"):
-    x, y = port(n)
-    c.wire(c.input((x, 100), f"{M}_{n}", facing="south"), (x, y))
-c.wire(c.input((60, port("a")[1]), f"{M}_a", 8), port("a"))
-c.wire(c.input((60, port("b")[1]), f"{M}_b", 8), port("b"))
-
-# ---- result, right ----------------------------------------------------------
-S_X = 560                                  # the s bus down to the flag logic
-c.wire(port("s"), c.output((1060, port("s")[1]), f"{M}_s", 8))
-
-# ---- Z: U1 (74HCT27), U2 (74HCT11) -----------------------------------------
-X = 720
-nor = c.ttl("7427", (X, 480), label="U1")
-and3 = c.ttl("7411", (X, 770), label="U2")
-c.text((X + 230, 480), "z: nor of s")
-c.text((X + 230, 770), "z: and")
-
-LINE_X = {"s": S_X, "n1": 600, "n2": 620, "n3": 640}
-taps = []                                  # (end, bit) on the s bus
-line_pts = {k: [] for k in ("n1", "n2", "n3")}
+STEP = {"left": (-20, 0), "right": (20, 0), "top": (0, -20), "bottom": (0, 20)}
+FACING = {"left": "east", "right": "west", "top": "south", "bottom": "north"}
 
 
-def rails(chip, signals, depth0=20):
-    """Every pin of `signals` leaves left on a nested rail: to an s-bus tap
-    ("s", bit), to a 1-bit line ("n1".."n3"), or to Ground ("gnd")."""
-    for side in ("top", "bottom"):
-        edge_y = chip.loc[1] + (-30 if side == "top" else 30)
-        away = -1 if side == "top" else 1
-        pins = {n: chip[n] for n in signals if chip[n][1] == edge_y}
-        for name, depth in nested_rails(pins, toward="left", first=depth0).items():
-            line, bit = signals[name]
-            y = edge_y + away * depth
-            if line == "gnd":
-                end = (chip.loc[0] - 10, y)
-                c.add("#Wiring", "Ground", end, facing="west")
-            elif line == "s":
-                end = (S_X + 20, y)
-                taps.append((end, bit))
-            else:
-                end = (LINE_X[line], y)
-                line_pts[line].append(y)
-            c.wire(end, (chip[name][0], y), chip[name])
+def link(u, module, port, side, signal, width=1):
+    """Port `port` of instance u -> 20 px stub -> tunnel alu_<signal>."""
+    at = u[f"{module}_{port}"]
+    end = (at[0] + STEP[side][0], at[1] + STEP[side][1])
+    c.wire(at, end)
+    c.tunnel(end, f"{M}_{signal}", width, facing=FACING[side])
 
 
-rails(nor, {"1A": ("s", 0), "1B": ("s", 1), "1C": ("gnd", None), "1Y": ("n1", None),
-            "2A": ("s", 2), "2B": ("s", 3), "2C": ("s", 4), "2Y": ("n2", None),
-            "3A": ("s", 5), "3B": ("s", 6), "3C": ("s", 7), "3Y": ("n3", None)})
-rails(and3, {"1C": ("gnd", None), "3C": ("n1", None), "3B": ("n2", None), "3A": ("n3", None)})
+# ---- blocks ----------------------------------------------------------------------
+u = c.sub(lib["arith8"], "arith8", (1000, 300))
+for port, sig in (("one", "op_2"), ("sub", "op_0"), ("use_c", "op_1"), ("cin", "cin")):
+    link(u, "arith8", port, "top", sig)
+link(u, "arith8", "a", "left", "a", 8)
+link(u, "arith8", "b", "left", "b", 8)
+link(u, "arith8", "s", "right", "sum", 8)
+link(u, "arith8", "c", "bottom", "c_add")
 
-for line, ys in line_pts.items():          # each line joins U1's output to U2's input
-    c.wire((LINE_X[line], min(ys)), (LINE_X[line], max(ys)))
+u = c.sub(lib["logic8"], "logic8", (1000, 620))
+link(u, "logic8", "a", "left", "a", 8)
+link(u, "logic8", "b", "left", "b", 8)
+for port in ("and", "or", "xor"):
+    link(u, "logic8", port, "right", port, 8)
 
-# U2's unused bottom inputs to ground
-y = and3["1A"][1] + 10
-for n in ("1A", "1B", "2A", "2B", "2C"):
-    c.wire(and3[n], (and3[n][0], y))
-c.wire((and3["1A"][0], y), (and3["2C"][0], y))
-c.add("#Wiring", "Ground", (and3["1A"][0], y))
+u = c.sub(lib["shift8"], "shift8", (1000, 900))
+link(u, "shift8", "sel", "top", "op_3")
+link(u, "shift8", "asr", "top", "op_0")
+link(u, "shift8", "c_add", "top", "c_add")
+link(u, "shift8", "a", "left", "a", 8)
+link(u, "shift8", "shl", "right", "shl", 8)
+link(u, "shift8", "sr", "right", "sr", 8)
+c_out = u["shift8_c"]
 
-# ---- flags, bottom ----------------------------------------------------------
-Y_FLAGS = 940
-c.wire(port("c"), c.output((port("c")[0], Y_FLAGS), f"{M}_c", facing="north"))
+u = c.sub(lib["rmux8"], "rmux8", (1600, 520))
+link(u, "rmux8", "op", "top", "op", 4)
+for port in ("sum", "and", "or", "xor", "a", "shl", "sr"):
+    link(u, "rmux8", port, "left", port, 8)
+r_out = u["rmux8_r"]
 
-y_n = 880                                  # N = s bit 7
-taps.append(((S_X + 20, y_n), 7))
-c.wire((S_X + 20, y_n), (700, y_n), c.output((700, Y_FLAGS), f"{M}_n", facing="north"))
+u = c.sub(lib["flags8"], "flags8", (1820, 760))
+link(u, "flags8", "r", "left", "r", 8)
+link(u, "flags8", "c", "left", "c_add")
+flag_ports = {f: u[f"flags8_{f}"] for f in ("n", "f", "z", "e", "s")}
 
-x_z = 1020
-z = and3["3Y"]
-c.wire(z, (z[0], z[1] - 10), (x_z, z[1] - 10), c.output((x_z, Y_FLAGS), f"{M}_z", facing="north"))
+# ---- inputs, left: op also split into its bits ------------------------------------
+X_IN = 220
+c.wire(c.input((X_IN, 100), f"{M}_op", 4), (X_IN + 80, 100), c.tunnel((X_IN + 100, 100), f"{M}_op", 4))
+sp = c.splitter((X_IN + 40, 140), 4, [[0], [1], [2], [3]], facing="east", appear="right", spacing=3)
+c.wire((X_IN + 40, 100), (X_IN + 40, 140))
+for k in range(4):
+    e = sp[f"end{k}"]
+    c.wire(e, (e[0] + 20, e[1]))
+    c.tunnel((e[0] + 20, e[1]), f"{M}_op_{k}")
+for i, (n, w) in enumerate((("cin", 1), ("a", 8), ("b", 8))):
+    y = 320 + 40 * i
+    c.wire(c.input((X_IN, y), f"{M}_{n}", w), c.tunnel((X_IN + 20, y), f"{M}_{n}", w))
 
-c.bus((S_X, port("s")[1]), taps, width=8)
+# ---- result, right; flags, bottom ---------------------------------------------------
+c.wire(r_out, (r_out[0] + 40, r_out[1]))
+c.tunnel((r_out[0] + 40, r_out[1]), f"{M}_r", 8)
+c.wire(c.tunnel((2400, r_out[1]), f"{M}_r", 8, facing="east"), c.output((2440, r_out[1]), f"{M}_r", 8))
 
-c.symbol(top=[f"{M}_sub", f"{M}_use_c", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"],
-         right=[f"{M}_s"], bottom=[f"{M}_c", f"{M}_n", f"{M}_z"])
+Y_FLAGS = 1120
+c.wire(c_out, c.output((c_out[0], Y_FLAGS), f"{M}_c", facing="north"))
+for f, at in flag_ports.items():
+    c.wire(at, c.output((at[0], Y_FLAGS), f"{M}_{f}", facing="north"))
 
-# Gianni moved everything by (160, 30) in Logisim so the labels on the left show.
-c.move(160, 30)
+c.symbol(top=[f"{M}_op", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"], right=[f"{M}_r"],
+         bottom=[f"{M}_c", f"{M}_z", f"{M}_n", f"{M}_s", f"{M}_e", f"{M}_f"])
 
 if __name__ == "__main__":
     bad = p.save(OUT)

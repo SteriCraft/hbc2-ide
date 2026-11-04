@@ -29,11 +29,16 @@ circgen API, in short:
 - Routing: `nested_rails(pins, toward)` gives each pin a rail depth, so wires leaving one chip edge never cross.
 - Libraries: `lib = p.library(path_to_other.circ)`, then `u = c.sub(lib, "add_sub8", loc)`. `u["add_sub8_a"]` gives a port's location, computed from the other file's symbol. On save, the relative path is written the way Logisim writes it (backslashes on Windows).
 - Symbol (ports always on the 10 px grid): `c.symbol(top=[...], left=[...], right=[...], bottom=[...])`, listing pin labels. It writes a custom appearance: a box sized to the labels, full port names, the module name in bold, and the anchor on the first right port. Without it, the module gets Logisim's default symbol (inputs left, outputs right). See designs/alu.py.
-- Wires are split automatically at T-junctions.
+- Wires are split automatically at T-junctions. This can join a rail to a Ground or Power it passes by: circcheck reports a constant that shares a net with a driver.
+- `rails_left(c, chip, signals, line_x, taps, ends, pitch=20)`: the add_sub8 style for any chip facing east. Each pin goes to a bus tap, a 1-bit line, Ground/Power (`"gnd"`/`"vcc"`) or a tunnel (`("tunnel", name)`, use pitch=30). Edges come from the real pin positions (the 74153 is taller).
+- `c.move(dx, dy)` shifts the whole drawing, so a script can reproduce a layout Gianni shifted by hand (add_sub8: 210, 90; alu: 160, 30, before the 2026-11-04 rebuild).
+- Vertical splitters (facing north/south) put end 0 at the right: use ends `[[7 - k] for k in range(8)]` to have bit 0 on the left.
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.
-- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval` that calls `hbc2_core::alu`. Current modules: `add_sub8`, `alu`. Flags come from `alu::zn` (also used by the CPU).
+- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, arith8, shift8, flags8, rmux8, alu.
+- `eval` uses `hbc2_core::alu` where it exists. Otherwise `exec(op, a, b, carry)` runs the real CPU on that instruction (Reg mode) and returns the register and the flags. A flag missing from the instruction's flag list comes back None, written `x`. The emulator is never changed.
+- A module whose inputs are too many for an exhaustive test gives its own `rows` (rmux8). The limit is 2^21; logitest runs big files in chunks of 524,288 rows (2^21 rows take about 10 minutes).
 - `logitest.check_emulator(file, circuit, module=None)` rebuilds the CLI (`cargo build --release -p hbc2-cli`), writes the vectors, checks the pin names and widths, and runs them.
 - `logitest.check(..., model=...)` with a Python model still exists, for quick experiments only. It is not the reference.
 

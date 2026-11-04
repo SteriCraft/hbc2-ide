@@ -325,21 +325,21 @@ const MODULES: &[Module] = &[
     },
     Module {
         name: "alu",
-        inputs: &[
-            ("alu_sub", 1),
-            ("alu_use_c", 1),
-            ("alu_cin", 1),
-            ("alu_a", 8),
-            ("alu_b", 8),
+        inputs: &[("alu_op", 4), ("alu_cin", 1), ("alu_a", 8), ("alu_b", 8)],
+        outputs: &[
+            ("alu_r", 8),
+            ("alu_c", 1),
+            ("alu_z", 1),
+            ("alu_n", 1),
+            ("alu_s", 1),
+            ("alu_e", 1),
+            ("alu_f", 1),
         ],
-        outputs: &[("alu_s", 8), ("alu_c", 1), ("alu_n", 1), ("alu_z", 1)],
-        // For now the ALU does ADD/ADC/SUB/SBB (see add_sub8) and sets C, N, Z.
+        // The whole ALU: see alu_reference for what each alu_op does. A flag
+        // the instruction doesn't write is don't care.
         eval: |v| {
-            let (sub, use_c, cin) = (v[0] != 0, v[1] != 0, v[2] != 0);
-            let (a, b) = (v[3] as u8, v[4] as u8);
-            let (s, c) = if sub { alu::sub(a, b, use_c && cin) } else { alu::add(a, b, use_c && cin) };
-            let (z, n) = alu::zn(s);
-            vec![Some(s as u32), bit(c), bit(n), bit(z)]
+            let run = alu_reference(v[0], v[2] as u8, v[3] as u8, v[1] != 0);
+            vec![Some(run.r as u32), opt(run.c), opt(run.z), opt(run.n), opt(run.s), opt(run.e), opt(run.f)]
         },
         rows: None,
     },

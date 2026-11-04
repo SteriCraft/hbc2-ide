@@ -8,13 +8,21 @@ These notes are short, one subject per file, so I only open the one I need.
 | [tools.md](tools.md) | The scripts in `logisim/tools/` and how to use them |
 | [ttl-chips.md](ttl-chips.md) | Pinout quirks of the TTL parts, and how each one is wired |
 | [open-points.md](open-points.md) | Rule conflicts and questions still waiting for an answer |
+| [chips.md](chips.md) | Which 74HCT parts to buy: availability, packages, delays, parts missing from Logisim |
+| [alu-decisions.md](alu-decisions.md) | ALU design decisions (night of 2026-11-04) and points for Gianni to review |
+| [alu-report.md](alu-report.md) | ALU summary: alu_op table, modules and chips, delays, test results, what's left |
 
-Modules done so far:
+Modules done so far (all in circuits/alu/, each made by designs/<module>.py):
 
-| Module | File | Chips | Test |
-|---|---|---|---|
-| `add_sub8` | circuits/alu/add_sub8.circ, made by designs/add_sub8.py | 2 × 74HCT283, 3 × 74HCT86, 1 × 74HCT08 | 524,288 / 524,288 vs emulator |
-| `alu` (ADD/ADC/SUB/SBB, flags C N Z) | circuits/alu/alu.circ, made by designs/alu.py; uses add_sub8 (library `file#add_sub8.circ`) | 1 × 74HCT27, 1 × 74HCT11 | 524,288 / 524,288 vs emulator |
+| Module | Chips | Test (vs emulator) |
+|---|---|---|
+| `add_sub8` | 2 × 74HCT283, 3 × 74HCT86, 1 × 74HCT08 | 524,288 / 524,288 |
+| `arith8` (ADD ADC SUB SBB INC DEC) | add_sub8 + 2 × 74HCT157 | 1,048,576 / 1,048,576 |
+| `logic8` (AND OR XOR) | 2 × 74HCT08, 2 × 74HCT32, 2 × 74HCT86 | 65,536 / 65,536 |
+| `shift8` (shifts, C select) | 1 × 74HCT153 | 2,048 / 2,048 |
+| `flags8` (Z N S E F) | 74HCT27, 74HCT11, 74HCT02 | 512 / 512 |
+| `rmux8` (result bus, NOT) | 6 × 74HCT541, 74HCT240, 74HCT138, 74HCT11 | 65,760 sampled |
+| `alu` (all of the above) | none of its own; 27 chips in total | see alu-report.md |
 
 `logisim/cpu.circ` holds only an empty `main` and loads alu and add_sub8 as libraries.
 

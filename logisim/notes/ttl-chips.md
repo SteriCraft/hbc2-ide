@@ -31,3 +31,16 @@ On the 7427/7411, 1Y sits between 1C and 3C, so 1C can't take a signal from abov
 Uses:
 - add_sub8: U1/U3 (86) xor B with sub; U5 (08) use_c and cin; U6 (86) carry in = sub xor (use_c and cin), c = carry out xor sub.
 - alu: U1 (27) nor3(s0,s1,gnd), nor3(s2..s4), nor3(s5..s7); U2 (11) and3 of those = Z. No 8-input NOR in #TTL; the 7430 (8-input NAND) would need 9 inverters, 3 chips instead of 2.
+
+## Pinouts used by the ALU modules (placed facing east at (X, Y))
+
+| Chip | top, left to right | bottom, left to right | Notes |
+|---|---|---|---|
+| 7402 | VCC 4Y 4B 4A 3Y 3B 3A | 1Y 1A 1B 2Y 2A 2B GND | outputs first, unlike the 7400 |
+| 74157 | VCC nSTROBE 4A 4B 4Y 3A 3B 3Y | SELECT 1A 1B 1Y 2A 2B 2Y GND | Y = B when SELECT = 1; nSTROBE = 1 forces Y = 0 |
+| 74153 | VCC n2E S0 2D3 2D2 2D1 2D0 2Y | n1E S1 1D3 1D2 1D1 1D0 1Y GND | **80 px tall**: bottom pins at Y + 50. S1 is the high select bit (checked by test) |
+| 74138 | VCC nY0 .. nY6 | A B C nG2A nG2B G1 nY7 GND | C is the high bit |
+| 74541 | VCC nOE2 Y1 .. Y8 | nOE1 A1 .. A8 GND | inputs on one edge, outputs on the other: one 8-bit splitter each side |
+| 74240 | VCC n2G n1Y1 2A4 n1Y2 2A3 n1Y3 2A2 n1Y4 2A1 | n1G 1A1 n2Y4 1A2 n2Y3 1A3 n2Y2 1A4 n2Y1 GND | inverting, two 4-bit halves; mixed edges, so rail style |
+
+Uses: arith8 U1/U2 (157: b or 01), shift8 U1 (153), flags8 U1-U3, rmux8 U1 (138), U2 (11), U3 (240), U4-U9 (541).
