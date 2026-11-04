@@ -13,8 +13,9 @@ Modules done so far:
 
 | Module | File | Chips | Test |
 |---|---|---|---|
-| `add8` (practice) | circuits/alu/add8.circ, made by designs/add8.py | 2 × 74HCT283 | 131,072 / 131,072 vs emulator |
-| `add_sub8` (the user's) | circuits/add_sub8/add_sub8.circ | 1 × 08, 2 × 283, 3 × 86 (U1..U6) | 524,288 / 524,288 vs emulator |
-| `alu` (work in progress, the user's) | circuits/alu/alu.circ, loads add_sub8 | none yet | none |
+| `add8` | circuits/alu/add8.circ, made by designs/add8.py | 2 × 74HCT283 | 131,072 / 131,072 vs emulator |
+| `alu` (add only, for now) | circuits/alu/alu.circ, made by designs/alu.py; uses add8 (library `file#add8.circ`) | none of its own | 131,072 / 131,072 vs emulator |
 
-`logisim/cpu.circ` holds only an empty `main` and loads add_sub8, alu and add8 as libraries.
+`logisim/cpu.circ` holds only an empty `main` and loads alu and add8 as libraries.
+
+History: on 2026-11-04 the user deleted their test circuits add_sub8.circ and the old alu.circ. `hbc2 vectors add_sub8` still exists on the emulator side.

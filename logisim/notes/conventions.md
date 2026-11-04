@@ -21,7 +21,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 ## Files (added 2026-11-04)
 - Folders are **functional units**, not modules: `logisim/circuits/<unit>/<module>.circ`, e.g. `circuits/alu/add8.circ`. Planned units: `alu/`, later `registers/`, `control/`, and so on. This keeps the number of folders down. No `modules/` folder.
 - Each .circ holds one module and its `test_<module>` bench, nothing else.
-- `logisim/cpu.circ` holds only `main`. It loads the modules as Logisim libraries (Project > Load Library > Logisim Library) with relative paths. A module that uses another module loads it the same way, e.g. alu.circ loads `..\add_sub8\add_sub8.circ`.
+- `logisim/cpu.circ` holds only `main`. It loads the modules as Logisim libraries (Project > Load Library > Logisim Library) with relative paths. A module that uses another module loads it the same way, e.g. alu.circ loads `add8.circ` (same folder). A module in another unit would be `..\<unit>\<module>.circ`.
 - When saving, Logisim writes library paths relative to the file, with `..\` and backslashes on Windows (seen in `LibraryManager.toRelative`). Write them the same way so a save in Logisim changes nothing.
 - **Change one module at a time, with a git commit before and after each module change.**
 - **If a module's ports change, tell the user which files instantiate it** (`tools/usages.py <module>`): those instances need rewiring.

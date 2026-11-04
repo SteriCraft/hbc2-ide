@@ -30,6 +30,7 @@ that way: a port lying in the middle of a wire is reported by the checker.
 
 from __future__ import annotations
 
+import os
 import sys
 from pathlib import Path
 
@@ -94,12 +95,16 @@ class Part:
     """A placed component. Index it with a port name (or TTL pin number) to
     get the port location: chip["A1"], chip[5], splitter["end0"], pin["pin"]."""
 
-    def __init__(self, lib: str | None, name: str, loc: Pt, attrs: dict):
+    def __init__(self, lib: "str | Library | None", name: str, loc: Pt, attrs: dict):
         self.lib, self.name, self.loc = lib, name, loc
         self.attrs = {k: str(v) for k, v in attrs.items()}
         self.ports: list[nl.Port] = []
         kind = None
-        if lib == "#TTL" and name in nl.TTL:
+        if isinstance(lib, Library):          # subcircuit from another .circ file
+            c = nl.Comp(kind="sub", name=name, lib="file#", loc=loc, attrs=self.attrs, sub=lib[name])
+            nl.make_ports(None, c)
+            self.ports = c.ports
+        elif lib == "#TTL" and name in nl.TTL:
             kind = "ttl"
         elif lib == "#Wiring" and name == "Splitter":
             kind = "splitter"
@@ -135,12 +140,115 @@ class Part:
         return hits[0].loc
 
     def xml(self) -> str:
-        lib = f' lib="{LIB_ID[self.lib]}"' if self.lib else ""
+        lib_id = self.lib.ident if isinstance(self.lib, Library) else LIB_ID.get(self.lib)
+        lib = f' lib="{lib_id}"' if self.lib else ""
         head = f'    <comp{lib} loc="({self.loc[0]},{self.loc[1]})" name="{_esc(self.name)}"'
         if not self.attrs:
             return head + "/>"
         body = "".join(f'\n      <a name="{_esc(k)}" val="{_esc(v)}"/>' for k, v in sorted(self.attrs.items()))
         return head + ">" + body + "\n    </comp>"
+
+
+class Library:
+    """Another .circ file loaded as a Logisim library (Load Library > Logisim
+    Library). Get one from Project.library(); index it with a circuit name."""
+
+    def __init__(self, ident: str, path: Path):
+        self.ident, self.path = ident, path.resolve()
+        self.project = nl.Project(self.path)
+
+    def __getitem__(self, name: str) -> nl.Circuit:
+        if name not in self.project.circuits:
+            raise KeyError(f"{self.path.name} has no circuit {name!r}; circuits: {', '.join(self.project.circuits)}")
+        return self.project.circuits[name]
+
+    def desc(self, saved_in: Path) -> str:
+        """file#<path relative to the saving file>, written as Logisim writes
+        it on this OS (backslashes on Windows), so a save in Logisim keeps it."""
+        rel = os.path.relpath(self.path, Path(saved_in).resolve().parent)
+        return "file#" + rel.replace("/", os.sep)
+
+
+# --------------------------------------------------------------------------
+# Custom symbol (appearance)
+# --------------------------------------------------------------------------
+CHAR_W = 7          # approximate width of a Dialog 12 character, in px
+
+
+def _r10(v: float) -> int:
+    return int(-(-v // 10) * 10)       # round up to the grid
+
+
+def symbol_xml(name: str, sides: dict, pins: dict) -> str:
+    """<appear> block: a box with the module name, ports on the given sides.
+
+    sides: {"top": [labels], "left": [...], "right": [...], "bottom": [...]}
+    pins:  {label: (loc of the Pin in the circuit, width, is_output)}
+    Every pin must appear on exactly one side. Labels are drawn inside the
+    box, next to their port; the anchor is the first right port (or the
+    first left one)."""
+    side = {k: list(sides.get(k, [])) for k in ("top", "left", "right", "bottom")}
+    listed = [lab for v in side.values() for lab in v]
+    if sorted(listed) != sorted(pins):
+        raise ValueError(f"symbol of {name}: sides list {sorted(listed)}, pins are {sorted(pins)}")
+    slot = lambda lab: _r10(len(lab) * CHAR_W + 20)                     # noqa: E731
+    row_w = lambda labs: sum(slot(lab) for lab in labs)                 # noqa: E731
+    lw = max((len(lab) * CHAR_W for lab in side["left"]), default=0)
+    rw = max((len(lab) * CHAR_W for lab in side["right"]), default=0)
+    W = _r10(max(row_w(side["top"]), row_w(side["bottom"]), lw + rw + len(name) * 9 + 60, 100))
+    top_band = 30 if side["top"] else 10
+    bot_band = 30 if side["bottom"] else 10
+    rows = max(len(side["left"]), len(side["right"]), 1)
+    H = top_band + rows * 30 + bot_band
+    x0, y0 = 60, 50
+    L = []
+    T = ('<text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" '
+         'text-anchor="{a}" x="{x}" y="{y}">{t}</text>')
+    ports = []                                     # (x, y, label)
+
+    def stub(x, y, horizontal, width):
+        t = 4 if width > 1 else 3
+        if horizontal:
+            L.append(f'<rect height="{t}" stroke="none" width="10" x="{x}" y="{y - t // 2}"/>')
+        else:
+            L.append(f'<rect height="10" stroke="none" width="{t}" x="{x - 1}" y="{y}"/>')
+
+    L.append(f'<rect fill="none" height="{H}" stroke="#000000" stroke-width="2" width="{W}" x="{x0}" y="{y0}"/>')
+    for edge in ("top", "bottom"):
+        labs = side[edge]
+        x = x0 + (W - row_w(labs)) // 2
+        for lab in labs:
+            cx = x + slot(lab) // 2 // 10 * 10
+            x += slot(lab)
+            if edge == "top":
+                ports.append((cx, y0 - 10, lab))
+                stub(cx, y0 - 10, False, pins[lab][1])
+                L.append(T.format(a="middle", x=cx, y=y0 + 17, t=_esc(lab)))
+            else:
+                ports.append((cx, y0 + H + 10, lab))
+                stub(cx, y0 + H, False, pins[lab][1])
+                L.append(T.format(a="middle", x=cx, y=y0 + H - 8, t=_esc(lab)))
+    for edge in ("left", "right"):
+        for i, lab in enumerate(side[edge]):
+            y = y0 + top_band + 20 + 30 * i
+            if edge == "left":
+                ports.append((x0 - 10, y, lab))
+                stub(x0 - 10, y, True, pins[lab][1])
+                L.append(T.format(a="start", x=x0 + 5, y=y + 4, t=_esc(lab)))
+            else:
+                ports.append((x0 + W + 10, y, lab))
+                stub(x0 + W, y, True, pins[lab][1])
+                L.append(T.format(a="end", x=x0 + W - 5, y=y + 4, t=_esc(lab)))
+    mid = y0 + top_band + rows * 30 // 2
+    L.append('<text dominant-baseline="alphabetic" font-family="Dialog" font-size="14" font-weight="bold" '
+             f'text-anchor="middle" x="{x0 + W // 2}" y="{mid + 5}">{_esc(name)}</text>')
+    anchor = next(((x, y) for x, y, lab in ports if lab in side["right"][:1]),
+                  next(((x, y) for x, y, lab in ports if lab in side["left"][:1]), ports[0][:2]))
+    L.append(f'<circ-anchor facing="east" x="{anchor[0]}" y="{anchor[1]}"/>')
+    for x, y, lab in ports:
+        (px, py), _, out = pins[lab]
+        L.append(f'<circ-port dir="{"out" if out else "in"}" pin="{px},{py}" x="{x}" y="{y}"/>')
+    return "    <appear>\n" + "".join(f"      {ln}\n" for ln in L) + "    </appear>"
 
 
 # --------------------------------------------------------------------------
@@ -151,12 +259,14 @@ class Circuit:
         self.name = name
         self.parts: list[Part] = []
         self.wires: list[tuple[Pt, Pt]] = []
+        self._symbol: dict | None = None
 
     # ---- generic ----
-    def add(self, lib: str | None, name: str, loc: Pt, **attrs) -> Part:
-        """Any component. lib is a library description such as "#Gates", or
-        None for a subcircuit of the same project."""
-        if lib is not None and lib not in LIB_ID:
+    def add(self, lib: "str | Library | None", name: str, loc: Pt, **attrs) -> Part:
+        """Any component. lib is a library description such as "#Gates", a
+        Library (subcircuit of another file), or None for a subcircuit of the
+        same project."""
+        if lib is not None and not isinstance(lib, Library) and lib not in LIB_ID:
             raise ValueError(f"unknown library {lib!r}; known: {', '.join(LIBS)}")
         if not _on_grid(loc):
             raise ValueError(f"{name} at {loc}: not on the 10 px grid")
@@ -206,6 +316,21 @@ class Circuit:
             attrs["width"] = width
         self.add("#Wiring", "Tunnel", loc, **attrs)
         return loc
+
+    def sub(self, lib: Library, name: str, loc: Pt, label: str = "", facing: str = "east") -> Part:
+        """Instance of circuit `name` from a library file. part["<pin label>"]
+        gives the location of that port."""
+        attrs = {}
+        if facing != "east":
+            attrs["facing"] = facing
+        if label:
+            attrs["label"] = label
+        return self.add(lib, name, loc, **attrs)
+
+    def symbol(self, top=(), left=(), right=(), bottom=()) -> None:
+        """Custom symbol: each list names the pins (by label) on that side.
+        Conventions: data in left, outputs right, control top, flags bottom."""
+        self._symbol = {"top": list(top), "left": list(left), "right": list(right), "bottom": list(bottom)}
 
     def text(self, loc: Pt, text: str, **attrs) -> None:
         self.add("#Base", "Text", loc, text=text, **attrs)
@@ -293,11 +418,16 @@ class Circuit:
         return sorted(out)
 
     def xml(self) -> str:
+        custom = self._symbol is not None
         lines = [f'  <circuit name="{_esc(self.name)}">',
-                 '    <a name="appearance" val="logisim_evolution"/>',
+                 f'    <a name="appearance" val="{"custom" if custom else "logisim_evolution"}"/>',
                  f'    <a name="circuit" val="{_esc(self.name)}"/>',
                  '    <a name="circuitnamedboxfixedsize" val="true"/>',
                  '    <a name="simulationFrequency" val="1.0"/>']
+        if custom:
+            pins = {p.label: (p.loc, int(p.attrs.get("width", 1)), p.attrs.get("type") == "output")
+                    for p in self.parts if p.lib == "#Wiring" and p.name == "Pin"}
+            lines.append(symbol_xml(self.name, self._symbol, pins))
         lines += [p.xml() for p in self.parts]
         lines += [f'    <wire from="({a[0]},{a[1]})" to="({b[0]},{b[1]})"/>' for a, b in self._split_wires()]
         lines.append("  </circuit>")
@@ -336,24 +466,40 @@ def nested_rails(pins: dict, toward: str, first: int = 20, pitch: int = 20) -> d
 class Project:
     def __init__(self):
         self.circuits: list[Circuit] = []
+        self.libraries: list[Library] = []
 
     def circuit(self, name: str) -> Circuit:
         c = Circuit(name)
         self.circuits.append(c)
         return c
 
-    def xml(self, main: str | None = None) -> str:
+    def library(self, path) -> Library:
+        """Load another .circ file as a library (relative path written on save)."""
+        path = Path(path).resolve()
+        for lib in self.libraries:
+            if lib.path == path:
+                return lib
+        lib = Library(str(len(LIBS) + len(self.libraries)), path)
+        self.libraries.append(lib)
+        return lib
+
+    def xml(self, main: str | None = None, path=None) -> str:
+        """The .circ text. `path` (where it will be saved) is needed when
+        the project loads libraries, to write their relative paths."""
         if not self.circuits:
             raise ValueError("project has no circuit")
-        libs = "\n".join(f'  <lib desc="{d}" name="{i}"/>' for i, d in enumerate(LIBS) if i)
-        head = HEADER.replace("@LIBS@", libs).replace("@MAIN@", _esc(main or self.circuits[0].name))
+        if self.libraries and path is None:
+            raise ValueError("a project with libraries needs the output path")
+        libs = [f'  <lib desc="{d}" name="{i}"/>' for i, d in enumerate(LIBS) if i]
+        libs += [f'  <lib desc="{_esc(lib.desc(path))}" name="{lib.ident}"/>' for lib in self.libraries]
+        head = HEADER.replace("@LIBS@", "\n".join(libs)).replace("@MAIN@", _esc(main or self.circuits[0].name))
         return head + "\n".join(c.xml() for c in self.circuits) + "\n</project>\n"
 
     def save(self, path, main: str | None = None, check: bool = True) -> int:
         """Write the file, then run circcheck and the conventions check on it.
         Returns the number of errors."""
         path = Path(path)
-        path.write_text(self.xml(main), encoding="utf-8")
+        path.write_text(self.xml(main, path), encoding="utf-8")
         n_wires = sum(len(c._split_wires()) for c in self.circuits)
         n_parts = sum(len(c.parts) for c in self.circuits)
         print(f"wrote {path} ({n_parts} components, {n_wires} wires)")

@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="5.0.0" version="1.0">
+  This file is intended to be loaded by Logisim-evolution v5.0.0(https://github.com/logisim-evolution/).
+
+  <lib desc="#Wiring" name="0">
+    <tool name="Pin">
+      <a name="appearance" val="classic"/>
+    </tool>
+  </lib>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#Plexers" name="2"/>
+  <lib desc="#Arithmetic" name="3"/>
+  <lib desc="#FPArithmetic" name="4"/>
+  <lib desc="#Memory" name="5"/>
+  <lib desc="#I/O" name="6"/>
+  <lib desc="#TTL" name="7"/>
+  <lib desc="#TCL" name="8"/>
+  <lib desc="#Base" name="9"/>
+  <lib desc="#BFH-Praktika" name="10"/>
+  <lib desc="#Input/Output-Extra" name="11"/>
+  <lib desc="#Soc" name="12"/>
+  <lib desc="file#add8.circ" name="13"/>
+  <main name="alu"/>
+  <options>
+    <a name="gateUndefined" val="ignore"/>
+    <a name="simlimit" val="1000"/>
+    <a name="simrand" val="0"/>
+  </options>
+  <mappings>
+    <tool map="Button2" name="Poke Tool"/>
+    <tool map="Button3" name="Menu Tool"/>
+    <tool map="Ctrl Button1" name="Menu Tool"/>
+  </mappings>
+  <toolbar>
+    <tool name="Poke Tool"/>
+    <tool name="Edit Tool"/>
+    <tool name="Wiring Tool"/>
+    <tool name="Text Tool"/>
+    <sep/>
+    <tool name="Pin"/>
+    <tool name="Pin">
+      <a name="facing" val="west"/>
+      <a name="type" val="output"/>
+    </tool>
+  </toolbar>
+  <circuit name="alu">
+    <a name="appearance" val="custom"/>
+    <a name="circuit" val="alu"/>
+    <a name="circuitnamedboxfixedsize" val="true"/>
+    <a name="simulationFrequency" val="1.0"/>
+    <appear>
+      <rect fill="none" height="130" stroke="#000000" stroke-width="2" width="180" x="60" y="50"/>
+      <rect height="10" stroke="none" width="3" x="149" y="180"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="150" y="172">alu_c</text>
+      <rect height="4" stroke="none" width="10" x="50" y="78"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="84">alu_a</text>
+      <rect height="4" stroke="none" width="10" x="50" y="108"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="114">alu_b</text>
+      <rect height="3" stroke="none" width="10" x="50" y="139"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="144">alu_cin</text>
+      <rect height="4" stroke="none" width="10" x="240" y="78"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="235" y="84">alu_s</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="14" font-weight="bold" text-anchor="middle" x="150" y="110">alu</text>
+      <circ-anchor facing="east" x="250" y="80"/>
+      <circ-port dir="out" pin="560,450" x="150" y="190"/>
+      <circ-port dir="in" pin="130,260" x="50" y="80"/>
+      <circ-port dir="in" pin="130,320" x="50" y="110"/>
+      <circ-port dir="in" pin="130,380" x="50" y="140"/>
+      <circ-port dir="out" pin="650,300" x="250" y="80"/>
+    </appear>
+    <comp lib="13" loc="(500,300)" name="add8"/>
+    <comp lib="0" loc="(130,260)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="alu_a"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(130,320)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="alu_b"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(130,380)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="alu_cin"/>
+    </comp>
+    <comp lib="0" loc="(650,300)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="alu_s"/>
+      <a name="type" val="output"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(560,450)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="north"/>
+      <a name="label" val="alu_c"/>
+      <a name="type" val="output"/>
+    </comp>
+    <wire from="(130,260)" to="(230,260)"/>
+    <wire from="(130,320)" to="(280,320)"/>
+    <wire from="(130,380)" to="(240,380)"/>
+    <wire from="(230,260)" to="(230,300)"/>
+    <wire from="(230,300)" to="(280,300)"/>
+    <wire from="(240,340)" to="(240,380)"/>
+    <wire from="(240,340)" to="(280,340)"/>
+    <wire from="(500,300)" to="(650,300)"/>
+    <wire from="(500,320)" to="(560,320)"/>
+    <wire from="(560,320)" to="(560,450)"/>
+  </circuit>
+</project>

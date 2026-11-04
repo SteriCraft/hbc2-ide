@@ -5,7 +5,7 @@ Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/
 | Script | Use |
 |---|---|
 | `netlist.py file [-c C] [--flat TOP] [--json]` | Read a circuit as components and nets. Don't read the XML. |
-| `circgen.py` (library) | Build circuits from a Python design script, see below |
+| `circgen.py` (library) | Build circuits from a Python design script, including sub-circuits from other files and custom symbols; see below |
 | `circcheck.py file [-c C] [--strict] [--no-libs]` | Wiring check: ports in the middle of a wire, overlaps, dangling ends, floating inputs, wires through chips; counts crossings |
 | `conventions.py file [-c C] [--no-libs]` | HBC-2 rules (conventions.md), file layout included, plus a summary of chips and ports |
 | `usages.py <module>` | Every instance of a module across logisim/*.circ, to report when its ports change |
@@ -27,6 +27,8 @@ circgen API, in short:
 - Parts: `c.input` / `c.output(loc, label, width)`, `c.tunnel`, `c.text`, `c.splitter(loc, width, ends, facing, appear, spacing)`.
 - Bus helpers: `c.tap(at, to, bits, width)` and `c.bus(start, taps, width)`.
 - Routing: `nested_rails(pins, toward)` gives each pin a rail depth, so wires leaving one chip edge never cross.
+- Libraries: `lib = p.library(path_to_other.circ)`, then `u = c.sub(lib, "add8", loc)`. `u["add8_a"]` gives a port's location, computed from the other file's symbol. On save, the relative path is written the way Logisim writes it (backslashes on Windows).
+- Symbol: `c.symbol(top=[...], left=[...], right=[...], bottom=[...])`, listing pin labels. It writes a custom appearance: a box sized to the labels, full port names, the module name in bold, and the anchor on the first right port. Without it, the module gets Logisim's default symbol (inputs left, outputs right). See designs/alu.py.
 - Wires are split automatically at T-junctions.
 
 ## Emulator vectors (hbc2 vectors)
