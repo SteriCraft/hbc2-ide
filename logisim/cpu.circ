@@ -20,6 +20,7 @@
   <lib desc="#Input/Output-Extra" name="11"/>
   <lib desc="#Soc" name="12"/>
   <lib desc="file#circuits\add_sub8\add_sub8.circ" name="13"/>
+  <lib desc="file#circuits\alu\alu.circ" name="14"/>
   <main name="main"/>
   <options>
     <a name="gateUndefined" val="ignore"/>
@@ -59,12 +60,5 @@
     <a name="circuit" val="main"/>
     <a name="circuitnamedboxfixedsize" val="true"/>
     <a name="simulationFrequency" val="1.0"/>
-  </circuit>
-  <circuit name="alu">
-    <a name="appearance" val="logisim_evolution"/>
-    <a name="circuit" val="alu"/>
-    <a name="circuitnamedboxfixedsize" val="true"/>
-    <a name="simulationFrequency" val="1.0"/>
-    <comp lib="13" loc="(510,190)" name="add_sub8"/>
   </circuit>
 </project>
