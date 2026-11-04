@@ -1,0 +1,590 @@
+; ============================================================
+; Float <-> text: ftoa, atof
+; ============================================================
+;   ftoa  [i:j] -> a float, the text is written at [x:y]
+;         The shortest text that reads back as the same float (like Rust or
+;         Python print it), 0-terminated; [x:y] is left on the 0, like the
+;         integer routines of text.has. At most 16 bytes + the 0.
+;         Forms: 123  -4.5  0.0001  1.5e+20  1e-05  0  -0  inf  -inf  nan
+;         Plain digits for 1e-4 <= |x| < 1e9, else d.ddde+XX (at least 2
+;         digits of exponent, like printf %g).
+;         The registers a b c d i j are restored, the flags are changed. No
+;         exception flag is raised.
+;
+; How ftoa works: the exact value is v = r / s * 10^k (bignums, fbn.has); the
+; digits come out one at a time (Steele & White / Dragon4): digit =
+; floor(10 r / s), r = 10 r mod s, while m- and m+ (half the gap to the
+; neighbors, scaled the same way) tell when the digits already identify the
+; float. A float that is exactly a power of 2 has a gap twice as small below.
+; Boundaries count as inside when the mantissa is even (round to even).
+
+.define TA_DIG   160        ; the digits, 0..9, up to 12
+.define TA_NDIG  172
+.define TA_K     173        ; v = 0.d1d2d3... * 10^k (signed)
+.define TA_INCL  174        ; 1 if the mantissa is even
+.define TA_UNEQ  175        ; 1 if the gap below is half the gap above
+.define TA_SIGN  176
+.define TA_EB    177        ; exponent field (1 for a subnormal)
+.define TA_F0    178        ; mantissa with the hidden bit, F0 = high byte
+.define TA_F1    179
+.define TA_F2    180
+.define TA_TMP   181
+.define TA_TC2   182
+.define TA_DIGIT 183
+.define TA_FRAME 192
+
+ftoa:
+    psh a, b, c, d, i, j
+    lod a, [i:j]
+    lod b, [i:j + 1]
+    lod c, [i:j + 2]
+    lod d, [i:j + 3]
+    ssp TA_FRAME
+    rsp [i:j]
+    str [i:j + TA_TMP], a
+    and a, 0x80
+    str [i:j + TA_SIGN], a
+    lod a, [i:j + TA_TMP]
+    and a, 0x7F
+    shl a
+    cmp b, 0x80
+    jmf fs_nolow
+    inc a                       ; a = the exponent field
+fs_nolow:
+    and b, 0x7F
+    str [i:j + TA_F0], b
+    str [i:j + TA_F1], c
+    str [i:j + TA_F2], d
+    or b, c
+    or b, d                     ; b = 0 if the fraction is 0
+    cmp a, 255
+    jme fs_special
+    cmp a, 0
+    jme fs_sub
+    mov c, a
+    lod a, [i:j + TA_F0]
+    or a, 0x80                  ; hidden bit
+    str [i:j + TA_F0], a
+    mov a, c
+    jmp fs_have
+fs_sub:
+    or b, 0
+    jmz fs_zero
+    mov a, 1
+    jmp fs_have
+
+fs_special:
+    or b, 0
+    jmz fs_inf
+    mov a, 'n'
+    cal fs_put
+    mov a, 'a'
+    cal fs_put
+    mov a, 'n'
+    cal fs_put
+    jmp fs_term
+fs_inf:
+    cal fs_sign
+    mov a, 'i'
+    cal fs_put
+    mov a, 'n'
+    cal fs_put
+    mov a, 'f'
+    cal fs_put
+    jmp fs_term
+fs_zero:
+    cal fs_sign
+    mov a, '0'
+    cal fs_put
+    jmp fs_term
+
+fs_have:
+    str [i:j + TA_EB], a
+    lod a, [i:j + TA_F2]        ; boundaries are inside if the mantissa is even
+    and a, 1
+    xor a, 1
+    str [i:j + TA_INCL], a
+    mov b, 0                    ; unequal gaps: mantissa 2^23 and exponent > 1
+    lod a, [i:j + TA_F0]
+    cmp a, 0x80
+    jmf fs_u0
+    jms fs_u0
+    lod a, [i:j + TA_F1]
+    or a, [i:j + TA_F2]
+    jmz fs_u1
+    jmp fs_u0
+fs_u1:
+    lod a, [i:j + TA_EB]
+    cmp a, 1
+    jme fs_u0
+    mov b, 1
+fs_u0:
+    str [i:j + TA_UNEQ], b
+    cal fs_sign
+
+    mov a, TA_R                 ; R = f
+    cal bn_zero
+    lod a, [i:j + TA_F2]
+    str [i:j + TA_R], a
+    lod a, [i:j + TA_F1]
+    str [i:j + 1], a
+    lod a, [i:j + TA_F0]
+    str [i:j + 2], a
+    mov a, TA_R
+    cal bn_bitlen               ; a = bits of f
+    lod b, [i:j + TA_EB]
+    add a, b
+    mov b, 0
+    adc b, 0
+    sub a, 151
+    sbb b, 0                    ; b:a = x = floor(log2 v)
+    mov c, 0
+    mov d, 0                    ; c:d = x * 77 (77 = 1 + 4 + 8 + 64)
+    add d, a
+    adc c, b
+    add a, a
+    adc b, b
+    add a, a
+    adc b, b
+    add d, a
+    adc c, b
+    add a, a
+    adc b, b
+    add d, a
+    adc c, b
+    add a, a
+    adc b, b
+    add a, a
+    adc b, b
+    add a, a
+    adc b, b
+    add d, a
+    adc c, b
+    str [i:j + TA_K], c         ; k = x * 77 / 256, never above the right k
+
+    lod b, [i:j + TA_EB]
+    cmp b, 150
+    jmf fs_negexp
+
+    ; ---- e >= 0: r = f << (n + 1 + u), s = 10^k << (1 + u), m- = 1 << n,
+    ; m+ = 1 << (n + u)  (n = exponent field - 150)
+    sub b, 150
+    str [i:j + TA_TMP], b
+    lod a, [i:j + TA_UNEQ]
+    add a, b
+    inc a
+    mov b, a
+    mov a, TA_R
+    cal bn_shl
+    mov a, TA_M
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_M], a
+    mov a, TA_M
+    lod b, [i:j + TA_TMP]
+    cal bn_shl
+    mov a, TA_P
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_P], a
+    lod b, [i:j + TA_TMP]
+    lod a, [i:j + TA_UNEQ]
+    add b, a
+    mov a, TA_P
+    cal bn_shl
+    mov a, TA_S
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_S], a
+    lod b, [i:j + TA_K]
+    cal fs_pow10
+    lod b, [i:j + TA_UNEQ]
+    inc b
+    mov a, TA_S
+    cal bn_shl
+    jmp fs_fix
+
+fs_negexp:                      ; e < 0: n = 150 - exponent field
+    mov a, 150
+    sub a, b
+    str [i:j + TA_TMP], a
+    lod a, [i:j + TA_K]
+    or a, 0
+    jmn fs_kneg
+    ; k >= 0: r = f << (1 + u), s = 10^k << (n + 1 + u), m- = 1, m+ = 1 << u
+    lod a, [i:j + TA_UNEQ]
+    inc a
+    mov b, a
+    mov a, TA_R
+    cal bn_shl
+    mov a, TA_M
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_M], a
+    mov a, TA_P
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_P], a
+    lod b, [i:j + TA_UNEQ]
+    mov a, TA_P
+    cal bn_shl
+    mov a, TA_S
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_S], a
+    lod b, [i:j + TA_K]
+    cal fs_pow10
+    lod b, [i:j + TA_TMP]
+    lod a, [i:j + TA_UNEQ]
+    add b, a
+    inc b
+    mov a, TA_S
+    cal bn_shl
+    jmp fs_fix
+
+fs_kneg:                        ; k < 0: w = 10^-k, m- = w, m+ = w << u,
+    mov a, TA_M                 ; r = f * w << (1 + u), s = 1 << (n + 1 + u)
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_M], a
+    lod b, [i:j + TA_K]
+    not b
+    inc b
+    mov a, TA_M
+    cal fs_pow10_at
+    mov a, TA_P
+    mov b, TA_M
+    cal bn_copy
+    lod b, [i:j + TA_UNEQ]
+    mov a, TA_P
+    cal bn_shl
+    mov a, TA_R                 ; R = f * w: from the top bit of f
+    cal bn_zero
+    mov b, 24
+fs_mulf:
+    psh b
+    mov a, TA_R
+    cal bn_shl1
+    lod a, [i:j + TA_F2]        ; f <<= 1, carry = the bit
+    shl a
+    str [i:j + TA_F2], a
+    lod a, [i:j + TA_F1]
+    adc a, a
+    str [i:j + TA_F1], a
+    lod a, [i:j + TA_F0]
+    adc a, a
+    str [i:j + TA_F0], a
+    jmc fs_mulf_add
+    jmp fs_mulf_next
+fs_mulf_add:
+    mov a, TA_R
+    mov b, TA_M
+    cal bn_add
+fs_mulf_next:
+    pop b
+    dec b
+    jmz fs_mulf_done
+    jmp fs_mulf
+fs_mulf_done:
+    lod b, [i:j + TA_UNEQ]
+    inc b
+    mov a, TA_R
+    cal bn_shl
+    mov a, TA_S
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_S], a
+    lod b, [i:j + TA_TMP]
+    lod a, [i:j + TA_UNEQ]
+    add b, a
+    inc b
+    mov a, TA_S
+    cal bn_shl
+
+    ; ---- k may be too small: while r + m+ >= s (> if not inclusive), s *= 10
+fs_fix:
+    mov a, TA_T
+    mov b, TA_R
+    cal bn_copy
+    mov a, TA_T
+    mov b, TA_P
+    cal bn_add
+    mov a, TA_T
+    mov b, TA_S
+    cal bn_cmp
+    jms fs_toolow
+    jme fs_fix_eq
+    jmp fs_gen
+fs_fix_eq:
+    lod a, [i:j + TA_INCL]
+    or a, 0
+    jmz fs_gen
+fs_toolow:
+    mov a, TA_S
+    cal bn_mul10
+    lod a, [i:j + TA_K]
+    inc a
+    str [i:j + TA_K], a
+    jmp fs_fix
+
+    ; ---- the digits
+fs_gen:
+    mov a, 0
+    str [i:j + TA_NDIG], a
+fs_dig:
+    mov a, TA_R
+    cal bn_mul10
+    mov a, TA_M
+    cal bn_mul10
+    mov a, TA_P
+    cal bn_mul10
+    mov c, 0                    ; c = the digit
+    mov b, TA_S
+fs_q:
+    mov a, TA_R
+    cal bn_cmp
+    jmf fs_qd
+    mov a, TA_R
+    cal bn_sub
+    inc c
+    jmp fs_q
+fs_qd:
+    mov d, 0                    ; d = r < m- (or <= if inclusive)
+    mov a, TA_R
+    mov b, TA_M
+    cal bn_cmp
+    jmf fs_t1y
+    jme fs_t1e
+    jmp fs_t1n
+fs_t1e:
+    lod a, [i:j + TA_INCL]
+    or a, 0
+    jmz fs_t1n
+fs_t1y:
+    mov d, 1
+fs_t1n:
+    mov a, TA_T                 ; tc2: m+ > s - r (>= if inclusive)
+    mov b, TA_S
+    cal bn_copy
+    mov a, TA_T
+    mov b, TA_R
+    cal bn_sub
+    mov a, 0
+    str [i:j + TA_TC2], a
+    mov a, TA_P
+    mov b, TA_T
+    cal bn_cmp
+    jms fs_t2y
+    jme fs_t2e
+    jmp fs_t2n
+fs_t2e:
+    lod a, [i:j + TA_INCL]
+    or a, 0
+    jmz fs_t2n
+fs_t2y:
+    mov a, 1
+    str [i:j + TA_TC2], a
+fs_t2n:
+    lod a, [i:j + TA_TC2]
+    or a, 0
+    jmz fs_notc2
+    or d, 0
+    jmz fs_up                   ; only tc2: digit + 1
+    mov a, TA_T                 ; both: 2 r against s
+    mov b, TA_R
+    cal bn_copy
+    mov a, TA_T
+    cal bn_shl1
+    mov a, TA_T
+    mov b, TA_S
+    cal bn_cmp
+    jmf fs_last                 ; 2 r < s: the digit
+fs_up:
+    inc c
+fs_last:
+    mov a, c
+    cal fs_emit
+    jmp fs_fmt
+fs_notc2:
+    or d, 0
+    jmz fs_more
+    jmp fs_last                 ; only tc1: the digit
+fs_more:
+    mov a, c
+    cal fs_emit
+    jmp fs_dig
+
+; fs_emit: appends the digit a to the digits. Uses a c d.
+fs_emit:
+    str [i:j + TA_DIGIT], a
+    mov c, i
+    mov d, j
+    add d, TA_DIG
+    adc c, 0
+    lod a, [i:j + TA_NDIG]
+    add d, a
+    adc c, 0
+    inc a
+    str [i:j + TA_NDIG], a
+    lod a, [i:j + TA_DIGIT]
+    str [c:d], a
+    ret
+
+; fs_pow10: [s] *= 10, b times (b >= 0). fs_pow10_at: the same for the bignum a.
+fs_pow10:
+    mov a, TA_S
+fs_pow10_at:
+    psh c
+    mov c, a
+fs_pw:
+    or b, 0
+    jmz fs_pw_end
+    mov a, c
+    cal bn_mul10
+    dec b
+    jmp fs_pw
+fs_pw_end:
+    pop c
+    ret
+
+; ---- the text. k = the point position, n digits.
+fs_fmt:
+    mov c, i
+    mov d, j
+    add d, TA_DIG
+    adc c, 0                    ; c:d = the digits
+    lod a, [i:j + TA_NDIG]
+    str [i:j + TA_TMP], a       ; digits left
+    lod a, [i:j + TA_K]
+    or a, 0
+    jmn fs_kneg2
+    cmp a, 10
+    jmf fs_kpos
+    jmp fs_sci
+fs_kneg2:
+    cmp a, 0xFD                 ; k >= -3
+    jmf fs_sci
+    jmp fs_nonpos
+fs_kpos:
+    or a, 0
+    jmz fs_nonpos
+    mov b, a                    ; b = integer places
+fs_pp_i:
+    lod a, [i:j + TA_TMP]
+    or a, 0
+    jmz fs_pp_zero
+    cal fs_digit
+    jmp fs_pp_nx
+fs_pp_zero:
+    mov a, '0'
+    cal fs_put
+fs_pp_nx:
+    dec b
+    jmz fs_pp_frac
+    jmp fs_pp_i
+fs_pp_frac:
+    lod a, [i:j + TA_TMP]
+    or a, 0
+    jmz fs_term
+    mov a, '.'
+    cal fs_put
+fs_rest:
+    cal fs_digit
+    lod a, [i:j + TA_TMP]
+    or a, 0
+    jmz fs_term
+    jmp fs_rest
+
+fs_nonpos:                      ; 0.000ddd
+    mov a, '0'
+    cal fs_put
+    mov a, '.'
+    cal fs_put
+    lod b, [i:j + TA_K]
+    not b
+    inc b
+fs_np_z:
+    or b, 0
+    jmz fs_rest
+    mov a, '0'
+    cal fs_put
+    dec b
+    jmp fs_np_z
+
+fs_sci:                         ; d.ddde+XX
+    cal fs_digit
+    lod a, [i:j + TA_TMP]
+    or a, 0
+    jmz fs_sci_e
+    mov a, '.'
+    cal fs_put
+fs_sci_d:
+    cal fs_digit
+    lod a, [i:j + TA_TMP]
+    or a, 0
+    jmz fs_sci_e
+    jmp fs_sci_d
+fs_sci_e:
+    mov a, 'e'
+    cal fs_put
+    lod b, [i:j + TA_K]
+    dec b                       ; b = the exponent, signed
+    or b, 0
+    jmn fs_sci_neg
+    mov a, '+'
+    cal fs_put
+    jmp fs_sci_x
+fs_sci_neg:
+    not b
+    inc b
+    mov a, '-'
+    cal fs_put
+fs_sci_x:
+    mov c, '0'
+fs_sci_t:
+    cmp b, 10
+    jmf fs_sci_u
+    sub b, 10
+    inc c
+    jmp fs_sci_t
+fs_sci_u:
+    mov a, c
+    cal fs_put
+    mov a, b
+    add a, '0'
+    cal fs_put
+
+fs_term:
+    mov a, 0
+    str [x:y], a
+    asp TA_FRAME
+    pop a, b, c, d, i, j
+    ret
+
+; fs_put: writes a at [x:y] and moves on.
+fs_put:
+    str [x:y], a
+    inc y
+    adc x, 0
+    ret
+
+; fs_digit: writes the next digit (c:d) as text, one digit less left.
+fs_digit:
+    lod a, [c:d]
+    add a, '0'
+    cal fs_put
+    inc d
+    adc c, 0
+    lod a, [i:j + TA_TMP]
+    dec a
+    str [i:j + TA_TMP], a
+    ret
+
+fs_sign:
+    lod a, [i:j + TA_SIGN]
+    or a, 0
+    jmz fs_sign_end
+    mov a, '-'
+    jmp fs_put
+fs_sign_end:
+    ret

@@ -10,7 +10,7 @@ definition is used everywhere, the library's left out.
 | Header | Content | Code |
 |---|---|---|
 | `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
-| `stdio.h` | `putchar`, `puts`, `printf`, `vprintf`, `perror` (output on the terminal), `sprintf`, `vsprintf` (into a buffer), `getchar`, `gets`, `scanf` (lines typed), `sscanf` (from a string) | `asm/stdio.has`, `asm/printf.has`, `asm/scanf.has`, `asm/errno.has` (`perror`) |
+| `stdio.h` | `putchar`, `puts`, `printf`, `vprintf`, `perror` (output on the terminal), `sprintf`, `vsprintf` (into a buffer), `getchar`, `gets`, `scanf` (lines typed), `sscanf` (from a string) | `asm/stdio.has`, `asm/printf.has`, `asm/printf_float.has`, `asm/scanf.has`, `asm/errno.has` (`perror`) |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
 | `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr strspn strcspn strpbrk strtok memcpy memmove memset memcmp memchr strerror` | `asm/string.has`, `asm/errno.has` (`strerror`) |
 | `errno.h` | `errno`, `EDOM`, `ERANGE` (set by `strtol`, `strtoul`) | `asm/errno.has` |
@@ -18,12 +18,13 @@ definition is used everywhere, the library's left out.
 | `limits.h` | `CHAR_BIT`, `MB_LEN_MAX`, the `_MIN`/`_MAX` of `char`, `short`, `int`, `long` | |
 | `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
-| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`, `strtol`, `strtoul`, `qsort`, `bsearch`, `malloc`, `free`, `calloc`, `realloc`; common extras: `itoa utoa ltoa ultoa` (radix 2, 8, 10, 16) | `asm/stdlib.has`, `asm/sort.has`, `asm/malloc.has`, `asm/math/misc` |
-| `math.h` | integer only (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/math.has` (wrappers), `asm/math` |
+| `stdlib.h` | `exit`, `abs`, `labs`, `rand`, `srand`, `RAND_MAX`, `atoi`, `atol`, `strtol`, `strtoul`, `strtod`, `strtof`, `atof`, `qsort`, `bsearch`, `malloc`, `free`, `calloc`, `realloc`; common extras: `itoa utoa ltoa ultoa` (radix 2, 8, 10, 16) | `asm/stdlib.has`, `asm/sort.has`, `asm/malloc.has`, `asm/math/misc` |
+| `math.h` | float (double = float), each with its `f` form: `sin cos tan asin acos atan atan2 sinh cosh tanh asinh acosh atanh exp exp2 expm1 log log2 log10 log1p frexp ldexp modf pow sqrt cbrt hypot ceil floor trunc round rint nearbyint fmod fabs copysign fmin fmax fdim`, `fpclassify isfinite isinf isnan isnormal signbit isgreater... isunordered` (functions), `HUGE_VAL INFINITY NAN FP_*`; integer (not standard C): `isqrt lsqrt ipow lpow gcd lgcd popcount clz ctz lpopcount lclz lctz min max umin umax` | `asm/fmath.has`, `asm/math.has` (wrappers), `asm/math` (the float library is in the runtime: `../runtime/float.has`) |
+| `float.h` | `FLT_*`, `DBL_*`, `LDBL_*` (all binary32) | |
+| `fenv.h` | `FE_*`, `feclearexcept feraiseexcept fetestexcept fegetexceptflag fesetexceptflag fegetround fesetround fegetenv fesetenv feholdexcept feupdateenv FE_DFL_ENV` | `asm/fmath.has` |
 
 `div`, `ldiv` (stdlib.h) are missing: they return a struct, and FCC has no
-struct return. `math.h` keeps the standard names (`sqrt`, `pow`…) free
-for floating point one day.
+struct return.
 
 ## Files
 
@@ -59,8 +60,12 @@ for floating point one day.
   `asm/time.has`) a digit. `scanf` reads the keyboard through
   `lib_stdin_peek`, not `getchar`: a program's own `getchar` is not used.
 * `asm/printf.has` — `printf`, `vprintf`, `sprintf`, `vsprintf`: one
-  engine (in C until 2026-11-03: 2.5 KB, now about 1.1 KB). Its state is in
-  30 bytes of locals on the stack. Where the characters go is
+  engine (in C until 2026-11-03: 2.5 KB, now about 1.6 KB). Its state is in
+  250 bytes of locals on the stack (210 of them the text of a float).
+  `asm/printf_float.has` makes the text of `%f %e %g`: the exact decimal
+  value (the float shifted into a 288-bit fixed point number, the integer
+  digits by dividing it by 10, the fraction digits by multiplying it by
+  10), rounded half to even at the precision, about 1 KB. Where the characters go is
   `lib_printf_out` (2 bytes of `.bss`): 0 for `_putchar` (so a program's own
   `putchar` is used), else the next byte of the buffer. The engine keeps
   the caller's value and puts it back, so a `sprintf` inside a `printf`
@@ -117,9 +122,10 @@ Device detection (`monitor_port`, …) is in the startup code:
 `../runtime/devices.has`, included by `../runtime/crt0.has` (RAM) and
 `../runtime/boot.has` (EEPROM; see `../ABI.md`, section 8).
 
-`printf` has the minimal set: `%d %u %x %X %c %s %%`, `l` for `long`
-(`%ld %lu %lx %lX`), a width, `0` for zero padding (`%04x`), `-` to align left
-(`%-6s`), widths up to 255. No floating point. It gets its digits from
+`printf` has `%d %i %u %x %X %c %s %%` and `%f %F %e %E %g %G`, `l` for
+`long` (`%ld %lu %lx %lX`; `h`, `L` change nothing), the flags `- 0 + space
+#`, a width and a precision (digits or `*`; widths up to 255). Not there:
+`%o %p %n %a`, `#` for `%x`. It gets its integer digits from
 the math library's `utoa16`, `itoa16`, `htoa16` and their 32-bit forms
 (`asm/math/misc/text.has`; no division).
 
@@ -137,7 +143,9 @@ The assembler leaves out what a program can't reach (assembly manual,
 "Leaving out unused code"), so a program carries only what it uses: an
 empty `main` is 269 bytes (startup, device detection, `exit`), hello world
 with `puts` 1.1 KB (the terminal and screen drivers), with `printf`
-2.7 KB (3.8 KB with the C `printf`). `hbc2 cc … --map` shows what was kept.
+5.2 KB (2.7 KB before `%f`: the float conversion and the float routines
+it uses are kept by any program that calls `printf`; `scanf` likewise
+grew by 4 KB with `atof`). `hbc2 cc … --map` shows what was kept.
 
 ## Tests
 

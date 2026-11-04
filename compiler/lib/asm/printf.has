@@ -1,10 +1,19 @@
 ; printf, vprintf, sprintf, vsprintf, written in assembly (they replace
-; src/printf.c: 2.5 KB of compiled C). The minimal set (ROADMAP decision
-; 14): %d %u %x %X %c %s %%, l for long, a width (up to 255), 0 for zero
-; padding, - to align left. Unknown conversions print their character; a %
-; at the end is dropped. printf and vprintf send every character through
-; _putchar, so a program's own putchar is used (tests/multi/override);
-; sprintf and vsprintf write them at buf, then a 0.
+; src/printf.c: 2.5 KB of compiled C).
+;
+;   %d %i %u %x %X %c %s %%, and %f %F %e %E %g %G for float / double
+;   (asm/printf_float.has). Flags - 0 + space #, a width and a precision
+;   (digits or *, up to 255 for the width), l for long (h and L are read
+;   and ignored: short is int, long double is double).
+;   The precision: the least digits of an integer (%.3d: 007; %.0d of 0
+;   prints nothing), the most characters of a string, the digits after the
+;   point of %f %e (6 by default), the significant digits of %g. # keeps
+;   the point (%#.0f) and the zeros of %g. Not there: %o %p %n %a, # for
+;   %x, ll.
+;   Unknown conversions print their character; a % at the end is dropped.
+; printf and vprintf send every character through _putchar, so a
+; program's own putchar is used (tests/multi/override); sprintf and
+; vsprintf write them at buf, then a 0.
 ;
 ; int printf(const char *fmt, ...)
 ; int vprintf(const char *fmt, va_list ap)
@@ -17,7 +26,7 @@
 ; and puts it back at the end, so a printf inside a sprintf (a program's
 ; putchar that calls sprintf) works.
 ;
-; The locals (30 bytes, [sp + n] in the engine itself; 2 more in the
+; The locals (250 bytes, [sp + n] in the engine itself; 2 more in the
 ; lib_printf_ routines it calls, above their return address):
 ;   0-1   fmt: the next character of the format
 ;   2-3   ap: the next argument
@@ -25,14 +34,21 @@
 ;   6     width, then the number of padding characters
 ;   7     pad: ' ' or '0'
 ;   8     left: 1 for -
-;   9     neg: 1 when a '-' goes before the padding or the digits
+;   9     sign: the character before the padding or the digits ('-', '+',
+;         ' '), or 0
 ;   10    the conversion character
 ;   11    l: 1 for a long
 ;   12-13 text: what the field prints
 ;   14-15 len: its length
 ;   16-27 digits: 12 bytes (itoa32: a sign, 10 digits and the 0)
 ;   28-29 the lib_printf_out of the caller
-; The return address is at [sp + 30].
+;   30-31 precision (0xFFFF: none)
+;   32    flags: 1 for +, 2 for space, 4 for #
+;   33-34 zeros: '0' characters printed inside the text...
+;   35-36 split: ...after its first split characters
+;   37-39 unused
+;   40-249 the text of a float (asm/printf_float.has)
+; The return address is at [sp + 250].
 
 .bss lib_printf_out 2           ; 0: _putchar, else where the next character goes
 
@@ -73,7 +89,7 @@ lib_printf_screen:
 
 ; The engine: [i:j] = fmt, [x:y] = ap, [c:d] = buf (0: _putchar).
 lib_printf_start:
-    ssp 30
+    ssp 250
     str [sp + 0], i
     str [sp + 1], j
     str [sp + 2], x
@@ -125,40 +141,58 @@ lib_printf_restore:
     str lib_printf_out + 1, a
     lod a, [sp + 4]             ; [a:b] = count
     lod b, [sp + 5]
-    asp 30
+    asp 250
     ret
 
-; --- A conversion: the flags, the width, l, the character ----------------
-; [x:y] = fmt (after the %), c = pad, d = left
+; --- A conversion: the flags, the width, the precision, l, the character ---
+; [x:y] = fmt (after the %), c = pad, d = left, a = the flags
 
 lib_printf_spec:
     mov c, ' '
     mov d, 0
+    mov a, 0
 lib_printf_flags:
     lod b, [x:y]
     cmp b, '0'
     jme lib_printf_zero
     cmp b, '-'
     jme lib_printf_minus
+    cmp b, '+'
+    jme lib_printf_plus
+    cmp b, ' '
+    jme lib_printf_space
+    cmp b, '#'
+    jme lib_printf_hash
     jmp lib_printf_width
 lib_printf_zero:
     mov c, '0'
     jmp lib_printf_flag_next
 lib_printf_minus:
     mov d, 1
+    jmp lib_printf_flag_next
+lib_printf_plus:
+    or a, 1
+    jmp lib_printf_flag_next
+lib_printf_space:
+    or a, 2
+    jmp lib_printf_flag_next
+lib_printf_hash:
+    or a, 4
 lib_printf_flag_next:
     add y, 1
     adc x, 0
     jmp lib_printf_flags
 
 lib_printf_width:               ; a = width, b = the character
-    cmp d, 0
-    jme lib_printf_pad_set
-    mov c, ' '                  ; - wins over 0
-lib_printf_pad_set:
+    str [sp + 32], a
     str [sp + 7], c
     str [sp + 8], d
+    mov a, 0xFF
+    str [sp + 30], a            ; no precision
+    str [sp + 31], a
     mov a, 0
+    cmp b, '*'
+    jme lib_printf_width_arg
 lib_printf_width_digit:
     cmp b, '0'
     jmf lib_printf_width_end    ; below '0'
@@ -175,14 +209,104 @@ lib_printf_width_digit:
     adc x, 0
     lod b, [x:y]
     jmp lib_printf_width_digit
+lib_printf_width_arg:           ; *: an int argument (negative: -)
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    cal lib_printf_arg16
+    cmp a, 0x80
+    jmf lib_printf_width_pos
+    mov c, 1
+    str [sp + 8], c             ; left
+    mov c, 0                    ; [a:b] = -[a:b]
+    sub c, b
+    mov b, c
+    mov c, 0
+    sbb c, a
+    mov a, c
+lib_printf_width_pos:
+    cmp a, 0
+    jme lib_printf_width_byte
+    mov b, 255                  ; more than 255: 255
+lib_printf_width_byte:
+    mov a, b
+    lod x, [sp + 0]
+    lod y, [sp + 1]
+    lod b, [x:y]
 lib_printf_width_end:
     str [sp + 6], a
+    lod a, [sp + 8]             ; - wins over 0
+    cmp a, 0
+    jme lib_printf_prec
+    mov a, ' '
+    str [sp + 7], a
+lib_printf_prec:
+    cmp b, '.'
+    jme lib_printf_prec_go
+    jmp lib_printf_size
+lib_printf_prec_go:
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+    mov c, 0                    ; [c:d] = the precision
+    mov d, 0
+    cmp b, '*'
+    jme lib_printf_prec_arg
+lib_printf_prec_digit:
+    cmp b, '0'
+    jmf lib_printf_prec_end
+    cmp b, '9'
+    jms lib_printf_prec_end
+    cmp c, 0x10                 ; large enough: the other digits are dropped
+    jms lib_printf_prec_skip
+    mov i, c                    ; [c:d] = [c:d] * 10
+    mov j, d
+    add d, d
+    adc c, c
+    add d, d
+    adc c, c
+    add d, j
+    adc c, i
+    add d, d
+    adc c, c
+    sub b, '0'
+    add d, b
+    adc c, 0
+lib_printf_prec_skip:
+    add y, 1
+    adc x, 0
+    lod b, [x:y]
+    jmp lib_printf_prec_digit
+lib_printf_prec_arg:            ; .*: an int argument (negative: none)
+    add y, 1
+    adc x, 0
+    str [sp + 0], x
+    str [sp + 1], y
+    cal lib_printf_arg16
+    mov c, a
+    mov d, b
+    lod x, [sp + 0]
+    lod y, [sp + 1]
+    lod b, [x:y]
+    cmp c, 0x80
+    jmf lib_printf_prec_end
+    jmp lib_printf_size         ; negative: no precision
+lib_printf_prec_end:
+    str [sp + 30], c
+    str [sp + 31], d
+lib_printf_size:                ; h, L: nothing; l: a long
     mov a, 0
+    cmp b, 'h'
+    jme lib_printf_size_skip
+    cmp b, 'L'
+    jme lib_printf_size_skip
     cmp b, 'l'
     jme lib_printf_long
     jmp lib_printf_conv
 lib_printf_long:
     mov a, 1
+lib_printf_size_skip:
     add y, 1
     adc x, 0
     lod b, [x:y]
@@ -194,9 +318,17 @@ lib_printf_conv:
     adc x, 0
     str [sp + 0], x
     str [sp + 1], y
+    cmp b, 'i'
+    jme lib_printf_conv_i
+    jmp lib_printf_conv_set
+lib_printf_conv_i:
+    mov b, 'd'
+lib_printf_conv_set:
     str [sp + 10], b
     mov a, 0
-    str [sp + 9], a             ; neg = 0
+    str [sp + 9], a             ; no sign
+    str [sp + 33], a            ; no zeros
+    str [sp + 34], a
     cmp b, 'd'
     jme lib_printf_number
     cmp b, 'u'
@@ -209,7 +341,24 @@ lib_printf_conv:
     jme lib_printf_c
     cmp b, 's'
     jme lib_printf_s
+    cmp b, 'f'
+    jme lib_printf_f
+    cmp b, 'F'
+    jme lib_printf_f
+    cmp b, 'e'
+    jme lib_printf_f
+    cmp b, 'E'
+    jme lib_printf_f
+    cmp b, 'g'
+    jme lib_printf_f
+    cmp b, 'G'
+    jme lib_printf_f
     jmp lib_printf_char         ; %% and unknown ones: the character
+
+; --- floats: asm/printf_float.has makes the text, zeros and split ---------
+lib_printf_f:
+    cal lib_printf_float        ; [x:y] = the text, [c:d] = its length
+    jmp lib_printf_field
 
 ; --- %c and %s: padded with spaces -----------------------------------------
 
@@ -231,11 +380,20 @@ lib_printf_s:
     mov y, b
     mov a, ' '
     str [sp + 7], a
-    mov c, 0                    ; [c:d] = its length
+    mov c, 0                    ; [c:d] = its length (not above the precision)
     mov d, 0
     mov i, x
     mov j, y
 lib_printf_s_len:
+    lod a, [sp + 30]
+    cmp a, c
+    jme lib_printf_s_prec
+    jmp lib_printf_s_char
+lib_printf_s_prec:
+    lod a, [sp + 31]
+    cmp a, d
+    jme lib_printf_text_set     ; the precision is reached
+lib_printf_s_char:
     lod a, [i:j]
     cmp a, 0
     jme lib_printf_text_set
@@ -342,31 +500,91 @@ lib_printf_sign_check:
     lod b, [i:j]
     cmp b, '-'
     jme lib_printf_negative
-    jmp lib_printf_num_text
+    lod b, [sp + 32]            ; + or space for a positive number
+    mov a, '+'
+    and b, 1
+    jmz lib_printf_sign_space
+    jmp lib_printf_sign_set
+lib_printf_sign_space:
+    lod b, [sp + 32]
+    mov a, ' '
+    and b, 2
+    jmz lib_printf_num_text
+    jmp lib_printf_sign_set
 lib_printf_negative:
-    mov b, 1
-    str [sp + 9], b             ; neg = 1
+    mov a, '-'
     add j, 1
     adc i, 0
     dec c
+lib_printf_sign_set:
+    str [sp + 9], a
 
-lib_printf_num_text:            ; [x:y] = the text, [c:d] = its length
+lib_printf_num_text:            ; [i:j] = the text, c = its length
     mov x, i
     mov y, j
     mov d, c
     mov c, 0
+    lod a, [sp + 30]            ; a precision: at least that many digits
+    cmp a, 0xFF
+    jme lib_printf_text_set     ; (none: 0xFFFF; above 255: all the same)
+    mov b, ' '                  ; and no 0 padding
+    str [sp + 7], b
+    lod b, [sp + 31]
+    cmp a, 0
+    jme lib_printf_prec_small
+    jmp lib_printf_prec_zeros   ; 256 or more: more than the digits
+lib_printf_prec_small:
+    cmp b, 0                    ; %.0d of 0: nothing
+    jme lib_printf_prec_none
+    jmp lib_printf_prec_cmp
+lib_printf_prec_none:
+    cmp d, 1
+    jme lib_printf_prec_one
+    jmp lib_printf_prec_cmp
+lib_printf_prec_one:
+    lod a, [x:y]
+    cmp a, '0'
+    jme lib_printf_prec_empty
+    jmp lib_printf_text_set
+lib_printf_prec_empty:
+    mov d, 0
+    jmp lib_printf_text_set
+lib_printf_prec_cmp:
+    cmp d, b
+    jmf lib_printf_prec_zeros
+    jmp lib_printf_text_set
+lib_printf_prec_zeros:          ; zeros = precision - len, before the digits
+    lod a, [sp + 30]
+    sub b, d
+    sbb a, 0
+    str [sp + 33], a
+    str [sp + 34], b
+    mov a, 0
+    str [sp + 35], a            ; split = 0
+    str [sp + 36], a
+    jmp lib_printf_field
 
 ; --- The field ---------------------------------------------------------------
-; [x:y] = the text, [c:d] = its length. Prints the sign, the padding and
-; the text; count + the larger of the width and len + neg.
+; [x:y] = the text, [c:d] = its length, zeros and split set. Prints the
+; sign, the padding and the text; count + the larger of the width and
+; len + zeros + sign.
 
-lib_printf_text_set:
+lib_printf_text_set:            ; split = len (the zeros, 0, at the end)
+    str [sp + 35], c
+    str [sp + 36], d
+lib_printf_field:
     str [sp + 12], x
     str [sp + 13], y
     str [sp + 14], c
     str [sp + 15], d
-    add d, [sp + 9]             ; [c:d] = len + neg
+    add d, [sp + 34]            ; [c:d] = len + zeros + sign
+    adc c, [sp + 33]
+    lod a, [sp + 9]
+    cmp a, 0
+    jme lib_printf_nosign
+    add d, 1
     adc c, 0
+lib_printf_nosign:
     lod a, [sp + 6]             ; a = width
     cmp c, 0
     jme lib_printf_fits
@@ -376,11 +594,11 @@ lib_printf_fits:
     jmf lib_printf_padded       ; shorter than the width
 lib_printf_no_pad:
     mov a, 0
-    str [sp + 6], a             ; no padding, count + len + neg
+    str [sp + 6], a             ; no padding, count + the length
     jmp lib_printf_count
 lib_printf_padded:               ; c = 0
     mov b, a
-    sub a, d                    ; padding = width - (len + neg)
+    sub a, d                    ; padding = width - length
     str [sp + 6], a
     mov d, b                    ; count + width
 lib_printf_count:
@@ -446,12 +664,11 @@ lib_printf_arg16:
     str [sp + 5], y
     ret
 
-; Prints '-' when neg.
+; Prints the sign character, if any.
 lib_printf_sign:
-    lod a, [sp + 11]
-    cmp a, 0
+    lod b, [sp + 11]
+    cmp b, 0
     jme lib_printf_sign_end
-    mov b, '-'
     jmp lib_printf_putc
 lib_printf_sign_end:
     ret
@@ -469,23 +686,53 @@ lib_printf_pad:
 lib_printf_pad_end:
     ret
 
-; Prints the text: len characters from text.
+; Prints the text: split characters, the zeros, then the rest of the len
+; characters.
 lib_printf_text:
-    lod c, [sp + 16]
-    lod d, [sp + 17]
+    lod c, [sp + 37]            ; split
+    lod d, [sp + 38]
     sub d, 1
     sbb c, 0
-    jmc lib_printf_text_end     ; len was 0
-    str [sp + 16], c
-    str [sp + 17], d
-    lod x, [sp + 14]
-    lod y, [sp + 15]
+    jmc lib_printf_text_zeros
+    str [sp + 37], c
+    str [sp + 38], d
+    cal lib_printf_text_one
+    jmp lib_printf_text
+lib_printf_text_zeros:
+    lod c, [sp + 35]
+    lod d, [sp + 36]
+    sub d, 1
+    sbb c, 0
+    jmc lib_printf_text_rest
+    str [sp + 35], c
+    str [sp + 36], d
+    mov b, '0'
+    cal lib_printf_putc
+    jmp lib_printf_text_zeros
+lib_printf_text_rest:
+    lod c, [sp + 16]
+    lod d, [sp + 17]
+    or d, c
+    jmz lib_printf_text_end
+    cal lib_printf_text_one
+    jmp lib_printf_text_rest
+lib_printf_text_end:
+    ret
+
+; One character of the text, len - 1 (called by lib_printf_text: the locals
+; are 4 bytes further).
+lib_printf_text_one:
+    lod c, [sp + 18]
+    lod d, [sp + 19]
+    sub d, 1
+    sbb c, 0
+    str [sp + 18], c
+    str [sp + 19], d
+    lod x, [sp + 16]
+    lod y, [sp + 17]
     lod b, [x:y]
     add y, 1
     adc x, 0
-    str [sp + 14], x
-    str [sp + 15], y
-    cal lib_printf_putc
-    jmp lib_printf_text
-lib_printf_text_end:
-    ret
+    str [sp + 16], x
+    str [sp + 17], y
+    jmp lib_printf_putc

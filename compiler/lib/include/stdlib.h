@@ -51,6 +51,16 @@ unsigned long  strtoul(const char *str, char **str_end, int base);
 int            atoi(const char *s);
 long           atol(const char *s);
 
+// Decimal text to float (double is float): spaces first, then an optional
+// sign, digits with an optional point and exponent (1  -12.5  .5  5.  1e-3),
+// or inf, infinity, nan (any case). Correctly rounded. *str_end (when not
+// NULL) = the first character not read, or str when there is no number
+// (0 is returned). errno = ERANGE when the result overflows (+-HUGE_VAL) or
+// underflows (a subnormal or 0 that is rounded). Hexadecimal floats: no.
+double         strtod(const char *str, char **str_end);
+float          strtof(const char *str, char **str_end);
+double         atof(const char *s);                // strtod(s, NULL)
+
 // Not standard C, but common: value written at buf in base radix, 0-terminated.
 // They return buf. Radix is 2, 8, 10 or 16 (an empty text for any other).
 // Hexadecimal digits are lower case; no leading zeros, no "0x".

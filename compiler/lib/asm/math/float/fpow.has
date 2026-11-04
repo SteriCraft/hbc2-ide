@@ -1,0 +1,448 @@
+; ============================================================
+; Power: pow
+; ============================================================
+;   pow   [x:y] = [x:y] ^ [i:j]        ([i:j] is never changed)
+;
+; Within 1 ulp of the exact value (typically 0.5x ulp; nearly always the
+; correctly rounded float; checked against the f64 function). The special
+; cases are those of C99 (Annex F.9.4.4):
+;   pow(x, +-0) = 1 and pow(1, y) = 1 for any x / y, even a NaN
+;   pow(-1, +-inf) = 1
+;   pow(+-0, y): y < 0 odd integer: +-inf and FE_DIVBYZERO; y < 0 other:
+;       +inf and FE_DIVBYZERO; y > 0 odd integer: +-0; y > 0 other: +0
+;   pow(x, y), x < 0 finite, y finite not an integer: the quiet NaN and
+;       FE_INVALID
+;   pow(x, -inf) = +inf for |x| < 1, +0 for |x| > 1; pow(x, +inf) the opposite
+;   pow(-inf, y): odd integer y: -inf (y > 0) or -0 (y < 0); other y: +inf or +0
+;   pow(+inf, y) = +inf (y > 0) or +0 (y < 0)
+;   another NaN operand gives the quiet NaN (FE_INVALID if signaling)
+; and for the normal results, as exp: FE_INEXACT, but for pow(x, 1) and when |x|
+; is a power of 2 and y log2 |x| an integer (pow(2, 3) = 8: exact, no flag; an
+; exact result like pow(3, 2) = 9 still raises it, which C allows),
+; FE_OVERFLOW + FE_INEXACT (+-inf), FE_UNDERFLOW + FE_INEXACT (a subnormal or
+; +-0). The result of a negative x has the sign of (-1)^y.
+; Flags of the CPU: undefined. Other registers are restored. Only the
+; exceptions above are raised (see fexp.has).
+;
+; How: |x|^y = 2^(y log2 |x|). log2 |x| is a pair LH + LL (flog.has), the
+; product with y is made as a pair P0 + P1 (y and LH are split in a 12 bit
+; high part and a rest, so that the main products are exact), and fx_exp2c
+; (fexp.has) computes 2^P. A product of more than 512 in size is an overflow
+; or an underflow without more work.
+
+.define FX_CX 106           ; the class of x and of y (fbits.has)
+.define FX_CY 107
+
+fx_pow:
+    mov a, V1
+    cal fx_cls
+    cmp a, FP_ZERO
+    jme pw_one                  ; y = +-0
+    lod a, [x:y + V0]           ; x = 1
+    cmp a, 0x3F
+    jme pw_x1a
+    jmp pw_nx1
+pw_x1a:
+    lod a, [x:y + V0B1]
+    cmp a, 0x80
+    jme pw_x1b
+    jmp pw_nx1
+pw_x1b:
+    lod a, [x:y + V0B2]
+    or a, [x:y + V0B3]
+    jmz pw_one
+pw_nx1:
+    mov a, V0
+    cal fx_cls
+    str [x:y + FX_CX], a
+    mov a, V1
+    cal fx_cls
+    str [x:y + FX_CY], a
+    cmp a, FP_NAN
+    jme pw_nan
+    lod b, [x:y + FX_CX]
+    cmp b, FP_NAN
+    jme pw_nan
+    cmp a, FP_INFINITE
+    jme pw_yinf
+    cmp b, FP_ZERO
+    jme pw_xzero
+    cmp b, FP_INFINITE
+    jme pw_xinf
+    jmp pw_finite
+
+pw_one:
+    mov c, 0x3F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+pw_pinf:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+pw_pzero:
+    mov c, 0
+    mov d, 0
+    mov a, 0
+    jmp fx_exit
+pw_invalid:
+    mov c, 0x7F
+    mov d, 0xC0
+    mov a, 1
+    jmp fx_exit
+
+; ---- a NaN operand: invalid only if one is signaling
+pw_nan:
+    mov a, 0
+    lod b, [x:y + FX_CX]
+    cmp b, FP_NAN
+    jme pw_nx
+    jmp pw_ny
+pw_nx:
+    lod b, [x:y + V0B1]
+    and b, 0x40
+    jmz pw_snan
+pw_ny:
+    lod b, [x:y + FX_CY]
+    cmp b, FP_NAN
+    jme pw_ny2
+    jmp pw_nout
+pw_ny2:
+    lod b, [x:y + V1B1]
+    and b, 0x40
+    jmz pw_snan
+    jmp pw_nout
+pw_snan:
+    mov a, 1
+pw_nout:
+    mov c, 0x7F
+    mov d, 0xC0
+    jmp fx_exit
+
+; ---- y = +-inf (x is not a NaN)
+pw_yinf:
+    lod a, [x:y + FX_CX]
+    cmp a, FP_ZERO
+    jme pw_yinf0
+    mov a, V5                   ; |x| against 1
+    mov b, V0
+    cal fx_cpy
+    cal fx_abs
+    mov b, K_ONE
+    cal fx_cmpc
+    jme pw_one
+    jmf pw_yless
+    lod a, [x:y + V1]           ; |x| > 1
+    cmp a, 0x80
+    jmf pw_pinf
+    jmp pw_pzero
+pw_yless:                       ; |x| < 1
+    lod a, [x:y + V1]
+    cmp a, 0x80
+    jmf pw_pzero
+    jmp pw_pinf
+pw_yinf0:                       ; x = +-0: +0 for +inf, +inf and DIVBYZERO for -inf
+    lod a, [x:y + V1]
+    cmp a, 0x80
+    jmf pw_pzero
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 2
+    jmp fx_exit
+
+; ---- x = +-0, y finite and not 0
+pw_xzero:
+    mov a, V1
+    cal fx_par
+    cmp a, 1
+    jme pw_xz_odd
+    mov a, 0
+    jmp pw_xz_sg
+pw_xz_odd:
+    lod a, [x:y + V0]
+    and a, 0x80
+pw_xz_sg:
+    str [x:y + FX_SGN], a
+    lod a, [x:y + V1]
+    cmp a, 0x80
+    jmf pw_xz_pos
+    lod c, [x:y + FX_SGN]       ; y < 0: +-inf
+    or c, 0x7F
+    mov d, 0x80
+    mov a, 2
+    jmp fx_exit
+pw_xz_pos:                      ; y > 0: +-0
+    lod c, [x:y + FX_SGN]
+    mov d, 0
+    mov a, 0
+    jmp fx_exit
+
+; ---- x = +-inf, y finite and not 0
+pw_xinf:
+    lod a, [x:y + V0]
+    cmp a, 0x80
+    jmf pw_xi_pos
+    mov a, V1
+    cal fx_par
+    cmp a, 1
+    jme pw_xi_odd
+pw_xi_pos:                      ; +inf, or -inf with y not odd
+    lod a, [x:y + V1]
+    cmp a, 0x80
+    jmf pw_pinf
+    jmp pw_pzero
+pw_xi_odd:                      ; -inf, y odd
+    lod a, [x:y + V1]
+    cmp a, 0x80
+    jmf pw_xi_ninf
+    mov c, 0x80
+    mov d, 0
+    mov a, 0
+    jmp fx_exit
+pw_xi_ninf:
+    mov c, 0xFF
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+
+; ---- x and y finite, not 0
+pw_finite:
+    lod a, [x:y + V1]           ; y = 1: the result is x, exactly
+    cmp a, 0x3F
+    jme pw_y1a
+    jmp pw_f0
+pw_y1a:
+    lod a, [x:y + V1B1]
+    cmp a, 0x80
+    jme pw_y1b
+    jmp pw_f0
+pw_y1b:
+    lod a, [x:y + V1B2]
+    or a, [x:y + V1B3]
+    jmz pw_y1
+    jmp pw_f0
+pw_y1:
+    mov a, V4
+    mov b, V0
+    cal fx_cpy
+    mov a, 0
+    cal fx_setfl
+    mov a, V4
+    jmp fx_out
+pw_f0:
+    mov a, 0
+    str [x:y + FX_SGN], a
+    lod a, [x:y + V0]
+    cmp a, 0x80
+    jmf pw_fpos
+    mov a, V1                   ; x < 0: y must be an integer
+    cal fx_par
+    cmp a, 0
+    jme pw_invalid
+    cmp a, 1
+    jme pw_fodd
+    jmp pw_fabs
+pw_fodd:
+    mov a, 0x80
+    str [x:y + FX_SGN], a
+pw_fabs:
+    mov a, V0
+    cal fx_abs
+pw_fpos:
+    lod a, [x:y + V0]           ; |x| = 1 (x = -1)
+    cmp a, 0x3F
+    jme pw_f1a
+    jmp pw_calc
+pw_f1a:
+    lod a, [x:y + V0B1]
+    cmp a, 0x80
+    jme pw_f1b
+    jmp pw_calc
+pw_f1b:
+    lod a, [x:y + V0B2]
+    or a, [x:y + V0B3]
+    jmz pw_f1one
+    jmp pw_calc
+pw_f1one:
+    lod c, [x:y + FX_SGN]
+    or c, 0x3F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+
+pw_calc:
+    cal fx_log2c                ; V2 + V3 = log2 |x|
+    mov a, V5                   ; a first estimate of y log2 |x|
+    mov b, V2
+    cal fx_cpy
+    mov b, V1
+    cal fx_mul
+    lod a, [x:y + V5]
+    and a, 0x7F
+    cmp a, 0x30                 ; below 2^-31 (or 0 after an underflow, as x != 1
+    jmf pw_onex                 ; and y != 0): 2^P rounds to 1, inexact
+    cmp a, 0x44
+    jmf pw_dd
+    lod a, [x:y + V5]           ; 512 or more (or inf)
+    cmp a, 0x80
+    jmf pw_ovf
+    lod c, [x:y + FX_SGN]       ; underflow: +-0
+    mov d, 0
+    mov a, 0x18
+    jmp fx_exit
+pw_ovf:
+    lod c, [x:y + FX_SGN]
+    or c, 0x7F
+    mov d, 0x80
+    mov a, 0x14
+    jmp fx_exit
+pw_onex:
+    lod c, [x:y + FX_SGN]
+    or c, 0x3F
+    mov d, 0x80
+    mov a, 0x10
+    jmp fx_exit
+pw_dd:
+    mov a, V5                   ; y1 (12 bits) and y2
+    mov b, V1
+    cal fx_cpy
+    cal fx_t12
+    mov a, V6
+    cal fx_cpy
+    mov b, V5
+    cal fx_sub
+    mov a, V7                   ; a1 and a2: V2 = a1 + a2
+    mov b, V2
+    cal fx_cpy
+    cal fx_t12
+    mov a, V8
+    mov b, V2
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9                   ; hi = y1 a1 (exact)
+    mov b, V5
+    cal fx_cpy
+    mov b, V7
+    cal fx_mul
+    mov a, V10                  ; mid = y1 a2 + y2 a1 (exact products)
+    mov b, V5
+    cal fx_cpy
+    mov b, V8
+    cal fx_mul
+    mov a, V11
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_mul
+    mov a, V10
+    mov b, V11
+    cal fx_add
+    mov a, V11                  ; low = y2 a2 + y LL
+    mov b, V6
+    cal fx_cpy
+    mov b, V8
+    cal fx_mul
+    mov a, V12
+    mov b, V1
+    cal fx_cpy
+    mov b, V3
+    cal fx_mul
+    mov a, V11
+    mov b, V12
+    cal fx_add
+    mov a, V13                  ; s = hi + mid (|hi| >= |mid|): Fast2Sum
+    mov b, V9
+    cal fx_cpy
+    mov b, V10
+    cal fx_add
+    mov a, V14
+    mov b, V13
+    cal fx_cpy
+    mov b, V9
+    cal fx_sub                  ; t = s - hi
+    mov a, V15
+    mov b, V10
+    cal fx_cpy
+    mov b, V14
+    cal fx_sub                  ; mid - t
+    mov b, V11
+    cal fx_add                  ; P1 = mid - t + low
+    mov a, V2
+    mov b, V13
+    cal fx_cpy                  ; P0 = s
+    mov a, V3
+    mov b, V15
+    cal fx_cpy
+    cal fx_exp2c
+    lod a, [x:y + FX_SGN]
+    cmp a, 0
+    jme pw_out
+    mov a, V4
+    cal fx_neg
+pw_out:
+    mov a, V4
+    jmp fx_out
+
+; ------------------------------------------------------------
+; fx_par: a = the slot of a finite float; a = 0 if it is not an integer,
+; 1 if it is an odd integer, 2 if it is an even integer (0 counts as even).
+; The mantissa (24 bits) is shifted left E - 127 times: what is left of the
+; point is lost, the bit that was the units is on top and the bits that were
+; below the point are the 23 others.
+; ------------------------------------------------------------
+fx_par:
+    psh b, c, d, i, j
+    mov i, x
+    mov j, y
+    add j, a
+    adc i, 0
+    lod a, [i:j]
+    and a, 0x7F
+    add a, a
+    lod b, [i:j + 1]
+    cmp b, 0x80
+    jmf par_e
+    or a, 1
+par_e:
+    cmp a, 127
+    jmf par_non                 ; below 1
+    cmp a, 151
+    jmf par_chk
+    mov a, 2                    ; 2^24 or more: an even integer
+    jmp par_end
+par_chk:
+    sub a, 127
+    mov d, a
+    lod a, [i:j + 1]
+    or a, 0x80
+    lod b, [i:j + 2]
+    lod c, [i:j + 3]
+par_loop:
+    cmp d, 0
+    jme par_done
+    add c, c
+    adc b, b
+    adc a, a
+    dec d
+    jmp par_loop
+par_done:
+    mov d, a
+    and a, 0x7F
+    or a, b
+    or a, c
+    jmz par_int
+par_non:
+    mov a, 0
+    jmp par_end
+par_int:
+    and d, 0x80
+    jmz par_even
+    mov a, 1
+    jmp par_end
+par_even:
+    mov a, 2
+par_end:
+    pop b, c, d, i, j
+    ret

@@ -542,299 +542,91 @@ static void overflow(void)
 	error("overflow");
 }
 
-static void exp_overflow(void)
+/* Decimal number: digits[.digits][e[+-]digits] (HBC-2 change, see
+   UPSTREAM.md). The text is kept and a float is converted by the host's
+   strtof, so that the constant is the correctly rounded IEEE 754 binary32
+   (subnormals included), the same value atof gives on the HBC-2.
+   c is the first character: a digit or the '.' of ".5" / "0.5". octal: a
+   leading 0 was read (oct_format): an integer is octal then (017), a float
+   is still decimal (0.5, 0e0, 017.5). */
+
+static void float_text(const char *buf)
 {
-	warning("exponent under/overflow");
-}
+	float f = strtof(buf, NULL);
+	uint32_t bits;
 
-#ifdef IBMFLOAT
-
-/* Older IBM style floating point
-   Numbers are encoded as 
-   Sign.1 Exponent.8 Mantissa.24
-
-   Unlike IEEE754 however the exponent is in nybbles and there may be
-   up to 3 leading zeros in the mantissa. Negative zero is also verboten */
-
-static void convert_fix32(int exp, uint32_t sum, uint32_t frac, int uexp)
-{
+	memcpy(&bits, &f, 4);
+	if ((bits & 0x7F800000UL) == 0x7F800000UL)
+		warning("float constant too large: infinity");
+	result = bits;
 	rtype = T_FLOATVAL;
-	if (sum == 0 && frac == 0) {
-		result = 0;
-		return;
-	}
-	/* Do the initial work bit by bit */
-	/* Start by getting it down to 28bits */
-	while (!(sum & 0x08000000)) {
-		sum <<= 1;
-		if (frac & 0x80000000)
-			sum |= 1;
-		frac <<= 1;
-		exp--;
-	}
-	/* A 28bit number will never overflow when multiplied by ten */
-	while (uexp > 0) {
-		sum *= 10;
-		/* Shift it down to keep it fitting */
-		while (sum & 0xF0000000) {
-			sum >>= 1;
-			exp++;
-		}
-		uexp--;
-	}
-	while (uexp < 0) {
-		sum /= 10;
-		while (!(sum & 0x08000000)) {
-			sum <<= 1;
-			exp--;
-		}
-		uexp++;
-	}
-
-	exp += 22;
-
-	/* Align the mantissa on a nybble basis */
-	while(exp & 3) {
-		sum >>= 1;
-		exp++;
-	}
-
-	/* Now work in nybbles */
-	exp >>= 2;
-
-	/* If the sum has too many bits then shift it down and adjust
-	   the exponent */
-	while (sum & 0xFF000000) {
-		sum >>= 4;
-		exp++;
-	}
-	/* If there are leading zero bits, then shift up and merge in frac */
-	while ((sum & 0x00F00000) == 0) {
-		sum <<= 4;
-		/* Copy 4 bits up at a time */
-		sum |= (frac >> 28);
-		frac <<= 4;
-		exp--;
-	}
-
-	/* Bias */
-	exp += 64;
-
-	/* No denormals */
-	if (exp < 1) {
-		exp_overflow();
-		result = 0;	/* Zero */
-		return;
-	}
-	if (exp > 127) {
-		exp_overflow();
-		result = 0x7F800000;	/* Infinity */
-		return;
-	}
-	/* Assemble result */
-	sum &= 0x00FFFFFF;
-	sum |= (exp << 24) & 0x7F800000UL;
-	result = sum;
 }
 
-#else
-
-static void convert_fix32(int exp, uint32_t sum, uint32_t frac, int uexp)
+static void dec_format(unsigned c, unsigned octal)
 {
-	rtype = T_FLOATVAL;
-	if (sum == 0 && frac == 0) {
-		result = 0;
-		return;
-	}
+	char buf[128];
+	unsigned n = 0;
+	unsigned is_float = 0;
+	unsigned long long sum = 0, osum = 0;
+	unsigned bad_octal = 0;
+	unsigned big = 0;
 
-	/* Start by getting it down to 28bits */
-
-	/* We can have up to 32bits of sum so may need to push
-	   right */
-	while (sum & 0xF0000000) {
-		sum >>= 1;
-		exp++;
-		/* frac will never be used in this case so don't
-		   push bits back into frac */
-	}
-
-	/* Now get the sum/fraction aligned up */
-	while (!(sum & 0x08000000)) {
-		sum <<= 1;
-		if (frac & 0x80000000)
-			sum |= 1;
-		frac <<= 1;
-		exp--;
-	}
-	/* A 28bit number will never overflow when multiplied by ten */
-	while (uexp > 0) {
-		sum *= 10;
-		/* Shift it down to keep it fitting */
-		while (sum & 0xF0000000) {
-			sum >>= 1;
-			exp++;
-		}
-		uexp--;
-	}
-	/* Fix up the exponent in the other direction */
-	while (uexp < 0) {
-		sum /= 10;
-		while (!(sum & 0x08000000)) {
-			sum <<= 1;
-			exp--;
-		}
-		uexp++;
-	}
-
-	exp += 22;
-	/* If the sum has too many bits then shift it down and adjust
-	   the exponent */
-	while (sum & 0xFF000000) {
-		sum >>= 1;
-		exp++;
-	}
-	/* If there are leading zero bits, then shift up and merge in frac */
-	while ((sum & 0x00800000) == 0) {
-		sum <<= 1;
-		if (frac & 0x80000000)
-			sum++;
-		frac <<= 1;
-		exp--;
-	}
-
-	exp += 128;
-
-	/* No denormals */
-	if (exp < 1) {
-		exp_overflow();
-		result = 0;	/* Zero */
-		return;
-	}
-	if (exp > 254) {
-		exp_overflow();
-		result = 0x7F800000;	/* Infinity */
-		return;
-	}
-
-	/* Assemble result */
-	sum &= 0x007FFFFF;
-	sum |= (exp << 23) & 0x7F800000UL;
-	result = sum;
-}
-#endif
-
-
-/* After the E or P in a floating point value is a signed decimal exponent.
-   Parse this */
-static int parse_exponent(void)
-{
-	uint32_t sum = 0, n;
-	int neg = 1;
-	unsigned c;
-
-	c = get();
-	if (c == '-') {
-		neg = -1;
-		c = get();
-	} else if (c == '+')
-		c = get();
-
-	/* Parse integer digits only */
+#define DEC_KEEP(ch) do { if (n < sizeof(buf) - 1) buf[n++] = (ch); else big = 2; } while (0)
 	while (isdigit(c)) {
-		c -= '0';
-		n = sum * 10 + c;
-		if (n < sum)
-			overflow();
-		sum = n;
+		DEC_KEEP(c);
+		sum = sum * 10 + (c - '0');
+		osum = osum * 8 + (c - '0');
+		if (c > '7')
+			bad_octal = 1;
+		if ((octal ? osum : sum) > 0xFFFFFFFFULL)
+			big |= 1;
 		c = get();
 	}
-	unget(c);
-	/* If it is out of the range then error */
-	if (sum > 128)
-		exp_overflow();
-	return sum * neg;
-}
-
-/* Decimal float format digits.digitsEdigits. We don't handle
-   the 0.0000000000000000000000000000000001 type silly yet */
-
-/* Table of decminal fractions as binary value. We only need 24bit
-   precision worst case so this is adequate */
-static const uint32_t fraction[10] = {
-	/* 0.100000 */ 0x199999A0,
-	/* 0.010000 */ 0x28F5C28,
-	/* 0.001000 */ 0x418937,
-	/* 0.000100 */ 0x68DB8,
-	/* 0.000010 */ 0xA7C5,
-	/* 0.000001 */ 0x10C6,
-	/* 0.000000 */ 0x1AD,
-	/* 0.000000 */ 0x2A,
-	/* 0.000000 */ 0x4,
-	0
-};
-
-static void dec_format(unsigned c)
-{
-	uint32_t sum = 0, frac = 0, n;
-	unsigned ex = 0, uex;
-
-	/* Parse digits before . : could be integer or float */
-	while (c != 'E' && c != 'e' && c != '.') {
-		if (!isdigit(c)) {
-			/* Done */
-			unget(c);
-			if (ex == 0) {
-				result = sum;
-				rtype = T_INTVAL;
-				return;
-			}
-			/* Oversized integer */
-			overflow();
-			return;
-		}
-		c -= '0';
-		n = sum * 10 + c;
-		/* If we wrap then keep shifting */
-		/* There's probably a better way to do this */
-		while (n < sum) {
-			sum >>= 1;
-			ex++;
-			n = sum * 10 + c;
-		}
-		sum = n;
-		c = get();
-	}
-	/* We have done the integer part, and found floaty stuff */
-	n = 0;
-	/* Parse any fractional part using the fraction table */
 	if (c == '.') {
-		while (1) {
+		is_float = 1;
+		DEC_KEEP(c);
+		c = get();
+		while (isdigit(c)) {
+			DEC_KEEP(c);
 			c = get();
-			if (c == 'E' || c == 'e')
-				break;
-			if (!isdigit(c)) {
-				unget(c);
-				convert_fix32(ex, sum, frac, 0);
-				return;
-			}
-			c -= '0';
-			if (fraction[n]) {
-				frac += c * fraction[n];
-				n++;
-			}
 		}
 	}
-	/* If we shifted the non fractional part to make it fit then we
-	   don't need the frac bits */
-	if (ex)
-		frac = 0;
-	/* Now look for an exponent */
-	if (c == 'E' || c == 'e')
-		uex = parse_exponent();
-	else
-		unget(c);
-	convert_fix32(ex, sum, frac, uex);
+	if (c == 'e' || c == 'E') {
+		is_float = 1;
+		DEC_KEEP(c);
+		c = get();
+		if (c == '+' || c == '-') {
+			DEC_KEEP(c);
+			c = get();
+		}
+		if (!isdigit(c))
+			error("invalid exponent");
+		while (isdigit(c)) {
+			DEC_KEEP(c);
+			c = get();
+		}
+	}
+#undef DEC_KEEP
+	unget(c);
+	buf[n] = 0;
+	if (big & 2) {
+		error("number too long");
+		result = 0;
+		rtype = is_float ? T_FLOATVAL : T_INTVAL;
+		return;
+	}
+	if (is_float) {
+		float_text(buf);
+		return;
+	}
+	if (big)
+		overflow();
+	if (octal && bad_octal)
+		error("invalid octal digit");
+	result = (uint32_t)(octal ? osum : sum);
+	rtype = T_INTVAL;
 }
+
 
 /*
  *	Hex format
@@ -853,71 +645,70 @@ static unsigned unhex(unsigned c)
 
 static void hex_format(void)
 {
-	uint32_t sum = 0, frac = 0, n;
+	/* 0x...: an integer, or a hexadecimal float (0x1.8p3) converted by the
+	   host's strtof like the decimal ones (HBC-2, see UPSTREAM.md) */
+	char buf[128];
+	unsigned n = 0, big = 0, is_float = 0, digits = 0;
+	unsigned long long sum = 0;
 	unsigned c;
-	int ct;
-	unsigned ex = 0, uex;
 
-	/* Parse digits before . : could be integer or float */
-	while (1) {
+#define HEX_KEEP(ch) do { if (n < sizeof(buf) - 1) buf[n++] = (ch); else big = 2; } while (0)
+	HEX_KEEP('0');
+	HEX_KEEP('x');
+	c = get();
+	while (isxdigit(c)) {
+		HEX_KEEP(c);
+		digits++;
+		sum = sum * 16 + unhex(c);
+		if (sum > 0xFFFFFFFFULL)
+			big |= 1;
 		c = get();
-		if (c == '.' || c == 'P' || c == 'p')
-			break;
-		if (!isxdigit(c)) {
-			/* Done */
-			unget(c);
-			if (ex == 0) {
-				result = sum;
-				rtype = T_INTVAL;
-				return;
-			}
-			/* Oversized integer */
-			error("range");
-			return;
-		}
-		c = unhex(c);
-		n = sum << 4;
-
-		if (n >= sum)
-			sum = n + c;
-		else
-			/* Digits we are parsing are not relevant, but remember
-			   the shift */
-			ex += 4;
 	}
-	/* We have done the integer part, and found floaty stuff */
-	ct = 28;
-
-	/* If we stopped parsing because we had too many bits then
-	   don't add in the fractional part */
-	if (ex)
-		ct = -1;
-
 	if (c == '.') {
-		while (1) {
+		is_float = 1;
+		HEX_KEEP(c);
+		c = get();
+		while (isxdigit(c)) {
+			HEX_KEEP(c);
+			digits++;
 			c = get();
-			if (c == 'P' || c == 'p')
-				break;
-			if (!isxdigit(c)) {
-				unget(c);
-				convert_fix32(ex, sum, frac, 0);
-				return;
-			}
-			/* Keep adding on fraction bits that fit */
-			c = unhex(c);
-			/* Only add relevant fractions */
-			if (ct >= 0) {
-				frac |= c << n;
-				ct -= 4;
-			}
 		}
 	}
-	/* Now look for an exponent */
-	if (c == 'P' || c == 'p')
-		uex = parse_exponent();
-	else
-		unget(c);
-	convert_fix32(ex, sum, frac, uex);
+	if (c == 'p' || c == 'P') {
+		is_float = 1;
+		HEX_KEEP(c);
+		c = get();
+		if (c == '+' || c == '-') {
+			HEX_KEEP(c);
+			c = get();
+		}
+		if (!isdigit(c))
+			error("invalid exponent");
+		while (isdigit(c)) {
+			HEX_KEEP(c);
+			c = get();
+		}
+	} else if (is_float)
+		error("a hexadecimal float needs a p exponent");
+#undef HEX_KEEP
+	unget(c);
+	buf[n] = 0;
+	if (digits == 0)
+		error("invalid hexadecimal number");
+	if (big & 2) {
+		error("number too long");
+		result = 0;
+		rtype = is_float ? T_FLOATVAL : T_INTVAL;
+		return;
+	}
+	if (is_float) {
+		float_text(buf);
+		return;
+	}
+	if (big)
+		error("range");
+	result = (uint32_t)sum;
+	rtype = T_INTVAL;
 }
 
 /*
@@ -925,7 +716,6 @@ static void hex_format(void)
  */
 static void oct_format(void)
 {
-	uint32_t sum = 0, n;
 	unsigned c;
 
 	c = get();
@@ -933,22 +723,14 @@ static void oct_format(void)
 		hex_format();
 		return;
 	}
-	if (c == '.') {
-		/* Implied fractional part of decimal */
-		dec_format(c);
+	/* octal integer, or a decimal float after a 0 */
+	if (isdigit(c) || c == '.' || c == 'e' || c == 'E') {
+		dec_format(c, 1);
 		return;
 	}
-
-	while (c >= '0' && c <= '7') {
-		n = (sum << 3) + c - '0';
-		if (n < sum)
-			overflow();
-		sum = n;
-		c = get();
-	}
-	/* Done */
+	/* Done: 0 */
 	unget(c);
-	result = sum;
+	result = 0;
 	rtype = T_INTVAL;
 }
 
@@ -965,7 +747,7 @@ static void parse_digits(unsigned c)
 	if (c == '0')
 		oct_format();
 	else
-		dec_format(c);
+		dec_format(c, 0);
 }
 
 
@@ -1001,8 +783,12 @@ static unsigned tokenize_numeric(unsigned c, unsigned neg)
 		error("invalid type specifiers");
 
 	if (force_float && rtype != T_FLOATVAL) {
-		convert_fix32(0, result, 0, 0);
-		/* This also sets rtype */
+		float f = (float)result;
+		uint32_t bits;
+
+		memcpy(&bits, &f, 4);
+		result = bits;
+		rtype = T_FLOATVAL;
 	}
 	if (neg) {
 		/* Assumes IEEE 754 (but also works IBMfloat...) */
@@ -1048,11 +834,6 @@ static unsigned tokenize_numeric(unsigned c, unsigned neg)
 static unsigned tokenize_number(unsigned c)
 {
 	return tokenize_numeric(c, 0);
-}
-
-static unsigned tokenize_neg(unsigned c)
-{
-	return tokenize_numeric(c, 1);
 }
 
 static unsigned hexpair(void)
@@ -1209,11 +990,6 @@ static unsigned tokenize(void)
 	c2 = get();
 /*	if (c == '-' && isdigit(c2))
 		return tokenize_neg(c2); */
-	/* Until we fix the negative handling we need to deal with the
-	   a = -.1 case specially. When we fix minus parsing this all goes
-	   away */
-	if (c == '-' && c2 == '.')
-		return tokenize_neg(c2);
 	/* Funny case - whilst . is a token . followed by a digit is part
 	   of a number */
 	if (c == '.' && isdigit(c2)) {

@@ -1,0 +1,873 @@
+; ============================================================
+; Inverse trigonometry: atan, atan2, asin, acos
+; ============================================================
+;   atan   [x:y] = arc tangent of [x:y], in [-pi/2, pi/2]
+;   atan2  [x:y] = angle of the point ([i:j], [x:y]), i.e. atan2 (y = [x:y],
+;                  x = [i:j]), in [-pi, pi]
+;   asin   [x:y] = arc sine, in [-pi/2, pi/2]
+;   acos   [x:y] = arc cosine, in [0, pi]
+;
+; Results are within 0.51 ulp (checked against the f64 functions rounded
+; to float). Exceptions (fenv.has):
+;   FE_INEXACT    always, but for exact results (+-0)
+;   FE_UNDERFLOW  with FE_INEXACT: a subnormal or zero result that is not
+;                 exact (atan, asin of a subnormal number, atan2 of a tiny
+;                 ratio)
+;   FE_INVALID    asin, acos of |x| > 1 (result: the quiet NaN), or a
+;                 signaling NaN
+; The special cases of C99 (Annex F) hold: atan2 (+-0, -0) = +-pi,
+; atan2 (+-0, +0) = +-0, atan2 (+-inf, -inf) = +-3 pi/4, and so on. A quiet NaN
+; gives the quiet NaN. Flags of the CPU: undefined. Other registers are
+; restored. Only the exceptions above are left in fenv_flags.
+;
+; How it works. Everything is atan2 of two positive pairs P, R (hi + lo
+; floats): atan x = atan2 (|x|, 1), asin x = atan2 (|x|, sqrt (1 - x^2)),
+; acos x = atan2 (sqrt (1 - x^2), |x|); the signs are put back at the end.
+;   * t = small / large <= 1 as a pair (ft_ddiv), then the angle of t:
+;     K + s atan t, with (K, s) = (0, +) or (pi, -) for P < R (x negative or
+;     not), (pi/2, -) or (pi/2, +) otherwise.
+;   * atan t (ft_atanc): j = round (16 t), c = j/16 (the table fx_ta has
+;     c and atan c as a hi and a lo float); atan t = atan c + atan u with
+;     u = (t - c) / (1 + c t), a pair again: t - c is exact, 1 + c t =
+;     (1 + c^2) + c (t - c) is made exactly as a pair with 12-bit pieces. Then
+;     atan u = u - u^3 (1/3 - u^2/5 + u^4/7), |u| <= 1/32.
+;   * for asin and acos, 1 - x^2 = (1 - x) (1 + x) with both factors as pairs
+;     (Fast2Sum) and the product with Dekker's method; sqrt as a pair:
+;     s0 = fsqrt (m), s = s0 + (m - s0^2) / (2 s0) with s0^2 exact.
+;   * the rare cases (huge or tiny ratios, tiny arguments) are answered by
+;     constants or by one division.
+
+fasin:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_asin
+facos:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_acos
+fatan:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_atan
+fatan2:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main2
+    jmp ft_atan2
+
+; ---- the end of every function: the result V4, the sign FT_SGN, the flags a
+ft_sres:
+    psh a
+    lod a, [x:y + FT_SGN]
+    cmp a, 0
+    jme fs_p
+    mov a, V4
+    cal fx_neg
+fs_p:
+    pop a
+    cal fx_setfl
+    mov a, V4
+    jmp fx_out
+
+; ft_kres: V4 = the constant at b, flags a
+ft_kres:
+    psh a
+    mov a, V4
+    cal fx_cpyc
+    pop a
+    jmp ft_sres
+
+; ft_eof: a = a slot -> a = the exponent field of the float (clobbers b)
+ft_eof:
+    psh x, y
+    add y, a
+    adc x, 0
+    lod a, [x:y]
+    and a, 0x7F
+    add a, a
+    lod b, [x:y + 1]
+    cmp b, 0x80
+    jmf fe_ok
+    or a, 1
+fe_ok:
+    pop x, y
+    ret
+
+; ------------------------------------------------------------
+; atan
+; ------------------------------------------------------------
+ft_atan:
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme fa_nan
+    cmp a, 1
+    jme fa_big
+    cmp a, 2
+    jme fa_zero
+    cmp a, 3
+    jme fa_sub
+    cal l2_getE
+    cmp a, 114
+    jmf fa_tiny                 ; |x| < 2^-13: atan x = x
+    cmp a, 154
+    jmf fa_gen                  ; |x| >= 2^27: pi/2
+fa_big:
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+fa_nan:
+    lod b, [x:y + V0B1]
+    and b, 0x40
+    jmz fa_inv
+    mov a, 0
+    jmp ft_nan
+fa_inv:
+    mov a, 1
+    jmp ft_nan
+fa_zero:
+    mov a, V0
+    jmp fx_out
+fa_sub:
+    mov a, 0x18
+    jmp fa_x
+fa_tiny:
+    mov a, 0x10
+fa_x:
+    cal fx_setfl
+    mov a, V0
+    jmp fx_out
+fa_gen:
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov a, V0
+    cal fx_abs
+    mov a, V32                  ; P = (|x|, 0), R = (1, 0)
+    mov b, V0
+    cal fx_cpy
+    mov a, V33
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, V34
+    mov b, K_ONE
+    cal fx_cpyc
+    mov a, V35
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, 0
+    str [x:y + FT_XN], a
+    mov a, 1
+    str [x:y + FT_D1], a
+    jmp ft_a2c
+
+; ------------------------------------------------------------
+; atan2: V0 = y, V1 = x
+; ------------------------------------------------------------
+ft_atan2:
+    mov a, V0
+    cal fx_cls
+    str [x:y + FT_T], a
+    mov a, V1
+    cal fx_cls
+    str [x:y + FT_T1], a
+    lod a, [x:y + FT_T]
+    cmp a, 0
+    jme at_nan
+    lod a, [x:y + FT_T1]
+    cmp a, 0
+    jme at_nan
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    lod a, [x:y + V1]
+    and a, 0x80
+    str [x:y + FT_XN], a
+    lod a, [x:y + FT_T]
+    cmp a, 2
+    jme at_y0
+    lod a, [x:y + FT_T1]
+    cmp a, 2
+    jme at_x0
+    lod a, [x:y + FT_T]
+    cmp a, 1
+    jme at_yinf
+    lod a, [x:y + FT_T1]
+    cmp a, 1
+    jme at_xinf
+    mov a, V0                   ; finite, not 0
+    cal fx_abs
+    mov a, V1
+    cal fx_abs
+    mov a, V0
+    cal ft_eof
+    cmp a, 0
+    jms at_e1
+    mov a, 1
+at_e1:
+    str [x:y + FT_T], a         ; Ey
+    mov a, V1
+    cal ft_eof
+    cmp a, 0
+    jms at_e2
+    mov a, 1
+at_e2:
+    str [x:y + FT_T1], a        ; Ex
+    lod a, [x:y + FT_T]
+    lod b, [x:y + FT_T1]
+    cmp a, b
+    jmf at_small                ; Ey < Ex
+    sub a, b
+    cmp a, 28
+    jmf at_gen
+    mov b, K_PIO2_F             ; |y| >= 2^27 |x|: +-pi/2
+    mov a, 0x10
+    jmp ft_kres
+at_small:
+    lod a, [x:y + FT_T1]
+    lod b, [x:y + FT_T]
+    sub a, b
+    cmp a, 28
+    jmf at_gen
+    lod a, [x:y + FT_XN]        ; |y| < 2^-27 |x|
+    cmp a, 0
+    jme at_tiny
+    mov b, K_PI_F
+    mov a, 0x10
+    jmp ft_kres
+at_tiny:
+    mov a, V4                   ; y / x, then the flags
+    mov b, V0
+    cal fx_cpy
+    mov b, V1
+    cal fx_div
+    mov a, V4
+    cal ft_eof
+    cmp a, 0
+    jme at_tu
+    mov a, 0x10
+    jmp ft_sres
+at_tu:
+    mov a, 0x18
+    jmp ft_sres
+at_gen:
+    mov a, V32
+    mov b, V0
+    cal fx_cpy
+    mov a, V33
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, V34
+    mov b, V1
+    cal fx_cpy
+    mov a, V35
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, 0
+    str [x:y + FT_D1], a
+    jmp ft_a2c
+at_y0:                          ; y = +-0
+    lod a, [x:y + FT_XN]
+    cmp a, 0
+    jme at_y0p
+    mov b, K_PI_F
+    mov a, 0x10
+    jmp ft_kres
+at_y0p:
+    mov a, V0
+    jmp fx_out
+at_x0:                          ; x = +-0, y not 0
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+at_yinf:
+    lod a, [x:y + FT_T1]
+    cmp a, 1
+    jme at_yx
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+at_yx:
+    lod a, [x:y + FT_XN]
+    cmp a, 0
+    jme at_yxp
+    mov b, K_3PIO4
+    mov a, 0x10
+    jmp ft_kres
+at_yxp:
+    mov b, K_PIO4
+    mov a, 0x10
+    jmp ft_kres
+at_xinf:                        ; x = +-inf, y finite and not 0
+    lod a, [x:y + FT_XN]
+    cmp a, 0
+    jme at_xp
+    mov b, K_PI_F
+    mov a, 0x10
+    jmp ft_kres
+at_xp:
+    mov b, K_ZERO
+    mov a, 0
+    jmp ft_kres
+at_nan:
+    lod b, [x:y + FT_T]
+    cmp b, 0
+    jme at_n1
+    jmp at_n2
+at_n1:
+    lod b, [x:y + V0B1]
+    and b, 0x40
+    jmz at_inv
+at_n2:
+    lod b, [x:y + FT_T1]
+    cmp b, 0
+    jme at_n3
+    jmp at_qn
+at_n3:
+    lod b, [x:y + V1B1]
+    and b, 0x40
+    jmz at_inv
+at_qn:
+    mov a, 0
+    jmp ft_nan
+at_inv:
+    mov a, 1
+    jmp ft_nan
+
+; ------------------------------------------------------------
+; asin, acos
+; ------------------------------------------------------------
+ft_asin:
+    mov a, 0
+    jmp as_go
+ft_acos:
+    mov a, 1
+as_go:
+    str [x:y + FT_MODE], a
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme as_nan
+    cmp a, 1
+    jme as_inv
+    cmp a, 2
+    jme as_zero
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov a, V0
+    cal fx_abs
+    mov a, V0
+    mov b, K_ONE
+    cal fx_cmpc
+    jms as_inv                  ; |x| > 1
+    jme as_one
+    cal l2_getE
+    lod b, [x:y + FT_MODE]
+    cmp b, 0
+    jme as_t1
+    cmp a, 101
+    jmf as_tc                   ; acos of |x| < 2^-26: pi/2
+    jmp as_gen
+as_t1:
+    cmp a, 114
+    jmf as_ta                   ; asin of |x| < 2^-13: x
+    jmp as_gen
+as_tc:
+    mov a, 0
+    str [x:y + FT_SGN], a
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+as_ta:
+    cmp a, 0
+    jme as_tb
+    mov a, 0x10
+    jmp as_tf
+as_tb:
+    mov a, 0x18
+as_tf:
+    psh a
+    mov a, V4
+    mov b, V0
+    cal fx_cpy
+    pop a
+    jmp ft_sres
+as_nan:
+    lod b, [x:y + V0B1]
+    and b, 0x40
+    jmz as_inv
+    mov a, 0
+    jmp ft_nan
+as_inv:
+    mov a, 1
+    jmp ft_nan
+as_zero:
+    lod a, [x:y + FT_MODE]
+    cmp a, 0
+    jme as_z1
+    mov a, 0
+    str [x:y + FT_SGN], a
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+as_z1:
+    mov a, V0
+    jmp fx_out
+as_one:
+    lod a, [x:y + FT_MODE]
+    cmp a, 0
+    jme as_o1
+    lod a, [x:y + FT_SGN]
+    cmp a, 0
+    jme as_op
+    mov a, 0
+    str [x:y + FT_SGN], a
+    mov b, K_PI_F
+    mov a, 0x10
+    jmp ft_kres
+as_op:
+    mov b, K_ZERO
+    mov a, 0
+    jmp ft_kres
+as_o1:
+    mov b, K_PIO2_F
+    mov a, 0x10
+    jmp ft_kres
+as_gen:
+    mov a, V6                   ; u1 = 1 - a = V6 + V7 (Fast2Sum)
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V0
+    cal fx_sub
+    mov a, V7
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V6
+    cal fx_sub
+    mov b, V0
+    cal fx_sub
+    mov a, V8                   ; u2 = 1 + a = V8 + V10
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V0
+    cal fx_add
+    mov a, V9
+    mov b, V8
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_subc
+    mov a, V10
+    mov b, V0
+    cal fx_cpy
+    mov b, V9
+    cal fx_sub
+    mov a, V11                  ; p = u1h u2h and its error (Dekker)
+    mov b, V6
+    cal fx_cpy
+    mov b, V8
+    cal fx_mul
+    mov a, V12
+    mov b, V6
+    cal fx_cpy
+    cal fx_t12
+    mov a, V13
+    mov b, V6
+    cal fx_cpy
+    mov b, V12
+    cal fx_sub
+    mov a, V14
+    mov b, V8
+    cal fx_cpy
+    cal fx_t12
+    mov a, V15
+    mov b, V8
+    cal fx_cpy
+    mov b, V14
+    cal fx_sub
+    mov a, V16
+    mov b, V12
+    cal fx_cpy
+    mov b, V14
+    cal fx_mul
+    mov b, V11
+    cal fx_sub
+    mov a, V17
+    mov b, V12
+    cal fx_cpy
+    mov b, V15
+    cal fx_mul
+    mov a, V16
+    mov b, V17
+    cal fx_add
+    mov a, V17
+    mov b, V13
+    cal fx_cpy
+    mov b, V14
+    cal fx_mul
+    mov a, V16
+    mov b, V17
+    cal fx_add
+    mov a, V17
+    mov b, V13
+    cal fx_cpy
+    mov b, V15
+    cal fx_mul
+    mov a, V16
+    mov b, V17
+    cal fx_add                  ; V16 = error of p
+    mov a, V17                  ; cross terms u1h u2l + u1l u2h
+    mov b, V6
+    cal fx_cpy
+    mov b, V10
+    cal fx_mul
+    mov a, V18
+    mov b, V7
+    cal fx_cpy
+    mov b, V8
+    cal fx_mul
+    mov a, V17
+    mov b, V18
+    cal fx_add
+    mov a, V16
+    mov b, V17
+    cal fx_add                  ; m = V11 + V16
+    cal ft_dsq
+    mov a, 0
+    str [x:y + FT_D1], a
+    lod a, [x:y + FT_MODE]
+    cmp a, 0
+    jme as_gs
+    mov a, V32                  ; acos: P = s, R = |x|
+    mov b, V26
+    cal fx_cpy
+    mov a, V33
+    mov b, V27
+    cal fx_cpy
+    mov a, V34
+    mov b, V0
+    cal fx_cpy
+    mov a, V35
+    mov b, K_ZERO
+    cal fx_cpyc
+    lod a, [x:y + FT_SGN]       ; x negative: pi - ..., the result has no sign
+    str [x:y + FT_XN], a
+    mov a, 0
+    str [x:y + FT_SGN], a
+    jmp ft_a2c
+as_gs:
+    mov a, V32                  ; asin: P = |x|, R = s
+    mov b, V0
+    cal fx_cpy
+    mov a, V33
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, V34
+    mov b, V26
+    cal fx_cpy
+    mov a, V35
+    mov b, V27
+    cal fx_cpy
+    mov a, 0
+    str [x:y + FT_XN], a
+
+; ------------------------------------------------------------
+; ft_a2c: the angle of (P, R) = (V32 + V33, V34 + V35), positive pairs, with
+; the sign FT_SGN, x negative FT_XN, FT_D1 = 1 if R = 1: K + s atan (t).
+; ------------------------------------------------------------
+ft_a2c:
+    mov a, V32
+    mov b, V34
+    cal fx_cmp
+    jmf ac_lt                   ; P < R
+    mov a, V20                  ; t = R / P
+    mov b, V34
+    cal fx_cpy
+    mov a, V21
+    mov b, V35
+    cal fx_cpy
+    mov a, V22
+    mov b, V32
+    cal fx_cpy
+    mov a, V23
+    mov b, V33
+    cal fx_cpy
+    cal ft_ddiv
+    mov a, 1
+    str [x:y + FT_K], a
+    lod a, [x:y + FT_XN]
+    xor a, 0x80
+    str [x:y + FT_S], a
+    jmp ac_go
+ac_lt:
+    lod a, [x:y + FT_D1]
+    cmp a, 0
+    jme ac_dv
+    mov a, V4                   ; R = 1: t = P
+    mov b, V32
+    cal fx_cpy
+    mov a, V5
+    mov b, V33
+    cal fx_cpy
+    jmp ac_ks
+ac_dv:
+    mov a, V20                  ; t = P / R
+    mov b, V32
+    cal fx_cpy
+    mov a, V21
+    mov b, V33
+    cal fx_cpy
+    mov a, V22
+    mov b, V34
+    cal fx_cpy
+    mov a, V23
+    mov b, V35
+    cal fx_cpy
+    cal ft_ddiv
+ac_ks:
+    lod a, [x:y + FT_XN]
+    cmp a, 0
+    jme ac_k0
+    mov a, 2
+    str [x:y + FT_K], a
+    mov a, 0x80
+    str [x:y + FT_S], a
+    jmp ac_go
+ac_k0:
+    mov a, 0
+    str [x:y + FT_K], a
+    str [x:y + FT_S], a
+ac_go:
+    cal ft_atanc
+    cal ft_comb
+    mov a, 0x10
+    jmp ft_sres
+
+; ------------------------------------------------------------
+; ft_comb: V4 + V5 = K + s (V4 + V5), K = FT_K (0, pi/2, pi), s = FT_S.
+; ------------------------------------------------------------
+ft_comb:
+    lod a, [x:y + FT_K]
+    cmp a, 0
+    jme fc_end
+    lod a, [x:y + FT_S]
+    cmp a, 0
+    jme fc_p
+    mov a, V4
+    cal fx_neg
+    mov a, V5
+    cal fx_neg
+fc_p:
+    mov a, V6
+    mov b, K_PIO2_F
+    cal fx_cpyc
+    mov a, V7
+    mov b, K_PIO2_L
+    cal fx_cpyc
+    lod a, [x:y + FT_K]
+    cmp a, 2
+    jme fc_d
+    jmp fc_s
+fc_d:
+    mov a, V6
+    mov b, V6
+    cal fx_add
+    mov a, V7
+    mov b, V7
+    cal fx_add
+fc_s:
+    mov a, V8                   ; s1 = KH + ah
+    mov b, V6
+    cal fx_cpy
+    mov b, V4
+    cal fx_add
+    mov a, V9                   ; e = (KH - s1) + ah
+    mov b, V6
+    cal fx_cpy
+    mov b, V8
+    cal fx_sub
+    mov b, V4
+    cal fx_add
+    mov a, V10                  ; L = KL + al + e
+    mov b, V7
+    cal fx_cpy
+    mov b, V5
+    cal fx_add
+    mov b, V9
+    cal fx_add
+    mov a, V4
+    mov b, V8
+    cal fx_cpy
+    mov b, V10
+    cal fx_add
+fc_end:
+    ret
+
+; ------------------------------------------------------------
+; ft_atanc: V4 + V5 = atan (V4 + V5), 0 < t <= 1 (a little more is fine).
+; ------------------------------------------------------------
+ft_atanc:
+    mov a, V6                   ; th, tl
+    mov b, V4
+    cal fx_cpy
+    mov a, V7
+    mov b, V5
+    cal fx_cpy
+    mov a, V8                   ; j = round (16 th)
+    mov b, V6
+    cal fx_cpy
+    mov b, K_16
+    cal fx_mulc
+    cal fx_rint
+    cal fx_toi
+    lod a, [x:y + V8B3]         ; i:j = fx_ta + 12 j
+    mov d, a
+    mov c, 0
+    add d, d
+    adc c, c
+    add d, d
+    adc c, c
+    mov a, c
+    mov b, d
+    add b, b
+    adc a, a
+    add d, b
+    adc c, a
+    mov i, fx_ta.msb
+    mov j, fx_ta.lsb
+    add j, d
+    adc i, c
+    mov a, V9                   ; c
+    cal fx_cpp
+    add j, 4
+    adc i, 0
+    mov a, V10                  ; atan c, high
+    cal fx_cpp
+    add j, 4
+    adc i, 0
+    mov a, V11                  ; atan c, low
+    cal fx_cpp
+    mov a, V12                  ; dh = th - c (exact)
+    mov b, V6
+    cal fx_cpy
+    mov b, V9
+    cal fx_sub
+    mov a, V13                  ; d1, d2
+    mov b, V12
+    cal fx_cpy
+    cal fx_t12
+    mov a, V14
+    mov b, V12
+    cal fx_cpy
+    mov b, V13
+    cal fx_sub
+    mov a, V15                  ; A = 1 + c^2 (exact)
+    mov b, V9
+    cal fx_cpy
+    mov b, V9
+    cal fx_mul
+    mov b, K_ONE
+    cal fx_addc
+    mov a, V16                  ; B1 = c d1, B2 = c d2, B3 = c tl
+    mov b, V9
+    cal fx_cpy
+    mov b, V13
+    cal fx_mul
+    mov a, V17
+    mov b, V9
+    cal fx_cpy
+    mov b, V14
+    cal fx_mul
+    mov a, V18
+    mov b, V9
+    cal fx_cpy
+    mov b, V7
+    cal fx_mul
+    mov a, V22                  ; D = Dh + Dl = A + B1 + B2 + B3
+    mov b, V15
+    cal fx_cpy
+    mov b, V16
+    cal fx_add
+    mov a, V23
+    mov b, V15
+    cal fx_cpy
+    mov b, V22
+    cal fx_sub
+    mov b, V16
+    cal fx_add
+    mov a, V17
+    mov b, V18
+    cal fx_add
+    mov a, V23
+    mov b, V17
+    cal fx_add
+    mov a, V20                  ; N = dh + tl
+    mov b, V12
+    cal fx_cpy
+    mov a, V21
+    mov b, V7
+    cal fx_cpy
+    cal ft_ddiv                 ; u = V4 + V5
+    mov a, V6                   ; z = uh^2
+    mov b, V4
+    cal fx_cpy
+    mov b, V4
+    cal fx_mul
+    mov a, V7                   ; S = 1/3 - z/5 + z^2/7
+    mov b, K_1_7
+    cal fx_cpyc
+    mov b, V6
+    cal fx_mul
+    mov b, K_M1_5
+    cal fx_addc
+    mov b, V6
+    cal fx_mul
+    mov b, K_1_3
+    cal fx_addc
+    mov a, V8                   ; uh^3 S
+    mov b, V4
+    cal fx_cpy
+    mov b, V6
+    cal fx_mul
+    mov b, V7
+    cal fx_mul
+    mov a, V12                  ; w = (ul - uh^3 S) + atan c low
+    mov b, V5
+    cal fx_cpy
+    mov b, V8
+    cal fx_sub
+    mov b, V11
+    cal fx_add
+    mov a, V13                  ; s = atan c high + uh
+    mov b, V10
+    cal fx_cpy
+    mov b, V4
+    cal fx_add
+    mov a, V14                  ; e = (atan c high - s) + uh
+    mov b, V10
+    cal fx_cpy
+    mov b, V13
+    cal fx_sub
+    mov b, V4
+    cal fx_add
+    mov b, V12
+    cal fx_add
+    mov a, V4                   ; hi = s + e, lo = (s - hi) + e
+    mov b, V13
+    cal fx_cpy
+    mov b, V14
+    cal fx_add
+    mov a, V5
+    mov b, V13
+    cal fx_cpy
+    mov b, V4
+    cal fx_sub
+    mov b, V14
+    cal fx_add
+    ret

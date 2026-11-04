@@ -1,0 +1,212 @@
+; C runtime: float helpers (ABI.md section 11). float and double are the same
+; type, IEEE 754 binary32 (the float library, lib/asm/math/float).
+;
+; A float is held like a long: [c:d]:[a:b], c = the sign and the high bits of
+; the exponent. The left operand of a binary operation is in [x:y]:[i:j]
+; (x first), the right one in [c:d]:[a:b]. The helpers put both on the stack
+; (big endian, as the float library wants them) and call it.
+;
+;   __plusf __minusf __mulf __divf          [c:d]:[a:b] = left op right
+;   __cceqf __ccnef __ccltf __ccgtf __cclteqf __ccgteqf
+;                                           [a:b] = 0 or 1 (< <= > >= raise
+;                                           FE_INVALID for a NaN, == != only
+;                                           for a signaling NaN)
+;   __pluseqf __minuseqf __muleqf __diveqf  [x:y] = the address of the
+;                                           variable, [c:d]:[a:b] = the right
+;                                           operand; the variable changes, the
+;                                           result is its new value
+;   __postincf __postdecf                   the same, the result is the old
+;                                           value (x++ when the value is used)
+;   __cast<int>_f   int to float (int: none = int, u, c, uc, l, ul); the
+;                   value in b / [a:b] / [c:d]:[a:b]
+;   __castf_<int>   float to int, toward zero (C leaves a value out of range
+;                   undefined: here the low bytes of the 32-bit conversion,
+;                   ftoi / ftou, which raises FE_INVALID)
+; Unary - and the tests of a float (if (f), !f) are inline.
+; The helpers change every register (but SP), like the others.
+
+; ---- binary operations: the routine of the float library ([x:y] op [i:j])
+; Stack: left at [sp + 0..3], right at [sp + 4..7].
+__plusf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fadd
+    jmp __fl_res
+__minusf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fsub
+    jmp __fl_res
+__mulf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fmul
+    jmp __fl_res
+__divf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fdiv
+__fl_res:                       ; the result = the left float, then drop both
+    pop b, a, d, c
+    asp 4
+    ret
+
+; x:y = the left float, i:j = the right one (called with both pushed: the
+; return address is at [sp + 0..1], the left float at [sp + 2..5])
+__fl_ptrs:
+    rsp [x:y]
+    add y, 2
+    adc x, 0
+    mov i, x
+    mov j, y
+    add j, 4
+    adc i, 0
+    ret
+
+; ---- comparisons: a = the predicate (feq...), then [a:b] = 0 / 1
+__cceqf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal feq
+    jmp __fl_bool
+__ccnef:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fne
+    jmp __fl_bool
+__ccltf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal flt
+    jmp __fl_bool
+__ccgtf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fgt
+    jmp __fl_bool
+__cclteqf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fle
+    jmp __fl_bool
+__ccgteqf:
+    psh b, a, d, c
+    psh j, i, y, x
+    cal __fl_ptrs
+    cal fge
+__fl_bool:
+    asp 8
+    mov b, a
+    mov a, 0
+    ret
+
+; ---- assignment operators: the routine works on the variable itself
+__pluseqf:
+    psh b, a, d, c
+    rsp [i:j]
+    cal fadd
+    jmp __fl_new
+__minuseqf:
+    psh b, a, d, c
+    rsp [i:j]
+    cal fsub
+    jmp __fl_new
+__muleqf:
+    psh b, a, d, c
+    rsp [i:j]
+    cal fmul
+    jmp __fl_new
+__diveqf:
+    psh b, a, d, c
+    rsp [i:j]
+    cal fdiv
+__fl_new:                       ; the result: the new value of the variable
+    asp 4
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    ret
+
+; x++, x-- (value used): the old value is the result. The routines keep the
+; registers, so [c:d]:[a:b] still holds it after the call.
+__postincf:
+    psh b, a, d, c
+    rsp [i:j]
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    cal fadd
+    asp 4
+    ret
+__postdecf:
+    psh b, a, d, c
+    rsp [i:j]
+    lod c, [x:y]
+    lod d, [x:y + 1]
+    lod a, [x:y + 2]
+    lod b, [x:y + 3]
+    cal fsub
+    asp 4
+    ret
+
+; ---- integer to float: extend to 32 bits, then itof / utof in place
+__castc_f:                      ; signed char in b
+    mov a, b
+    shl a
+    mov a, 0
+    sbb a, 0
+__cast_f:                       ; int in [a:b]
+    mov c, a
+    shl c
+    mov c, 0
+    sbb c, 0
+    mov d, c
+__castl_f:                      ; long in [c:d]:[a:b]
+    psh b, a, d, c
+    rsp [x:y]
+    cal itof
+    pop b, a, d, c
+    ret
+__castuc_f:                     ; unsigned char in b
+    mov a, 0
+__castu_f:                      ; unsigned int in [a:b]
+    mov c, 0
+    mov d, 0
+__castul_f:                     ; unsigned long in [c:d]:[a:b]
+    psh b, a, d, c
+    rsp [x:y]
+    cal utof
+    pop b, a, d, c
+    ret
+
+; ---- float to integer: ftoi (ftou for unsigned long), the low bytes kept
+__castf_c:
+__castf_uc:
+__castf_:
+__castf_u:
+__castf_l:
+    psh b, a, d, c
+    rsp [x:y]
+    cal ftoi
+    pop b, a, d, c
+    ret
+__castf_ul:
+    psh b, a, d, c
+    rsp [x:y]
+    cal ftou
+    pop b, a, d, c
+    ret
+
+; The float library itself (its routines keep every register, unlike these).
+.include "../lib/asm/math/float/float.has"

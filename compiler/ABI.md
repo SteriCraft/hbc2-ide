@@ -17,7 +17,7 @@ Section 11 describes the runtime helpers, in `compiler/runtime`.
 | `long`, `unsigned long` | 4 | |
 | pointers | 2 | function pointers too |
 | `enum` | 2 | same as `int` |
-| `float`, `double` | — | not supported: the compiler stops with an error |
+| `float`, `double`, `long double` | 4 | the same type: IEEE 754 binary32 (see below) |
 
 * Every value is stored **big-endian**: the most significant byte at the
   lowest address, like the assembler's `.data16` / `.data32` and the return
@@ -25,6 +25,12 @@ Section 11 describes the runtime helpers, in `compiler/runtime`.
 * No alignment: struct members and variables can start at any address, and
   structs have no padding.
 * Signed values are in two's complement.
+* `float` (and `double`, which is the same type): IEEE 754 binary32, held
+  like a `long` (`[c:d]:[a:b]`, c = the sign and the high bits of the
+  exponent), rounding to nearest even, with subnormals, infinities, NaNs
+  and the exception flags of `fenv.h`. A NaN made by an operation is
+  always 0x7FC00000. The code is the float library
+  (`lib/asm/math/float`, tested by `tools/ftest`).
 
 ## 2. Memory map
 
@@ -379,7 +385,7 @@ into registers. The right operand is in the working register.
 * The helpers are written for this convention (they don't keep registers,
   unlike the math library), in `compiler/runtime`: `compare.has`,
   `long.has`, `mul.has`, `div.has`, `shift.has`, `assign.has`,
-  `switch.has`, all included by `runtime.has` (about 6.5 KB; a program
+  `switch.has`, `float.has`, all included by `runtime.has` (a program
   carries only the helpers it uses).
 * `mul.has`, `div.has` and `shift.has` use the methods of the math
   library (8 steps of a byte written out, whole bytes moved first) and
@@ -398,11 +404,24 @@ in `[a:b]`.
 each case its value (the size of the type) and the address of its code, then
 the address of the `default` code (or of the end of the switch).
 
+Floats (`runtime/float.has`, which includes the float library): the
+helpers have the `f` suffix and the registers of `long` (left operand in
+`[x:y]:[i:j]`, right one in `[c:d]:[a:b]`): `__plusf` `__minusf` `__mulf`
+`__divf`, the comparisons `__cceqf` … `__ccgteqf` (`<` `<=` `>` `>=` raise
+FE_INVALID for any NaN, `==` `!=` only for a signaling one), the
+assignment operators `__pluseqf` `__minuseqf` `__muleqf` `__diveqf` and
+`__postincf` `__postdecf` (`[x:y]` = the address), and the conversions
+`__cast<int>_f` and `__castf_<int>` (int: none, `u`, `c`, `uc`, `l`, `ul`;
+float to integer goes toward zero; out of range, which C leaves
+undefined, gives the low bytes of the 32-bit conversion and FE_INVALID).
+Unary `-` flips the sign bit inline; a float as a condition (`if (f)`,
+`!f`, `&&`) is tested inline, -0.0 being false and a NaN true. The
+float library keeps every register, the helpers don't (like the others).
+
 ## 12. C supported by the compiler
 
 The Fuzix Compiler Kit compiles C89, without:
 
-* `float` and `double` (HBC-2 choice),
 * bitfields,
 * structures passed or returned by value (assignment works: `a = b`,
   `a = *p`, `struct s v = w;`),
@@ -411,6 +430,12 @@ The Fuzix Compiler Kit compiles C89, without:
 Other limits:
 
 * Local variables have function-wide scope, not block scope.
+* `i += f` with an integer `i` and a float `f` converts `f` to the type of
+  `i` first (FCC), where C computes in float: with `i = 1`, `i += -0.5`
+  adds 0 and leaves 1, C gives `(int)(1 - 0.5)` = 0. Write `i = i + f`.
+  (`f += i` is right.)
+* Constant float expressions are computed by the compiler (`1.0f / 3`,
+  `1.0f / 0.0f`): they raise no exception flag at run time.
 * `const` and `volatile` are accepted but mostly ignored.
 * There are at most 32 parameters per function, 128 `case` labels per
   `switch`, 30 members per struct and 50 `enum` constants.

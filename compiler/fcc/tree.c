@@ -4,6 +4,7 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <string.h>
 #include <unistd.h>
 
@@ -542,6 +543,103 @@ static unsigned tree_impure(register struct node *n)
  *	as we remove a lot of nodes as we go.
  */
 
+/* HBC-2 (see UPSTREAM.md): a cast of a constant to or from float is
+   folded, so that "float f = 1;" and "int i = 2.5;" are constants (static
+   initializers need them). The host's float is IEEE 754 binary32 like the
+   target's (double is remapped to float); float to integer truncates. */
+static struct node *fold_float_cast(struct node *n, struct node *r)
+{
+	unsigned nt = n->type;
+	unsigned rt = r->type;
+	uint32_t bits;
+	unsigned long v;
+	float f;
+
+	if (nt == FLOAT && rt == FLOAT)
+		bits = (uint32_t)r->value;
+	else if (nt == FLOAT) {
+		if (!IS_INTARITH(rt))
+			return NULL;
+		v = trim_constant(rt, r->value, 0);
+		if (rt & UNSIGNED)
+			f = (float)(uint32_t)v;
+		else
+			f = (float)(int32_t)v;
+		memcpy(&bits, &f, 4);
+	} else {
+		if (!IS_INTARITH(nt))
+			return NULL;
+		bits = (uint32_t)r->value;
+		memcpy(&f, &bits, 4);
+		if (f != f)
+			v = 0;
+		else if (f >= 2147483648.0f || f < -2147483648.0f)
+			v = (nt & UNSIGNED) && f > 0 && f < 4294967296.0f ? (unsigned long)(uint32_t)f : 0x80000000UL;
+		else
+			v = (unsigned long)(int32_t)f;
+		return replace_constant(n, nt, v);
+	}
+	free_tree(n);
+	return make_constant(bits, FLOAT);
+}
+
+/* HBC-2: + - * / and the comparisons of two float constants, done with the
+   host's float (IEEE 754 binary32, round to nearest even: the result the
+   HBC-2 gives, without the exception flags). So 1.0f / 0.0f (INFINITY) is a
+   constant. A NaN result is the target's quiet NaN 0x7FC00000. */
+static struct node *fold_float_binary(struct node *n, struct node *l, struct node *r)
+{
+	uint32_t lb = (uint32_t)l->value, rb = (uint32_t)r->value, bits;
+	float a, b, f;
+	unsigned long v;
+
+	memcpy(&a, &lb, 4);
+	memcpy(&b, &rb, 4);
+	switch (n->op) {
+	case T_PLUS:
+		f = a + b;
+		break;
+	case T_MINUS:
+		f = a - b;
+		break;
+	case T_STAR:
+		f = a * b;
+		break;
+	case T_SLASH:
+		f = a / b;
+		break;
+	case T_EQEQ:
+		v = a == b;
+		goto boolean;
+	case T_BANGEQ:
+		v = a != b;
+		goto boolean;
+	case T_LT:
+		v = a < b;
+		goto boolean;
+	case T_LTEQ:
+		v = a <= b;
+		goto boolean;
+	case T_GT:
+		v = a > b;
+		goto boolean;
+	case T_GTEQ:
+		v = a >= b;
+		goto boolean;
+	default:
+		return NULL;
+	}
+	if (f != f)
+		bits = 0x7FC00000UL;
+	else
+		memcpy(&bits, &f, 4);
+	free_tree(n);
+	return make_constant(bits, FLOAT);
+boolean:
+	free_tree(n);
+	return make_constant(v, CINT);
+}
+
 struct node *constify(register struct node *n)
 {
 	register struct node *l = n->left;
@@ -556,6 +654,12 @@ struct node *constify(register struct node *n)
 	   so all we have to worry about is truncating constants and just
 	   relabelling the type on a name or label */
 	if (op == T_CAST) {
+		if (r->op == T_CONSTANT && !PTR(n->type) && !PTR(r->type) &&
+		    (n->type == FLOAT || r->type == FLOAT)) {
+			struct node *c = fold_float_cast(n, r);
+			if (c)
+				return c;
+		}
 		if (r->op == T_CONSTANT && IS_INTORPTR(r->type))
 			return replace_constant(n, n->type, r->value);
 		if (IS_INTORPTR(n->type) && (r->op == T_NAME || r->op == T_LABEL)) {
@@ -697,6 +801,9 @@ struct node *constify(register struct node *n)
 		}
 		/* Only do constant work with simple types */
 		/* The right hand type has already been made to match by arith_pro_tree() */
+		if (lt == FLOAT && l->op == T_CONSTANT && r->op == T_CONSTANT &&
+		    !(l->flags & LVAL))
+			return fold_float_binary(n, l, r);
 		if (!IS_INTORPTR(lt))
 			return NULL;
 		if (l->flags & LVAL)

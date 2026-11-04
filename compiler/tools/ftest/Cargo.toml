@@ -1,0 +1,14 @@
+[package]
+name = "ftest"
+version = "0.1.0"
+edition = "2024"
+description = "Tests of the float library (compiler/lib/asm/math/float) on the emulator"
+
+[workspace]
+
+[dependencies]
+hbc2-core = { path = "../../../hbc2/crates/hbc2-core" }
+hbc2-asm = { path = "../../../hbc2/crates/hbc2-asm" }
+
+[profile.release]
+opt-level = 3

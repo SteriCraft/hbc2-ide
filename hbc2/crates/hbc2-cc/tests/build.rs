@@ -144,7 +144,7 @@ fn error_lines() {
             "#include \"defs.h\"\nint main(void)\n{\n  int x = 1\n  return x;\n}\n",
         ),
         ("defs.h", "int f(void);\nint g(void) { return ; }\n"),
-        ("a.c", "int f(void)\n{\n  float q;\n  return 0;\n}\n"),
+        ("a.c", "int f(void)\n{\n  float q; q = nope;\n  return 0;\n}\n"),
         ("b.c", "int h(void) { return 0; }\n#include \"nothere.h\"\n"),
         ("c.c", "int k(void) { return 0; }\n\n#error stop here\n"),
     ];
@@ -176,7 +176,7 @@ fn error_lines() {
     );
     assert!(!at("defs.h", 2).is_empty(), "{all}");
     assert!(
-        at("a.c", 3).iter().any(|d| d.message.contains("float")),
+        at("a.c", 3).iter().any(|d| d.message.contains("unknown symbol")),
         "{all}"
     );
     assert!(

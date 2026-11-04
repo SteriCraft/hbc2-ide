@@ -1,0 +1,565 @@
+; ============================================================
+; Exponentials: exp, exp2, exp10
+; ============================================================
+;   exp    [x:y] = e ^ [x:y]
+;   exp2   [x:y] = 2 ^ [x:y]
+;   exp10  [x:y] = 10 ^ [x:y]
+;
+; The result is within 0.51 ulp of the exact value (nearly always the correctly
+; rounded float; checked against the f64 functions). A result that is
+; subnormal is rounded twice (once as a normal number, once to the subnormal
+; one): it can be 1 ulp off. Exceptions (fenv.has):
+;   FE_INEXACT   always, but for exp(0) = 1 and 2^n (n an integer)
+;   FE_OVERFLOW + FE_INEXACT   the result is too large (+inf)
+;   FE_UNDERFLOW + FE_INEXACT  the result is tiny (a subnormal or 0)
+;   FE_INVALID   a signaling NaN (result: the quiet NaN)
+; exp(+inf) = +inf, exp(-inf) = +0, a quiet NaN gives the quiet NaN.
+; Flags of the CPU: undefined. Other registers are restored. The exceptions
+; that the operations inside could raise are NOT left in fenv_flags: only
+; the ones above (the flags the program had are kept).
+;
+; How it works. 2^P is computed for P = P0 + P1, a pair of floats (P0 the
+; high part, |P1| much smaller), so that no accuracy is lost on the product
+; x log2(e):
+;   * P0 + P1 is made canonical (Fast2Sum), k = round(P0), f = P0 - k
+;     (exact), j = round(32 f), r = f - j/32 + P1 (|r| <= 1/64 + a little);
+;   * 2^r = e^w with w = r ln 2 = 1 + q, q = w + w^2 (1/2 + w/6), which is
+;     accurate to 2^-39 for the small w;
+;   * 2^(j/32) is the table fx_t2, as a high float TH and a low float TL, so
+;     the mantissa is TH + (TH q + TL): one single rounding;
+;   * ldexp puts 2^k.
+; For exp and exp10, x log2(e) = xh L1 + (xl L1 + x L2): x is split in xh
+; (12 bits) + xl, log2(e) in L1 (12 bits) + L2: xh L1 is exact.
+;
+; The frame holds floats in slots of 4 bytes (V0..V21 and SI: fx.has) and a
+; few bytes (FX_*). V0 = the argument, V1 = the 2nd argument of pow, V2 and V3
+; = P0 and P1 for fx_exp2c, V4 = the result.
+
+
+.define V0   0
+.define V0B1 1
+.define V0B2 2
+.define V0B3 3
+.define V1   4
+.define V1B1 5
+.define V1B2 6
+.define V1B3 7
+.define V2   8
+.define V3   12
+.define V4   16
+.define V4B1 17
+.define V4B2 18
+.define V4B3 19
+.define V5   20
+.define V6   24
+.define V7   28
+.define V8   32
+.define V9   36
+.define V10  40
+.define V11  44
+.define V12  48
+.define V13  52
+.define V14  56
+.define V15  60
+.define V16  64
+.define V17  68
+.define V18  72
+.define V19  76
+.define V20  80
+.define V21  84
+.define SI   88             ; an int32 (ftoi / itof)
+.define SI1  89
+.define SI2  90
+.define SI3  91
+.define FX_DM  92           ; the saved [x:y]
+.define FX_DL  93
+; byte 94 is free
+.define FX_FL  95           ; fenv_flags at the start
+.define FX_KH  96           ; k (16 bits)
+.define FX_KL  97
+.define FX_J   98
+.define FX_XF  99           ; FE_INEXACT or 0
+.define FX_EH  100          ; e of the logarithm (16 bits)
+.define FX_EL  101
+.define FX_KO  102          ; offset in fx_k of the constants of the function
+.define FX_THR 103          ; high byte of |x| from which exp is out of range
+.define FX_SGN 104          ; 0x80 if the result of pow is negative
+.define FX_T0  105          ; scratch byte
+; --- more slots (trig: ftrig.has) and the bytes of the reduction
+.define V22  112
+.define V23  116
+.define V24  120
+.define V25  124
+.define V26  128
+.define V27  132
+.define V28  136
+.define V29  140
+.define V30  144
+.define V31  148
+.define V32  152
+.define V33  156
+.define V34  160
+.define V35  164
+.define V36  168
+.define V37  172
+.define FT_ACC  176         ; 13 bytes of the product + 12 zero bytes
+; bytes 201..219 are free
+.define FT_M0   220
+.define FT_M1   221
+.define FT_M2   222
+.define FT_Q    223         ; quadrant
+.define FT_SH   224
+.define FT_NG   225
+.define FT_SGN  226
+.define FT_MODE 227
+.define FT_KT   228
+.define FT_T    229
+.define FT_K    230         ; atan: 0 none, 1 pi/2, 2 pi added to the angle
+.define FT_S    231         ; 0x80 if the angle is subtracted
+.define FT_XN   232         ; 0x80 if x is negative (atan2)
+.define FT_D1   233         ; 1 if the denominator of the ratio is 1
+.define FT_T1   234
+.define V8B3    35
+.define FX_PAIR  235        ; mode of exp2c / log: see fhyp.has
+.define FX_FRAME 240
+
+fexp:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_exp
+fexp2:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_exp2
+fexp10:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_exp10
+flog:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_log
+flog2:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_log2
+flog10:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp fx_log10
+fpow:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main2
+    jmp fx_pow
+
+; fx_main, fx_main2: called by the entry of a function right after its
+; `ssp FX_FRAME`. They fill the frame (V0 = the float at [x:y], fx_main2 also
+; V1 = the float at [i:j], the 2nd argument) and return with x:y = the frame;
+; the entry then jumps to its own code. (Each entry names its code, so that a
+; program keeps only the functions it calls.)
+fx_main2:
+    rsp [c:d]
+    add d, 2                    ; the frame is above the return address
+    adc c, 0
+    lod a, [i:j]
+    str [c:d + V1], a
+    lod a, [i:j + 1]
+    str [c:d + V1B1], a
+    lod a, [i:j + 2]
+    str [c:d + V1B2], a
+    lod a, [i:j + 3]
+    str [c:d + V1B3], a
+    jmp fxm_arg
+fx_main:
+    rsp [c:d]
+    add d, 2
+    adc c, 0
+fxm_arg:
+    str [c:d + FX_DM], x
+    str [c:d + FX_DL], y
+    lod a, [x:y]
+    str [c:d + V0], a
+    lod a, [x:y + 1]
+    str [c:d + V0B1], a
+    lod a, [x:y + 2]
+    str [c:d + V0B2], a
+    lod a, [x:y + 3]
+    str [c:d + V0B3], a
+    mov a, 0
+    str [c:d + FX_PAIR], a
+    str [c:d + FT_SGN], a
+    lod a, fenv_flags
+    str [c:d + FX_FL], a
+    mov x, c
+    mov y, d                    ; x:y = the frame
+    ret
+
+; fx_out: a = the offset of the result slot. Writes it to the destination and
+; leaves the function.
+fx_out:
+    mov i, x
+    mov j, y
+    add j, a
+    adc i, 0                    ; i:j = the result
+    lod c, [x:y + FX_DM]
+    lod d, [x:y + FX_DL]
+    lod a, [i:j]
+    str [c:d], a
+    lod a, [i:j + 1]
+    str [c:d + 1], a
+    lod a, [i:j + 2]
+    str [c:d + 2], a
+    lod a, [i:j + 3]
+    str [c:d + 3], a
+    mov i, x
+    mov j, y
+    lod x, [i:j + FX_DM]
+    lod y, [i:j + FX_DL]
+    asp FX_FRAME
+    pop a, b, c, d, i, j
+    ret
+
+; fx_setfl: fenv_flags = the flags of the start + the flags of the mask a.
+fx_setfl:
+    psh a, b
+    lod b, [x:y + FX_FL]
+    or a, b
+    cal fe_set
+    pop a, b
+    ret
+
+; fx_putc: V4 = the float with the bytes c, d, 0, 0; flags as fx_setfl (a).
+fx_putc:
+    str [x:y + V4], c
+    str [x:y + V4B1], d
+    mov c, 0
+    str [x:y + V4B2], c
+    str [x:y + V4B3], c
+    jmp fx_setfl
+
+; fx_exit: the same, and the function ends with V4.
+fx_exit:
+    cal fx_putc
+    mov a, V4
+    jmp fx_out
+
+; ------------------------------------------------------------
+; exp / exp2 / exp10
+; ------------------------------------------------------------
+fx_exp:
+    mov a, K_L2E_1
+    str [x:y + FX_KO], a
+    mov a, 0x43                 ; |x| >= 128
+    jmp fxe_go
+fx_exp10:
+    mov a, K_L210_1
+    str [x:y + FX_KO], a
+    mov a, 0x43
+    jmp fxe_go
+fx_exp2:
+    mov a, 0xFF
+    str [x:y + FX_KO], a
+    mov a, 0x44                 ; |x| >= 512
+fxe_go:
+    str [x:y + FX_THR], a
+    lod a, [x:y + V0]
+    and a, 0x7F
+    lod b, [x:y + FX_THR]
+    cmp a, b
+    jmf fxe_normal
+    cmp a, 0x7F
+    jme fxe_7f
+fxe_big:                        ; finite, too large for the type
+    lod a, [x:y + V0]
+    cmp a, 0x80
+    jmf fxe_ovf
+    jmp fxe_udf
+fxe_7f:
+    lod b, [x:y + V0B1]
+    cmp b, 0x80
+    jmf fxe_big                 ; exponent 254
+    and b, 0x7F
+    or b, [x:y + V0B2]
+    or b, [x:y + V0B3]
+    jmz fxe_inf
+    lod b, [x:y + V0B1]         ; NaN: invalid if signaling
+    and b, 0x40
+    jmz fxe_snan
+    mov a, 0
+    jmp fxe_nan
+fxe_snan:
+    mov a, 1
+fxe_nan:
+    mov c, 0x7F
+    mov d, 0xC0
+    jmp fx_exit
+fxe_inf:
+    lod a, [x:y + V0]
+    cmp a, 0x80
+    jmf fxe_ovf0                ; +inf
+    mov c, 0                    ; -inf: +0
+    mov d, 0
+    mov a, 0
+    jmp fx_exit
+fxe_ovf0:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+fxe_ovf:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0x14
+    jmp fx_exit
+fxe_udf:
+    mov c, 0
+    mov d, 0
+    mov a, 0x18
+    jmp fx_exit
+
+fxe_normal:
+    mov a, V0
+    cal fx_isz
+    jmz fxe_zero
+    cal fx_p01
+    jmp fxe_exp2
+
+; fx_p01: V2 + V3 = V0 log2(e) (or V0 log2(10), or V0): the argument of 2^
+fx_p01:
+    lod a, [x:y + FX_KO]
+    cmp a, 0xFF
+    jme fxe_p2
+    mov a, V2                   ; xh, xl
+    mov b, V0
+    cal fx_cpy
+    cal fx_t12
+    mov a, V3
+    cal fx_cpy
+    mov b, V2
+    cal fx_sub
+    lod b, [x:y + FX_KO]
+    mov a, V2
+    cal fx_mulc                 ; P0 = xh L1 (exact)
+    mov a, V3
+    cal fx_mulc                 ; xl L1
+    mov a, V4
+    mov b, V0
+    cal fx_cpy
+    lod b, [x:y + FX_KO]
+    add b, 4
+    cal fx_mulc                 ; x L2
+    mov a, V3
+    mov b, V4
+    cal fx_add                  ; P1
+    ret
+fxe_p2:
+    mov a, V2
+    mov b, V0
+    cal fx_cpy
+    mov a, 0
+    str [x:y + V3], a
+    str [x:y + 13], a
+    str [x:y + 14], a
+    str [x:y + 15], a
+    ret
+fxe_exp2:
+    cal fx_exp2c
+    mov a, V4
+    jmp fx_out
+fxe_zero:                       ; e^0 = 1
+    mov c, 0x3F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+
+; ------------------------------------------------------------
+; fx_exp2c: V4 = 2 ^ (V2 + V3). Sets the flags (the ones of the start +
+; INEXACT, and the ones of ldexp). Uses V5..V14.
+; ------------------------------------------------------------
+fx_exp2c:
+    mov a, V5                   ; S = P0 + P1, E = the error of that sum
+    mov b, V2
+    cal fx_cpy
+    mov b, V3
+    cal fx_add
+    mov a, V10
+    mov b, V5
+    cal fx_cpy
+    mov b, V2
+    cal fx_sub                  ; V10 = S - P0
+    mov a, V6
+    mov b, V3
+    cal fx_cpy
+    mov b, V10
+    cal fx_sub                  ; V6 = E
+    mov a, V5
+    mov b, K_P129
+    cal fx_cmpc
+    jms e2_ovf
+    mov a, V5
+    mov b, K_N152
+    cal fx_cmpc
+    jmf e2_udf
+    mov a, V7                   ; k = round(S), f = S - k
+    mov b, V5
+    cal fx_cpy
+    cal fx_rint
+    mov a, V8
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, SI
+    cal fx_cpy
+    cal fx_toi
+    lod a, [x:y + SI2]
+    str [x:y + FX_KH], a
+    lod a, [x:y + SI3]
+    str [x:y + FX_KL], a
+    mov a, V9                   ; j = round(32 f)
+    mov b, V8
+    cal fx_cpy
+    mov b, K_32
+    cal fx_mulc
+    cal fx_rint
+    mov a, SI
+    mov b, V9
+    cal fx_cpy
+    cal fx_toi
+    lod a, [x:y + SI3]
+    str [x:y + FX_J], a
+    mov a, V10                  ; r = f - j/32 + E
+    mov b, V9
+    cal fx_cpy
+    mov b, K_1_32
+    cal fx_mulc
+    mov a, V8
+    mov b, V10
+    cal fx_sub
+    mov b, V6
+    cal fx_add
+    cal fx_isz                  ; exact if r = 0 and j = 0
+    jmz e2_rz
+    mov a, 0x10
+    jmp e2_xf
+e2_rz:
+    lod a, [x:y + FX_J]
+    cmp a, 0
+    jme e2_ex
+    mov a, 0x10
+    jmp e2_xf
+e2_ex:
+    mov a, 0
+e2_xf:
+    str [x:y + FX_XF], a
+    mov a, V8                   ; w = r ln 2
+    mov b, K_LN2
+    cal fx_mulc
+    mov a, V11                  ; q = w + w^2 (1/2 + w/6)
+    mov b, V8
+    cal fx_cpy
+    mov b, K_1_6
+    cal fx_mulc
+    mov b, K_HALF
+    cal fx_addc
+    mov b, V8
+    cal fx_mul
+    cal fx_mul
+    cal fx_add
+    lod a, [x:y + FX_J]         ; the table: 8 (j + 16) bytes
+    add a, 16
+    mov c, 0
+    mov d, a
+    add d, d
+    adc c, c
+    add d, d
+    adc c, c
+    add d, d
+    adc c, c
+    mov i, fx_t2.msb
+    mov j, fx_t2.lsb
+    add j, d
+    adc i, c
+    mov a, V12                  ; TH
+    cal fx_cpp
+    add j, 4
+    adc i, 0
+    mov a, V13                  ; TL
+    cal fx_cpp
+    mov a, V14                  ; TH + (TH q + TL)
+    mov b, V12
+    cal fx_cpy
+    mov b, V11
+    cal fx_mul
+    mov b, V13
+    cal fx_add
+    mov a, V4
+    mov b, V12
+    cal fx_cpy
+    mov b, V14
+    cal fx_add
+    lod a, [x:y + FX_PAIR]      ; pair mode (expm1, sinh, cosh): V4 + V15 = 2^f, scaled
+    and a, 1
+    jmz e2_np
+    mov a, V15
+    mov b, V12
+    cal fx_cpy
+    mov b, V4
+    cal fx_sub
+    mov b, V14
+    cal fx_add
+    lod b, [x:y + FX_KL]
+    lod a, [x:y + FX_KH]
+    mov c, V4
+    lod d, [x:y + FX_PAIR]
+    and d, 2
+    jmz e2_pk
+    sub b, 1                    ; mode 2: 2^(k-1)
+    sbb a, 0
+e2_pk:
+    str [x:y + FX_T0], b
+    str [x:y + FX_J], a
+    cal fx_scale
+    lod a, [x:y + FX_J]
+    lod b, [x:y + FX_T0]
+    mov c, V15
+    cal fx_scale
+    ret
+e2_np:
+    lod a, [x:y + FX_XF]
+    cal fx_setfl
+    lod a, [x:y + FX_KH]
+    lod b, [x:y + FX_KL]
+    mov c, V4
+    cal fx_scale
+    lod a, [x:y + FX_XF]        ; inexact and subnormal: underflow (ldexp only sees
+    cmp a, 0                    ; the bits of the product it loses)
+    jme e2_end
+    lod a, [x:y + V4]
+    and a, 0x7F
+    cmp a, 0
+    jms e2_end
+    lod a, [x:y + V4B1]
+    cmp a, 0x80
+    jms e2_end
+    jme e2_end
+    mov a, 0x08
+    cal fe_raise
+e2_end:
+    ret
+e2_ovf:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0x14
+    jmp fx_putc
+e2_udf:
+    mov c, 0
+    mov d, 0
+    mov a, 0x18
+    jmp fx_putc

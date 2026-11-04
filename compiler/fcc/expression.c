@@ -177,6 +177,15 @@ struct node *function_call(register struct node *n)
 	return n;
 }
 
+/* The step of ++ and -- on a non pointer (HBC-2, see UPSTREAM.md): for a
+   float the constant holds the bits of 1.0f, not the integer 1 */
+static struct node *step_constant(unsigned long s, unsigned type)
+{
+	if (type == FLOAT || type == DOUBLE)
+		return make_constant(0x3F800000UL, type);
+	return make_constant(s, type);
+}
+
 static struct node *badsizeof(void)
 {
 	error("bad sizeof");
@@ -350,7 +359,7 @@ static struct node *hier10(void)
 			if (PTR(l->type))
 				r = sf_tree(op, l, make_constant(s, UINT));
 			else
-				r = sf_tree(op, l, make_constant(s, l->type));
+				r = sf_tree(op, l, step_constant(s, l->type));
 			return r;
 		}
 		return l;
@@ -374,7 +383,7 @@ static struct node *hier10(void)
 		if (PTR(r->type))
 			return sf_tree(op, r, make_constant(type_scale(r->type), UINT));
 		/* We should probably keep an optimized ++/-- FIXME */
-		return sf_tree(op, r, make_constant(1, r->type));
+		return sf_tree(op, r, step_constant(1, r->type));
 	case T_TILDE:
 		/* Floating point bit ops are not allowed */
 		r = make_rval(hier10());

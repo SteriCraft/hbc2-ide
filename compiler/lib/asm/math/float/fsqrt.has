@@ -1,0 +1,198 @@
+; ============================================================
+; Square root: fsqrt
+; ============================================================
+;   fsqrt   [x:y] = the square root of [x:y]
+;
+; Rounding: to nearest even (the result is correctly rounded). Exceptions
+; raised (fenv.has):
+;   FE_INVALID  a negative number (-0 excluded, -inf included), or a
+;               signaling NaN (result: the quiet NaN)
+;   FE_INEXACT  the result had to be rounded
+; sqrt(+-0) = +-0, sqrt(+inf) = +inf, a quiet NaN gives the quiet NaN. No
+; overflow or underflow is possible. Flags of the CPU: undefined.
+;
+; How it works (frame and helpers: see fadd.has and fmul.has)
+;
+; The mantissa M (24 bits, normalized first for a subnormal, nA shifts) with
+; the exponent v = exp - nA gives the value M / 2^23 x 2^(v - 127). Let
+; w = v + 127. The result exponent is w >> 1 (floor), and if w is odd the
+; exponent of the value is odd, so the mantissa is doubled (1 bit shift) to
+; make it even. The root is made 28 bits long (pair by pair, 2 bits of the
+; radicand for 1 bit of the root, a 56 bit radicand = M_adj << 31, M_adj being
+; M or 2M), by the classic remainder method:
+;     rem = rem << 2 | next 2 bits of the radicand
+;     if rem >= 4 R + 1: rem -= 4 R + 1, R = 2 R + 1 else R = 2 R
+; T = 4 R + 1 is kept up to date in the frame (FB_M0..FB_M3), rem is in
+; a b c d, the radicand (shifted a byte at a time) is in FA_M0..FA_M3
+; and x holds the byte that is being used. At the end R is in the form of a
+; mantissa (R << 4, so the guard bits are the 4 lowest bits of the root),
+; the sticky bit is rem != 0, and the code of fmul rounds and packs.
+
+fsqrt:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    rsp [c:d]
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack
+    rsp [i:j]
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fsq_special
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_done                 ; +-0
+    lod a, [i:j + FA_SIGN]
+    cmp a, 0
+    jme fsq_go
+    jmp fa_invalid              ; negative
+fsq_go:
+    mov c, i
+    mov d, j
+    cal fd_norm                 ; a = nA
+    mov x, a
+    lod a, [i:j + FA_EXP]       ; b:a = w = exp - nA + 127 (105..381)
+    mov b, 0
+    sub a, x
+    sbb b, 0
+    add a, 127
+    adc b, 0
+    mov y, a
+    and y, 1                    ; y = 1 if w is odd
+    shr a
+    or b, 0
+    jmz fsq_e
+    or a, 0x80
+fsq_e:
+    str [i:j + FM_P0], a        ; the result exponent
+    or y, 0
+    jmz fsq_even
+    jmp fsq_init
+fsq_even:                       ; the radicand is M: shifted right once
+    mov c, i
+    mov d, j
+    mov a, 1
+    cal fi_shr
+fsq_init:
+    mov a, 0
+    str [i:j + FB_M0], a        ; T = 1
+    str [i:j + FB_M1], a
+    str [i:j + FB_M2], a
+    inc a
+    str [i:j + FB_M3], a
+    mov a, 7
+    str [i:j + FM_P1], a        ; 7 bytes of 4 pairs
+    mov a, 0
+    mov b, 0
+    mov c, 0
+    mov d, 0                    ; rem = 0
+fsq_loop:
+    lod x, [i:j + FA_M0]        ; the next byte of the radicand
+    lod y, [i:j + FA_M1]
+    str [i:j + FA_M0], y
+    lod y, [i:j + FA_M2]
+    str [i:j + FA_M1], y
+    lod y, [i:j + FA_M3]
+    str [i:j + FA_M2], y
+    mov y, 0
+    str [i:j + FA_M3], y
+    cal fsq_step
+    cal fsq_step
+    cal fsq_step
+    cal fsq_step
+    lod y, [i:j + FM_P1]
+    dec y
+    str [i:j + FM_P1], y
+    jmz fsq_end
+    jmp fsq_loop
+
+fsq_end:
+    mov x, a                    ; sticky: rem != 0
+    or x, b
+    or x, c
+    or x, d
+    lod d, [i:j + FB_M3]        ; R << 4 = (T - 1) << 2
+    and d, 0xFE
+    lod c, [i:j + FB_M2]
+    lod b, [i:j + FB_M1]
+    lod a, [i:j + FB_M0]
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    add d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    or x, 0
+    jmz fsq_nostick
+    or d, 1
+fsq_nostick:
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], b
+    str [i:j + FA_M2], c
+    str [i:j + FA_M3], d
+    lod a, [i:j + FM_P0]
+    mov b, 0
+    jmp fm_exp_check
+
+fsq_special:                    ; NaN or infinity
+    mov c, i
+    mov d, j
+    cal fa_nanclass
+    or a, 0
+    jmz fsq_inf
+    cmp a, 1
+    jme fa_qnan
+    jmp fa_invalid
+fsq_inf:
+    lod a, [i:j + FA_SIGN]
+    cmp a, 0
+    jme fa_done                 ; +inf
+    jmp fa_invalid              ; -inf
+
+; fsq_step: 2 bits of the radicand (top of x) into rem (a b c d), one bit
+; of the root, T updated. Uses x (shifted), y.
+fsq_step:
+    add x, x
+    adc d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    add x, x
+    adc d, d
+    adc c, c
+    adc b, b
+    adc a, a
+    sub d, [i:j + FB_M3]        ; rem - T
+    sbb c, [i:j + FB_M2]
+    sbb b, [i:j + FB_M1]
+    sbb a, [i:j + FB_M0]
+    jmc fsq_zero
+    lod y, [i:j + FB_M3]        ; the bit is 1: T = 2 (T - 1) + 5
+    add y, y
+    and y, 0xF8
+    or y, 5
+    jmp fsq_tcont
+fsq_zero:                       ; the bit is 0: rem is restored, T = 2 (T - 1) + 1
+    add d, [i:j + FB_M3]
+    adc c, [i:j + FB_M2]
+    adc b, [i:j + FB_M1]
+    adc a, [i:j + FB_M0]
+    lod y, [i:j + FB_M3]
+    add y, y
+    and y, 0xF8
+    or y, 1
+fsq_tcont:
+    str [i:j + FB_M3], y
+    lod y, [i:j + FB_M2]
+    adc y, y
+    str [i:j + FB_M2], y
+    lod y, [i:j + FB_M1]
+    adc y, y
+    str [i:j + FB_M1], y
+    lod y, [i:j + FB_M0]
+    adc y, y
+    str [i:j + FB_M0], y
+    ret

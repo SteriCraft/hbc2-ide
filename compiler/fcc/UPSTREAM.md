@@ -59,3 +59,21 @@ through `../msvc/compat.h`, a forced include):
   * `copt.c`: `;#line` lines are skipped when rules match, and the ones
     inside replaced lines are kept, after the new lines. The code is the
     same as without them.
+* `float` and `double` (HBC-2, 2026-11-04): IEEE 754 binary32, `double` =
+  `float` (`target-hbc2.c` remaps it):
+  * `frontend.c` (cc0): decimal numbers (`dec_format`) and hexadecimal ones
+    (`hex_format`) keep their text, and a float is converted by the host's
+    `strtof` (correctly rounded, subnormals, hex floats `0x1.8p3`). Fuzix's
+    `convert_fix32` (truncating, no subnormals, `p` read as a power of ten)
+    and `parse_exponent` are gone. A leading 0 may start a decimal float
+    (`0.5`, `0e0`, `017.5`); `017` stays octal, with an error for 8 or 9.
+    The special case `-.5` (`tokenize_neg`, which flipped the sign twice:
+    `-.5` was +0.5) is gone: `-` and `.5` are two tokens, and cc1 folds the
+    negation. An `F` suffix on an integer converts it with the host's float.
+  * `expression.c` (`step_constant`): the step of `++`/`--` on a float is
+    the bits of 1.0f, not the integer 1.
+  * `tree.c` (`constify`): casts of constants between integers and float
+    (`fold_float_cast`), and `+ - * /` and the comparisons of two float
+    constants (`fold_float_binary`) are folded with the host's float, so
+    `float f = 1;`, `int i = 2.5;` and `1.0f / 0.0f` (`INFINITY`) are
+    constants. A NaN result is 0x7FC00000.

@@ -68,7 +68,7 @@ static unsigned get_size(unsigned t)
 	if (t == VOID)
 		return 0;
 	if (t == FLOAT || t == DOUBLE)
-		error("float and double are not supported on the HBC-2");
+		return 4;
 	error("unsupported type (structs can't be copied by value yet)");
 	return 0;
 }
@@ -254,6 +254,29 @@ static unsigned simple_size(unsigned t)
 		|| t == CLONG || t == ULONG;
 }
 
+/* float (double is the same type): 4 bytes like a long, in [c:d]:[a:b],
+   most significant byte first (the IEEE 754 sign and exponent in c).
+   Loads, stores and pushes are those of a long; the operations are
+   helpers (runtime/float.has), but unary - (the sign bit) and the tests
+   of a value (-0.0 is false). */
+static unsigned is_float(unsigned t)
+{
+	return !PTR(t) && (t == FLOAT || t == DOUBLE);
+}
+
+/* A value moved as it is: integers, pointers, floats */
+static unsigned move_size(unsigned t)
+{
+	return simple_size(t) || is_float(t);
+}
+
+/* An operation on floats (or a conversion from / to float) */
+static unsigned float_op(struct node *n)
+{
+	return is_float(n->type) || (n->left && is_float(n->left->type)) ||
+		(n->right && is_float(n->right->type));
+}
+
 /* Operations whose code depends on the sign of their type */
 static unsigned sign_matters(unsigned op)
 {
@@ -381,7 +404,7 @@ struct node *gen_rewrite_node(struct node *n)
 		free_node(n);
 		return l;
 	}
-	if (simple_size(nt)) {
+	if (move_size(nt)) {
 		if (op == T_DEREF) {
 			if (r->op == T_LOCAL || r->op == T_ARGUMENT) {
 				if (r->op == T_ARGUMENT)
@@ -523,6 +546,20 @@ static unsigned cc_invert(unsigned c)
 		return CC_C;
 	}
 	return c;
+}
+
+/* Z from the float in [c:d]:[a:b], the sign left out: true (Z clear) when
+   it is not +0 or -0. reg = 0 when Z is set: "b" (the value is lost) or a
+   register that is not c, d, a. */
+static void float_test(const char *reg)
+{
+	if (strcmp(reg, "b") == 0)
+		puts("\tand c, 0x7F\n\tor b, c\n\tor b, d\n\tor b, a");
+	else
+		printf("\tmov %s, c\n\tand %s, 0x7F\n\tor %s, d\n\tor %s, a\n\tor %s, b\n",
+			reg, reg, reg, reg, reg);
+	cc = CC_NZ;
+	cc_reg = reg;
 }
 
 /* Sets Z from the working value: true when Z is clear */
@@ -1181,6 +1218,13 @@ static unsigned is_compare(unsigned op)
 		op == T_LTEQ || op == T_GTEQ;
 }
 
+/* A node whose value is a float (a comparison of floats has the type of its
+   operands in FCC, but its value is the int 0 / 1) */
+static unsigned float_value(struct node *n)
+{
+	return is_float(n->type) && !is_compare(n->op);
+}
+
 static unsigned mirror(unsigned op)
 {
 	switch (op) {
@@ -1490,6 +1534,12 @@ static void cond(struct node *n)
 			error("cond chain");
 		return;
 	}
+	if (float_value(n)) {
+		/* a float is true when it isn't +0 or -0 (a NaN is true) */
+		codegen_lr(n);
+		float_test("i");
+		return;
+	}
 	if (bit_cond(n))
 		return;
 	if (is_compare(n->op) && simple_size(n->left->type)) {
@@ -1749,7 +1799,7 @@ static unsigned direct_deref(struct node *n)
 {
 	struct node *base;
 	unsigned s, off;
-	if (!simple_size(n->type))
+	if (!move_size(n->type))
 		return 0;
 	s = get_size(n->type);
 	base = ptr_split(n->right, s, &off);
@@ -1765,10 +1815,10 @@ static unsigned direct_store(struct node *n)
 	struct node *base;
 	struct node *r = n->right;
 	unsigned s, off;
-	if (!simple_size(n->type))
+	if (!move_size(n->type))
 		return 0;
 	s = get_size(n->type);
-	if (!simple_size(r->type) || get_size(r->type) != s)
+	if (!move_size(r->type) || get_size(r->type) != s)
 		return 0;
 	base = ptr_split(n->left, s, &off);
 	if (ptr_simple(base)) {
@@ -2032,6 +2082,11 @@ unsigned gen_shortcut(struct node *n)
 		return 1;
 	}
 
+	/* Floats: helpers (make_node), but for moves and conditions */
+	if (float_op(n) && n->op != T_COMMA && n->op != T_BOOL &&
+	    n->op != T_DEREF && n->op != T_EQ)
+		return 0;
+
 	switch (n->op) {
 	case T_COMMA:
 		/* left, right: the left value is not needed */
@@ -2117,7 +2172,8 @@ unsigned gen_node(struct node *n)
 	if (n->left && n->op != T_ARGCOMMA && n->op != T_FUNCCALL && n->op != T_CALLNAME)
 		sp -= get_size(n->left->type);
 
-	s = get_size(n->type);
+	/* a comparison (a helper here: floats) gives the int 0 / 1 */
+	s = is_compare(n->op) ? 2 : get_size(n->type);
 	work_size = s;
 	cc = CC_NONE;
 
@@ -2195,17 +2251,26 @@ unsigned gen_node(struct node *n)
 		puts("\tmov x, a\n\tmov y, b\n\tcal [x:y]");
 		return 1;
 	case T_CAST:
+		/* to or from float: a helper __cast<from>_<to> */
+		if (is_float(n->type) != is_float(n->right->type))
+			return 0;
 		return gen_cast(n);
 	case T_BOOL:
 		n->flags |= ISBOOL;
 		if (n->right->flags & ISBOOL)
 			return 1;
-		or_bytes(get_size(n->right->type));
+		if (float_value(n->right))
+			float_test("b");
+		else
+			or_bytes(get_size(n->right->type));
 		bool_from_nz();
 		return 1;
 	case T_BANG:
 		n->flags |= ISBOOL;
-		or_bytes(get_size(n->right->type));
+		if (float_value(n->right))
+			float_test("b");
+		else
+			or_bytes(get_size(n->right->type));
 		bool_from_z();
 		return 1;
 	case T_PLUS:
@@ -2229,6 +2294,10 @@ unsigned gen_node(struct node *n)
 		}
 		return 0;
 	case T_NEGATE:
+		if (is_float(n->type)) {
+			puts("\txor c, 0x80");
+			return 1;
+		}
 		if (s == 1) {
 			puts("\tnot b\n\tadd b, 1");
 			return 1;

@@ -8,3 +8,4 @@
 .include "shift.has"
 .include "assign.has"
 .include "switch.has"
+.include "float.has"

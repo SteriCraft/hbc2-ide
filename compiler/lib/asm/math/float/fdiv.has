@@ -1,0 +1,201 @@
+; ============================================================
+; Division: fdiv
+; ============================================================
+;   fdiv   [x:y] = [x:y] / [i:j]
+;
+; [i:j] is never changed, and [x:y] and [i:j] may point to the same float.
+; Rounding: to nearest even. Exceptions raised (fenv.has):
+;   FE_INVALID    0 / 0, inf / inf, or a signaling NaN operand
+;                 (result: the quiet NaN)
+;   FE_DIVBYZERO  finite non-zero / 0 (result: infinity with the right sign)
+;   FE_OVERFLOW + FE_INEXACT   the result is too large (result: infinity)
+;   FE_UNDERFLOW + FE_INEXACT  the result is tiny (below the smallest normal
+;                 number, after rounding) and had to be rounded
+;   FE_INEXACT    the result had to be rounded
+; Flags of the CPU: undefined after fdiv.
+;
+; How it works (frame and helpers: see fadd.has and fmul.has)
+;
+; Both mantissas are first shifted left until their top bit is set (nA and
+; nB shifts; only subnormals need it). The quotient of two such mantissas is
+; between 1/2 and 2. Restoring division makes 32 quotient bits, one per
+; step, in the frame at FA_M0..FA_M3: R = dividend; step: R - divisor, if it
+; does not borrow the bit is 1 and R keeps the difference, else the bit is
+; 0; then R <<= 1 (R can reach 25 bits: the bit shifted out is kept in d, and
+; then the bit is always 1). What is left in R is the sticky bit.
+; If the first bit is 0 (quotient below 1) the 32 bits are shifted left once.
+; The result exponent is
+;     e = exp A - exp B + 127 - nA + nB - (1 if the quotient is below 1)
+; and from there it is the same as fmul (fm_exp_check).
+
+fdiv:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, FA_OPDIV
+    jmp fm_main
+
+; ---- Both finite (fm_main). Zero divisor: 0 / 0 is invalid, else the
+; division by zero. Zero dividend: a zero.
+fd_main:
+    lod a, [i:j + FB_M0]
+    or a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    jmz fd_divzero
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_write_zero
+
+    mov c, i                    ; normalize A
+    mov d, j
+    cal fd_norm
+    str [i:j + FM_N], a
+    mov c, i                    ; normalize B
+    mov d, j
+    add d, 8
+    adc c, 0
+    cal fd_norm
+    str [i:j + FM_TINY], a
+
+    lod a, [i:j + FA_M0]        ; R = the dividend mantissa
+    lod b, [i:j + FA_M1]
+    lod c, [i:j + FA_M2]
+    mov d, 0
+    cal fd_qbyte
+    str [i:j + FA_M0], x
+    cal fd_qbyte
+    str [i:j + FA_M1], x
+    cal fd_qbyte
+    str [i:j + FA_M2], x
+    cal fd_qbyte
+    str [i:j + FA_M3], x
+    or a, b                     ; sticky = R is not 0
+    or a, c
+    or a, d
+    mov c, a
+
+    mov b, 0                    ; b = 1 if the quotient is below 1
+    lod a, [i:j + FA_M0]
+    cmp a, 0x80
+    jmf fd_shl
+    jmp fd_sticky
+fd_shl:
+    lod a, [i:j + FA_M3]        ; shift the 32 bits left once
+    shl a
+    str [i:j + FA_M3], a
+    lod a, [i:j + FA_M2]
+    adc a, a
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, a
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, a
+    str [i:j + FA_M0], a
+    mov b, 1
+fd_sticky:
+    or c, 0
+    jmz fd_exp
+    lod a, [i:j + FA_M3]
+    or a, 1
+    str [i:j + FA_M3], a
+
+fd_exp:                         ; d:a = exp A - exp B + 127 - nA + nB - b
+    lod a, [i:j + FA_EXP]
+    sub a, [i:j + FB_EXP]
+    mov d, 0
+    sbb d, 0
+    add a, 127
+    adc d, 0
+    sub a, [i:j + FM_N]
+    sbb d, 0
+    add a, [i:j + FM_TINY]
+    adc d, 0
+    sub a, b
+    sbb d, 0
+    mov b, d
+    jmp fm_exp_check
+
+fd_divzero:
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_invalid              ; 0 / 0
+    mov a, FE_DIVBYZERO
+    cal fe_raise
+    lod a, [i:j + FA_SIGN]
+    jmp fa_store_inf
+
+; ---- An operand is infinite (no NaN here). inf / inf is invalid, inf / finite
+; is an infinity, finite / inf is a zero.
+fd_infinities:
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fd_a_inf
+    jmp fa_write_zero
+fd_a_inf:
+    lod a, [i:j + FB_EXP]
+    cmp a, 255
+    jme fa_invalid
+    jmp fm_inf
+
+; ------------------------------------------------------------
+; fd_norm: shifts the 24-bit mantissa at [c:d] left until its top bit is
+; set. a = the number of shifts. Uses a, b.
+; ------------------------------------------------------------
+fd_norm:
+    mov a, 0
+fdn_loop:
+    lod b, [c:d + 0]
+    cmp b, 0x80
+    jmf fdn_shift
+    ret
+fdn_shift:
+    lod b, [c:d + 2]
+    shl b
+    str [c:d + 2], b
+    lod b, [c:d + 1]
+    adc b, b
+    str [c:d + 1], b
+    lod b, [c:d + 0]
+    adc b, b
+    str [c:d + 0], b
+    inc a
+    jmp fdn_loop
+
+; ------------------------------------------------------------
+; fd_qbyte: 8 quotient bits, in x. R = [a:b:c] with the extra bit d, the
+; divisor is the mantissa of B. Uses x, y.
+; ------------------------------------------------------------
+fd_qbyte:
+    mov x, 0
+    mov y, 8
+fq_step:
+    sub c, [i:j + FB_M2]        ; R - divisor
+    sbb b, [i:j + FB_M1]
+    sbb a, [i:j + FB_M0]
+    jmc fq_borrow
+fq_one:                         ; the bit is 1, R keeps the difference
+    add x, x
+    inc x
+    jmp fq_shift
+fq_borrow:
+    or d, 0
+    jmz fq_restore              ; no extra bit: R was smaller, the bit is 0
+    jmp fq_one                  ; extra bit: R was larger
+fq_restore:
+    add c, [i:j + FB_M2]
+    adc b, [i:j + FB_M1]
+    adc a, [i:j + FB_M0]
+    add x, x
+fq_shift:
+    add c, c                    ; R <<= 1, d = the bit shifted out
+    adc b, b
+    adc a, a
+    mov d, 0
+    adc d, 0
+    dec y
+    jmz fq_end
+    jmp fq_step
+fq_end:
+    ret

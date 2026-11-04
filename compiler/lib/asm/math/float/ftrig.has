@@ -1,0 +1,855 @@
+; ============================================================
+; Trigonometry: sin, cos, tan
+; ============================================================
+;   sin  [x:y] = sine of [x:y] (radians)
+;   cos  [x:y] = cosine
+;   tan  [x:y] = tangent
+;
+; Results are within 0.85 ulp (sin and cos 0.72, tan 0.81; checked against the
+; f64 functions rounded to float). Exceptions (fenv.has):
+;   FE_INEXACT    always, but for sin(+-0), tan(+-0) and cos(+-0) = 1
+;   FE_UNDERFLOW  with FE_INEXACT: sin or tan of a subnormal number
+;   FE_INVALID    an infinity (result: the quiet NaN) or a signaling NaN
+; A quiet NaN gives the quiet NaN. Flags of the CPU: undefined. Other
+; registers are restored. As exp and log, only the exceptions above are left
+; in fenv_flags.
+;
+; How it works.
+;   * |x| < 2^-13: sin x = tan x = x and cos x = 1 (to the nearest float).
+;   * |x| < pi/4: used as it is. Else x is reduced with the whole 2/pi
+;     (Payne and Hanek, ft_red): x 2/pi = n + f, |f| <= 1/2, computed with
+;     integers (the 24 bits of x times 13 bytes of 2/pi from the table
+;     ft_2pi, picked by the exponent of x), so that f has about 60 correct
+;     bits even for a huge x close to a multiple of pi/2. Then r = f pi/2 is
+;     made as a pair of floats rh + rl (about 2^-35 relative error), and
+;     sin x, cos x are +-sin r or +-cos r by n mod 4.
+;   * sin r = rh + (rl (1 - rh^2/2) + rh^3 S(rh^2)), S a polynomial; the sum
+;     is kept as a hi/lo pair (Fast2Sum).
+;   * cos r = 1 - rh^2/2 + ..., with rh^2/2 exact (rh in two 12-bit halves),
+;     1 - rh^2/2 and its rounding error kept apart (Fast2Sum), the small
+;     terms added in the correction: one single rounding at the end.
+;   * tan r = sin r / cos r (or -cos / sin for odd n) with the pairs of the
+;     two kernels and a division with a correction (ft_ddiv).
+; Frame slots: V0 = |x|, V2 + V3 = r, V4 + V5 = result of a kernel.
+
+fsin:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_sin
+fcos:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_cos
+ftan:
+    psh a, b, c, d, i, j
+    ssp FX_FRAME
+    cal fx_main
+    jmp ft_tan
+
+ft_sin:
+    mov a, 0
+    jmp ft_go
+ft_cos:
+    mov a, 1
+    jmp ft_go
+ft_tan:
+    mov a, 2
+ft_go:
+    str [x:y + FT_MODE], a
+    cal l2_getE                 ; a = the exponent field of V0
+    cmp a, 255
+    jme ft_7f
+    cmp a, 0
+    jme ft_e0
+    cmp a, 114
+    jmf ft_tiny0                ; |x| < 2^-13
+    jmp ft_calc
+ft_e0:
+    mov a, V0
+    cal fx_isz
+    jmz ft_zero
+    mov a, 0x18                 ; subnormal: underflow + inexact
+    jmp ft_tiny
+ft_tiny0:
+    mov a, 0x10
+ft_tiny:                        ; a = the flags
+    lod b, [x:y + FT_MODE]
+    cmp b, 1
+    jme ft_one
+    cal fx_setfl
+    mov a, V0
+    jmp fx_out
+ft_one:
+    and a, 0x10                 ; cos(tiny) = 1: inexact only
+    mov c, 0x3F
+    mov d, 0x80
+    jmp fx_exit
+ft_zero:
+    lod a, [x:y + FT_MODE]
+    cmp a, 1
+    jme ft_one0
+    mov a, V0
+    jmp fx_out
+ft_one0:
+    mov a, 0
+    mov c, 0x3F
+    mov d, 0x80
+    jmp fx_exit
+ft_7f:
+    lod b, [x:y + V0B1]
+    and b, 0x7F
+    or b, [x:y + V0B2]
+    or b, [x:y + V0B3]
+    jmz ft_inv                  ; an infinity
+    lod b, [x:y + V0B1]         ; NaN
+    and b, 0x40
+    jmz ft_inv                  ; signaling
+    mov a, 0
+    jmp ft_nan
+ft_inv:
+    mov a, 1
+ft_nan:
+    mov c, 0x7F
+    mov d, 0xC0
+    jmp fx_exit
+
+ft_calc:
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    lod a, [x:y + V0]
+    and a, 0x7F
+    str [x:y + V0], a           ; V0 = |x|
+    mov a, V0
+    mov b, K_PIO4
+    cal fx_cmpc
+    jmf ft_nored
+    cal ft_red
+    jmp ft_k
+ft_nored:
+    mov a, V2
+    mov b, V0
+    cal fx_cpy
+    mov a, V3
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, 0
+    str [x:y + FT_Q], a
+ft_k:
+    lod a, [x:y + FT_MODE]
+    cmp a, 2
+    jme ft_tan2
+    lod b, [x:y + FT_Q]         ; the cosine kernel if (Q & 1) ^ mode
+    and b, 1
+    xor b, a
+    jmz ft_ks
+    cal ft_kcos
+    jmp ft_sg
+ft_ks:
+    cal ft_ksin
+ft_sg:
+    lod a, [x:y + FT_MODE]      ; negative? sin: Q & 2, xor the sign of x
+    lod b, [x:y + FT_Q]         ;           cos: (Q + 1) & 2
+    cmp a, 0
+    jme ft_sg0
+    add b, 1
+ft_sg0:
+    and b, 2
+    jmz ft_sg1
+    mov b, 0x80
+ft_sg1:
+    lod a, [x:y + FT_MODE]
+    cmp a, 0
+    jme ft_sgx
+    jmp ft_sgn
+ft_sgx:
+    lod a, [x:y + FT_SGN]
+    xor b, a
+ft_sgn:                         ; b = 0x80 if the result is negative
+    cmp b, 0
+    jme ft_fin
+    mov a, V4
+    cal fx_neg
+ft_fin:
+    mov a, 0x10
+    cal fx_setfl
+    mov a, V4
+    jmp fx_out
+
+; tan: the two kernels, then the quotient.
+ft_tan2:
+    cal ft_ksin
+    mov a, V16
+    mov b, V4
+    cal fx_cpy
+    mov a, V17
+    mov b, V5
+    cal fx_cpy
+    cal ft_kcos
+    lod a, [x:y + FT_Q]
+    and a, 1
+    jmz ft_te
+    mov a, V20                  ; odd: -cos / sin
+    mov b, V4
+    cal fx_cpy
+    mov a, V21
+    mov b, V5
+    cal fx_cpy
+    mov a, V22
+    mov b, V16
+    cal fx_cpy
+    mov a, V23
+    mov b, V17
+    cal fx_cpy
+    jmp ft_td
+ft_te:
+    mov a, V20                  ; even: sin / cos
+    mov b, V16
+    cal fx_cpy
+    mov a, V21
+    mov b, V17
+    cal fx_cpy
+    mov a, V22
+    mov b, V4
+    cal fx_cpy
+    mov a, V23
+    mov b, V5
+    cal fx_cpy
+ft_td:
+    cal ft_ddiv
+    lod b, [x:y + FT_Q]
+    and b, 1
+    jmz ft_tn0
+    mov b, 0x80
+ft_tn0:
+    lod a, [x:y + FT_SGN]
+    xor b, a
+    jmp ft_sgn
+
+; ------------------------------------------------------------
+; ft_ksin: V4 + V5 = sin (V2 + V3), |V2| <= pi/4. Uses V6..V10.
+; ------------------------------------------------------------
+ft_ksin:
+    mov a, V6                   ; z = rh^2
+    mov b, V2
+    cal fx_cpy
+    cal fx_mul
+    mov a, V7                   ; S(z) = ((((S4 z + S3) z + S2) z + S1) z - 1/6)
+    mov b, K_S4
+    cal fx_cpyc
+    mov b, V6
+    cal fx_mul
+    mov b, K_S3
+    cal fx_addc
+    mov b, V6
+    cal fx_mul
+    mov b, K_S2
+    cal fx_addc
+    mov b, V6
+    cal fx_mul
+    mov b, K_S1
+    cal fx_addc
+    mov b, V6
+    cal fx_mul
+    mov b, K_M1_6
+    cal fx_addc
+    mov a, V8                   ; u = rh z S
+    mov b, V2
+    cal fx_cpy
+    mov b, V6
+    cal fx_mul
+    mov b, V7
+    cal fx_mul
+    mov a, V9                   ; v = rl (1 - z/2)
+    mov b, V6
+    cal fx_cpy
+    mov b, K_HALF
+    cal fx_mulc
+    mov a, V10
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V9
+    cal fx_sub
+    mov a, V9
+    mov b, V3
+    cal fx_cpy
+    mov b, V10
+    cal fx_mul
+    mov a, V8
+    mov b, V9
+    cal fx_add                  ; bracket = u + v
+    mov a, V4                   ; hi = rh + bracket
+    mov b, V2
+    cal fx_cpy
+    mov b, V8
+    cal fx_add
+    mov a, V5                   ; lo = (rh - hi) + bracket
+    mov b, V2
+    cal fx_cpy
+    mov b, V4
+    cal fx_sub
+    mov b, V8
+    cal fx_add
+    ret
+
+; ------------------------------------------------------------
+; ft_kcos: V4 + V5 = cos (V2 + V3), |V2| <= pi/4. Uses V6..V14.
+; ------------------------------------------------------------
+ft_kcos:
+    mov a, V6                   ; a1: 12 bits of rh
+    mov b, V2
+    cal fx_cpy
+    cal fx_t12
+    mov a, V7                   ; a2 = rh - a1
+    mov b, V2
+    cal fx_cpy
+    mov b, V6
+    cal fx_sub
+    mov a, V8                   ; P = a1^2 (exact)
+    mov b, V6
+    cal fx_cpy
+    cal fx_mul
+    mov a, V9                   ; Q = 2 a1 a2 + a2^2 (exact products)
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_mul
+    mov b, V9
+    cal fx_add
+    mov a, V10
+    mov b, V7
+    cal fx_cpy
+    cal fx_mul
+    mov a, V9
+    mov b, V10
+    cal fx_add
+    mov a, V11                  ; z = rh^2
+    mov b, V2
+    cal fx_cpy
+    cal fx_mul
+    mov a, V12                  ; C(z) = ((((C4 z + C3) z + C2) z + C1) z + C0)
+    mov b, K_C4
+    cal fx_cpyc
+    mov b, V11
+    cal fx_mul
+    mov b, K_C3
+    cal fx_addc
+    mov b, V11
+    cal fx_mul
+    mov b, K_C2
+    cal fx_addc
+    mov b, V11
+    cal fx_mul
+    mov b, K_C1
+    cal fx_addc
+    mov b, V11
+    cal fx_mul
+    mov b, K_C0
+    cal fx_addc
+    mov b, V11
+    cal fx_mul
+    cal fx_mul                  ; z^2 C(z)
+    mov a, V13                  ; Q/2 + rh rl
+    mov b, V9
+    cal fx_cpy
+    mov b, K_HALF
+    cal fx_mulc
+    mov a, V14
+    mov b, V2
+    cal fx_cpy
+    mov b, V3
+    cal fx_mul
+    mov a, V13
+    mov b, V14
+    cal fx_add
+    mov a, V12                  ; corr = z^2 C - (Q/2 + rh rl)
+    mov b, V13
+    cal fx_sub
+    mov a, V8                   ; hz = P/2
+    mov b, K_HALF
+    cal fx_mulc
+    mov a, V13                  ; w = 1 - hz
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V8
+    cal fx_sub
+    mov a, V14                  ; e = (1 - w) - hz (exact)
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V13
+    cal fx_sub
+    mov b, V8
+    cal fx_sub
+    mov b, V12
+    cal fx_add                  ; c = e + corr
+    mov a, V4                   ; hi = w + c
+    mov b, V13
+    cal fx_cpy
+    mov b, V14
+    cal fx_add
+    mov a, V5                   ; lo = (w - hi) + c
+    mov b, V13
+    cal fx_cpy
+    mov b, V4
+    cal fx_sub
+    mov b, V14
+    cal fx_add
+    ret
+
+; ------------------------------------------------------------
+; ft_ddiv: V4 + V5 = (V20 + V21) / (V22 + V23) (V4 rounded once). Uses V24..V31.
+; q1 = Nh / Dh, then the error of q1 Dh (the product of Dekker) gives the
+; correction q2.
+; ------------------------------------------------------------
+ft_ddiv:
+    mov a, V24
+    mov b, V20
+    cal fx_cpy
+    mov b, V22
+    cal fx_div                  ; q1
+    mov a, V25
+    mov b, V24
+    cal fx_cpy
+    cal fx_t12                  ; q1a
+    mov a, V26
+    mov b, V24
+    cal fx_cpy
+    mov b, V25
+    cal fx_sub                  ; q1b
+    mov a, V27
+    mov b, V22
+    cal fx_cpy
+    cal fx_t12                  ; Da
+    mov a, V28
+    mov b, V22
+    cal fx_cpy
+    mov b, V27
+    cal fx_sub                  ; Db
+    mov a, V29
+    mov b, V24
+    cal fx_cpy
+    mov b, V22
+    cal fx_mul                  ; p = q1 Dh
+    mov a, V30
+    mov b, V25
+    cal fx_cpy
+    mov b, V27
+    cal fx_mul
+    mov b, V29
+    cal fx_sub                  ; q1a Da - p
+    mov a, V31
+    mov b, V25
+    cal fx_cpy
+    mov b, V28
+    cal fx_mul
+    mov a, V30
+    mov b, V31
+    cal fx_add                  ; + q1a Db
+    mov a, V31
+    mov b, V26
+    cal fx_cpy
+    mov b, V27
+    cal fx_mul
+    mov a, V30
+    mov b, V31
+    cal fx_add                  ; + q1b Da
+    mov a, V31
+    mov b, V26
+    cal fx_cpy
+    mov b, V28
+    cal fx_mul
+    mov a, V30
+    mov b, V31
+    cal fx_add                  ; V30 = e: q1 Dh = p + e exactly
+    mov a, V31
+    mov b, V20
+    cal fx_cpy
+    mov b, V29
+    cal fx_sub                  ; Nh - p
+    mov b, V30
+    cal fx_sub                  ; - e
+    mov b, V21
+    cal fx_add                  ; + Nl
+    mov a, V25
+    mov b, V24
+    cal fx_cpy
+    mov b, V23
+    cal fx_mul                  ; q1 Dl
+    mov a, V31
+    mov b, V25
+    cal fx_sub
+    mov b, V22
+    cal fx_div                  ; q2
+    mov a, V4
+    mov b, V24
+    cal fx_cpy
+    mov b, V31
+    cal fx_add
+    mov a, V5                   ; lo = (q1 - hi) + q2
+    mov b, V24
+    cal fx_cpy
+    mov b, V4
+    cal fx_sub
+    mov b, V31
+    cal fx_add
+    ret
+
+; ------------------------------------------------------------
+; ft_red: V0 = |x| >= pi/4 (finite). Out: V2 + V3 = r = x - n pi/2 with
+; |r| <= pi/4, FT_Q = n mod 4.
+; x = M 2^(E-150). E - 126 = 8 Q + s. x 2/pi mod 4 = M 2^s W / 2^96 with W the
+; 13 bytes of 2/pi from byte Q of ft_2pi (the zero bytes at the start of the
+; table stand for the bytes before the binary point). ACC = M W 2^s mod 2^104
+; is a 13-byte big endian number: byte 0 = the integer part, bytes 1..12 = the
+; fraction (weight 2^-8k). The product is made bit by bit (Horner).
+; ------------------------------------------------------------
+ft_red:
+    cal l2_getE                 ; a = E (126..254)
+    sub a, 126
+    mov b, a
+    and b, 7
+    str [x:y + FT_SH], b
+    shr a
+    shr a
+    shr a
+    mov i, ft_2pi.msb
+    mov j, ft_2pi.lsb
+    add j, a
+    adc i, 0                    ; i:j = the window of 2/pi
+    mov c, x
+    mov d, y
+    add d, FT_ACC
+    adc c, 0                    ; c:d = ACC
+    mov a, 0
+    str [c:d + 0], a
+    str [c:d + 1], a
+    str [c:d + 2], a
+    str [c:d + 3], a
+    str [c:d + 4], a
+    str [c:d + 5], a
+    str [c:d + 6], a
+    str [c:d + 7], a
+    str [c:d + 8], a
+    str [c:d + 9], a
+    str [c:d + 10], a
+    str [c:d + 11], a
+    str [c:d + 12], a
+    str [c:d + 13], a
+    str [c:d + 14], a
+    str [c:d + 15], a
+    str [c:d + 16], a
+    str [c:d + 17], a
+    str [c:d + 18], a
+    str [c:d + 19], a
+    str [c:d + 20], a
+    str [c:d + 21], a
+    str [c:d + 22], a
+    str [c:d + 23], a
+    str [c:d + 24], a
+    lod a, [x:y + V0B1]
+    or a, 0x80
+    str [x:y + FT_M0], a
+    lod a, [x:y + V0B2]
+    str [x:y + FT_M1], a
+    lod a, [x:y + V0B3]
+    str [x:y + FT_M2], a
+    mov b, 24
+ftr_l:
+    cal ftr_shl
+    lod a, [x:y + FT_M2]
+    add a, a
+    str [x:y + FT_M2], a
+    lod a, [x:y + FT_M1]
+    adc a, a
+    str [x:y + FT_M1], a
+    lod a, [x:y + FT_M0]
+    adc a, a
+    str [x:y + FT_M0], a
+    jmc ftr_add
+ftr_nx:
+    dec b
+    jmz ftr_sh
+    jmp ftr_l
+ftr_add:
+    cal ftr_adw
+    jmp ftr_nx
+ftr_sh:
+    lod b, [x:y + FT_SH]
+ftr_sl:
+    cmp b, 0
+    jme ftr_sd
+    cal ftr_shl
+    dec b
+    jmp ftr_sl
+ftr_sd:
+    lod a, [c:d + 1]
+    cmp a, 0x80
+    jmf ftr_pos                 ; fraction < 1/2
+    mov a, 0                    ; fraction >= 1/2: n + 1, f = -(1 - F)
+    sub a, [c:d + 12]
+    str [c:d + 12], a
+    mov a, 0
+    sbb a, [c:d + 11]
+    str [c:d + 11], a
+    mov a, 0
+    sbb a, [c:d + 10]
+    str [c:d + 10], a
+    mov a, 0
+    sbb a, [c:d + 9]
+    str [c:d + 9], a
+    mov a, 0
+    sbb a, [c:d + 8]
+    str [c:d + 8], a
+    mov a, 0
+    sbb a, [c:d + 7]
+    str [c:d + 7], a
+    mov a, 0
+    sbb a, [c:d + 6]
+    str [c:d + 6], a
+    mov a, 0
+    sbb a, [c:d + 5]
+    str [c:d + 5], a
+    mov a, 0
+    sbb a, [c:d + 4]
+    str [c:d + 4], a
+    mov a, 0
+    sbb a, [c:d + 3]
+    str [c:d + 3], a
+    mov a, 0
+    sbb a, [c:d + 2]
+    str [c:d + 2], a
+    mov a, 0
+    sbb a, [c:d + 1]
+    str [c:d + 1], a
+    lod a, [c:d]
+    add a, 1
+    and a, 3
+    str [x:y + FT_Q], a
+    mov a, 0x80
+    str [x:y + FT_NG], a
+    jmp ftr_find
+ftr_pos:
+    lod a, [c:d]
+    and a, 3
+    str [x:y + FT_Q], a
+    mov a, 0
+    str [x:y + FT_NG], a
+ftr_find:
+    mov i, c
+    mov j, d
+    add j, 1
+    adc i, 0
+    mov b, 1                    ; b = the first non-zero byte of the fraction
+ftr_f1:
+    lod a, [i:j]
+    cmp a, 0
+    jms ftr_f2
+    add j, 1
+    adc i, 0
+    inc b
+    cmp b, 13
+    jme ftr_f2
+    jmp ftr_f1
+ftr_f2:
+    mov a, b                    ; three groups of 3 bytes -> 3 floats V8 V9 V10
+    shl a
+    shl a
+    shl a
+    add a, 16
+    mov d, a
+    mov c, V8
+    cal ftr_mk
+    add j, 3
+    adc i, 0
+    add d, 24
+    mov c, V9
+    cal ftr_mk
+    add j, 3
+    adc i, 0
+    add d, 24
+    mov c, V10
+    cal ftr_mk
+    mov a, V11                  ; rf = V11 + V12 (Fast2Sum), + V10
+    mov b, V8
+    cal fx_cpy
+    mov b, V9
+    cal fx_add
+    mov a, V12
+    mov b, V8
+    cal fx_cpy
+    mov b, V11
+    cal fx_sub
+    mov b, V9
+    cal fx_add
+    mov b, V10
+    cal fx_add
+    mov a, V13                  ; a1, a2: 12-bit halves of rf
+    mov b, V11
+    cal fx_cpy
+    cal fx_t12
+    mov a, V14
+    mov b, V11
+    cal fx_cpy
+    mov b, V13
+    cal fx_sub
+    mov a, V15                  ; A = a1 P1 (exact)
+    mov b, V13
+    cal fx_cpy
+    mov b, K_PIO2_1
+    cal fx_mulc
+    mov a, V16                  ; B = a2 P1 (exact)
+    mov b, V14
+    cal fx_cpy
+    mov b, K_PIO2_1
+    cal fx_mulc
+    mov a, V17                  ; C = rfh P2
+    mov b, V11
+    cal fx_cpy
+    mov b, K_PIO2_2
+    cal fx_mulc
+    mov a, V18                  ; D = rfl P1
+    mov b, V12
+    cal fx_cpy
+    mov b, K_PIO2_1
+    cal fx_mulc
+    mov a, V19                  ; E = rfh P3
+    mov b, V11
+    cal fx_cpy
+    mov b, K_PIO2_3
+    cal fx_mulc
+    mov b, V18
+    cal fx_add
+    mov b, V17
+    cal fx_add
+    mov b, V16
+    cal fx_add                  ; V19 = B + C + D + E
+    mov a, V2                   ; rh = A + V19, rl = (A - rh) + V19
+    mov b, V15
+    cal fx_cpy
+    mov b, V19
+    cal fx_add
+    mov a, V3
+    mov b, V15
+    cal fx_cpy
+    mov b, V2
+    cal fx_sub
+    mov b, V19
+    cal fx_add
+    lod a, [x:y + FT_NG]
+    cmp a, 0
+    jme ftr_end
+    mov a, V2
+    cal fx_neg
+    mov a, V3
+    cal fx_neg
+ftr_end:
+    ret
+
+; ftr_mk: the float of the 3 bytes at [i:j] times 2^-d goes to slot c.
+ftr_mk:
+    mov a, 0
+    str [x:y + SI], a
+    lod a, [i:j]
+    str [x:y + SI1], a
+    lod a, [i:j + 1]
+    str [x:y + SI2], a
+    lod a, [i:j + 2]
+    str [x:y + SI3], a
+    mov a, SI
+    cal fx_tof
+    mov a, c
+    mov b, SI
+    cal fx_cpy
+    mov a, 0xFF
+    mov b, 0
+    sub b, d
+    cal fx_scale
+    ret
+
+; ftr_shl: the 13 bytes at [c:d] <<= 1
+ftr_shl:
+    lod a, [c:d + 12]
+    add a, a
+    str [c:d + 12], a
+    lod a, [c:d + 11]
+    adc a, a
+    str [c:d + 11], a
+    lod a, [c:d + 10]
+    adc a, a
+    str [c:d + 10], a
+    lod a, [c:d + 9]
+    adc a, a
+    str [c:d + 9], a
+    lod a, [c:d + 8]
+    adc a, a
+    str [c:d + 8], a
+    lod a, [c:d + 7]
+    adc a, a
+    str [c:d + 7], a
+    lod a, [c:d + 6]
+    adc a, a
+    str [c:d + 6], a
+    lod a, [c:d + 5]
+    adc a, a
+    str [c:d + 5], a
+    lod a, [c:d + 4]
+    adc a, a
+    str [c:d + 4], a
+    lod a, [c:d + 3]
+    adc a, a
+    str [c:d + 3], a
+    lod a, [c:d + 2]
+    adc a, a
+    str [c:d + 2], a
+    lod a, [c:d + 1]
+    adc a, a
+    str [c:d + 1], a
+    lod a, [c:d + 0]
+    adc a, a
+    str [c:d + 0], a
+    ret
+
+; ftr_adw: the 13 bytes at [c:d] += the 13 bytes at [i:j]
+ftr_adw:
+    lod a, [c:d + 12]
+    add a, [i:j + 12]
+    str [c:d + 12], a
+    lod a, [c:d + 11]
+    adc a, [i:j + 11]
+    str [c:d + 11], a
+    lod a, [c:d + 10]
+    adc a, [i:j + 10]
+    str [c:d + 10], a
+    lod a, [c:d + 9]
+    adc a, [i:j + 9]
+    str [c:d + 9], a
+    lod a, [c:d + 8]
+    adc a, [i:j + 8]
+    str [c:d + 8], a
+    lod a, [c:d + 7]
+    adc a, [i:j + 7]
+    str [c:d + 7], a
+    lod a, [c:d + 6]
+    adc a, [i:j + 6]
+    str [c:d + 6], a
+    lod a, [c:d + 5]
+    adc a, [i:j + 5]
+    str [c:d + 5], a
+    lod a, [c:d + 4]
+    adc a, [i:j + 4]
+    str [c:d + 4], a
+    lod a, [c:d + 3]
+    adc a, [i:j + 3]
+    str [c:d + 3], a
+    lod a, [c:d + 2]
+    adc a, [i:j + 2]
+    str [c:d + 2], a
+    lod a, [c:d + 1]
+    adc a, [i:j + 1]
+    str [c:d + 1], a
+    lod a, [c:d + 0]
+    adc a, [i:j + 0]
+    str [c:d + 0], a
+    ret

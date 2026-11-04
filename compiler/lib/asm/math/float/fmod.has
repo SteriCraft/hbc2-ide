@@ -1,0 +1,144 @@
+; ============================================================
+; fmod
+; ============================================================
+;   fmod   [x:y] = [x:y] - n * [i:j], n = the integer toward zero of
+;          [x:y] / [i:j]. The result has the sign of [x:y] and |result| <
+;          |[i:j]|; it is always exact (no rounding, no FE_INEXACT).
+;
+; [i:j] is never changed; [x:y] and [i:j] may point to the same float.
+;   FE_INVALID  [x:y] infinite or [i:j] zero (result: the quiet NaN), or a
+;               signaling NaN operand
+;   [i:j] infinite: the result is [x:y]. [x:y] zero: the result is [x:y].
+; Flags of the CPU: undefined.
+;
+; How: with both mantissas normalized (24 bits), d = exponent difference.
+; If d < 0 the result is [x:y]. Else R = mantissa A, and d + 1 times: subtract
+; the mantissa of B if it fits, then R <<= 1 (but not after the last). The
+; remainder R is exact, scaled by B's exponent; it is normalized and packed
+; by the code of fmul (fm_exp_check), where a subnormal result is exact.
+; Slow for a large exponent difference (about 25 cycles per bit).
+
+fmod:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, FA_OPMOD
+    jmp fm_main
+
+; ---- infinity (no NaN): inf mod y is invalid, x mod inf is x
+fmo_infinities:
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fa_invalid
+    jmp fa_done
+
+; ---- both finite. fm_main made FA_SIGN = sign A xor sign B: undo.
+fmo_main:
+    lod a, [i:j + FA_SIGN]
+    xor a, [i:j + FB_SIGN]
+    str [i:j + FA_SIGN], a
+    lod a, [i:j + FB_M0]
+    or a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    jmz fa_invalid              ; modulo 0
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_done                 ; 0 mod y = 0
+    mov c, i
+    mov d, j
+    cal fd_norm
+    str [i:j + FM_P0], a        ; nA
+    mov c, i
+    mov d, j
+    add d, 8
+    adc c, 0
+    cal fd_norm
+    str [i:j + FM_P1], a        ; nB
+    lod a, [i:j + FA_EXP]       ; d:a = (exp A - nA) - (exp B - nB)
+    sub a, [i:j + FB_EXP]
+    mov d, 0
+    sbb d, 0
+    sub a, [i:j + FM_P0]
+    sbb d, 0
+    add a, [i:j + FM_P1]
+    adc d, 0
+    cmp d, 0x80
+    jmf fmo_go
+    jmp fa_done                 ; |A| < |B|: A
+fmo_go:
+    mov x, d                    ; x:y = the number of shifts
+    mov y, a
+    lod a, [i:j + FA_M0]        ; R = [a:b:c], d = the bit above
+    lod b, [i:j + FA_M1]
+    lod c, [i:j + FA_M2]
+    mov d, 0
+fmo_loop:
+    cal fmo_reduce
+    cmp y, 0
+    jme fmo_ylow
+    dec y
+    jmp fmo_shift
+fmo_ylow:
+    cmp x, 0
+    jme fmo_end
+    dec x
+    mov y, 0xFF
+fmo_shift:
+    add c, c
+    adc b, b
+    adc a, a
+    mov d, 0
+    adc d, 0
+    jmp fmo_loop
+fmo_end:
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], b
+    str [i:j + FA_M2], c
+    mov a, 0
+    str [i:j + FA_M3], a
+    str [i:j + FM_N], a
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_write_zero           ; remainder 0
+fmo_norm:
+    lod a, [i:j + FA_M0]
+    cmp a, 0x80
+    jmf fmo_shl
+    lod a, [i:j + FB_EXP]       ; e = exp B - nB - n
+    mov b, 0
+    sub a, [i:j + FM_P1]
+    sbb b, 0
+    sub a, [i:j + FM_N]
+    sbb b, 0
+    jmp fm_exp_check
+fmo_shl:
+    lod a, [i:j + FA_M2]
+    shl a
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, a
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, a
+    str [i:j + FA_M0], a
+    inc [i:j + FM_N]
+    jmp fmo_norm
+
+; fmo_reduce: R = R - mantissa B if R (with the bit d) is not smaller.
+fmo_reduce:
+    sub c, [i:j + FB_M2]
+    sbb b, [i:j + FB_M1]
+    sbb a, [i:j + FB_M0]
+    jmc fmr_borrow
+    ret                         ; fits (d was 0)
+fmr_borrow:
+    or d, 0
+    jmz fmr_restore
+    mov d, 0                    ; the bit above made it fit
+    ret
+fmr_restore:
+    add c, [i:j + FB_M2]
+    adc b, [i:j + FB_M1]
+    adc a, [i:j + FB_M0]
+    ret

@@ -1,0 +1,308 @@
+; ============================================================
+; Multiplication: fmul
+; ============================================================
+;   fmul   [x:y] = [x:y] * [i:j]
+;
+; [i:j] is never changed, and [x:y] and [i:j] may point to the same float.
+; Rounding: to nearest even. Exceptions raised (fenv.has):
+;   FE_INVALID  0 * inf, or a signaling NaN operand (result: the quiet NaN)
+;   FE_OVERFLOW + FE_INEXACT   the result is too large (result: infinity)
+;   FE_UNDERFLOW + FE_INEXACT  the result is tiny (below the smallest normal
+;               number, after rounding) and had to be rounded
+;   FE_INEXACT  the result had to be rounded
+; Flags of the CPU: undefined after fmul.
+;
+; How it works (frame and helpers: see fadd.has)
+;
+; Both floats are unpacked (exponent 1..255, 24-bit mantissa with the hidden
+; bit). The 24 x 24 bit product P (48 bits, in the frame at FM_P0..FM_P5) is
+; made one multiplier byte at a time, most significant first: P <<= 8, then
+; byte x multiplicand (32 bits, 8 shift-and-add steps in a b c d) is added.
+; P is then shifted left until its top bit is set (n shifts; a product of two
+; normal numbers needs 0 or 1). The value is
+;     mantissa x 2^(exponent - 150),  so the result exponent is
+;     e = exp A + exp B - 126 - n          (can be negative: 16 bits)
+; The top 32 bits of P go to the mantissa + guard byte of A (the bits below
+; are jammed into the lowest bit of the guard byte). e >= 255 is an overflow;
+; e <= 0 shifts the mantissa right by 1 - e (a subnormal result, exponent 1
+; and no hidden bit); the rest (round, pack) is shared with fadd.
+
+fmul:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, FA_OPMUL
+
+fm_main:
+    rsp [c:d]                   ; [c:d] = the frame
+    str [sp + FA_FLIP], a
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack               ; A (from [x:y])
+    mov a, x                    ; swap the pointers: x:y = B
+    mov x, i
+    mov i, a
+    mov a, y
+    mov y, j
+    mov j, a
+    add d, 8                    ; [c:d] = the frame + 8
+    adc c, 0
+    cal fa_unpack               ; B
+    rsp [i:j]                   ; i:j = the frame, from now on
+
+    lod a, [i:j + FA_SIGN]      ; the sign of the result
+    lod b, [i:j + FB_SIGN]
+    xor a, b
+    str [i:j + FA_SIGN], a
+
+    lod a, [i:j + FA_EXP]       ; exponent 255: NaN or infinity
+    cmp a, 255
+    jme fa_special
+    lod a, [i:j + FB_EXP]
+    cmp a, 255
+    jme fa_special
+    lod a, [i:j + FA_FLIP]      ; division: elsewhere
+    cmp a, FA_OPDIV
+    jme fd_main
+    cmp a, FA_OPMOD
+    jme fmo_main
+
+; ---- Both finite. A zero (mantissa 0) gives a zero.
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_write_zero
+    lod a, [i:j + FB_M0]
+    or a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    jmz fa_write_zero
+
+    mov a, 0                    ; P = 0, no shifts yet
+    str [i:j + FM_P0], a
+    str [i:j + FM_P1], a
+    str [i:j + FM_P2], a
+    str [i:j + FM_P3], a
+    str [i:j + FM_P4], a
+    str [i:j + FM_P5], a
+    str [i:j + FM_N], a
+    lod x, [i:j + FA_M0]
+    cal fm_byte
+    lod x, [i:j + FA_M1]
+    cal fm_byte
+    lod x, [i:j + FA_M2]
+    cal fm_byte
+
+; ---- Normalize P (it is not zero): whole bytes, then single bits.
+fm_nbytes:
+    lod a, [i:j + FM_P0]
+    cmp a, 0
+    jme fm_nbyte
+    jmp fm_nbits
+fm_nbyte:
+    lod a, [i:j + FM_P1]
+    str [i:j + FM_P0], a
+    lod a, [i:j + FM_P2]
+    str [i:j + FM_P1], a
+    lod a, [i:j + FM_P3]
+    str [i:j + FM_P2], a
+    lod a, [i:j + FM_P4]
+    str [i:j + FM_P3], a
+    lod a, [i:j + FM_P5]
+    str [i:j + FM_P4], a
+    mov a, 0
+    str [i:j + FM_P5], a
+    lod a, [i:j + FM_N]
+    add a, 8
+    str [i:j + FM_N], a
+    jmp fm_nbytes
+
+fm_nbits:
+    lod a, [i:j + FM_P0]
+    cmp a, 0x80
+    jmf fm_nshift
+    jmp fm_packed
+fm_nshift:
+    lod a, [i:j + FM_P5]
+    shl a
+    str [i:j + FM_P5], a
+    lod a, [i:j + FM_P4]
+    adc a, a
+    str [i:j + FM_P4], a
+    lod a, [i:j + FM_P3]
+    adc a, a
+    str [i:j + FM_P3], a
+    lod a, [i:j + FM_P2]
+    adc a, a
+    str [i:j + FM_P2], a
+    lod a, [i:j + FM_P1]
+    adc a, a
+    str [i:j + FM_P1], a
+    lod a, [i:j + FM_P0]
+    adc a, a
+    str [i:j + FM_P0], a
+    inc [i:j + FM_N]
+    jmp fm_nbits
+
+; ---- The mantissa and guard byte of A = the top 32 bits of P, the rest
+; jammed into the lowest bit.
+fm_packed:
+    lod a, [i:j + FM_P0]
+    str [i:j + FA_M0], a
+    lod a, [i:j + FM_P1]
+    str [i:j + FA_M1], a
+    lod a, [i:j + FM_P2]
+    str [i:j + FA_M2], a
+    lod b, [i:j + FM_P3]
+    lod a, [i:j + FM_P4]
+    or a, [i:j + FM_P5]
+    jmz fm_nosticky
+    or b, 1
+fm_nosticky:
+    str [i:j + FA_M3], b
+
+; ---- e = exp A + exp B - 126 - n, in b:a (signed 16 bits)
+    lod a, [i:j + FA_EXP]
+    add a, [i:j + FB_EXP]
+    mov b, 0
+    adc b, 0
+    lod c, [i:j + FM_N]
+    add c, 126                  ; at most 173
+    sub a, c
+    sbb b, 0
+fm_exp_check:                   ; b:a = e (signed 16 bits)
+    cmp b, 0x80
+    jmf fm_nonneg
+    cmp b, 0xFF
+    jmf fm_deep
+    cmp a, 0x40
+    jms fm_denormal             ; -192 .. -1
+fm_deep:
+    mov a, 0x80                 ; below -192: shifts everything out
+    jmp fm_denormal
+fm_nonneg:
+    cmp b, 0
+    jme fm_e_low
+    jmp fa_overflow             ; 256 or more
+fm_e_low:
+    cmp a, 255
+    jme fa_overflow
+    cmp a, 0
+    jme fm_denormal
+    str [i:j + FA_EXP], a       ; 1..254: a normal result
+    jmp fa_round
+
+; ---- e <= 0: a subnormal result. Shift the mantissa right by s = 1 - e.
+; The result is tiny (after rounding) unless e = 0 and the rounding of the
+; 24-bit mantissa would carry out (mantissa all ones, guard byte >= 0x80).
+fm_denormal:
+    mov b, a
+    mov a, 1
+    sub a, b                    ; a = s (e is -148 at the lowest: 8 bits)
+    mov c, 1                    ; tiny
+    cmp a, 1
+    jms fm_dn_go                ; s > 1: e < 0
+    lod b, [i:j + FA_M0]        ; s = 1
+    and b, [i:j + FA_M1]
+    and b, [i:j + FA_M2]
+    cmp b, 0xFF
+    jmf fm_dn_go
+    lod b, [i:j + FA_M3]
+    cmp b, 0x80
+    jmf fm_dn_go
+    mov c, 0
+fm_dn_go:
+    str [i:j + FM_TINY], c
+    mov c, i
+    mov d, j                    ; [c:d] = the mantissa of A
+    cal fa_shrj
+    lod a, [i:j + FM_TINY]
+    cmp a, 0
+    jme fm_dn_exp
+    lod a, [i:j + FA_M3]
+    cmp a, 0
+    jme fm_dn_exp               ; exact: no underflow
+    mov a, FE_UNDERFLOW
+    cal fe_raise
+fm_dn_exp:
+    mov a, 1
+    str [i:j + FA_EXP], a
+    jmp fa_round
+
+; ---- Infinity: 0 * inf is invalid, the rest is an infinity. No NaN here.
+fm_infinities:
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fm_a_inf
+    lod a, [i:j + FA_M0]        ; only B is infinite: A must not be 0
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_invalid
+    jmp fm_inf
+fm_a_inf:
+    lod a, [i:j + FB_EXP]
+    cmp a, 255
+    jme fm_inf
+    lod a, [i:j + FB_M0]        ; only A is infinite: B must not be 0
+    or a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    jmz fa_invalid
+fm_inf:
+    lod a, [i:j + FA_SIGN]
+    jmp fa_store_inf
+
+; ------------------------------------------------------------
+; fm_byte: x = a multiplier byte. P = P * 256 + x * (mantissa of B).
+; Uses a b c d x y.
+; ------------------------------------------------------------
+fm_byte:
+    lod a, [i:j + FM_P1]        ; P <<= 8
+    str [i:j + FM_P0], a
+    lod a, [i:j + FM_P2]
+    str [i:j + FM_P1], a
+    lod a, [i:j + FM_P3]
+    str [i:j + FM_P2], a
+    lod a, [i:j + FM_P4]
+    str [i:j + FM_P3], a
+    lod a, [i:j + FM_P5]
+    str [i:j + FM_P4], a
+    mov a, 0
+    str [i:j + FM_P5], a
+    or x, 0
+    jmz fmb_end                 ; nothing to add
+    mov b, 0                    ; [a:b:c:d] = x * B, 8 steps
+    mov c, 0
+    mov d, 0
+    mov y, 8
+fmb_step:
+    add d, d                    ; product <<= 1
+    adc c, c
+    adc b, b
+    adc a, a
+    add x, x                    ; C = multiplier bit
+    jmc fmb_add
+fmb_next:
+    dec y
+    jmz fmb_merge
+    jmp fmb_step
+fmb_add:
+    add d, [i:j + FB_M2]        ; product += B
+    adc c, [i:j + FB_M1]
+    adc b, [i:j + FB_M0]
+    adc a, 0
+    jmp fmb_next
+fmb_merge:                      ; P += [a:b:c:d] (P2..P5), carry up to P0
+    add d, [i:j + FM_P5]
+    str [i:j + FM_P5], d
+    adc c, [i:j + FM_P4]
+    str [i:j + FM_P4], c
+    adc b, [i:j + FM_P3]
+    str [i:j + FM_P3], b
+    adc a, [i:j + FM_P2]
+    str [i:j + FM_P2], a
+    lod a, [i:j + FM_P1]
+    adc a, 0
+    str [i:j + FM_P1], a
+    lod a, [i:j + FM_P0]
+    adc a, 0
+    str [i:j + FM_P0], a
+fmb_end:
+    ret

@@ -10,3 +10,5 @@ From a program using every operator (scratchpad th.c): `__mul __div __divu __rem
 
 
 Added 2026-11-03: `__structcpy` (struct/union assignment over 4 bytes, assign.has; ABI.md 11), emitted by backend-hbc2.c for `T_STRUCTCOPY`, not by the generic helper path.
+
+Added 2026-11-04 (float): `__plusf __minusf __mulf __divf __cceqf __ccnef __ccltf __ccgtf __cclteqf __ccgteqf __pluseqf __minuseqf __muleqf __diveqf __postincf __postdecf`, `__cast{,u,c,uc,l,ul}_f`, `__castf_{,u,c,uc,l,ul}` (runtime/float.has; ABI.md 11). Found by a probe of every float operation.

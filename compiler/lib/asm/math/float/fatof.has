@@ -1,0 +1,685 @@
+; ============================================================
+; atof
+; ============================================================
+;   atof  [i:j] -> decimal text, [x:y] -> the 4-byte float result
+;         C = 1 if there is no number (then [i:j] does not change and
+;         nothing is written). Else C = 0 and [i:j] is on the first
+;         character after the number. [x:y] and a b c d are restored.
+;
+; The text: an optional + or -, digits with an optional point (1  12.5
+; .5  5.), an optional exponent (e or E, an optional sign, digits; "1e" is
+; the number 1 followed by an "e"), or inf, infinity, nan (any case, no
+; payload; the NaN is the quiet NaN). No spaces are skipped.
+;
+; The result is correctly rounded (to nearest even, subnormals included)
+; and raises the flags of fenv.has like fmul does: FE_OVERFLOW +
+; FE_INEXACT (result: infinity), FE_UNDERFLOW + FE_INEXACT (a tiny result
+; that is rounded, 0 included), FE_INEXACT. Only the first 40 significant
+; digits are used, the digits after them only tell "more than that": that is
+; exact unless a number with more than 40 digits is within 10^-40 of a
+; halfway case.
+;
+; How: the digits make an integer D (a bignum, fbn.has) and a decimal
+; exponent q: value = D * 10^q. If q >= 0, D * 10^q is an integer: it is
+; shifted until its top bit is bit 255, the top 32 bits are the mantissa and
+; the others the sticky bit. If q < 0, D / 5^-q is made by 28 steps of
+; restoring division of the two numbers shifted to the top (the 2^-q is just
+; the exponent). Then the code of fmul (fm_exp_check) rounds and packs.
+
+.define AF_NDIG  160        ; digits in D (without leading zeros)
+.define AF_QH    161        ; q, signed 16 bits
+.define AF_QL    162
+.define AF_STICKY 163       ; 1 if a digit after the 40th was not 0
+.define AF_SEEN  164        ; 1 if a digit was seen
+.define AF_FRAC  165        ; 1 after the point
+.define AF_SIGN  166
+.define AF_EXH   167        ; the exponent of the text
+.define AF_EXL   168
+.define AF_DSTM  169
+.define AF_DSTL  170
+.define AF_ENDM  171        ; the end of the number
+.define AF_ENDL  172
+.define AF_MA0   173        ; the mantissa for fm_exp_check
+.define AF_MA1   174
+.define AF_MA2   175
+.define AF_MA3   176
+.define AF_RXH   177        ; its exponent, signed 16 bits
+.define AF_RXL   178
+.define AF_LD    179
+.define AF_LS    180
+.define AF_TT    181
+.define AF_DIGIT 182
+.define AF_Q0    183
+.define AF_Q1    184
+.define AF_Q2    185
+.define AF_Q3    186
+.define AF_TMP   187
+.define AF_ADJ   188
+.define AF_FRAME 192
+
+atof:
+    psh a, b, c, d, x, y
+    psh i, j
+    mov c, i
+    mov d, j
+    ssp AF_FRAME
+    rsp [i:j]
+    str [i:j + AF_DSTM], x
+    str [i:j + AF_DSTL], y
+    mov a, 0
+    str [i:j + AF_NDIG], a
+    str [i:j + AF_QH], a
+    str [i:j + AF_QL], a
+    str [i:j + AF_STICKY], a
+    str [i:j + AF_SEEN], a
+    str [i:j + AF_FRAC], a
+    str [i:j + AF_SIGN], a
+    mov a, TA_R
+    cal bn_zero
+    lod a, [c:d]
+    cmp a, '-'
+    jme fp_neg
+    cmp a, '+'
+    jme fp_skipsign
+    jmp fp_signdone
+fp_neg:
+    mov a, 0x80
+    str [i:j + AF_SIGN], a
+fp_skipsign:
+    inc d
+    adc c, 0
+fp_signdone:
+    lod a, [c:d]
+    or a, 0x20
+    cmp a, 'i'
+    jme fp_word
+    cmp a, 'n'
+    jme fp_word
+fp_loop:
+    lod a, [c:d]
+    cmp a, '.'
+    jme fp_dot
+    sub a, '0'
+    cmp a, 10
+    jmf fp_isdig
+    jmp fp_endnum
+fp_isdig:
+    cal fp_digit
+    inc d
+    adc c, 0
+    jmp fp_loop
+fp_dot:
+    lod a, [i:j + AF_FRAC]
+    or a, 0
+    jmz fp_dot1
+    jmp fp_endnum
+fp_dot1:
+    mov a, 1
+    str [i:j + AF_FRAC], a
+    inc d
+    adc c, 0
+    jmp fp_loop
+
+fp_endnum:
+    lod a, [i:j + AF_SEEN]
+    or a, 0
+    jmz fp_error
+    lod a, [c:d]
+    or a, 0x20
+    cmp a, 'e'
+    jme fp_exp
+fp_after:
+    str [i:j + AF_ENDM], c
+    str [i:j + AF_ENDL], d
+    jmp fp_conv
+
+; ---- exponent: e [+-] digits (without digits, the e is not part of the number)
+fp_exp:
+    str [i:j + AF_ENDM], c
+    str [i:j + AF_ENDL], d
+    inc d
+    adc c, 0
+    mov a, 0
+    str [i:j + AF_TMP], a
+    str [i:j + AF_EXH], a
+    str [i:j + AF_EXL], a
+    lod a, [c:d]
+    cmp a, '-'
+    jme fp_exp_neg
+    cmp a, '+'
+    jme fp_exp_skip
+    jmp fp_exp_first
+fp_exp_neg:
+    mov a, 0x80
+    str [i:j + AF_TMP], a
+fp_exp_skip:
+    inc d
+    adc c, 0
+fp_exp_first:
+    lod a, [c:d]
+    sub a, '0'
+    cmp a, 10
+    jmf fp_exp_dig
+    lod c, [i:j + AF_ENDM]      ; no digit: back to the e
+    lod d, [i:j + AF_ENDL]
+    jmp fp_after
+fp_exp_dig:
+    str [i:j + AF_DIGIT], a
+    lod a, [i:j + AF_EXH]
+    cmp a, 4
+    jmf fp_exp_acc              ; below 1024: * 10 + digit
+    jmp fp_exp_next
+fp_exp_acc:
+    lod x, [i:j + AF_EXH]
+    lod y, [i:j + AF_EXL]
+    add y, y
+    adc x, x
+    mov a, x
+    mov b, y                    ; a:b = 2 * ex
+    add y, y
+    adc x, x
+    add y, y
+    adc x, x                    ; x:y = 8 * ex
+    add y, b
+    adc x, a
+    lod a, [i:j + AF_DIGIT]
+    add y, a
+    adc x, 0
+    str [i:j + AF_EXH], x
+    str [i:j + AF_EXL], y
+fp_exp_next:
+    inc d
+    adc c, 0
+    lod a, [c:d]
+    sub a, '0'
+    cmp a, 10
+    jmf fp_exp_dig
+    lod a, [i:j + AF_QL]        ; q += or -= ex
+    lod b, [i:j + AF_QH]
+    lod x, [i:j + AF_TMP]
+    or x, 0
+    jmz fp_exp_add
+    sub a, [i:j + AF_EXL]
+    sbb b, [i:j + AF_EXH]
+    jmp fp_exp_q
+fp_exp_add:
+    add a, [i:j + AF_EXL]
+    adc b, [i:j + AF_EXH]
+fp_exp_q:
+    str [i:j + AF_QL], a
+    str [i:j + AF_QH], b
+    jmp fp_after
+
+; ---- inf, infinity, nan
+fp_word:
+    cmp a, 'n'
+    jme fp_wnan
+    mov a, 'i'
+    cal fp_ch
+    jme fp_w1
+    jmp fp_error
+fp_w1:
+    mov a, 'n'
+    cal fp_ch
+    jme fp_w2
+    jmp fp_error
+fp_w2:
+    mov a, 'f'
+    cal fp_ch
+    jme fp_w3
+    jmp fp_error
+fp_w3:
+    str [i:j + AF_ENDM], c      ; "inf": try "inity"
+    str [i:j + AF_ENDL], d
+    mov a, 'i'
+    cal fp_ch
+    jme fp_w4
+    jmp fp_winf
+fp_w4:
+    mov a, 'n'
+    cal fp_ch
+    jme fp_w5
+    jmp fp_wback
+fp_w5:
+    mov a, 'i'
+    cal fp_ch
+    jme fp_w6
+    jmp fp_wback
+fp_w6:
+    mov a, 't'
+    cal fp_ch
+    jme fp_w7
+    jmp fp_wback
+fp_w7:
+    mov a, 'y'
+    cal fp_ch
+    jme fp_winf2
+fp_wback:
+    lod c, [i:j + AF_ENDM]
+    lod d, [i:j + AF_ENDL]
+    jmp fp_winf
+fp_winf2:
+    str [i:j + AF_ENDM], c
+    str [i:j + AF_ENDL], d
+fp_winf:
+    cal fp_loadend
+    lod a, [i:j + AF_SIGN]
+    or a, 0x7F
+    mov b, 0x80
+    jmp fp_wr_ok
+fp_wnan:
+    mov a, 'n'
+    cal fp_ch
+    jme fp_n1
+    jmp fp_error
+fp_n1:
+    mov a, 'a'
+    cal fp_ch
+    jme fp_n2
+    jmp fp_error
+fp_n2:
+    mov a, 'n'
+    cal fp_ch
+    jme fp_n3
+    jmp fp_error
+fp_n3:
+    str [i:j + AF_ENDM], c
+    str [i:j + AF_ENDL], d
+    mov a, 0x7F
+    mov b, 0xC0
+    jmp fp_wr_ok
+
+; fp_ch: if the character at c:d (any case) is the letter a, moves on and
+; gives E. Uses b.
+fp_ch:
+    lod b, [c:d]
+    or b, 0x20
+    cmp b, a
+    jme fp_ch_ok
+    ret
+fp_ch_ok:
+    inc d
+    adc c, 0
+    cmp b, b
+    ret
+
+fp_loadend:
+    lod c, [i:j + AF_ENDM]
+    lod d, [i:j + AF_ENDL]
+    ret
+
+; ---- a digit (a = 0..9)
+fp_digit:
+    str [i:j + AF_DIGIT], a
+    mov b, 1
+    str [i:j + AF_SEEN], b
+    lod b, [i:j + AF_NDIG]
+    cmp b, 40
+    jmf fp_dstore
+    or a, 0                     ; more than 40 digits: only the sticky bit and q
+    jmz fp_dskip
+    mov b, 1
+    str [i:j + AF_STICKY], b
+fp_dskip:
+    lod a, [i:j + AF_FRAC]
+    or a, 0
+    jmz fp_qinc
+    ret
+fp_dstore:
+    or b, 0
+    jmz fp_first
+    mov a, TA_R
+    cal bn_mul10
+    jmp fp_add
+fp_first:
+    lod a, [i:j + AF_DIGIT]
+    or a, 0
+    jmz fp_leadzero
+fp_add:
+    mov a, TA_T
+    cal bn_zero
+    lod a, [i:j + AF_DIGIT]
+    str [i:j + TA_T], a
+    mov a, TA_R
+    mov b, TA_T
+    cal bn_add
+    lod a, [i:j + AF_NDIG]
+    inc a
+    str [i:j + AF_NDIG], a
+fp_leadzero:
+    lod a, [i:j + AF_FRAC]
+    or a, 0
+    jmz fp_dret
+    jmp fp_qdec
+fp_dret:
+    ret
+fp_qinc:
+    lod a, [i:j + AF_QL]
+    add a, 1
+    str [i:j + AF_QL], a
+    lod a, [i:j + AF_QH]
+    adc a, 0
+    str [i:j + AF_QH], a
+    ret
+fp_qdec:
+    lod a, [i:j + AF_QL]
+    sub a, 1
+    str [i:j + AF_QL], a
+    lod a, [i:j + AF_QH]
+    sbb a, 0
+    str [i:j + AF_QH], a
+    ret
+
+; ---- the value is D * 10^q
+fp_conv:
+    lod a, [i:j + AF_NDIG]
+    or a, 0
+    jmz fp_zero
+    lod a, [i:j + AF_STICKY]
+    or a, 0
+    jmz fp_nostk
+    mov a, TA_R                 ; D = D * 10 + 1, q - 1
+    cal bn_mul10
+    mov a, TA_T
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_T], a
+    mov a, TA_R
+    mov b, TA_T
+    cal bn_add
+    lod a, [i:j + AF_NDIG]
+    inc a
+    str [i:j + AF_NDIG], a
+    cal fp_qdec
+fp_nostk:
+    lod a, [i:j + AF_QL]        ; b:a = q + digits - 1: the decimal exponent
+    lod b, [i:j + AF_QH]
+    lod c, [i:j + AF_NDIG]
+    add a, c
+    adc b, 0
+    sub a, 1
+    sbb b, 0
+    or b, 0
+    jmn fp_eneg
+    jmz fp_esmall
+    jmp fp_ovf
+fp_esmall:
+    cmp a, 39
+    jmf fp_range_ok
+    jmp fp_ovf
+fp_eneg:
+    cmp b, 0xFF
+    jme fp_eneg2
+    jmp fp_udf
+fp_eneg2:
+    cmp a, 0xD2                 ; -46
+    jmf fp_udf
+fp_range_ok:
+    lod a, [i:j + AF_QH]
+    or a, 0
+    jmn fp_div
+
+    ; ---- q >= 0: D * 10^q, then the top 32 bits
+    lod b, [i:j + AF_QL]
+fp_mp:
+    or b, 0
+    jmz fp_mpd
+    mov a, TA_R
+    cal bn_mul10
+    dec b
+    jmp fp_mp
+fp_mpd:
+    mov a, TA_R
+    cal bn_bitlen               ; a = L
+    str [i:j + AF_LD], a
+    mov b, 0
+    sub b, a                    ; 256 - L
+    mov a, TA_R
+    cal bn_shl                  ; the top bit is bit 255
+    lod a, [i:j + 31]
+    str [i:j + AF_MA0], a
+    lod a, [i:j + 30]
+    str [i:j + AF_MA1], a
+    lod a, [i:j + 29]
+    str [i:j + AF_MA2], a
+    lod a, [i:j + 28]
+    str [i:j + AF_MA3], a
+    mov x, i                    ; sticky: the bytes 0..27 (R is at offset 0)
+    mov y, j
+    mov b, 28
+    mov d, 0
+fp_sk:
+    lod a, [x:y]
+    or d, a
+    inc y
+    adc x, 0
+    dec b
+    jmz fp_skd
+    jmp fp_sk
+fp_skd:
+    lod a, [i:j + AF_LD]        ; exponent 126 + L
+    add a, 126
+    mov b, 0
+    adc b, 0
+    str [i:j + AF_RXL], a
+    str [i:j + AF_RXH], b
+    or d, 0
+    jmz fp_pack
+    lod a, [i:j + AF_MA3]
+    or a, 1
+    str [i:j + AF_MA3], a
+    jmp fp_pack
+
+    ; ---- q < 0: D / 5^t, t = -q
+fp_div:
+    lod a, [i:j + AF_QL]
+    not a
+    inc a
+    str [i:j + AF_TT], a
+    mov a, TA_S
+    cal bn_zero
+    mov a, 1
+    str [i:j + TA_S], a
+    lod b, [i:j + AF_TT]
+fp_m5:
+    or b, 0
+    jmz fp_m5d
+    mov a, TA_S
+    cal bn_mul5
+    dec b
+    jmp fp_m5
+fp_m5d:
+    mov a, TA_R
+    cal bn_bitlen
+    str [i:j + AF_LD], a
+    mov b, 255
+    sub b, a
+    mov a, TA_R
+    cal bn_shl                  ; the top bit is bit 254
+    mov a, TA_S
+    cal bn_bitlen
+    str [i:j + AF_LS], a
+    mov b, 255
+    sub b, a
+    mov a, TA_S
+    cal bn_shl
+    mov a, 0
+    str [i:j + AF_Q0], a
+    str [i:j + AF_Q1], a
+    str [i:j + AF_Q2], a
+    str [i:j + AF_Q3], a
+    mov x, 28
+fp_dl:
+    mov a, TA_R
+    mov b, TA_S
+    cal bn_cmp
+    jmf fp_d0
+    mov a, TA_R
+    mov b, TA_S
+    cal bn_sub
+    stc
+    jmp fp_dq
+fp_d0:
+    clc
+fp_dq:
+    lod a, [i:j + AF_Q3]        ; q = q * 2 + the bit (carry)
+    adc a, a
+    str [i:j + AF_Q3], a
+    lod a, [i:j + AF_Q2]
+    adc a, a
+    str [i:j + AF_Q2], a
+    lod a, [i:j + AF_Q1]
+    adc a, a
+    str [i:j + AF_Q1], a
+    lod a, [i:j + AF_Q0]
+    adc a, a
+    str [i:j + AF_Q0], a
+    mov a, TA_R
+    cal bn_shl1
+    dec x
+    jmz fp_dd
+    jmp fp_dl
+fp_dd:
+    mov x, i                    ; the remainder (at offset 0): <> 0 is the sticky bit
+    mov y, j
+    mov b, 32
+    mov d, 0
+fp_rz:
+    lod a, [x:y]
+    or d, a
+    inc y
+    adc x, 0
+    dec b
+    jmz fp_rzd
+    jmp fp_rz
+fp_rzd:
+    str [i:j + AF_TMP], d
+    mov x, 4                   ; q has 28 bits when the ratio is >= 1, else 27
+    mov a, 0
+    str [i:j + AF_ADJ], a
+    lod a, [i:j + AF_Q0]
+    and a, 8
+    jmn fp_nl
+    jmz fp_five
+    jmp fp_nl
+fp_five:
+    mov x, 5
+    mov a, 1
+    str [i:j + AF_ADJ], a
+fp_nl:
+    lod a, [i:j + AF_Q3]
+    shl a
+    str [i:j + AF_Q3], a
+    lod a, [i:j + AF_Q2]
+    adc a, a
+    str [i:j + AF_Q2], a
+    lod a, [i:j + AF_Q1]
+    adc a, a
+    str [i:j + AF_Q1], a
+    lod a, [i:j + AF_Q0]
+    adc a, a
+    str [i:j + AF_Q0], a
+    dec x
+    jmz fp_nld
+    jmp fp_nl
+fp_nld:
+    lod a, [i:j + AF_Q0]
+    str [i:j + AF_MA0], a
+    lod a, [i:j + AF_Q1]
+    str [i:j + AF_MA1], a
+    lod a, [i:j + AF_Q2]
+    str [i:j + AF_MA2], a
+    lod a, [i:j + AF_Q3]
+    lod b, [i:j + AF_TMP]
+    or b, 0
+    jmz fp_nost
+    or a, 1
+fp_nost:
+    str [i:j + AF_MA3], a
+    lod a, [i:j + AF_LD]        ; exponent = lD - lS - t + 127 - adj
+    mov b, 0
+    sub a, [i:j + AF_LS]
+    sbb b, 0
+    sub a, [i:j + AF_TT]
+    sbb b, 0
+    add a, 127
+    adc b, 0
+    sub a, [i:j + AF_ADJ]
+    sbb b, 0
+    str [i:j + AF_RXL], a
+    str [i:j + AF_RXH], b
+
+; ---- rounds and packs with the code of fmul
+fp_pack:
+    cal fp_loadend
+    cal fp_packer
+    jmp fp_ok
+
+fp_packer:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    rsp [c:d]
+    lod a, [i:j + AF_MA0]
+    str [c:d + FA_M0], a
+    lod a, [i:j + AF_MA1]
+    str [c:d + FA_M1], a
+    lod a, [i:j + AF_MA2]
+    str [c:d + FA_M2], a
+    lod a, [i:j + AF_MA3]
+    str [c:d + FA_M3], a
+    lod a, [i:j + AF_SIGN]
+    str [c:d + FA_SIGN], a
+    lod a, [i:j + AF_DSTM]
+    str [c:d + FA_DST_MSB], a
+    lod a, [i:j + AF_DSTL]
+    str [c:d + FA_DST_LSB], a
+    lod a, [i:j + AF_RXL]
+    lod b, [i:j + AF_RXH]
+    mov i, c
+    mov j, d
+    jmp fm_exp_check            ; (ends with fa_done: back to fp_pack)
+
+; ---- results that need no rounding
+fp_zero:                        ; zero (no flag)
+    cal fp_loadend
+    lod a, [i:j + AF_SIGN]
+    mov b, 0
+    jmp fp_wr_ok
+fp_ovf:                         ; too large: infinity, overflow + inexact
+    mov a, 0x14
+    cal fe_raise
+    cal fp_loadend
+    lod a, [i:j + AF_SIGN]
+    or a, 0x7F
+    mov b, 0x80
+    jmp fp_wr_ok
+fp_udf:                         ; too small: zero, underflow + inexact
+    mov a, 0x18
+    cal fe_raise
+    cal fp_loadend
+    lod a, [i:j + AF_SIGN]
+    mov b, 0
+fp_wr_ok:                       ; writes the bytes a, b, 0, 0 (c:d = the end)
+    lod x, [i:j + AF_DSTM]
+    lod y, [i:j + AF_DSTL]
+    str [x:y], a
+    str [x:y + 1], b
+    mov a, 0
+    str [x:y + 2], a
+    str [x:y + 3], a
+
+fp_ok:                          ; c:d = the end of the number
+    asp AF_FRAME
+    str [sp + 1], c
+    str [sp], d
+    pop i, j
+    pop a, b, c, d, x, y
+    clc
+    ret
+
+fp_error:
+    asp AF_FRAME
+    pop i, j
+    pop a, b, c, d, x, y
+    stc
+    ret

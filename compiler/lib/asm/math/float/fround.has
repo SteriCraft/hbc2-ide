@@ -1,0 +1,215 @@
+; ============================================================
+; Rounding to an integer value: ftrunc ffloor fceil fround frint fnearbyint
+; ============================================================
+;   ftrunc      [x:y] = toward zero
+;   ffloor      [x:y] = toward minus infinity
+;   fceil       [x:y] = toward plus infinity
+;   fround      [x:y] = to the nearest integer, halves away from zero
+;   frint       [x:y] = to the nearest integer, halves to even; raises
+;               FE_INEXACT if the value changed
+;   fnearbyint  the same as frint, without FE_INEXACT
+;
+; The result is a float with an integer value: the sign of the argument is
+; kept (ceil(-0.3) = -0), infinities and integers (|x| >= 2^23) do not change.
+; A NaN gives the quiet NaN, a signaling NaN also raises FE_INVALID.
+; Only frint raises FE_INEXACT. Flags of the CPU: undefined.
+;
+; How: the unpacked mantissa M (24 bits, frame A) is split into the integer
+; part I (frame A, as a 32-bit integer) and the fraction Fr (frame B, 32 bits,
+; the value is Fr / 2^32). I is incremented when the rounding goes up, then
+; converted back with the code of itof (exponent 158, fa_normalize).
+
+ftrunc:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 0
+    jmp fr_main
+
+ffloor:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 1
+    jmp fr_main
+
+fceil:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 2
+    jmp fr_main
+
+fround:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 3
+    jmp fr_main
+
+frint:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 4
+    jmp fr_main
+
+fnearbyint:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 5
+
+fr_main:
+    rsp [c:d]
+    str [sp + FA_FLIP], a       ; the mode
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack
+    rsp [i:j]
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fr_special
+    cmp a, 150
+    jmf fr_go
+    jmp fa_done                 ; 2^23 or more: already an integer
+fr_go:
+    cmp a, 127
+    jmf fr_small
+    sub a, 126                  ; K = 1..23 bits of integer part
+    str [i:j + FM_N], a
+    lod a, [i:j + FA_M0]        ; Fr = M << 8 << K
+    str [i:j + FB_M0], a
+    lod a, [i:j + FA_M1]
+    str [i:j + FB_M1], a
+    lod a, [i:j + FA_M2]
+    str [i:j + FB_M2], a
+    mov a, 0
+    str [i:j + FB_M3], a
+    mov c, i
+    mov d, j
+    add d, 8
+    adc c, 0
+    lod a, [i:j + FM_N]
+    cal fi_shl
+    mov c, i                    ; I = M << 8 >> (32 - K)
+    mov d, j
+    mov a, 32
+    lod b, [i:j + FM_N]
+    sub a, b
+    cal fi_shr
+    jmp fr_decide
+
+fr_small:                       ; below 1: I = 0
+    lod a, [i:j + FA_EXP]
+    cmp a, 126
+    jme fr_half
+    lod a, [i:j + FA_M0]        ; below 1/2: Fr = 0 or 1 (anything below 1/2)
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    mov b, 0
+    jmz fr_small_fr
+    mov b, 1
+fr_small_fr:
+    mov a, 0
+    str [i:j + FB_M0], a
+    str [i:j + FB_M1], a
+    str [i:j + FB_M2], a
+    str [i:j + FB_M3], b
+    jmp fr_zero_i
+fr_half:                        ; 1/2 to 1: Fr = M << 8
+    lod a, [i:j + FA_M0]
+    str [i:j + FB_M0], a
+    lod a, [i:j + FA_M1]
+    str [i:j + FB_M1], a
+    lod a, [i:j + FA_M2]
+    str [i:j + FB_M2], a
+    mov a, 0
+    str [i:j + FB_M3], a
+fr_zero_i:
+    mov a, 0
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], a
+    str [i:j + FA_M2], a
+    str [i:j + FA_M3], a
+
+; ---- Does the integer go up by one?
+fr_decide:
+    lod a, [i:j + FB_M0]
+    or a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    or a, [i:j + FB_M3]
+    jmz fr_build                ; no fraction
+    lod a, [i:j + FA_FLIP]
+    cmp a, 4
+    jme fr_inexact              ; only mode 4 raises FE_INEXACT
+    jmp fr_modes
+fr_inexact:
+    mov a, FE_INEXACT
+    cal fe_raise
+fr_modes:
+    lod a, [i:j + FA_FLIP]
+    cmp a, 0
+    jme fr_build                ; trunc
+    cmp a, 1
+    jme fr_floor
+    cmp a, 2
+    jme fr_ceil
+    cmp a, 3
+    jme fr_round
+    lod a, [i:j + FB_M0]        ; rint: nearest, ties to even
+    cmp a, 0x80
+    jmf fr_build                ; below 1/2
+    jms fr_up                   ; above 1/2
+    lod a, [i:j + FB_M1]
+    or a, [i:j + FB_M2]
+    or a, [i:j + FB_M3]
+    jmz fr_tie
+    jmp fr_up
+fr_tie:
+    lod a, [i:j + FA_M3]
+    and a, 1
+    jmz fr_build                ; I is even
+    jmp fr_up
+fr_floor:
+    lod a, [i:j + FA_SIGN]
+    cmp a, 0
+    jme fr_build                ; positive: down
+    jmp fr_up                   ; negative: the magnitude goes up
+fr_ceil:
+    lod a, [i:j + FA_SIGN]
+    cmp a, 0
+    jme fr_up
+    jmp fr_build
+fr_round:                       ; half away from zero
+    lod a, [i:j + FB_M0]
+    cmp a, 0x80
+    jmf fr_build
+fr_up:
+    lod a, [i:j + FA_M3]
+    add a, 1
+    str [i:j + FA_M3], a
+    lod a, [i:j + FA_M2]
+    adc a, 0
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, 0
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, 0
+    str [i:j + FA_M0], a
+
+; ---- I (at most 2^23) back to a float with the sign of the argument.
+fr_build:
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz fa_write_zero
+    mov a, 158
+    str [i:j + FA_EXP], a
+    jmp fa_normalize
+
+fr_special:                     ; NaN or infinity
+    mov c, i
+    mov d, j
+    cal fa_nanclass
+    or a, 0
+    jmz fa_done                 ; infinity: unchanged
+    cmp a, 1
+    jme fa_qnan
+    jmp fa_invalid

@@ -1,0 +1,332 @@
+; ============================================================
+; Comparison: fcmp, fcmps, predicates, fmin, fmax
+; ============================================================
+; fcmp / fcmps compare [x:y] with [i:j] and answer in the CPU flags, like
+; cmp does (jms / jme / jmf work after them):
+;
+;       [x:y] >  [i:j]   S
+;       [x:y] == [i:j]   E          (+0 == -0)
+;       [x:y] <  [i:j]   F
+;       unordered        C          (a NaN is one of them; S, E, F all 0)
+;
+; Exactly one of S, E, F, C is set. Z and N are undefined. The floats and
+; all registers are unchanged.
+;
+;   fcmp   quiet:     FE_INVALID only if an operand is a signaling NaN.
+;                     For ==, != and the isgreater... family.
+;   fcmps  signaling: FE_INVALID if an operand is any NaN.
+;                     For the C operators <, <=, >, >=.
+;
+; Predicates: a = 1 or 0, Z = the answer is 0.
+;
+;   feq   ==   fne   !=  (true for a NaN)    both quiet (fcmp)
+;   flt   <    fle   <=    fgt   >    fge   >=     signaling (fcmps)
+;   fisless fislessequal fisgreater fisgreaterequal fislessgreater
+;   fisunordered                              quiet (fcmp), C99 macros
+;
+; fmin / fmax: [x:y] = the smaller / larger of [x:y] and [i:j].
+;   One NaN: the other number. Both: the quiet NaN. A signaling NaN
+;   gives the quiet NaN and FE_INVALID. fmax(-0, +0) = +0 and
+;   fmin(-0, +0) = -0.
+; fdim comes with the subtraction (fadd.has).
+
+; ------------------------------------------------------------
+; fcmp / fcmps
+; ------------------------------------------------------------
+; c = 0 (quiet) or 1 (signaling). a, b, c, d are used and restored.
+fcmp:
+    psh a, b, c, d
+    mov c, 0
+    jmp fcmp_go
+
+fcmps:
+    psh a, b, c, d
+    mov c, 1
+
+fcmp_go:
+    lod a, [x:y]            ; no NaN when the exponent is not all ones
+    and a, 0x7F
+    cmp a, 0x7F
+    jme fcmp_maybe_nan
+    lod a, [i:j]
+    and a, 0x7F
+    cmp a, 0x7F
+    jme fcmp_maybe_nan
+
+; No NaN: floats are sign + magnitude.
+fcmp_ordered:
+    lod a, [x:y]
+    lod b, [i:j]
+    mov d, a
+    xor d, b
+    and d, 0x80
+    jmz fcmp_same_sign
+    ; Different signs: the negative one is smaller, unless both are zero.
+    mov c, a
+    and a, 0x7F
+    and b, 0x7F
+    or a, b
+    or a, [x:y + 1]
+    or a, [x:y + 2]
+    or a, [x:y + 3]
+    or a, [i:j + 1]
+    or a, [i:j + 2]
+    or a, [i:j + 3]
+    jmz fcmp_equal
+    and c, 0x80
+    jmz fcmp_greater        ; [x:y] is positive
+    jmp fcmp_less
+
+; Same sign: compare the 4 bytes as an unsigned number (S / E / F), and
+; swap the answer when both are negative.
+fcmp_same_sign:
+    mov c, a
+    cmp a, b
+    jme fcmp_b1
+    jmp fcmp_sign
+fcmp_b1:
+    lod a, [x:y + 1]
+    cmp a, [i:j + 1]
+    jme fcmp_b2
+    jmp fcmp_sign
+fcmp_b2:
+    lod a, [x:y + 2]
+    cmp a, [i:j + 2]
+    jme fcmp_b3
+    jmp fcmp_sign
+fcmp_b3:
+    lod a, [x:y + 3]
+    cmp a, [i:j + 3]
+fcmp_sign:
+    and c, 0x80             ; Z / N only: S, E, F are kept
+    jmz fcmp_ok             ; positive: the answer is right
+    jms fcmp_less
+    jmf fcmp_greater
+
+fcmp_equal:
+    cls
+    clf
+    ste
+    jmp fcmp_ok
+fcmp_less:
+    cls
+    cle
+    stf
+    jmp fcmp_ok
+fcmp_greater:
+    clf
+    cle
+    sts
+fcmp_ok:
+    clc
+fcmp_done:
+    pop a, b, c, d
+    ret
+
+; An exponent is all ones: a NaN or an infinity. d = class of [x:y],
+; a = class of [i:j] (0 = no NaN, 1 = quiet NaN, 2 = signaling NaN).
+fcmp_maybe_nan:
+    cal fcmp_nan1
+    mov d, a
+    mov b, x                ; swap [x:y] and [i:j] to look at the other
+    mov x, i
+    mov i, b
+    mov b, y
+    mov y, j
+    mov j, b
+    cal fcmp_nan1
+    mov b, x
+    mov x, i
+    mov i, b
+    mov b, y
+    mov y, j
+    mov j, b
+    mov b, a
+    or b, d
+    cmp b, 0
+    jme fcmp_ordered        ; only infinities
+    and b, 2                ; b = 2 if one is a signaling NaN
+    or b, c                 ; or fcmps
+    jmz fcmp_unordered
+    mov a, FE_INVALID
+    cal fe_raise
+fcmp_unordered:
+    cls
+    cle
+    clf
+    stc
+    jmp fcmp_done
+
+; a = 0 if [x:y] is not a NaN, 1 if quiet NaN, 2 if signaling NaN.
+fcmp_nan1:
+    psh b
+    lod a, [x:y]
+    and a, 0x7F
+    cmp a, 0x7F
+    jme fcmp_nan1_exp
+fcmp_nan1_no:
+    mov a, 0
+    pop b
+    ret
+fcmp_nan1_exp:
+    lod b, [x:y + 1]
+    cmp b, 0x80
+    jmf fcmp_nan1_no        ; exponent 254
+    mov a, b
+    and a, 0x7F
+    or a, [x:y + 2]
+    or a, [x:y + 3]
+    cmp a, 0
+    jme fcmp_nan1_no        ; fraction 0: infinity
+    and b, 0x40
+    jmz fcmp_nan1_sig
+    mov a, 1
+    pop b
+    ret
+fcmp_nan1_sig:
+    mov a, 2
+    pop b
+    ret
+
+; ------------------------------------------------------------
+; Predicates
+; ------------------------------------------------------------
+; An unordered comparison sets none of S, E, F, so every test of those
+; (==, <, >...) is false, and != is true.
+feq:
+    cal fcmp
+    jme fbool_true
+    jmp fbool_false
+
+fne:
+    cal fcmp
+    jme fbool_false
+    jmp fbool_true
+
+flt:
+    cal fcmps
+    jmf fbool_true
+    jmp fbool_false
+
+fle:
+    cal fcmps
+    jmf fbool_true
+    jme fbool_true
+    jmp fbool_false
+
+fgt:
+    cal fcmps
+    jms fbool_true
+    jmp fbool_false
+
+fge:
+    cal fcmps
+    jms fbool_true
+    jme fbool_true
+    jmp fbool_false
+
+fisless:
+    cal fcmp
+    jmf fbool_true
+    jmp fbool_false
+
+fislessequal:
+    cal fcmp
+    jmf fbool_true
+    jme fbool_true
+    jmp fbool_false
+
+fisgreater:
+    cal fcmp
+    jms fbool_true
+    jmp fbool_false
+
+fisgreaterequal:
+    cal fcmp
+    jms fbool_true
+    jme fbool_true
+    jmp fbool_false
+
+fislessgreater:
+    cal fcmp
+    jmf fbool_true
+    jms fbool_true
+    jmp fbool_false
+
+fisunordered:
+    cal fcmp
+    jmc fbool_true
+    jmp fbool_false
+
+; ------------------------------------------------------------
+; fmin / fmax
+; ------------------------------------------------------------
+; Equal values: they have the same bits, except -0 and +0. fmax keeps the
+; sign bit only if both have it (AND of the first bytes), fmin if one has it
+; (OR).
+fmax:
+    psh a
+    cal fcmp
+    jmc fmm_nan
+    jmf fmm_copy_y          ; [x:y] < [i:j]
+    jms fmm_done
+    lod a, [x:y]
+    and a, [i:j]
+    str [x:y], a
+    jmp fmm_done
+
+fmin:
+    psh a
+    cal fcmp
+    jmc fmm_nan
+    jms fmm_copy_y          ; [x:y] > [i:j]
+    jmf fmm_done
+    lod a, [x:y]
+    or a, [i:j]
+    str [x:y], a
+    jmp fmm_done
+
+; One of them is a NaN (fcmp raised FE_INVALID for a signaling one).
+fmm_nan:
+    cal fissnan
+    jmz fmm_x_quiet
+    jmp fmm_qnan            ; [x:y] is a signaling NaN
+fmm_x_quiet:
+    cal fmm_swap
+    cal fissnan
+    cal fmm_swap
+    jmz fmm_no_snan
+    jmp fmm_qnan            ; [i:j] is a signaling NaN
+fmm_no_snan:
+    cal fisnan
+    jmz fmm_done            ; [x:y] is a number: the result
+    cal fmm_swap
+    cal fisnan
+    cal fmm_swap
+    jmz fmm_copy_y          ; [i:j] is a number: the result
+fmm_qnan:
+    cal fsetnan
+    jmp fmm_done
+
+fmm_copy_y:
+    lod a, [i:j]
+    str [x:y], a
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    lod a, [i:j + 2]
+    str [x:y + 2], a
+    lod a, [i:j + 3]
+    str [x:y + 3], a
+fmm_done:
+    pop a
+    ret
+
+; Swaps [x:y] and [i:j] (the pointers). Uses a. Changes no flag.
+fmm_swap:
+    mov a, x
+    mov x, i
+    mov i, a
+    mov a, y
+    mov y, j
+    mov j, a
+    ret

@@ -1,0 +1,592 @@
+; ============================================================
+; hypot, cbrt and the pair helpers ft_dsq, fh_sq (see fhyp.has)
+; ============================================================
+
+; ------------------------------------------------------------
+; ft_dsq: V26 + V27 = sqrt (V11 + V16) (a pair, V11 > 0); V25 = the correction
+; (0 if V11 + V16 is the square of the float V20). Uses V20..V25.
+; s0 = fsqrt (V11), s = s0 + (m - s0^2) / (2 s0) with s0^2 exact (halves of 12 bits).
+; ------------------------------------------------------------
+ft_dsq:
+    mov a, V20
+    mov b, V11
+    cal fx_cpy
+    cal fx_sqrt
+    mov a, V21
+    mov b, V20
+    cal fx_cpy
+    cal fx_t12
+    mov a, V22
+    mov b, V20
+    cal fx_cpy
+    mov b, V21
+    cal fx_sub
+    mov a, V23
+    mov b, V20
+    cal fx_cpy
+    mov b, V20
+    cal fx_mul
+    mov a, V24
+    mov b, V21
+    cal fx_cpy
+    mov b, V21
+    cal fx_mul
+    mov b, V23
+    cal fx_sub
+    mov a, V25
+    mov b, V21
+    cal fx_cpy
+    mov b, V22
+    cal fx_mul
+    mov b, V25
+    cal fx_add
+    mov a, V24
+    mov b, V25
+    cal fx_add
+    mov a, V25
+    mov b, V22
+    cal fx_cpy
+    mov b, V22
+    cal fx_mul
+    mov a, V24
+    mov b, V25
+    cal fx_add
+    mov a, V25
+    mov b, V11
+    cal fx_cpy
+    mov b, V23
+    cal fx_sub
+    mov b, V24
+    cal fx_sub
+    mov b, V16
+    cal fx_add
+    mov b, V20
+    cal fx_div
+    mov b, K_HALF
+    cal fx_mulc
+    mov a, V26
+    mov b, V20
+    cal fx_cpy
+    mov b, V25
+    cal fx_add
+    mov a, V27
+    mov b, V20
+    cal fx_cpy
+    mov b, V26
+    cal fx_sub
+    mov b, V25
+    cal fx_add
+    ret
+
+; fh_sq: c = a slot offset (a float v). V12 + V13 = v^2 exactly (p, error).
+; Uses V14, V15, V17.
+fh_sq:
+    mov a, V14
+    mov b, c
+    cal fx_cpy
+    cal fx_t12                  ; v1
+    mov a, V15
+    mov b, c
+    cal fx_cpy
+    mov b, V14
+    cal fx_sub                  ; v2
+    mov a, V12
+    mov b, c
+    cal fx_cpy
+    cal fx_mul                  ; p
+    mov a, V13
+    mov b, V14
+    cal fx_cpy
+    cal fx_mul                  ; v1 v1
+    mov b, V12
+    cal fx_sub
+    mov a, V17
+    mov b, V14
+    cal fx_cpy
+    mov b, V15
+    cal fx_mul
+    mov b, V17
+    cal fx_add                  ; 2 v1 v2
+    mov a, V13
+    mov b, V17
+    cal fx_add
+    mov a, V17
+    mov b, V15
+    cal fx_cpy
+    cal fx_mul                  ; v2 v2
+    mov a, V13
+    mov b, V17
+    cal fx_add
+    ret
+
+; ------------------------------------------------------------
+; hypot: V0 = x, V1 = y
+; ------------------------------------------------------------
+fh_hypot:
+    mov a, V0
+    cal fx_cls
+    str [x:y + FT_T], a
+    mov a, V1
+    cal fx_cls
+    str [x:y + FT_T1], a
+    lod a, [x:y + FT_T]
+    cmp a, 1
+    jme hy_inf
+    lod a, [x:y + FT_T1]
+    cmp a, 1
+    jme hy_inf
+    lod a, [x:y + FT_T]
+    cmp a, 0
+    jme hy_nan
+    lod a, [x:y + FT_T1]
+    cmp a, 0
+    jme hy_nan
+    mov a, V0
+    cal fx_abs
+    mov a, V1
+    cal fx_abs
+    lod a, [x:y + FT_T]
+    cmp a, 2
+    jme hy_x0
+    lod a, [x:y + FT_T1]
+    cmp a, 2
+    jme hy_y0
+    mov a, V0                   ; exponents (a subnormal number counts as 1)
+    cal ft_eof
+    cmp a, 0
+    jms hy_e1
+    mov a, 1
+hy_e1:
+    str [x:y + FT_T], a
+    mov a, V1
+    cal ft_eof
+    cmp a, 0
+    jms hy_e2
+    mov a, 1
+hy_e2:
+    str [x:y + FT_T1], a
+    lod a, [x:y + FT_T]
+    lod b, [x:y + FT_T1]
+    cmp a, b
+    jms hy_ok
+    jme hy_ok
+    str [x:y + FT_T], b         ; |x| has the smaller exponent: swap
+    str [x:y + FT_T1], a
+    mov a, V2
+    mov b, V0
+    cal fx_cpy
+    mov a, V0
+    mov b, V1
+    cal fx_cpy
+    mov a, V1
+    mov b, V2
+    cal fx_cpy
+hy_ok:
+    lod a, [x:y + FT_T]         ; a = Ea >= Eb
+    lod b, [x:y + FT_T1]
+    sub a, b
+    cmp a, 14
+    jmf hy_calc
+    mov a, V4                   ; |y| < 2^-13 |x|: the result is |x|, inexact
+    mov b, V0
+    cal fx_cpy
+    mov a, 0x10
+    jmp fh_v4
+hy_calc:
+    lod a, [x:y + FT_T]         ; n = 127 - Ea, as 16 bits in FX_KH:FX_KL
+    cmp a, 127
+    jmf hy_np
+    sub a, 127
+    jmz hy_n0
+    mov b, 0
+    sub b, a
+    mov a, 0xFF
+    jmp hy_nst
+hy_n0:
+    mov a, 0
+    mov b, 0
+    jmp hy_nst
+hy_np:
+    mov b, 127
+    sub b, a
+    mov a, 0
+hy_nst:
+    str [x:y + FX_KH], a
+    str [x:y + FX_KL], b
+    mov c, V0
+    cal hy_sc
+    mov c, V1
+    cal hy_sc
+    mov c, V0                   ; a^2 = V18 + V19, b^2 = V12 + V13
+    cal fh_sq
+    mov a, V18
+    mov b, V12
+    cal fx_cpy
+    mov a, V19
+    mov b, V13
+    cal fx_cpy
+    mov c, V1
+    cal fh_sq
+    mov a, V20                  ; TwoSum (V18, V12) = V20 + e
+    mov b, V18
+    cal fx_cpy
+    mov b, V12
+    cal fx_add
+    mov a, V21
+    mov b, V20
+    cal fx_cpy
+    mov b, V18
+    cal fx_sub                  ; bb
+    mov a, V22
+    mov b, V20
+    cal fx_cpy
+    mov b, V21
+    cal fx_sub
+    mov a, V23
+    mov b, V18
+    cal fx_cpy
+    mov b, V22
+    cal fx_sub
+    mov a, V24
+    mov b, V12
+    cal fx_cpy
+    mov b, V21
+    cal fx_sub
+    mov a, V23
+    mov b, V24
+    cal fx_add
+    mov b, V19
+    cal fx_add
+    mov b, V13
+    cal fx_add                  ; low part
+    mov a, V11                  ; m = V11 + V16
+    mov b, V20
+    cal fx_cpy
+    mov b, V23
+    cal fx_add
+    mov a, V16
+    mov b, V20
+    cal fx_cpy
+    mov b, V11
+    cal fx_sub
+    mov b, V23
+    cal fx_add
+    cal ft_dsq
+    mov a, V25                  ; exact if the correction is 0
+    cal fx_isz
+    jmz hy_ex
+    mov a, 0x10
+    jmp hy_sf
+hy_ex:
+    mov a, 0
+hy_sf:
+    str [x:y + FT_T], a
+    lod a, [x:y + FX_KL]        ; scale back by -n
+    mov b, 0
+    sub b, a
+    lod a, [x:y + FX_KH]
+    mov d, 0
+    sbb d, a
+    mov a, d
+    mov c, V26
+    cal fx_scale
+    mov a, V4
+    mov b, V26
+    cal fx_cpy
+    cal ft_eof
+    cmp a, 255
+    jme hy_ovf
+    cmp a, 0
+    jme hy_sub
+    lod a, [x:y + FT_T]
+    jmp fh_v4
+hy_sub:
+    lod a, [x:y + FT_T]         ; subnormal: underflow if inexact
+    cmp a, 0
+    jme hy_s0
+    mov a, 0x18
+hy_s0:
+    jmp fh_v4
+hy_ovf:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0x14
+    jmp fx_exit
+; hy_sc: V[c] = ldexp (V[c], FX_KH:FX_KL)
+hy_sc:
+    lod a, [x:y + FX_KH]
+    lod b, [x:y + FX_KL]
+    cal fx_scale
+    ret
+hy_inf:
+    mov c, 0x7F
+    mov d, 0x80
+    mov a, 0
+    jmp fx_exit
+hy_nan:
+    lod b, [x:y + FT_T]
+    cmp b, 0
+    jme hy_n1
+    jmp hy_n2
+hy_n1:
+    lod b, [x:y + V0B1]
+    and b, 0x40
+    jmz fh_inv
+hy_n2:
+    lod b, [x:y + FT_T1]
+    cmp b, 0
+    jme hy_n3
+    mov a, 0
+    jmp ft_nan
+hy_n3:
+    lod b, [x:y + V1B1]
+    and b, 0x40
+    jmz fh_inv
+    mov a, 0
+    jmp ft_nan
+hy_x0:
+    mov a, V4
+    mov b, V1
+    cal fx_cpy
+    mov a, 0
+    jmp fh_v4
+hy_y0:
+    mov a, V4
+    mov b, V0
+    cal fx_cpy
+    mov a, 0
+    jmp fh_v4
+
+; ------------------------------------------------------------
+; cbrt. x = m 2^(E-127), E = 3 Q + r; the cube root is cbrt (m 2^rem) 2^q,
+; t = m 2^rem in [1, 8) (rem = 0, 1, 2). Four Newton steps from a line, then
+; two corrections with the exact residual t - y^3 (cb_ref).
+; ------------------------------------------------------------
+fh_cbrt:
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme fh_nan0
+    cmp a, 1
+    jme cb_id
+    cmp a, 2
+    jme cb_id
+    mov b, 0                    ; b = 8 for a subnormal x (multiplied by 2^24)
+    cmp a, 3
+    jmf cb_n
+    jme cb_sub
+    jmp cb_n
+cb_sub:
+    mov b, 8
+cb_n:
+    str [x:y + FT_T], b
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov a, V0
+    cal fx_abs
+    lod a, [x:y + FT_T]
+    cmp a, 0
+    jme cb_e
+    mov a, V0
+    mov b, K_2P24
+    cal fx_mulc
+cb_e:
+    cal l2_getE                 ; E = 3 Q + r
+    mov b, 0
+cb_l:
+    cmp a, 3
+    jmf cb_d
+    sub a, 3
+    inc b
+    jmp cb_l
+cb_d:                           ; a = r, b = Q
+    cmp a, 0
+    jme cb_r0
+    sub b, 42                   ; r = 1, 2: q = Q - 42, rem = r - 1
+    sub a, 1
+    jmp cb_q
+cb_r0:
+    sub b, 43                   ; r = 0: q = Q - 43, rem = 2
+    mov a, 2
+cb_q:
+    lod c, [x:y + FT_T]         ; q - 8 for a subnormal x
+    sub b, c
+    str [x:y + FT_T1], a        ; rem
+    mov a, 0                    ; q as 16 bits
+    cmp b, 0x80
+    jmf cb_qp
+    mov a, 0xFF
+cb_qp:
+    str [x:y + FX_KH], a
+    str [x:y + FX_KL], b
+    lod a, [x:y + FT_T1]        ; t = the mantissa with the exponent 127 + rem
+    cmp a, 0
+    jme cb_x0
+    cmp a, 1
+    jme cb_x1
+    mov a, 0x40                 ; rem 2: exponent 129
+    mov b, 0x80
+    jmp cb_xs
+cb_x0:
+    mov a, 0x3F                 ; 127
+    mov b, 0x80
+    jmp cb_xs
+cb_x1:
+    mov a, 0x40                 ; 128
+    mov b, 0
+cb_xs:
+    str [x:y + V0], a
+    lod a, [x:y + V0B1]
+    and a, 0x7F
+    or a, b
+    str [x:y + V0B1], a
+    mov a, V9                   ; t
+    mov b, V0
+    cal fx_cpy
+    mov a, V10                  ; y = (t + 6) / 7
+    mov b, K_6
+    cal fx_cpyc
+    mov b, V9
+    cal fx_add
+    mov b, K_1_7
+    cal fx_mulc
+    mov b, 4
+cb_nl:
+    psh b
+    mov a, V6                   ; y = (2 y + t / y^2) / 3
+    mov b, V10
+    cal fx_cpy
+    mov b, V10
+    cal fx_mul
+    mov a, V7
+    mov b, V9
+    cal fx_cpy
+    mov b, V6
+    cal fx_div
+    mov a, V8
+    mov b, V10
+    cal fx_cpy
+    mov b, V10
+    cal fx_add
+    mov b, V7
+    cal fx_add
+    mov b, K_1_3
+    cal fx_mulc
+    mov a, V10
+    mov b, V8
+    cal fx_cpy
+    pop b
+    dec b
+    jmz cb_nd
+    jmp cb_nl
+cb_nd:
+    cal cb_ref
+    cal cb_ref
+    lod a, [x:y + FX_KH]
+    lod b, [x:y + FX_KL]
+    mov c, V10
+    cal fx_scale
+    mov a, V4
+    mov b, V10
+    cal fx_cpy
+    lod a, [x:y + FT_T1]
+    jmp ft_sres
+cb_id:
+    mov a, V0
+    jmp fx_out
+
+; cb_ref: V10 = V10 + (t - V10^3) / (3 V10^2), with the residual exact.
+; FT_T1 = 0x10 if the residual was not 0, else 0.
+cb_ref:
+    mov c, V10
+    cal fh_sq                   ; V12 + V13 = y^2
+    mov a, V14
+    mov b, V12
+    cal fx_cpy
+    cal fx_t12                  ; p1
+    mov a, V15
+    mov b, V12
+    cal fx_cpy
+    mov b, V14
+    cal fx_sub                  ; p2
+    mov a, V17
+    mov b, V10
+    cal fx_cpy
+    cal fx_t12                  ; y1
+    mov a, V18
+    mov b, V10
+    cal fx_cpy
+    mov b, V17
+    cal fx_sub                  ; y2
+    mov a, V19
+    mov b, V12
+    cal fx_cpy
+    mov b, V10
+    cal fx_mul                  ; q = p y
+    mov a, V20                  ; eq = ((p1 y1 - q) + p1 y2 + p2 y1) + p2 y2
+    mov b, V14
+    cal fx_cpy
+    mov b, V17
+    cal fx_mul
+    mov b, V19
+    cal fx_sub
+    mov a, V21
+    mov b, V14
+    cal fx_cpy
+    mov b, V18
+    cal fx_mul
+    mov a, V20
+    mov b, V21
+    cal fx_add
+    mov a, V21
+    mov b, V15
+    cal fx_cpy
+    mov b, V17
+    cal fx_mul
+    mov a, V20
+    mov b, V21
+    cal fx_add
+    mov a, V21
+    mov b, V15
+    cal fx_cpy
+    mov b, V18
+    cal fx_mul
+    mov a, V20
+    mov b, V21
+    cal fx_add
+    mov a, V21                  ; rho = ((t - q) - eq) - pe y
+    mov b, V9
+    cal fx_cpy
+    mov b, V19
+    cal fx_sub
+    mov b, V20
+    cal fx_sub
+    mov a, V22
+    mov b, V13
+    cal fx_cpy
+    mov b, V10
+    cal fx_mul
+    mov a, V21
+    mov b, V22
+    cal fx_sub
+    mov a, V22                  ; 3 p
+    mov b, V12
+    cal fx_cpy
+    mov b, K_3
+    cal fx_mulc
+    mov a, V21
+    mov b, V22
+    cal fx_div
+    cal fx_isz
+    jmz cr_z
+    mov a, 0x10
+    jmp cr_s
+cr_z:
+    mov a, 0
+cr_s:
+    str [x:y + FT_T1], a
+    mov a, V10
+    mov b, V21
+    cal fx_add
+    ret

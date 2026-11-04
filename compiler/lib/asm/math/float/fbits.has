@@ -1,0 +1,174 @@
+; ============================================================
+; Bit operations and classification
+; ============================================================
+; These only look at (or change) the bits of a float. They never raise an
+; exception, not even for a signaling NaN.
+;
+;   fabs       [x:y] = |[x:y]|                 (clears the sign bit)
+;   fneg       [x:y] = -[x:y]                  (flips the sign bit)
+;   fcopysign  [x:y] = magnitude of [x:y], sign of [i:j]
+;   fsetnan    [x:y] = the quiet NaN 0x7FC00000
+;   fsignbit   a = 1 if the sign bit of [x:y] is set (also for -0, -inf,
+;              -NaN), else 0
+;   fclass     a = the class of [x:y]: FP_NAN, FP_INFINITE, FP_ZERO,
+;              FP_SUBNORMAL or FP_NORMAL (the sign is ignored)
+;   fisnan, fisinf, fisfinite, fisnormal, fissnan
+;              a = 1 if [x:y] is a NaN / an infinity / finite (zero,
+;              subnormal or normal) / normal / a signaling NaN, else 0
+;
+; fsignbit and the fis... tests: Z = the answer is 0 (false).
+; The value at [x:y] is not changed by fsignbit, fclass or the tests.
+
+.define FP_NAN       0
+.define FP_INFINITE  1
+.define FP_ZERO      2
+.define FP_SUBNORMAL 3
+.define FP_NORMAL    4
+
+; ------------------------------------------------------------
+; fabs / fneg / fcopysign / fsetnan
+; ------------------------------------------------------------
+fabs:
+    psh a
+    lod a, [x:y]
+    and a, 0x7F
+    str [x:y], a
+    pop a
+    ret
+
+fneg:
+    psh a
+    lod a, [x:y]
+    xor a, 0x80
+    str [x:y], a
+    pop a
+    ret
+
+fcopysign:
+    psh a, b
+    lod a, [x:y]
+    and a, 0x7F
+    lod b, [i:j]
+    and b, 0x80
+    or a, b
+    str [x:y], a
+    pop a, b
+    ret
+
+fsetnan:
+    psh a
+    mov a, 0x7F
+    str [x:y], a
+    mov a, 0xC0
+    str [x:y + 1], a
+    mov a, 0
+    str [x:y + 2], a
+    str [x:y + 3], a
+    pop a
+    ret
+
+; ------------------------------------------------------------
+; fsignbit
+; ------------------------------------------------------------
+; The sign bit is shifted out into C and added to 0 (adc sets Z).
+fsignbit:
+    lod a, [x:y]
+    shl a
+    mov a, 0
+    adc a, 0
+    ret
+
+; ------------------------------------------------------------
+; fclass
+; ------------------------------------------------------------
+; exponent bits: the 7 low bits of byte 0, then the top bit of byte 1.
+;   exponent 255, fraction 0 = infinity, else NaN
+;   exponent 0,   fraction 0 = zero,     else subnormal
+;   anything else            = normal
+; a = the 7 high exponent bits, b = byte 1, c = 0 only if the fraction is 0.
+fclass:
+    psh b, c
+    lod a, [x:y]
+    and a, 0x7F
+    lod b, [x:y + 1]
+    mov c, b
+    and c, 0x7F
+    or c, [x:y + 2]
+    or c, [x:y + 3]
+    cmp a, 0x7F
+    jme fclass_top
+    cmp a, 0
+    jme fclass_low
+fclass_normal:
+    mov a, FP_NORMAL
+    jmp fclass_end
+
+fclass_top:                 ; exponent 254 or 255
+    cmp b, 0x80
+    jmf fclass_normal       ; byte 1 below 0x80: exponent 254
+    cmp c, 0
+    jme fclass_inf
+    mov a, FP_NAN
+    jmp fclass_end
+fclass_inf:
+    mov a, FP_INFINITE
+    jmp fclass_end
+
+fclass_low:                 ; exponent 0 or 1
+    cmp b, 0x7F
+    jms fclass_normal       ; byte 1 from 0x80: exponent 1
+    cmp c, 0
+    jme fclass_zero
+    mov a, FP_SUBNORMAL
+    jmp fclass_end
+fclass_zero:
+    mov a, FP_ZERO
+fclass_end:
+    pop b, c
+    ret
+
+; ------------------------------------------------------------
+; fisnan / fisinf / fisfinite / fisnormal / fissnan
+; ------------------------------------------------------------
+fisnan:
+    cal fclass
+    cmp a, FP_NAN
+    jme fbool_true
+    jmp fbool_false
+
+fisinf:
+    cal fclass
+    cmp a, FP_INFINITE
+    jme fbool_true
+    jmp fbool_false
+
+fisfinite:                  ; zero, subnormal and normal are above infinity
+    cal fclass
+    cmp a, FP_INFINITE
+    jms fbool_true
+    jmp fbool_false
+
+fisnormal:
+    cal fclass
+    cmp a, FP_NORMAL
+    jme fbool_true
+    jmp fbool_false
+
+; A signaling NaN is a NaN whose top fraction bit (0x40 of byte 1) is 0.
+fissnan:
+    cal fclass
+    cmp a, FP_NAN
+    jme fissnan_nan
+    jmp fbool_false
+fissnan_nan:
+    lod a, [x:y + 1]
+    and a, 0x40
+    jmz fbool_true
+fbool_false:
+    mov a, 0
+    or a, 0
+    ret
+fbool_true:
+    mov a, 1
+    or a, 0
+    ret

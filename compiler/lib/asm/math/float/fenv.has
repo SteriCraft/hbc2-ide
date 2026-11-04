@@ -1,0 +1,80 @@
+; ============================================================
+; Floating-point exceptions (fenv)
+; ============================================================
+; IEEE 754 has five exceptions. Each one sets a sticky flag in the byte
+; fenv_flags: it stays set until the program clears it. Nothing traps: the
+; operation that raises one goes on and returns the default IEEE result.
+;
+;   FE_INVALID    no meaningful result (0/0, inf - inf, sqrt(-1), a
+;                 signaling NaN operand...): the result is the quiet NaN
+;   FE_DIVBYZERO  finite non-zero number divided by 0 (and log(0)...):
+;                 the result is an infinity
+;   FE_OVERFLOW   the result is too large: infinity (or the largest float)
+;   FE_UNDERFLOW  the result is tiny (subnormal or 0) AND inexact
+;   FE_INEXACT    the result had to be rounded
+;
+; Only the five low bits of fenv_flags are used. Rounding mode: always to
+; nearest even (there is no fesetround).
+;
+; In every routine below the mask is in a (any OR of the FE_ values), and
+; every other register is restored. The C functions feclearexcept,
+; fetestexcept and feraiseexcept wrap these.
+
+.define FE_INVALID   0x01
+.define FE_DIVBYZERO 0x02
+.define FE_OVERFLOW  0x04
+.define FE_UNDERFLOW 0x08
+.define FE_INEXACT   0x10
+.define FE_ALL_EXCEPT 0x1F
+
+; The flags. Zero at power-on (the program clears .bss when it starts).
+.common fenv_flags 1
+
+; ------------------------------------------------------------
+; fe_raise: raises the exceptions of the mask a.
+; The mask must only hold FE_ bits (no check, it is the hot path).
+; ------------------------------------------------------------
+fe_raise:
+    psh b
+    lod b, fenv_flags
+    or b, a
+    str fenv_flags, b
+    pop b
+    ret
+
+; ------------------------------------------------------------
+; fe_clear: clears the exceptions of the mask a.
+; ------------------------------------------------------------
+fe_clear:
+    psh b
+    mov b, a
+    not b
+    and b, fenv_flags
+    str fenv_flags, b
+    pop b
+    ret
+
+; ------------------------------------------------------------
+; fe_test: a = the exceptions of the mask a that are raised.
+; flags: Z = none of them.
+; ------------------------------------------------------------
+fe_test:
+    and a, fenv_flags
+    ret
+
+; ------------------------------------------------------------
+; fe_get: a = all the flags.        flags: Z = none raised.
+; fe_set: all the flags = a (only the FE_ bits are kept).
+; Together they save and restore the state (fegetexceptflags...).
+; ------------------------------------------------------------
+fe_get:
+    lod a, fenv_flags
+    or a, 0
+    ret
+
+fe_set:
+    psh a
+    and a, FE_ALL_EXCEPT
+    str fenv_flags, a
+    pop a
+    ret

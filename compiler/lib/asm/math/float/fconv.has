@@ -1,0 +1,346 @@
+; ============================================================
+; Conversions between 32-bit integers and floats
+; ============================================================
+;   itof   [x:y] = (float) the signed 32-bit integer at [x:y]
+;   utof   [x:y] = (float) the unsigned 32-bit integer at [x:y]
+;   ftoi   [x:y] = (signed 32-bit integer) the float at [x:y], toward zero
+;   ftou   [x:y] = (unsigned 32-bit integer) the float at [x:y], toward zero
+;
+; All four work in place (a float and an integer are both 4 bytes, big
+; endian). For 8 and 16-bit integers, extend to 32 bits first (sext16...).
+; Flags of the CPU: undefined.
+;
+; itof / utof: rounded to nearest even when the integer needs more than 24
+; bits; raises FE_INEXACT then (nothing else).
+;
+; ftoi / ftou: the fraction is dropped (toward zero), FE_INEXACT is raised if
+; it was not 0. A float out of the range of the type (and inf) raises
+; FE_INVALID and gives the nearest limit: ftoi 0x7FFFFFFF or 0x80000000,
+; ftou 0xFFFFFFFF, or 0 for a negative float. A NaN raises FE_INVALID and
+; gives 0. Floats between -1 and 1 (not included) give 0 (ftou too, with
+; FE_INEXACT but not FE_INVALID, unless they are 0).
+;
+; The work area is the frame of fadd.has.
+
+; ------------------------------------------------------------
+; itof / utof
+; ------------------------------------------------------------
+itof:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov c, 1
+    jmp fi_main
+
+utof:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov c, 0
+
+fi_main:
+    rsp [i:j]
+    str [i:j + FA_DST_MSB], x
+    str [i:j + FA_DST_LSB], y
+    mov d, 0                    ; d = the sign
+    or c, 0
+    jmz fi_positive             ; unsigned
+    lod a, [x:y]
+    cmp a, 0x80
+    jmf fi_positive
+    mov d, 0x80
+    mov a, 0                    ; magnitude = -value
+    sub a, [x:y + 3]
+    str [i:j + FA_M3], a
+    mov a, 0
+    sbb a, [x:y + 2]
+    str [i:j + FA_M2], a
+    mov a, 0
+    sbb a, [x:y + 1]
+    str [i:j + FA_M1], a
+    mov a, 0
+    sbb a, [x:y]
+    str [i:j + FA_M0], a
+    jmp fi_go
+fi_positive:
+    lod a, [x:y]
+    str [i:j + FA_M0], a
+    lod a, [x:y + 1]
+    str [i:j + FA_M1], a
+    lod a, [x:y + 2]
+    str [i:j + FA_M2], a
+    lod a, [x:y + 3]
+    str [i:j + FA_M3], a
+fi_go:
+    str [i:j + FA_SIGN], d
+    lod a, [i:j + FA_M0]        ; zero: +0
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz fa_zero_pos
+    mov a, 158                  ; 127 + 31: the value is M0..M3 as a 1.xxx
+    str [i:j + FA_EXP], a       ; number times 2^31, normalized next
+    jmp fa_normalize            ; (then fa_round: M3 is the guard byte)
+
+; ------------------------------------------------------------
+; ftoi / ftou
+; ------------------------------------------------------------
+; The float is unpacked: value = mantissa (24 bits) x 2^(exp - 150). With the
+; mantissa as the top 3 bytes of a 32-bit integer U' = mantissa x 2^8, the
+; integer part is U' >> (158 - exp). Exponents below 127 give 0, 159 or more
+; is out of range.
+ftoi:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 1
+    jmp ft_main
+
+ftou:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 0
+
+ft_main:
+    rsp [c:d]
+    str [sp + FA_FLIP], a       ; 1 signed, 0 unsigned
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack
+    rsp [i:j]
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme ft_special
+    cmp a, 127
+    jmf ft_small
+    cmp a, 159
+    jmf ft_inrange
+    jmp ft_overflow
+
+ft_inrange:
+    mov b, a
+    mov a, 158
+    sub a, b                    ; a = shift distance, 0..31
+    mov c, i
+    mov d, j
+    cal fi_shr                  ; U >>= a, b = 1 if a bit was lost
+    str [i:j + FM_N], b
+    lod a, [i:j + FA_SIGN]
+    cmp a, 0
+    jme ft_pos
+    lod a, [i:j + FA_FLIP]      ; negative
+    cmp a, 0
+    jme ft_negu
+    lod a, [i:j + FA_M0]        ; signed: |U| up to 0x80000000
+    cmp a, 0x80
+    jms ft_overflow
+    jmf ft_negate
+    lod a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz ft_negate
+    jmp ft_overflow
+ft_negu:                        ; unsigned: only -0.x is allowed
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz ft_result
+    jmp ft_overflow
+ft_negate:
+    mov a, 0
+    sub a, [i:j + FA_M3]
+    str [i:j + FA_M3], a
+    mov a, 0
+    sbb a, [i:j + FA_M2]
+    str [i:j + FA_M2], a
+    mov a, 0
+    sbb a, [i:j + FA_M1]
+    str [i:j + FA_M1], a
+    mov a, 0
+    sbb a, [i:j + FA_M0]
+    str [i:j + FA_M0], a
+    jmp ft_result
+ft_pos:
+    lod a, [i:j + FA_FLIP]
+    cmp a, 0
+    jme ft_result               ; unsigned: any U fits
+    lod a, [i:j + FA_M0]
+    cmp a, 0x80
+    jmf ft_result
+    jmp ft_overflow
+
+ft_result:                      ; the integer is in M0..M3
+    lod a, [i:j + FM_N]
+    cmp a, 0
+    jme ft_write
+    mov a, FE_INEXACT
+    cal fe_raise
+ft_write:
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    lod a, [i:j + FA_M0]
+    str [x:y], a
+    lod a, [i:j + FA_M1]
+    str [x:y + 1], a
+    lod a, [i:j + FA_M2]
+    str [x:y + 2], a
+    lod a, [i:j + FA_M3]
+    str [x:y + 3], a
+    jmp fa_done
+
+ft_small:                       ; below 1: 0, inexact unless the float is 0
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    mov b, 0
+    jmz ft_small0
+    mov b, 1
+ft_small0:
+    str [i:j + FM_N], b
+    mov a, 0
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], a
+    str [i:j + FA_M2], a
+    str [i:j + FA_M3], a
+    jmp ft_result
+
+ft_special:                     ; exponent 255
+    mov c, i
+    mov d, j
+    cal fa_nanclass
+    or a, 0
+    jmz ft_overflow             ; infinity
+    mov a, FE_INVALID           ; NaN: 0
+    cal fe_raise
+    mov a, 0
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], a
+    str [i:j + FA_M2], a
+    str [i:j + FA_M3], a
+    jmp ft_write
+
+; Out of range (or infinity): FE_INVALID and the limit.
+; c = 0xFF for a positive float, 0 for a negative one, the type gives M0.
+ft_overflow:
+    mov a, FE_INVALID
+    cal fe_raise
+    lod b, [i:j + FA_SIGN]
+    mov c, 0xFF
+    or b, 0
+    jmz ft_fill
+    mov c, 0
+ft_fill:
+    mov a, c
+    lod b, [i:j + FA_FLIP]
+    cmp b, 1
+    jmf ft_limit                ; unsigned
+    xor a, 0x80                 ; signed: 0x7F.. or 0x80..
+ft_limit:
+    str [i:j + FA_M0], a
+    str [i:j + FA_M1], c
+    str [i:j + FA_M2], c
+    str [i:j + FA_M3], c
+    jmp ft_write
+
+; ------------------------------------------------------------
+; fi_shr: shifts the 32-bit integer at [c:d] right by a bits (0..31).
+; b = 1 if a bit that was not 0 was shifted out, else 0. Uses a b x y.
+; ------------------------------------------------------------
+fi_shr:
+    mov b, 0
+fis_bytes:
+    cmp a, 8
+    jmf fis_bits
+    sub a, 8
+    or b, [c:d + 3]             ; the lost byte
+    lod x, [c:d + 2]
+    str [c:d + 3], x
+    lod x, [c:d + 1]
+    str [c:d + 2], x
+    lod x, [c:d + 0]
+    str [c:d + 1], x
+    mov x, 0
+    str [c:d + 0], x
+    jmp fis_bytes
+fis_bits:
+    mov y, a
+fis_loop:
+    cmp y, 0
+    jme fis_end
+    lod a, [c:d + 0]
+    asr a                       ; C = bit out
+    and a, 0x7F
+    str [c:d + 0], a
+    mov x, 0                    ; x = 0x80 if C, else 0 (C is kept)
+    sbb x, 0
+    and x, 0x80
+    lod a, [c:d + 1]
+    asr a
+    and a, 0x7F
+    or a, x
+    str [c:d + 1], a
+    mov x, 0
+    sbb x, 0
+    and x, 0x80
+    lod a, [c:d + 2]
+    asr a
+    and a, 0x7F
+    or a, x
+    str [c:d + 2], a
+    mov x, 0
+    sbb x, 0
+    and x, 0x80
+    lod a, [c:d + 3]
+    asr a
+    and a, 0x7F
+    or a, x
+    str [c:d + 3], a
+    mov x, 0
+    adc x, 0                    ; the bit lost
+    or b, x
+    dec y
+    jmp fis_loop
+fis_end:
+    or b, 0                     ; b = 0 or non-zero: make it 0 or 1
+    jmz fis_ret
+    mov b, 1
+fis_ret:
+    ret
+
+; ------------------------------------------------------------
+; fi_shl: shifts the 32-bit integer at [c:d] left by a bits (0..31).
+; Uses a b x y.
+; ------------------------------------------------------------
+fi_shl:
+fish_bytes:
+    cmp a, 8
+    jmf fish_bits
+    sub a, 8
+    lod x, [c:d + 1]
+    str [c:d + 0], x
+    lod x, [c:d + 2]
+    str [c:d + 1], x
+    lod x, [c:d + 3]
+    str [c:d + 2], x
+    mov x, 0
+    str [c:d + 3], x
+    jmp fish_bytes
+fish_bits:
+    mov y, a
+fish_loop:
+    cmp y, 0
+    jme fish_end
+    lod a, [c:d + 3]
+    shl a
+    str [c:d + 3], a
+    lod a, [c:d + 2]
+    adc a, a
+    str [c:d + 2], a
+    lod a, [c:d + 1]
+    adc a, a
+    str [c:d + 1], a
+    lod a, [c:d + 0]
+    adc a, a
+    str [c:d + 0], a
+    dec y
+    jmp fish_loop
+fish_end:
+    ret

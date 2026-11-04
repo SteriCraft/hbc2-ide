@@ -2,7 +2,7 @@
  *	HBC-2 target for the parser (cc1). See compiler/ABI.md.
  *
  *	char 1, short/int 2, long 4, pointers 2, no alignment.
- *	float and double are not supported: using them is an error.
+ *	float: IEEE 754 binary32, 4 bytes; double is the same type (remapped).
  *	No register variables.
  */
 
@@ -19,7 +19,7 @@ unsigned target_alignof(unsigned t, unsigned storage)
 static unsigned sizetab[16] = {
 	1, 2, 4, 8,		/* char, short, long, longlong */
 	1, 2, 4, 8,		/* unsigned forms */
-	4, 8, 0, 0,		/* float, double, void, unused.. */
+	4, 4, 0, 0,		/* float, double (= float), void, unused.. */
 	0, 0, 0, 0		/* unused */
 };
 
@@ -29,11 +29,6 @@ unsigned target_sizeof(unsigned t)
 
 	if (PTR(t))
 		return 2;
-
-	if (t == FLOAT || t == DOUBLE) {
-		error("float and double are not supported on the HBC-2");
-		return 4;
-	}
 
 	s = sizetab[(t >> 4) & 0x0F];
 	if (s == 0) {
@@ -79,6 +74,9 @@ unsigned target_remove_cast(struct node *l, struct node *r)
 
 unsigned target_type_remap(unsigned type)
 {
+	/* double is float (4 bytes) */
+	if (type == DOUBLE)
+		return FLOAT;
 	return type;
 }
 

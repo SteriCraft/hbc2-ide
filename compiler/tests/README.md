@@ -30,6 +30,10 @@ of each program's code and the number of instructions it ran.
 * `sprintf.c`: `sprintf`, `vsprintf`, `vprintf` (the formats of
   `printf.c`, the final 0, a `sprintf` inside a `printf`, through the
   program's own `putchar`).
+* `printf_float.c`: `%f %e %g` (and capitals) against the host's printf on
+  29 values x 25 formats (0, -0, subnormals, the largest float, inf, nan,
+  halfway cases), the integer precision and flags, `*`, more than 192
+  digits; `sscanf` `%f %e %g %E`, `l`, `L`, widths, `*`, failures.
 * `sort.c`: `qsort` (0 to 300 elements: permutations, sorted, reversed,
   equal values; 5-byte records, strings; the comparison function checks
   every pointer it gets), `bsearch` (every element found, the others
@@ -62,6 +66,12 @@ of each program's code and the number of instructions it ran.
   `strtoul`, `strerror`, `perror` (`errno.screen`).
 * `math.c`: `math.h`, `abs`, `labs`, each against plain C on edge and
   pseudo-random values (also `sizeof a / sizeof a[0]`).
+* `float.c`: `float` and `double`: constants (cc0, every form: `.5`, `5.`,
+  `0x1.8p1`, subnormals), folding, the operators, -0.0 and NaN in
+  conditions, `++`/`--`, every conversion to and from the integer types,
+  structs, arrays, pointers, arguments and results (checked bit by bit).
+* `fmath.c`: the float `math.h` functions, `float.h`, `fenv.h` (the flags
+  of each operation, `feholdexcept`...), `strtod`, `strtof`, `atof`.
 * `peephole.c`: code shapes for the peephole rules (`../fcc/rules.hbc2`)
   that the other programs reach rarely.
 * `multi/<name>/`: a program of several files: its `.c` and `.has` files,

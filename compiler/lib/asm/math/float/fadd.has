@@ -1,0 +1,593 @@
+; ============================================================
+; Addition and subtraction: fadd, fsub, fdim
+; ============================================================
+;   fadd   [x:y] = [x:y] + [i:j]
+;   fsub   [x:y] = [x:y] - [i:j]
+;   fdim   [x:y] = [x:y] - [i:j] if [x:y] > [i:j], else +0
+;          (a NaN operand gives the quiet NaN)
+;
+; [i:j] is never changed, and [x:y] and [i:j] may point to the same float.
+; Rounding: to nearest even. Exceptions raised (fenv.has):
+;   FE_INVALID  inf - inf, or a signaling NaN operand (result: the quiet NaN)
+;   FE_OVERFLOW + FE_INEXACT   the result is too large (result: infinity)
+;   FE_INEXACT  the result had to be rounded
+; Underflow never happens here: a result below the smallest normal number
+; is exact. Flags of the CPU: undefined after fadd / fsub / fdim.
+;
+; How fadd works (the helpers fa_unpack, fa_nanclass and fa_shr1j are also
+; meant for the multiplication and the division)
+;
+; Both floats are unpacked into a 24-byte work area on the stack ("frame"),
+; 8 bytes per float, followed by a few variables:
+;
+;     0..2  mantissa, 24 bits, the hidden bit is bit 7 of byte 0
+;     3     guard byte: the bits below the mantissa, the lowest one is a
+;           "sticky" bit (1 if anything non-zero was shifted out below it)
+;     4     exponent 1..255 (a subnormal gets 1, like the smallest normal)
+;     5     sign, 0x00 or 0x80
+;
+; float A (the first operand) is at offset 0, float B at offset 8. The
+; operand with the smaller exponent goes in B. B is shifted right to line up
+; with A, then they are added or subtracted (when the signs differ), the
+; result is shifted left until its top bit is set (or its exponent is 1),
+; rounded using the guard byte, and packed back.
+;
+; i:j points to the frame, x:y is saved in it, a b c d are the work
+; registers, [c:d] points to a float of the frame in the helpers.
+
+; Frame offsets. A is the first float, B the second.
+.define FA_M0   0
+.define FA_M1   1
+.define FA_M2   2
+.define FA_M3   3
+.define FA_EXP  4
+.define FA_SIGN 5
+.define FB_M0   8
+.define FB_M1   9
+.define FB_M2   10
+.define FB_M3   11
+.define FB_EXP  12
+.define FB_SIGN 13
+.define FA_FLIP 16          ; the operation: 0 fadd, 0x80 fsub (flips the sign of
+                            ; B), FA_OPMUL fmul
+.define FA_OPMUL 1
+.define FA_OPDIV 2
+.define FA_OPMOD 3
+.define FA_DST_MSB 17       ; the saved [x:y]
+.define FA_DST_LSB 18
+.define FM_P0   24          ; fmul: the 48-bit product, P0 = most significant
+.define FM_P1   25
+.define FM_P2   26
+.define FM_P3   27
+.define FM_P4   28
+.define FM_P5   29
+.define FM_N    30          ; fmul: left shifts done to normalize the product
+.define FM_TINY 31          ; fmul: 1 if a subnormal result counts as tiny
+.define FA_FRAME 32         ; frame size
+
+; ------------------------------------------------------------
+; fadd / fsub
+; ------------------------------------------------------------
+fadd:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 0
+    jmp fa_main
+
+fsub:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    mov a, 0x80
+
+fa_main:
+    rsp [c:d]                    ; [c:d] = the frame
+    str [sp + FA_FLIP], a
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack               ; A (from [x:y])
+    mov a, x                    ; swap the pointers: x:y = B
+    mov x, i
+    mov i, a
+    mov a, y
+    mov y, j
+    mov j, a
+    add d, 8                    ; [c:d] = the frame + 8
+    adc c, 0
+    cal fa_unpack               ; B
+    rsp [i:j]                    ; i:j = the frame, from now on
+    lod a, [i:j + FA_FLIP]
+    lod b, [i:j + FB_SIGN]
+    xor b, a
+    str [i:j + FB_SIGN], b
+
+    lod a, [i:j + FA_EXP]       ; exponent 255: NaN or infinity
+    cmp a, 255
+    jme fa_special
+    lod a, [i:j + FB_EXP]
+    cmp a, 255
+    jme fa_special
+
+; ---- Both finite: put the larger exponent in A, shift B right by the
+; difference.
+    lod a, [i:j + FA_EXP]
+    lod b, [i:j + FB_EXP]
+    cmp a, b
+    jmf fa_swap
+fa_ordered:
+    sub a, b                    ; a = shift distance
+    mov c, i
+    mov d, j
+    add d, 8
+    adc c, 0                    ; [c:d] = B
+    cal fa_shrj                 ; B >>= a (jamming)
+
+; ---- Aligned: add when the signs are equal, else subtract.
+fa_aligned:
+    lod a, [i:j + FA_SIGN]
+    lod b, [i:j + FB_SIGN]
+    cmp a, b
+    jme fa_add
+
+    lod a, [i:j + FA_M3]        ; A - B
+    sub a, [i:j + FB_M3]
+    str [i:j + FA_M3], a
+    lod a, [i:j + FA_M2]
+    sbb a, [i:j + FB_M2]
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    sbb a, [i:j + FB_M1]
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    sbb a, [i:j + FB_M0]
+    str [i:j + FA_M0], a
+    jmc fa_negate               ; B was larger (only with equal exponents)
+fa_sub_zero:
+    lod a, [i:j + FA_M0]        ; exactly zero: +0
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz fa_zero_pos
+    jmp fa_normalize
+
+fa_negate:                      ; the result is B - A: negate, sign of B
+    mov a, 0
+    sub a, [i:j + FA_M3]
+    str [i:j + FA_M3], a
+    mov a, 0
+    sbb a, [i:j + FA_M2]
+    str [i:j + FA_M2], a
+    mov a, 0
+    sbb a, [i:j + FA_M1]
+    str [i:j + FA_M1], a
+    mov a, 0
+    sbb a, [i:j + FA_M0]
+    str [i:j + FA_M0], a
+    lod a, [i:j + FB_SIGN]
+    str [i:j + FA_SIGN], a
+    jmp fa_normalize
+
+fa_add:
+    lod a, [i:j + FA_M3]
+    add a, [i:j + FB_M3]
+    str [i:j + FA_M3], a
+    lod a, [i:j + FA_M2]
+    adc a, [i:j + FB_M2]
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, [i:j + FB_M1]
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, [i:j + FB_M0]
+    str [i:j + FA_M0], a
+    jmc fa_carry
+    lod a, [i:j + FA_M0]        ; both zero: the zero keeps the sign
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    or a, [i:j + FA_M3]
+    jmz fa_write_zero
+    jmp fa_normalize
+
+fa_carry:                       ; 25 bits: shift right, exponent + 1
+    mov c, i
+    mov d, j
+    cal fa_shr1j
+    lod a, [i:j + FA_M0]
+    or a, 0x80
+    str [i:j + FA_M0], a
+    inc [i:j + FA_EXP]
+    jmp fa_round
+
+; ---- Normalize: shift left until the top bit is set, or the exponent is 1
+; (subnormal). Whole bytes first.
+fa_normalize:
+fa_nbytes:
+    lod a, [i:j + FA_M0]
+    cmp a, 0
+    jme fa_nbyte_try
+    jmp fa_nbits
+fa_nbyte_try:
+    lod a, [i:j + FA_EXP]
+    cmp a, 9
+    jmf fa_nbits
+    sub a, 8
+    str [i:j + FA_EXP], a
+    lod a, [i:j + FA_M1]
+    str [i:j + FA_M0], a
+    lod a, [i:j + FA_M2]
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M3]
+    str [i:j + FA_M2], a
+    mov a, 0
+    str [i:j + FA_M3], a
+    jmp fa_nbytes
+
+fa_nbits:
+    lod a, [i:j + FA_M0]
+    cmp a, 0x80
+    jmf fa_nshift
+    jmp fa_round
+fa_nshift:
+    lod a, [i:j + FA_EXP]
+    cmp a, 1
+    jme fa_round
+    dec a
+    str [i:j + FA_EXP], a
+    lod a, [i:j + FA_M3]
+    shl a
+    str [i:j + FA_M3], a
+    lod a, [i:j + FA_M2]
+    adc a, a
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, a
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, a
+    str [i:j + FA_M0], a
+    jmp fa_nbits
+
+; ---- Round to nearest even using the guard byte.
+fa_round:
+    lod a, [i:j + FA_M3]
+    cmp a, 0
+    jme fa_pack                 ; exact
+    mov b, a
+    mov a, FE_INEXACT
+    cal fe_raise
+    cmp b, 0x80
+    jmf fa_pack                 ; below one half: down
+    jms fa_roundup              ; above one half: up
+    lod a, [i:j + FA_M2]        ; exactly one half: up if the mantissa is odd
+    and a, 1
+    jmz fa_pack
+fa_roundup:
+    lod a, [i:j + FA_M2]
+    add a, 1
+    str [i:j + FA_M2], a
+    lod a, [i:j + FA_M1]
+    adc a, 0
+    str [i:j + FA_M1], a
+    lod a, [i:j + FA_M0]
+    adc a, 0
+    str [i:j + FA_M0], a
+    jmc fa_roundcarry
+    jmp fa_pack
+fa_roundcarry:                  ; 1.111...1 + 1 = 10.0: mantissa 1.0, exponent + 1
+    mov a, 0x80
+    str [i:j + FA_M0], a
+    inc [i:j + FA_EXP]
+
+; ---- Pack: byte 0 = sign + 7 high bits of the exponent field, byte 1 = low
+; bit of the field + 7 high bits of the fraction. The exponent field is the
+; exponent if the hidden bit is set, else 0 (subnormal).
+fa_pack:
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fa_overflow
+    lod b, [i:j + FA_M0]
+    mov c, b
+    and c, 0x80
+    jmz fa_pack_sub
+    jmp fa_pack_go
+fa_pack_sub:
+    mov a, 0
+fa_pack_go:
+    and b, 0x7F
+    mov c, a
+    and c, 1
+    jmz fa_pack_even
+    or b, 0x80
+fa_pack_even:                   ; b = byte 1
+    shr a
+    lod c, [i:j + FA_SIGN]
+    or a, c                     ; a = byte 0
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    str [x:y], a
+    str [x:y + 1], b
+    lod a, [i:j + FA_M1]
+    str [x:y + 2], a
+    lod a, [i:j + FA_M2]
+    str [x:y + 3], a
+    jmp fa_done
+
+fa_overflow:
+    mov a, 0x14                 ; FE_OVERFLOW + FE_INEXACT
+    cal fe_raise
+    lod a, [i:j + FA_SIGN]
+    jmp fa_store_inf
+
+; ---- Zero results
+fa_zero_pos:                    ; x - x = +0
+    mov a, 0
+    str [i:j + FA_SIGN], a
+fa_write_zero:
+    lod a, [i:j + FA_SIGN]
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    str [x:y], a
+    mov a, 0
+    str [x:y + 1], a
+    str [x:y + 2], a
+    str [x:y + 3], a
+    jmp fa_done
+
+; ---- B has the larger exponent: swap the two floats of the frame.
+fa_swap:
+    lod a, [i:j + 0]
+    lod b, [i:j + 8]
+    str [i:j + 0], b
+    str [i:j + 8], a
+    lod a, [i:j + 1]
+    lod b, [i:j + 9]
+    str [i:j + 1], b
+    str [i:j + 9], a
+    lod a, [i:j + 2]
+    lod b, [i:j + 10]
+    str [i:j + 2], b
+    str [i:j + 10], a
+    lod a, [i:j + 3]
+    lod b, [i:j + 11]
+    str [i:j + 3], b
+    str [i:j + 11], a
+    lod a, [i:j + 4]
+    lod b, [i:j + 12]
+    str [i:j + 4], b
+    str [i:j + 12], a
+    lod a, [i:j + 5]
+    lod b, [i:j + 13]
+    str [i:j + 5], b
+    str [i:j + 13], a
+    lod a, [i:j + FA_EXP]
+    lod b, [i:j + FB_EXP]
+    jmp fa_ordered
+
+; ---- An exponent is 255: a NaN or an infinity.
+fa_special:
+    mov c, i
+    mov d, j
+    cal fa_nanclass             ; a = class of A (0 none, 1 quiet, 2 signaling)
+    mov b, a
+    add d, 8
+    adc c, 0
+    cal fa_nanclass             ; a = class of B
+    mov c, a
+    or c, b
+    jmz fa_infinities           ; no NaN
+    and c, 2
+    jmz fa_qnan                 ; only quiet NaNs
+fa_invalid:
+    mov a, FE_INVALID
+    cal fe_raise
+fa_qnan:
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    cal fsetnan
+    jmp fa_done
+
+; Infinity + finite = infinity. inf + inf = inf if the signs are equal,
+; else invalid.
+fa_infinities:
+    lod a, [i:j + FA_FLIP]
+    cmp a, FA_OPMUL
+    jme fm_infinities
+    cmp a, FA_OPDIV
+    jme fd_infinities
+    cmp a, FA_OPMOD
+    jme fmo_infinities
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fa_a_inf
+    lod a, [i:j + FB_SIGN]      ; only B is infinite
+    jmp fa_store_inf
+fa_a_inf:
+    lod b, [i:j + FB_EXP]
+    lod a, [i:j + FA_SIGN]
+    cmp b, 255
+    jmf fa_store_inf            ; only A is infinite
+    lod b, [i:j + FB_SIGN]
+    cmp a, b
+    jme fa_store_inf
+    jmp fa_invalid
+
+fa_store_inf:                   ; a = the sign, 0x00 or 0x80
+    or a, 0x7F
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    str [x:y], a
+    mov a, 0x80
+    str [x:y + 1], a
+    mov a, 0
+    str [x:y + 2], a
+    str [x:y + 3], a
+
+fa_done:
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    asp FA_FRAME
+    pop a, b, c, d, i, j
+    ret
+
+; ------------------------------------------------------------
+; fdim
+; ------------------------------------------------------------
+fdim:
+    cal fcmp
+    jmc fdim_nan                ; unordered (fcmp raised FE_INVALID if signaling)
+    jms fsub                    ; [x:y] > [i:j]: the difference
+    psh a
+    mov a, 0                    ; else +0
+    str [x:y], a
+    str [x:y + 1], a
+    str [x:y + 2], a
+    str [x:y + 3], a
+    pop a
+    ret
+fdim_nan:
+    jmp fsetnan
+
+; ------------------------------------------------------------
+; Helpers (the frame layout above)
+; ------------------------------------------------------------
+; fa_unpack: unpacks the float at [x:y] into the 6 bytes at [c:d]: mantissa
+; (24 bits with the hidden bit, + a zero guard byte), exponent, sign.
+; Uses a, b.
+fa_unpack:
+    lod a, [x:y]
+    mov b, a
+    and b, 0x80
+    str [c:d + FA_SIGN], b
+    and a, 0x7F
+    shl a                       ; the 7 high bits of the exponent, << 1
+    lod b, [x:y + 1]
+    cmp b, 0x80
+    jmf fu_low_zero
+    inc a                       ; low bit of the exponent
+fu_low_zero:
+    and b, 0x7F
+    cmp a, 0
+    jme fu_subnormal
+    or b, 0x80                  ; hidden bit
+    jmp fu_store
+fu_subnormal:
+    mov a, 1                    ; no hidden bit, exponent of the smallest normal
+fu_store:
+    str [c:d + FA_M0], b
+    str [c:d + FA_EXP], a
+    lod a, [x:y + 2]
+    str [c:d + FA_M1], a
+    lod a, [x:y + 3]
+    str [c:d + FA_M2], a
+    mov a, 0
+    str [c:d + FA_M3], a
+    ret
+
+; fa_nanclass: a = 0 if the unpacked float at [c:d] is not a NaN, 1 if it is
+; a quiet NaN, 2 if it is a signaling NaN. Only a changes.
+fa_nanclass:
+    lod a, [c:d + FA_EXP]
+    cmp a, 255
+    jme fnc_exp
+    mov a, 0
+    ret
+fnc_exp:
+    lod a, [c:d + FA_M0]
+    and a, 0x7F
+    or a, [c:d + FA_M1]
+    or a, [c:d + FA_M2]
+    jmz fnc_inf                 ; fraction 0: infinity
+    lod a, [c:d + FA_M0]
+    and a, 0x40
+    jmz fnc_signaling
+    mov a, 1
+    ret
+fnc_signaling:
+    mov a, 2
+    ret
+fnc_inf:
+    mov a, 0
+    ret
+
+; fa_shrj: shifts the 4 bytes at [c:d] right by a bits (a = 0..255), jamming
+; every bit shifted out into the lowest bit. From 32 bits on, only the sticky
+; bit is left. Uses a, b, x.
+fa_shrj:
+    cmp a, 32
+    jmf fs_below32
+    lod b, [c:d + 0]
+    or b, [c:d + 1]
+    or b, [c:d + 2]
+    or b, [c:d + 3]
+    jmz fs_done                 ; zero stays zero
+    mov b, 0
+    str [c:d + 0], b
+    str [c:d + 1], b
+    str [c:d + 2], b
+    mov b, 1
+    str [c:d + 3], b
+fs_done:
+    ret
+fs_below32:                     ; whole bytes first
+    cmp a, 8
+    jmf fs_bits
+    sub a, 8
+    lod b, [c:d + 3]            ; b = the byte shifted out
+    lod x, [c:d + 2]
+    str [c:d + 3], x
+    lod x, [c:d + 1]
+    str [c:d + 2], x
+    lod x, [c:d + 0]
+    str [c:d + 1], x
+    mov x, 0
+    str [c:d + 0], x
+    cmp b, 0
+    jme fs_below32
+    lod x, [c:d + 3]            ; sticky
+    or x, 1
+    str [c:d + 3], x
+    jmp fs_below32
+fs_bits:                        ; then 0 to 7 single bits
+    mov x, a
+fs_bits_loop:
+    cmp x, 0
+    jme fs_done
+    cal fa_shr1j
+    dec x
+    jmp fs_bits_loop
+
+; fa_shr1j: shifts the 4 bytes (mantissa + guard byte) at [c:d] right by 1.
+; The bit shifted out is ORed into the lowest bit (sticky). Uses a, b.
+fa_shr1j:
+    lod a, [c:d + 0]
+    asr a                       ; C = bit out
+    and a, 0x7F
+    str [c:d + 0], a
+    mov b, 0                    ; b = 0x80 if C, else 0 (C is kept)
+    sbb b, 0
+    and b, 0x80
+    lod a, [c:d + 1]
+    asr a
+    and a, 0x7F
+    or a, b
+    str [c:d + 1], a
+    mov b, 0
+    sbb b, 0
+    and b, 0x80
+    lod a, [c:d + 2]
+    asr a
+    and a, 0x7F
+    or a, b
+    str [c:d + 2], a
+    mov b, 0
+    sbb b, 0
+    and b, 0x80
+    lod a, [c:d + 3]
+    asr a
+    and a, 0x7F
+    or a, b
+    mov b, 0                    ; the bit out of the guard byte
+    sbb b, 0
+    and b, 1
+    or a, b
+    str [c:d + 3], a
+    ret

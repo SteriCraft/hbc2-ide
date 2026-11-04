@@ -1,0 +1,141 @@
+; ============================================================
+; frexp, ldexp
+; ============================================================
+;   frexp   [x:y] = the mantissa of [x:y]: |m| in [0.5, 1), same sign;
+;           [a:b] = the exponent n (signed 16 bits, a = high byte), so that
+;           the value is m * 2^n. For 0, infinity and NaN: [x:y] does not
+;           change and [a:b] = 0.
+;   ldexp   [x:y] = [x:y] * 2^n, n = the signed 16-bit [a:b] (a = high byte).
+;           Correctly rounded (a subnormal result is rounded), exceptions as
+;           fmul: FE_OVERFLOW + FE_INEXACT, FE_UNDERFLOW + FE_INEXACT,
+;           FE_INEXACT. 0, infinity and quiet NaN do not change (a signaling
+;           NaN raises FE_INVALID and gives the quiet NaN). [a:b] is kept.
+; Flags of the CPU: undefined. Other registers are restored.
+
+; ------------------------------------------------------------
+; frexp
+; ------------------------------------------------------------
+frexp:
+    psh c, d, i, j
+    ssp FA_FRAME
+    rsp [c:d]
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack
+    rsp [i:j]
+    mov a, 0
+    str [i:j + FM_P0], a
+    str [i:j + FM_P1], a
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fx_done
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fx_done                 ; zero
+    mov c, i
+    mov d, j
+    cal fd_norm                 ; a = shifts to normalize (subnormals)
+    mov b, a
+    lod a, [i:j + FA_EXP]
+    mov c, 0
+    sub a, b
+    sbb c, 0
+    sub a, 126                  ; n = exp - shifts - 126 (16 bits in c:a)
+    sbb c, 0
+    str [i:j + FM_P1], a
+    str [i:j + FM_P0], c
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    lod a, [i:j + FA_SIGN]      ; the float: sign, exponent field 126
+    or a, 0x3F
+    str [x:y], a
+    lod a, [i:j + FA_M0]
+    and a, 0x7F
+    str [x:y + 1], a
+    lod a, [i:j + FA_M1]
+    str [x:y + 2], a
+    lod a, [i:j + FA_M2]
+    str [x:y + 3], a
+fx_done:
+    lod x, [i:j + FA_DST_MSB]
+    lod y, [i:j + FA_DST_LSB]
+    lod a, [i:j + FM_P0]
+    lod b, [i:j + FM_P1]
+    asp FA_FRAME
+    pop c, d, i, j
+    ret
+
+; ------------------------------------------------------------
+; ldexp
+; ------------------------------------------------------------
+; The mantissa is normalized (shifts nA), e = exp - nA + n, then the code of
+; fmul does the rest (fm_exp_check: overflow, subnormal, rounding). n is first
+; limited to -300..300, which cannot change the result.
+ldexp:
+    psh a, b, c, d, i, j
+    ssp FA_FRAME
+    rsp [c:d]
+    str [sp + FM_P0], a
+    str [sp + FM_P1], b
+    str [sp + FA_DST_MSB], x
+    str [sp + FA_DST_LSB], y
+    cal fa_unpack
+    rsp [i:j]
+    lod a, [i:j + FA_EXP]
+    cmp a, 255
+    jme fl_special
+    lod a, [i:j + FA_M0]
+    or a, [i:j + FA_M1]
+    or a, [i:j + FA_M2]
+    jmz fa_done                 ; zero
+    lod a, [i:j + FM_P0]        ; limit n to -300 (0xFED4) .. 300 (0x012C)
+    lod b, [i:j + FM_P1]
+    cmp a, 0x80
+    jmf fl_pos
+    cmp a, 0xFE                 ; negative
+    jmf fl_lo                   ; below -512
+    jms fl_ok                   ; -256 .. -1
+    cmp b, 0xD4                 ; 0xFE00 .. 0xFEFF
+    jmf fl_lo
+    jmp fl_ok
+fl_lo:
+    mov a, 0xFE
+    mov b, 0xD4
+    jmp fl_ok
+fl_pos:
+    cmp a, 2
+    jmf fl_p1
+fl_hi:
+    mov a, 1
+    mov b, 0x2C
+    jmp fl_ok
+fl_p1:
+    cmp a, 1
+    jmf fl_ok
+    cmp b, 0x2C
+    jms fl_hi
+fl_ok:
+    str [i:j + FM_P0], a
+    str [i:j + FM_P1], b
+    mov c, i
+    mov d, j
+    cal fd_norm                 ; a = nA
+    mov x, a
+    lod a, [i:j + FA_EXP]
+    mov b, 0
+    sub a, x
+    sbb b, 0
+    add a, [i:j + FM_P1]
+    adc b, [i:j + FM_P0]
+    jmp fm_exp_check
+
+fl_special:                     ; NaN or infinity
+    mov c, i
+    mov d, j
+    cal fa_nanclass
+    or a, 0
+    jmz fa_done
+    cmp a, 1
+    jme fa_qnan
+    jmp fa_invalid

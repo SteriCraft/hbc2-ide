@@ -1,0 +1,769 @@
+; %f %F %e %E %g %G for printf (asm/printf.has): the exact decimal value,
+; rounded half to even at the precision.
+;
+; lib_printf_float, called by the printf engine: takes the float at ap
+; (ap + 4), sets the sign, and writes the text in the engine's text buffer.
+; Returns [x:y] = the text, [c:d] = its length, and sets zeros and split:
+; the text is split characters, zeros '0' characters, then the rest (the
+; zeros past 192 digits, which are always exact zeros, are not written).
+;
+; How: B = m << s, a fixed point number of 288 bits (128 for the integer
+; part, 160 for the fraction), exact for every float. The integer digits
+; come from dividing the integer part by 10 (they go to IB backwards), the
+; fraction digits from multiplying the fraction by 10 (the carry out is
+; the digit). pf_next gives the digits in order, pf_rest says if any
+; nonzero digit is left (for the rounding).
+;
+; The frame (100 bytes, [sp + n]; the engine's locals are at [sp + 102 + n]):
+;   0     unused (m << r can reach one byte above B)
+;   1-36  B: 36 bytes, big endian (1-16 the integer part, 17-36 the fraction)
+;   37-76 IB: the integer digits (ASCII), the last one first
+;   77    K: the number of integer digits
+;   78    the integer digits not given yet by pf_next
+;   79    X: the exponent of %e (signed)
+;   80    the conversion: f, e or g
+;   81    0x20 for f e g, 0 for F E G
+;   82-83 P: the precision (%g: the significant digits)
+;   84-85 n: the digits wanted
+;   86-87 Z: the zeros after the 192 digits
+;   88    1 if the value is 0
+;   89    cnt: the digits made (at most 192), at [sp + 150] (TB + 8)
+;   90    1 if the rounding carried out of the first digit
+;   91    a digit given back to pf_next (0: none)
+;   92    I: the digits before the point (%f), a counter before that
+;   93    the zeros between "0." and the digits (%g of 0.0001 to 0.001)
+;   94    start: the text is at [sp + start]
+;   95    len: its length
+
+lib_printf_float:
+    ssp 100
+    lod x, [sp + 104]           ; the float, ap + 4
+    lod y, [sp + 105]
+    lod a, [x:y]
+    lod b, [x:y + 1]
+    lod c, [x:y + 2]
+    lod d, [x:y + 3]
+    add y, 4
+    adc x, 0
+    str [sp + 104], x
+    str [sp + 105], y
+    mov i, a                    ; the sign: -, else + or space for the flags
+    and i, 0x80
+    jmz pf_plus
+    mov i, '-'
+    jmp pf_sign_set
+pf_plus:
+    lod j, [sp + 134]
+    mov i, '+'
+    and j, 1
+    jmz pf_space
+    jmp pf_sign_set
+pf_space:
+    lod j, [sp + 134]
+    mov i, ' '
+    and j, 2
+    jmz pf_nosign
+    jmp pf_sign_set
+pf_nosign:
+    mov i, 0
+pf_sign_set:
+    str [sp + 111], i
+    lod i, [sp + 112]           ; the conversion and its case
+    mov j, i
+    and j, 0x20
+    str [sp + 81], j
+    or i, 0x20
+    str [sp + 80], i
+    and a, 0x7F                 ; a = the exponent field
+    shl a
+    cmp b, 0x80
+    jmf pf_exp_even
+    inc a
+pf_exp_even:
+    and b, 0x7F                 ; b:c:d = the fraction field
+    cmp a, 255
+    jme pf_special
+    mov i, 0
+    str [sp + 88], i
+    cmp a, 0
+    jme pf_subnormal
+    or b, 0x80                  ; the hidden bit
+    jmp pf_shift
+pf_subnormal:                   ; the same scale as exponent 1
+    mov a, 1
+    mov i, b
+    or i, c
+    or i, d
+    jmz pf_zero_value
+    jmp pf_shift
+pf_zero_value:
+    mov i, 1
+    str [sp + 88], i
+
+pf_shift:                       ; s = a + 10 (11..264): q = s >> 3, j = s & 7
+    add a, 10
+    mov i, 0
+    adc i, 0
+    mov j, a
+    and j, 7
+    shr a
+    shr a
+    shr a
+    cmp i, 0
+    jme pf_q
+    or a, 32
+pf_q:
+    str [sp + 84], a
+    rsp [x:y]                   ; B = 0
+    mov a, 0
+    mov i, 37
+pf_clear:
+    str [x:y], a
+    add y, 1
+    adc x, 0
+    dec i
+    jmz pf_rotate
+    jmp pf_clear
+pf_rotate:                      ; a:b:c:d = m << r (a = 0 at the start)
+    cmp j, 0
+    jme pf_place
+    shl d
+    adc c, c
+    adc b, b
+    adc a, a
+    dec j
+    jmp pf_rotate
+pf_place:                       ; at offsets 33 - q .. 36 - q
+    lod i, [sp + 84]
+    rsp [x:y]
+    mov j, 33
+    sub j, i
+    add y, j
+    adc x, 0
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    str [x:y + 3], d
+
+    mov a, 0                    ; the integer digits: K = 0
+    str [sp + 77], a
+    rsp [x:y]                   ; no digit if the integer part is 0
+    add y, 1
+    adc x, 0
+    mov i, 16
+pf_int_test:
+    lod b, [x:y]
+    or a, b
+    add y, 1
+    adc x, 0
+    dec i
+    jmz pf_int_tested
+    jmp pf_int_test
+pf_int_tested:
+    cmp a, 0
+    jme pf_int_done
+pf_int_div:                     ; B[0..15] /= 10, c = the remainder, d = 0 if
+    rsp [x:y]                   ; the quotient is 0
+    add y, 1
+    adc x, 0
+    mov c, 0
+    mov d, 0
+    mov i, 16
+pf_div_byte:
+    lod a, [x:y]
+    mov j, 8
+pf_div_bit:
+    shl a
+    adc c, c
+    cmp c, 10
+    jmf pf_div_low
+    sub c, 10
+    or a, 1
+pf_div_low:
+    dec j
+    jmz pf_div_next
+    jmp pf_div_bit
+pf_div_next:
+    str [x:y], a
+    or d, a
+    add y, 1
+    adc x, 0
+    dec i
+    jmz pf_div_end
+    jmp pf_div_byte
+pf_div_end:
+    lod b, [sp + 77]            ; IB[K] = the digit, K + 1
+    rsp [x:y]
+    add y, 37
+    adc x, 0
+    add y, b
+    adc x, 0
+    add c, '0'
+    str [x:y], c
+    inc b
+    str [sp + 77], b
+    cmp d, 0
+    jme pf_int_done
+    jmp pf_int_div
+pf_int_done:
+    lod a, [sp + 77]
+    str [sp + 78], a
+    mov a, 0
+    str [sp + 91], a
+
+    lod c, [sp + 132]           ; [c:d] = the precision, 6 if none
+    lod d, [sp + 133]
+    cmp c, 0xFF
+    jme pf_prec6
+    jmp pf_prec_set
+pf_prec6:
+    mov c, 0
+    mov d, 6
+pf_prec_set:
+    str [sp + 82], c
+    str [sp + 83], d
+    lod a, [sp + 80]
+    cmp a, 'f'
+    jme pf_fixed
+    cmp a, 'e'
+    jme pf_exp
+    mov a, c                    ; %g: P = 0 is 1, n = P
+    or a, d
+    jmz pf_g_one
+    jmp pf_n
+pf_g_one:
+    mov d, 1
+    str [sp + 83], d
+    jmp pf_n
+pf_exp:                         ; %e: n = P + 1
+    add d, 1
+    adc c, 0
+pf_n:
+    str [sp + 84], c
+    str [sp + 85], d
+    lod a, [sp + 77]            ; X = K - 1
+    cmp a, 0
+    jme pf_frac_first
+    dec a
+    str [sp + 79], a
+    jmp pf_digits
+pf_frac_first:                  ; below 1: X = - the digits up to the first
+    str [sp + 79], a            ; nonzero one, given back (0: X = 0)
+    lod b, [sp + 88]
+    cmp b, 0
+    jme pf_skip
+    jmp pf_digits
+pf_skip:
+    cal pf_next
+    lod a, [sp + 79]
+    dec a
+    str [sp + 79], a
+    cmp b, '0'
+    jme pf_skip
+    str [sp + 91], b
+    jmp pf_digits
+
+pf_fixed:                       ; %f: n = K + P
+    lod a, [sp + 77]
+    add d, a
+    adc c, 0
+    str [sp + 84], c
+    str [sp + 85], d
+
+; --- n digits at TB + 8, rounded --------------------------------------------
+
+pf_digits:                      ; cnt = n up to 192, Z = the rest
+    lod c, [sp + 84]
+    lod d, [sp + 85]
+    mov a, 0
+    mov b, 0
+    cmp c, 0
+    jme pf_d_small
+    jmp pf_d_cap
+pf_d_small:
+    cmp d, 192
+    jms pf_d_cap
+    jmp pf_d_set
+pf_d_cap:
+    mov b, d
+    sub b, 192
+    mov a, c
+    sbb a, 0
+    mov d, 192
+pf_d_set:
+    str [sp + 86], a
+    str [sp + 87], b
+    str [sp + 89], d
+    mov a, 0
+    str [sp + 90], a
+    str [sp + 92], a
+pf_d_loop:
+    lod a, [sp + 92]
+    lod d, [sp + 89]
+    cmp a, d
+    jme pf_round
+    cal pf_next
+    lod a, [sp + 92]
+    rsp [x:y]
+    add y, 150
+    adc x, 0
+    add y, a
+    adc x, 0
+    str [x:y], b
+    inc a
+    str [sp + 92], a
+    jmp pf_d_loop
+
+pf_round:                       ; half to even, on the next digit and the rest
+    lod a, [sp + 86]
+    lod b, [sp + 87]
+    or a, b
+    jmz pf_round_digit
+    jmp pf_layout               ; more than 192 digits: the rest is 0
+pf_round_digit:
+    cal pf_next
+    cmp b, '5'
+    jmf pf_layout
+    jms pf_round_up
+    cal pf_rest
+    cmp a, 0
+    jme pf_round_even
+    jmp pf_round_up
+pf_round_even:                  ; exactly half: up if the last digit is odd
+    lod a, [sp + 89]
+    cmp a, 0
+    jme pf_layout
+    rsp [x:y]
+    add y, 149
+    adc x, 0
+    add y, a
+    adc x, 0
+    lod b, [x:y]
+    and b, 1
+    jmz pf_layout
+pf_round_up:
+    lod a, [sp + 89]
+    rsp [x:y]
+    add y, 150
+    adc x, 0
+    add y, a
+    adc x, 0
+pf_up_loop:
+    sub y, 1
+    sbb x, 0
+    cmp a, 0
+    jme pf_up_carry
+    dec a
+    lod b, [x:y]
+    cmp b, '9'
+    jme pf_up_nine
+    inc b
+    str [x:y], b
+    jmp pf_layout
+pf_up_nine:
+    mov b, '0'
+    str [x:y], b
+    jmp pf_up_loop
+pf_up_carry:                    ; all 9s: a 1 before them (at TB + 7)
+    mov b, '1'
+    str [x:y], b
+    mov a, 1
+    str [sp + 90], a
+
+; --- The layouts -------------------------------------------------------------
+
+pf_layout:
+    lod a, [sp + 80]
+    cmp a, 'f'
+    jme pf_lay_f
+    lod b, [sp + 90]            ; %e %g: the carry is the 1, X + 1, and the
+    lod a, [sp + 79]            ; last digit (a 0) is dropped
+    add a, b
+    str [sp + 79], a
+    mov a, 150
+    sub a, b
+    str [sp + 94], a
+    lod a, [sp + 89]
+    str [sp + 95], a
+    lod a, [sp + 80]
+    cmp a, 'e'
+    jme pf_lay_e
+    lod a, [sp + 79]            ; %g: like %f if -4 <= X < P
+    cmp a, 0x80
+    jmf pf_g_pos
+    cmp a, 0xFC
+    jmf pf_g_e
+    mov b, 0xFF                 ; -4 <= X < 0: "0.", -X - 1 zeros, the digits
+    sub b, a
+    str [sp + 93], b
+    mov b, 0
+    str [sp + 92], b
+    jmp pf_g_f
+pf_g_pos:
+    lod c, [sp + 82]
+    lod d, [sp + 83]
+    cmp c, 0
+    jme pf_g_cmp
+    jmp pf_g_int
+pf_g_cmp:
+    cmp a, d
+    jmf pf_g_int
+    jmp pf_g_e
+pf_g_int:                       ; X + 1 digits before the point
+    inc a
+    str [sp + 92], a
+    mov a, 0
+    str [sp + 93], a
+pf_g_f:                         ; without #, no zeros at the end
+    lod a, [sp + 134]
+    and a, 4
+    jmz pf_g_f_strip
+    jmp pf_lay_fx
+pf_g_f_strip:
+    lod a, [sp + 92]
+    cal pf_strip
+    jmp pf_lay_fx
+pf_g_e:
+    lod a, [sp + 134]
+    and a, 4
+    jmz pf_g_e_strip
+    jmp pf_lay_e
+pf_g_e_strip:
+    mov a, 1
+    cal pf_strip
+    jmp pf_lay_e
+
+pf_lay_f:                       ; %f: I = K + carry digits before the point
+    lod b, [sp + 90]
+    lod a, [sp + 77]
+    add a, b
+    str [sp + 92], a
+    mov a, 150
+    sub a, b
+    str [sp + 94], a
+    lod a, [sp + 89]
+    add a, b
+    str [sp + 95], a
+    mov a, 0
+    str [sp + 93], a
+pf_lay_fx:                      ; a point if digits follow it, #, or Z > 0
+    mov d, 0
+    lod a, [sp + 134]
+    and a, 4
+    jmz pf_fx_z
+    mov d, 1
+pf_fx_z:
+    lod a, [sp + 86]
+    lod b, [sp + 87]
+    or a, b
+    jmz pf_fx_len
+    mov d, 1
+pf_fx_len:
+    lod a, [sp + 95]
+    lod b, [sp + 92]
+    cmp a, b
+    jms pf_fx_point
+    jmp pf_fx_go
+pf_fx_point:
+    mov d, 1
+pf_fx_go:
+    cmp b, 0
+    jme pf_fx_zero_int
+    cmp d, 0
+    jme pf_ret
+    lod a, [sp + 94]            ; the I digits one to the left, then the point
+    rsp [x:y]
+    add y, a
+    adc x, 0
+    dec a
+    str [sp + 94], a
+    sub y, 1
+    sbb x, 0
+pf_fx_move:
+    lod c, [x:y + 1]
+    str [x:y], c
+    add y, 1
+    adc x, 0
+    dec b
+    jmz pf_fx_dot
+    jmp pf_fx_move
+pf_fx_dot:
+    mov c, '.'
+    str [x:y], c
+    lod a, [sp + 95]
+    inc a
+    str [sp + 95], a
+    jmp pf_ret
+pf_fx_zero_int:                 ; no integer digit: "0", or "0." and the zeros
+    lod a, [sp + 94]
+    lod b, [sp + 95]
+    rsp [x:y]
+    add y, a
+    adc x, 0
+    cmp d, 0
+    jme pf_fx_zero
+    lod c, [sp + 93]
+pf_fx_lz:
+    cmp c, 0
+    jme pf_fx_lz_end
+    sub y, 1
+    sbb x, 0
+    mov d, '0'
+    str [x:y], d
+    dec a
+    inc b
+    dec c
+    jmp pf_fx_lz
+pf_fx_lz_end:
+    sub y, 1
+    sbb x, 0
+    mov d, '.'
+    str [x:y], d
+    dec a
+    inc b
+pf_fx_zero:
+    sub y, 1
+    sbb x, 0
+    mov d, '0'
+    str [x:y], d
+    dec a
+    inc b
+    str [sp + 94], a
+    str [sp + 95], b
+    jmp pf_ret
+
+pf_lay_e:                       ; a point after the first digit if more follow,
+    lod a, [sp + 95]            ; #, or Z > 0
+    cmp a, 1
+    jms pf_e_point
+    lod a, [sp + 134]
+    and a, 4
+    jmz pf_e_z
+    jmp pf_e_point
+pf_e_z:
+    lod a, [sp + 86]
+    lod b, [sp + 87]
+    or a, b
+    jmz pf_e_suffix
+pf_e_point:                     ; the first digit one to the left
+    lod a, [sp + 94]
+    rsp [x:y]
+    add y, a
+    adc x, 0
+    lod c, [x:y]
+    mov d, '.'
+    str [x:y], d
+    sub y, 1
+    sbb x, 0
+    str [x:y], c
+    dec a
+    str [sp + 94], a
+    lod a, [sp + 95]
+    inc a
+    str [sp + 95], a
+pf_e_suffix:                    ; e+XX after the text (and after the zeros)
+    lod a, [sp + 94]
+    lod b, [sp + 95]
+    rsp [x:y]
+    add y, a
+    adc x, 0
+    add y, b
+    adc x, 0
+    lod c, [sp + 81]
+    or c, 'E'
+    str [x:y], c
+    lod a, [sp + 79]
+    mov c, '+'
+    cmp a, 0x80
+    jmf pf_e_x
+    mov c, '-'
+    mov d, 0
+    sub d, a
+    mov a, d
+pf_e_x:
+    str [x:y + 1], c
+    mov c, '0'
+pf_e_tens:
+    cmp a, 10
+    jmf pf_e_units
+    sub a, 10
+    inc c
+    jmp pf_e_tens
+pf_e_units:
+    str [x:y + 2], c
+    add a, '0'
+    str [x:y + 3], a
+    mov c, 0                    ; split = len, len + 4
+    str [sp + 137], c
+    str [sp + 138], b
+    add b, 4
+    str [sp + 95], b
+    jmp pf_ret_z
+
+pf_special:                     ; inf or nan (b:c:d = the fraction field)
+    or b, c
+    or b, d
+    jmz pf_inf
+    mov a, 'N'
+    mov b, 'A'
+    mov c, 'N'
+    jmp pf_word
+pf_inf:
+    mov a, 'I'
+    mov b, 'N'
+    mov c, 'F'
+pf_word:
+    lod d, [sp + 81]
+    or a, d
+    or b, d
+    or c, d
+    rsp [x:y]
+    add y, 150
+    adc x, 0
+    str [x:y], a
+    str [x:y + 1], b
+    str [x:y + 2], c
+    mov a, ' '                  ; padded with spaces, even for 0
+    str [sp + 109], a
+    mov a, 150
+    str [sp + 94], a
+    mov a, 3
+    str [sp + 95], a
+    mov a, 0
+    str [sp + 86], a
+    str [sp + 87], a
+
+pf_ret:                         ; split = len
+    mov c, 0
+    lod d, [sp + 95]
+    str [sp + 137], c
+    str [sp + 138], d
+pf_ret_z:                       ; zeros = Z, [x:y] = the text, [c:d] = len
+    lod a, [sp + 86]
+    str [sp + 135], a
+    lod a, [sp + 87]
+    str [sp + 136], a
+    lod a, [sp + 94]
+    rsp [x:y]
+    add y, a
+    adc x, 0
+    mov c, 0
+    lod d, [sp + 95]
+    asp 100
+    ret
+
+; --- Called from lib_printf_float (its frame is 2 bytes further) -----------
+
+; b = the next digit (ASCII). Changes every register.
+pf_next:
+    lod b, [sp + 93]            ; a digit given back
+    cmp b, 0
+    jme pf_next_int
+    mov a, 0
+    str [sp + 93], a
+    ret
+pf_next_int:
+    lod b, [sp + 80]
+    cmp b, 0
+    jme pf_next_frac
+    dec b
+    str [sp + 80], b
+    rsp [x:y]
+    add y, 39
+    adc x, 0
+    add y, b
+    adc x, 0
+    lod b, [x:y]
+    ret
+pf_next_frac:                   ; fraction * 10, from its last byte
+    rsp [x:y]
+    add y, 39
+    adc x, 0
+    mov i, 0
+    mov j, 20
+pf_mul:
+    sub y, 1
+    sbb x, 0
+    lod a, [x:y]                ; b:a = the byte * 10 + i
+    mov b, 0
+    shl a
+    adc b, b
+    mov c, a
+    mov d, b
+    shl a
+    adc b, b
+    shl a
+    adc b, b
+    add a, c
+    adc b, d
+    add a, i
+    adc b, 0
+    str [x:y], a
+    mov i, b
+    dec j
+    jmz pf_mul_end
+    jmp pf_mul
+pf_mul_end:
+    mov b, i
+    add b, '0'
+    ret
+
+; a = 0 if the digits left are all 0. Changes b, j, x, y.
+pf_rest:
+    rsp [x:y]
+    add y, 19
+    adc x, 0
+    mov a, 0
+    mov j, 20
+pf_rest_frac:
+    lod b, [x:y]
+    or a, b
+    add y, 1
+    adc x, 0
+    dec j
+    jmz pf_rest_int
+    jmp pf_rest_frac
+pf_rest_int:                    ; [x:y] = IB
+    lod j, [sp + 80]
+pf_rest_loop:
+    cmp j, 0
+    jme pf_rest_end
+    lod b, [x:y]
+    sub b, '0'
+    or a, b
+    add y, 1
+    adc x, 0
+    dec j
+    jmp pf_rest_loop
+pf_rest_end:
+    ret
+
+; Drops the '0' digits at the end of the text, keeping at least a digits;
+; Z = 0. Changes b, c, x, y.
+pf_strip:
+    mov b, 0
+    str [sp + 88], b
+    str [sp + 89], b
+    lod b, [sp + 97]            ; len
+    lod c, [sp + 96]            ; start
+    add c, 2
+    rsp [x:y]
+    add y, c
+    adc x, 0
+    add y, b
+    adc x, 0
+pf_strip_loop:
+    cmp b, a
+    jme pf_strip_end
+    sub y, 1
+    sbb x, 0
+    lod c, [x:y]
+    cmp c, '0'
+    jme pf_strip_one
+    jmp pf_strip_end
+pf_strip_one:
+    dec b
+    jmp pf_strip_loop
+pf_strip_end:
+    str [sp + 97], b
+    ret

@@ -1,0 +1,453 @@
+; ============================================================
+; asinh, acosh, atanh (see fhyp.has)
+; ============================================================
+; All three end in log1p of a pair (fh_l1pc, flog.has):
+;   asinh a = log1p (a + a^2 / (1 + sqrt (1 + a^2)))
+;   acosh x = log1p (t + sqrt (t (x + 1))),  t = x - 1 (exact)
+;   atanh a = log1p (2 a / (1 - a)) / 2
+; with the pairs made with Dekker's products, TwoSum, ft_dsq and ft_ddiv.
+; From 2^13 on, asinh and acosh are log (2 |x|) (flog with the mode 4).
+; asinh and atanh are odd: FT_SGN is the sign of x.
+
+; fh_pr: c, d = two slots X, Y. V12 + V13 = X Y exactly (p, error).
+; Uses V14, V15, V17, V18, V19.
+fh_pr:
+    mov a, V14
+    mov b, c
+    cal fx_cpy
+    cal fx_t12                  ; X1
+    mov a, V15
+    mov b, c
+    cal fx_cpy
+    mov b, V14
+    cal fx_sub                  ; X2
+    mov a, V17
+    mov b, d
+    cal fx_cpy
+    cal fx_t12                  ; Y1
+    mov a, V18
+    mov b, d
+    cal fx_cpy
+    mov b, V17
+    cal fx_sub                  ; Y2
+    mov a, V12
+    mov b, c
+    cal fx_cpy
+    mov b, d
+    cal fx_mul                  ; p
+    mov a, V13
+    mov b, V14
+    cal fx_cpy
+    mov b, V17
+    cal fx_mul
+    mov b, V12
+    cal fx_sub                  ; X1 Y1 - p
+    mov a, V19
+    mov b, V14
+    cal fx_cpy
+    mov b, V18
+    cal fx_mul
+    mov a, V13
+    mov b, V19
+    cal fx_add
+    mov a, V19
+    mov b, V15
+    cal fx_cpy
+    mov b, V17
+    cal fx_mul
+    mov a, V13
+    mov b, V19
+    cal fx_add
+    mov a, V19
+    mov b, V15
+    cal fx_cpy
+    mov b, V18
+    cal fx_mul
+    mov a, V13
+    mov b, V19
+    cal fx_add
+    ret
+
+; ------------------------------------------------------------
+; asinh
+; ------------------------------------------------------------
+fh_asinh:
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme fh_nan0
+    cmp a, 1
+    jme ah_id
+    cmp a, 2
+    jme ah_id
+    cmp a, 3
+    jme ah_sub
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov a, V0
+    cal fx_abs
+    cal l2_getE
+    cmp a, 114
+    jmf ah_tiny
+    cmp a, 140
+    jmf ah_mid
+    mov a, K_LN2S_1             ; |x| >= 2^13: log (2 |x|)
+    str [x:y + FX_KO], a
+    mov a, 4
+    str [x:y + FX_PAIR], a
+    jmp flg_calc
+ah_id:
+    mov a, V0
+    jmp fx_out
+ah_sub:
+    mov a, 0x18
+    cal fx_setfl
+    mov a, V0
+    jmp fx_out
+ah_tiny:
+    mov a, V4
+    mov b, V0
+    cal fx_cpy
+    mov a, 0x10
+    jmp ft_sres
+ah_mid:
+    mov c, V0
+    cal fh_sq                   ; a^2 = V12 + V13
+    mov a, V32
+    mov b, V12
+    cal fx_cpy
+    mov a, V33
+    mov b, V13
+    cal fx_cpy
+    mov a, V20                  ; m = 1 + a^2 = V11 + V16 (TwoSum)
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V12
+    cal fx_add
+    mov a, V21
+    mov b, V20
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_subc
+    mov a, V22
+    mov b, V20
+    cal fx_cpy
+    mov b, V21
+    cal fx_sub
+    mov a, V23
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V22
+    cal fx_sub
+    mov a, V24
+    mov b, V12
+    cal fx_cpy
+    mov b, V21
+    cal fx_sub
+    mov a, V23
+    mov b, V24
+    cal fx_add
+    mov b, V13
+    cal fx_add
+    mov a, V11
+    mov b, V20
+    cal fx_cpy
+    mov b, V23
+    cal fx_add
+    mov a, V16
+    mov b, V20
+    cal fx_cpy
+    mov b, V11
+    cal fx_sub
+    mov b, V23
+    cal fx_add
+    cal ft_dsq                  ; sqrt (m) = V26 + V27
+    mov a, V6                   ; D = 1 + sqrt (m) = V6 + V9
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V26
+    cal fx_add
+    mov a, V7
+    mov b, V6
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_subc
+    mov a, V8
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V8
+    cal fx_sub
+    mov a, V10
+    mov b, V26
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, V10
+    cal fx_add
+    mov b, V27
+    cal fx_add
+    mov a, V20                  ; w = a^2 / D
+    mov b, V32
+    cal fx_cpy
+    mov a, V21
+    mov b, V33
+    cal fx_cpy
+    mov a, V22
+    mov b, V6
+    cal fx_cpy
+    mov a, V23
+    mov b, V9
+    cal fx_cpy
+    cal ft_ddiv
+    mov a, V6                   ; u = a + w (TwoSum) = V34 + V35
+    mov b, V0
+    cal fx_cpy
+    mov b, V4
+    cal fx_add
+    mov a, V7
+    mov b, V6
+    cal fx_cpy
+    mov b, V0
+    cal fx_sub
+    mov a, V8
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, V0
+    cal fx_cpy
+    mov b, V8
+    cal fx_sub
+    mov a, V10
+    mov b, V4
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, V10
+    cal fx_add
+    mov b, V5
+    cal fx_add
+    mov a, V34
+    mov b, V6
+    cal fx_cpy
+    mov a, V35
+    mov b, V9
+    cal fx_cpy
+    jmp fh_l1pc
+
+; ------------------------------------------------------------
+; acosh
+; ------------------------------------------------------------
+fh_acosh:
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme fh_nan0
+    cmp a, 1
+    jme ac_inf
+    mov a, V0
+    mov b, K_ONE
+    cal fx_cmpc
+    jmf fh_inv                  ; x < 1
+    jme ac_one
+    cal l2_getE
+    cmp a, 140
+    jmf ac_mid
+    mov a, K_LN2S_1             ; x >= 2^13: log (2 x)
+    str [x:y + FX_KO], a
+    mov a, 4
+    str [x:y + FX_PAIR], a
+    jmp flg_calc
+ac_inf:
+    lod a, [x:y + V0]
+    cmp a, 0x80
+    jmf ah_id
+    jmp fh_inv
+ac_one:
+    mov c, 0
+    mov d, 0
+    mov a, 0
+    jmp fx_exit
+ac_mid:
+    mov a, V6                   ; t = x - 1 (exact)
+    mov b, V0
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_subc
+    mov a, V8                   ; x + 1 = V8 + V7 (TwoSum)
+    mov b, V0
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_addc
+    mov a, V9
+    mov b, V8
+    cal fx_cpy
+    mov b, V0
+    cal fx_sub                  ; bb
+    mov a, V10
+    mov b, V8
+    cal fx_cpy
+    mov b, V9
+    cal fx_sub
+    mov a, V7
+    mov b, V0
+    cal fx_cpy
+    mov b, V10
+    cal fx_sub
+    mov a, V10
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V9
+    cal fx_sub
+    mov a, V7
+    mov b, V10
+    cal fx_add
+    mov c, V6                   ; m = t (V8 + V7)
+    mov d, V8
+    cal fh_pr
+    mov a, V10
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_mul
+    mov a, V13
+    mov b, V10
+    cal fx_add
+    mov a, V11
+    mov b, V12
+    cal fx_cpy
+    mov a, V16
+    mov b, V13
+    cal fx_cpy
+    cal ft_dsq                  ; s = V26 + V27
+    mov a, V9                   ; u = t + s (TwoSum) = V34 + V35
+    mov b, V6
+    cal fx_cpy
+    mov b, V26
+    cal fx_add
+    mov a, V10
+    mov b, V9
+    cal fx_cpy
+    mov b, V6
+    cal fx_sub
+    mov a, V11
+    mov b, V9
+    cal fx_cpy
+    mov b, V10
+    cal fx_sub
+    mov a, V12
+    mov b, V6
+    cal fx_cpy
+    mov b, V11
+    cal fx_sub
+    mov a, V13
+    mov b, V26
+    cal fx_cpy
+    mov b, V10
+    cal fx_sub
+    mov a, V12
+    mov b, V13
+    cal fx_add
+    mov b, V27
+    cal fx_add
+    mov a, V34
+    mov b, V9
+    cal fx_cpy
+    mov a, V35
+    mov b, V12
+    cal fx_cpy
+    jmp fh_l1pc
+
+; ------------------------------------------------------------
+; atanh
+; ------------------------------------------------------------
+fh_atanh:
+    mov a, V0
+    cal fx_cls
+    cmp a, 0
+    jme fh_nan0
+    cmp a, 1
+    jme fh_inv
+    cmp a, 2
+    jme ah_id
+    cmp a, 3
+    jme ah_sub
+    lod a, [x:y + V0]
+    and a, 0x80
+    str [x:y + FT_SGN], a
+    mov a, V0
+    cal fx_abs
+    mov a, V0
+    mov b, K_ONE
+    cal fx_cmpc
+    jms fh_inv                  ; |x| > 1
+    jme at1_one
+    cal l2_getE
+    cmp a, 114
+    jmf ah_tiny
+    mov a, V6                   ; D = 1 - a = V6 + V9 (TwoSum)
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V0
+    cal fx_sub
+    mov a, V7
+    mov b, V6
+    cal fx_cpy
+    mov b, K_ONE
+    cal fx_subc
+    mov a, V8
+    mov b, V6
+    cal fx_cpy
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, K_ONE
+    cal fx_cpyc
+    mov b, V8
+    cal fx_sub
+    mov a, V10
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov b, V0
+    cal fx_sub
+    mov b, V7
+    cal fx_sub
+    mov a, V9
+    mov b, V10
+    cal fx_add
+    mov a, V20                  ; u = 2 a / D
+    mov b, V0
+    cal fx_cpy
+    cal fx_add
+    mov a, V21
+    mov b, K_ZERO
+    cal fx_cpyc
+    mov a, V22
+    mov b, V6
+    cal fx_cpy
+    mov a, V23
+    mov b, V9
+    cal fx_cpy
+    cal ft_ddiv
+    mov a, V34
+    mov b, V4
+    cal fx_cpy
+    mov a, V35
+    mov b, V5
+    cal fx_cpy
+    mov a, 2                    ; the result is halved
+    str [x:y + FX_PAIR], a
+    jmp fh_l1pc
+at1_one:
+    mov b, K_INF
+    mov a, 2
+    jmp ft_kres

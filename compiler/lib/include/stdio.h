@@ -19,12 +19,16 @@ int putchar(int c);
 int puts(const char *s);
 
 // Prints fmt, with the arguments in place of:
-// %d (int), %u (unsigned), %x (unsigned, in hexadecimal), %c (char),
-// %s (string), %% (a %). l before d, u, x: a long (%ld, %lu, %lx).
-// A width before it gives the least number of characters, padded with
-// spaces on the left, or with zeros when the width starts with 0
-// (%5d, %04x); a - before the width pads on the right instead (%-6s).
-// No floating point.
+// %d %i (int), %u (unsigned), %x %X (unsigned, in hexadecimal), %c (char),
+// %s (string), %% (a %), %f %e %g (float or double: 1.500000, 1.500000e+00,
+// 1.5; %F %E %G in capitals). l before d, u, x: a long (%ld, %lu, %lx).
+// Between % and the letter: flags (- align left, 0 pad with zeros, + or a
+// space before a positive number, # keep the point of a float), a width
+// (the least number of characters, up to 255), a precision after a point
+// (%.3d: at least 3 digits; %.2s: at most 2 characters; %.2f %.2e: 2
+// digits after the point, 6 if not given; %.3g: 3 significant digits). *
+// takes the width or the precision from an int argument (%*d, %.*f).
+// Floats are exact and rounded half to even (%.0f of 2.5 is 2).
 // Returns the number of characters printed.
 int printf(const char *fmt, ...);
 
@@ -75,8 +79,9 @@ char *gets(char *s);
 // Between % and the letter: * to read the field without storing it, a
 // width (the most characters taken, up to 255), l for a long (%ld %lx
 // %ln), h (no effect: short is int). Numbers may start with - or +; a
-// number too big keeps its low bits. All but %c, %[ and %n skip spaces
-// first. No floating point.
+// number too big keeps its low bits. %f %e %g %a (and %E %F %G %A, %lf):
+// a float (float *, double * too): 1, -1.5, .5e3, inf, nan; at most 40
+// characters. All but %c, %[ and %n skip spaces first.
 // Returns the number of fields stored, stopping at the first field or
 // character that does not match; EOF (-1) when the input ends before the
 // first field.

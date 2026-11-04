@@ -1,0 +1,239 @@
+; ============================================================
+; fx: work on the floats of a frame (helpers of fexp, flog, fpow)
+; ============================================================
+; exp, log and pow are made of a few dozen additions and products. To write
+; them without repeating the pointer set-up, their floats live in a frame on
+; the stack, 4 bytes each (a "slot"), and these helpers do one operation on
+; slots. In all of them
+;
+;     x:y = the frame (never changed)
+;     a   = the offset of the destination slot (0, 4, 8...)
+;     b   = the offset of the source slot, or for the *c variants the offset
+;           of a constant in fx_k (K_* of fmathk.has)
+;
+; and every register is restored (the flags of the CPU are left by fx_cmpc
+; and fx_isz: S / E / F as fcmp, Z).
+;
+;   fx_add fx_sub fx_mul fx_div    F[a] = F[a] op F[b]       (a = b allowed)
+;   fx_addc fx_subc fx_mulc fx_divc   F[a] = F[a] op constant b
+;   fx_cmpc     compares F[a] with the constant b (fcmp)
+;   fx_cpy      F[a] = F[b]            fx_cpyc   F[a] = constant b
+;   fx_cpp      F[a] = the 4 bytes at [i:j]
+;   fx_neg fx_abs fx_rint fx_toi fx_tof    the routine of fbits / fround /
+;               fconv on F[a] (fx_toi: the float becomes an int32, fx_tof
+;               the other way)
+;   fx_scale    F[c] = ldexp(F[c], [a:b])      (c = the slot offset)
+;   fx_t12      clears the 12 low bits of F[a]: a float with 12 significant
+;               bits, so that the product of two of them is exact
+;   fx_isz      Z = 1 if F[a] is +0 or -0
+;   fx_cls      a = fclass(F[a])
+
+; ---- slot op slot. c:d = the routine.
+fx_add:
+    psh c, d
+    mov c, fadd.msb
+    mov d, fadd.lsb
+    jmp fx_ss
+fx_sub:
+    psh c, d
+    mov c, fsub.msb
+    mov d, fsub.lsb
+    jmp fx_ss
+fx_mul:
+    psh c, d
+    mov c, fmul.msb
+    mov d, fmul.lsb
+    jmp fx_ss
+fx_div:
+    psh c, d
+    mov c, fdiv.msb
+    mov d, fdiv.lsb
+fx_ss:
+    psh x, y, i, j
+    mov i, x
+    mov j, y
+    add j, b
+    adc i, 0                    ; i:j = the source
+    add y, a
+    adc x, 0                    ; x:y = the destination
+    cal [c:d]
+    pop x, y, i, j
+    pop c, d
+    ret
+
+; ---- slot op constant
+fx_addc:
+    psh c, d
+    mov c, fadd.msb
+    mov d, fadd.lsb
+    jmp fx_sk
+fx_subc:
+    psh c, d
+    mov c, fsub.msb
+    mov d, fsub.lsb
+    jmp fx_sk
+fx_mulc:
+    psh c, d
+    mov c, fmul.msb
+    mov d, fmul.lsb
+    jmp fx_sk
+fx_divc:
+    psh c, d
+    mov c, fdiv.msb
+    mov d, fdiv.lsb
+fx_sk:
+    psh x, y, i, j
+    mov i, fx_k.msb
+    mov j, fx_k.lsb
+    add j, b
+    adc i, 0
+    add y, a
+    adc x, 0
+    cal [c:d]
+    pop x, y, i, j
+    pop c, d
+    ret
+
+fx_cmpc:
+    psh x, y, i, j
+    mov i, fx_k.msb
+    mov j, fx_k.lsb
+    add j, b
+    adc i, 0
+    add y, a
+    adc x, 0
+    cal fcmp
+    pop x, y, i, j
+    ret
+
+; ---- unary
+fx_neg:
+    psh c, d
+    mov c, fneg.msb
+    mov d, fneg.lsb
+    jmp fx_un
+fx_abs:
+    psh c, d
+    mov c, fabs.msb
+    mov d, fabs.lsb
+    jmp fx_un
+fx_rint:
+    psh c, d
+    mov c, frint.msb
+    mov d, frint.lsb
+    jmp fx_un
+fx_toi:
+    psh c, d
+    mov c, ftoi.msb
+    mov d, ftoi.lsb
+    jmp fx_un
+fx_tof:
+    psh c, d
+    mov c, itof.msb
+    mov d, itof.lsb
+fx_un:
+    psh x, y
+    add y, a
+    adc x, 0
+    cal [c:d]
+    pop x, y
+    pop c, d
+    ret
+
+fx_cls:
+    psh x, y
+    add y, a
+    adc x, 0
+    cal fclass
+    pop x, y
+    ret
+
+fx_scale:
+    psh x, y
+    add y, c
+    adc x, 0
+    cal ldexp
+    pop x, y
+    ret
+
+; ---- copies
+fx_cpy:
+    psh i, j
+    mov i, x
+    mov j, y
+    add j, b
+    adc i, 0
+    cal fx_cpp
+    pop i, j
+    ret
+
+fx_cpyc:
+    psh i, j
+    mov i, fx_k.msb
+    mov j, fx_k.lsb
+    add j, b
+    adc i, 0
+    cal fx_cpp
+    pop i, j
+    ret
+
+fx_cpp:
+    psh a, x, y
+    add y, a
+    adc x, 0
+    lod a, [i:j]
+    str [x:y], a
+    lod a, [i:j + 1]
+    str [x:y + 1], a
+    lod a, [i:j + 2]
+    str [x:y + 2], a
+    lod a, [i:j + 3]
+    str [x:y + 3], a
+    pop a, x, y
+    ret
+
+; ---- bits
+fx_t12:
+    psh a, x, y
+    add y, a
+    adc x, 0
+    mov a, 0
+    str [x:y + 3], a
+    lod a, [x:y + 2]
+    and a, 0xF0
+    str [x:y + 2], a
+    pop a, x, y
+    ret
+
+fx_isz:
+    psh a, x, y
+    add y, a
+    adc x, 0
+    lod a, [x:y]
+    and a, 0x7F
+    or a, [x:y + 1]
+    or a, [x:y + 2]
+    or a, [x:y + 3]
+    pop a, x, y
+    ret
+
+; ---- more (trig)
+;   fx_sqrt   F[a] = fsqrt(F[a])
+;   fx_cmp    compares F[a] with F[b] (fcmp: S / E / F)
+fx_sqrt:
+    psh c, d
+    mov c, fsqrt.msb
+    mov d, fsqrt.lsb
+    jmp fx_un
+
+fx_cmp:
+    psh x, y, i, j
+    mov i, x
+    mov j, y
+    add j, b
+    adc i, 0
+    add y, a
+    adc x, 0
+    cal fcmp
+    pop x, y, i, j
+    ret

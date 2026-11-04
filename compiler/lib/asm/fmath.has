@@ -1,0 +1,618 @@
+; math.h float functions: wrappers of the float library (asm/math/float).
+; float and double are the same type, so sin and sinf are the same code.
+; The library works on a float in memory at [x:y] (and [i:j] for a second
+; one): the wrappers give it the C arguments themselves, on the stack (a C
+; function may change its arguments), then load the result into
+; [c:d]:[a:b]. lib_math_arg / lib_math_load are in asm/math.has.
+
+; [x:y] -> the first argument, [i:j] -> the second (4 bytes further), for a
+; wrapper called directly from C
+lib_fmath_args2:
+    rsp [x:y]
+    add y, 4
+    adc x, 0
+    mov i, x
+    mov j, y
+    add j, 4
+    adc i, 0
+    ret
+
+; [a:b] = a (0 or 1, a class...): the int result of a predicate
+lib_fmath_int:
+    mov b, a
+    mov a, 0
+    ret
+
+; --- one float argument, float result -----------------------------------
+_sin:
+    cal lib_math_arg
+    cal fsin
+    jmp lib_math_load
+_sinf:
+    cal lib_math_arg
+    cal fsin
+    jmp lib_math_load
+_cos:
+    cal lib_math_arg
+    cal fcos
+    jmp lib_math_load
+_cosf:
+    cal lib_math_arg
+    cal fcos
+    jmp lib_math_load
+_tan:
+    cal lib_math_arg
+    cal ftan
+    jmp lib_math_load
+_tanf:
+    cal lib_math_arg
+    cal ftan
+    jmp lib_math_load
+_asin:
+    cal lib_math_arg
+    cal fasin
+    jmp lib_math_load
+_asinf:
+    cal lib_math_arg
+    cal fasin
+    jmp lib_math_load
+_acos:
+    cal lib_math_arg
+    cal facos
+    jmp lib_math_load
+_acosf:
+    cal lib_math_arg
+    cal facos
+    jmp lib_math_load
+_atan:
+    cal lib_math_arg
+    cal fatan
+    jmp lib_math_load
+_atanf:
+    cal lib_math_arg
+    cal fatan
+    jmp lib_math_load
+_sinh:
+    cal lib_math_arg
+    cal fsinh
+    jmp lib_math_load
+_sinhf:
+    cal lib_math_arg
+    cal fsinh
+    jmp lib_math_load
+_cosh:
+    cal lib_math_arg
+    cal fcosh
+    jmp lib_math_load
+_coshf:
+    cal lib_math_arg
+    cal fcosh
+    jmp lib_math_load
+_tanh:
+    cal lib_math_arg
+    cal ftanh
+    jmp lib_math_load
+_tanhf:
+    cal lib_math_arg
+    cal ftanh
+    jmp lib_math_load
+_asinh:
+    cal lib_math_arg
+    cal fasinh
+    jmp lib_math_load
+_asinhf:
+    cal lib_math_arg
+    cal fasinh
+    jmp lib_math_load
+_acosh:
+    cal lib_math_arg
+    cal facosh
+    jmp lib_math_load
+_acoshf:
+    cal lib_math_arg
+    cal facosh
+    jmp lib_math_load
+_atanh:
+    cal lib_math_arg
+    cal fatanh
+    jmp lib_math_load
+_atanhf:
+    cal lib_math_arg
+    cal fatanh
+    jmp lib_math_load
+_exp:
+    cal lib_math_arg
+    cal fexp
+    jmp lib_math_load
+_expf:
+    cal lib_math_arg
+    cal fexp
+    jmp lib_math_load
+_exp2:
+    cal lib_math_arg
+    cal fexp2
+    jmp lib_math_load
+_exp2f:
+    cal lib_math_arg
+    cal fexp2
+    jmp lib_math_load
+_expm1:
+    cal lib_math_arg
+    cal fexpm1
+    jmp lib_math_load
+_expm1f:
+    cal lib_math_arg
+    cal fexpm1
+    jmp lib_math_load
+_log:
+    cal lib_math_arg
+    cal flog
+    jmp lib_math_load
+_logf:
+    cal lib_math_arg
+    cal flog
+    jmp lib_math_load
+_log2:
+    cal lib_math_arg
+    cal flog2
+    jmp lib_math_load
+_log2f:
+    cal lib_math_arg
+    cal flog2
+    jmp lib_math_load
+_log10:
+    cal lib_math_arg
+    cal flog10
+    jmp lib_math_load
+_log10f:
+    cal lib_math_arg
+    cal flog10
+    jmp lib_math_load
+_log1p:
+    cal lib_math_arg
+    cal flog1p
+    jmp lib_math_load
+_log1pf:
+    cal lib_math_arg
+    cal flog1p
+    jmp lib_math_load
+_sqrt:
+    cal lib_math_arg
+    cal fsqrt
+    jmp lib_math_load
+_sqrtf:
+    cal lib_math_arg
+    cal fsqrt
+    jmp lib_math_load
+_cbrt:
+    cal lib_math_arg
+    cal fcbrt
+    jmp lib_math_load
+_cbrtf:
+    cal lib_math_arg
+    cal fcbrt
+    jmp lib_math_load
+_fabs:
+    cal lib_math_arg
+    cal fabs
+    jmp lib_math_load
+_fabsf:
+    cal lib_math_arg
+    cal fabs
+    jmp lib_math_load
+_ceil:
+    cal lib_math_arg
+    cal fceil
+    jmp lib_math_load
+_ceilf:
+    cal lib_math_arg
+    cal fceil
+    jmp lib_math_load
+_floor:
+    cal lib_math_arg
+    cal ffloor
+    jmp lib_math_load
+_floorf:
+    cal lib_math_arg
+    cal ffloor
+    jmp lib_math_load
+_trunc:
+    cal lib_math_arg
+    cal ftrunc
+    jmp lib_math_load
+_truncf:
+    cal lib_math_arg
+    cal ftrunc
+    jmp lib_math_load
+_round:
+    cal lib_math_arg
+    cal fround
+    jmp lib_math_load
+_roundf:
+    cal lib_math_arg
+    cal fround
+    jmp lib_math_load
+_rint:
+    cal lib_math_arg
+    cal frint
+    jmp lib_math_load
+_rintf:
+    cal lib_math_arg
+    cal frint
+    jmp lib_math_load
+_nearbyint:
+    cal lib_math_arg
+    cal fnearbyint
+    jmp lib_math_load
+_nearbyintf:
+    cal lib_math_arg
+    cal fnearbyint
+    jmp lib_math_load
+
+; --- two float arguments, float result ----------------------------------
+_atan2:
+    cal lib_fmath_args2
+    cal fatan2
+    jmp lib_math_load
+_atan2f:
+    cal lib_fmath_args2
+    cal fatan2
+    jmp lib_math_load
+_pow:
+    cal lib_fmath_args2
+    cal fpow
+    jmp lib_math_load
+_powf:
+    cal lib_fmath_args2
+    cal fpow
+    jmp lib_math_load
+_fmod:
+    cal lib_fmath_args2
+    cal fmod
+    jmp lib_math_load
+_fmodf:
+    cal lib_fmath_args2
+    cal fmod
+    jmp lib_math_load
+_hypot:
+    cal lib_fmath_args2
+    cal fhypot
+    jmp lib_math_load
+_hypotf:
+    cal lib_fmath_args2
+    cal fhypot
+    jmp lib_math_load
+_fmin:
+    cal lib_fmath_args2
+    cal fmin
+    jmp lib_math_load
+_fminf:
+    cal lib_fmath_args2
+    cal fmin
+    jmp lib_math_load
+_fmax:
+    cal lib_fmath_args2
+    cal fmax
+    jmp lib_math_load
+_fmaxf:
+    cal lib_fmath_args2
+    cal fmax
+    jmp lib_math_load
+_fdim:
+    cal lib_fmath_args2
+    cal fdim
+    jmp lib_math_load
+_fdimf:
+    cal lib_fmath_args2
+    cal fdim
+    jmp lib_math_load
+_copysign:
+    cal lib_fmath_args2
+    cal fcopysign
+    jmp lib_math_load
+_copysignf:
+    cal lib_fmath_args2
+    cal fcopysign
+    jmp lib_math_load
+
+; --- classification and quiet comparisons: an int ----------------------
+_fpclassify:
+    cal lib_math_arg
+    cal fclass
+    jmp lib_fmath_int
+_isfinite:
+    cal lib_math_arg
+    cal fisfinite
+    jmp lib_fmath_int
+_isinf:
+    cal lib_math_arg
+    cal fisinf
+    jmp lib_fmath_int
+_isnan:
+    cal lib_math_arg
+    cal fisnan
+    jmp lib_fmath_int
+_isnormal:
+    cal lib_math_arg
+    cal fisnormal
+    jmp lib_fmath_int
+_signbit:
+    cal lib_math_arg
+    cal fsignbit
+    jmp lib_fmath_int
+_isgreater:
+    cal lib_fmath_args2
+    cal fisgreater
+    jmp lib_fmath_int
+_isgreaterequal:
+    cal lib_fmath_args2
+    cal fisgreaterequal
+    jmp lib_fmath_int
+_isless:
+    cal lib_fmath_args2
+    cal fisless
+    jmp lib_fmath_int
+_islessequal:
+    cal lib_fmath_args2
+    cal fislessequal
+    jmp lib_fmath_int
+_islessgreater:
+    cal lib_fmath_args2
+    cal fislessgreater
+    jmp lib_fmath_int
+_isunordered:
+    cal lib_fmath_args2
+    cal fisunordered
+    jmp lib_fmath_int
+
+; --- ldexp, frexp, modf -----------------------------------------------------
+
+; (each C name has its own entry: a program may replace one of them)
+
+; double ldexp(double x, int exp)
+_ldexp:
+    jmp lib_fmath_ldexp
+_ldexpf:
+lib_fmath_ldexp:
+    lod a, [sp + 6]
+    lod b, [sp + 7]
+    cal lib_math_arg
+    cal ldexp
+    jmp lib_math_load
+
+; double frexp(double x, int *exp)
+_frexp:
+    jmp lib_fmath_frexp
+_frexpf:
+lib_fmath_frexp:
+    cal lib_math_arg
+    cal frexp                   ; [a:b] = the exponent
+    lod i, [sp + 6]
+    lod j, [sp + 7]
+    str [i:j], a
+    str [i:j + 1], b
+    jmp lib_math_load
+
+; double modf(double x, double *iptr): *iptr = trunc(x), the result is
+; x - *iptr with the sign of x (modf(-3) = -0); modf(+-inf) = +-0
+_modf:
+    jmp lib_fmath_modf
+_modff:
+lib_fmath_modf:
+    cal lib_math_arg
+    lod i, [sp + 6]
+    lod j, [sp + 7]
+    lod a, [x:y]                ; *iptr = x
+    str [i:j], a
+    lod a, [x:y + 1]
+    str [i:j + 1], a
+    lod a, [x:y + 2]
+    str [i:j + 2], a
+    lod a, [x:y + 3]
+    str [i:j + 3], a
+    psh x, y
+    mov x, i
+    mov y, j
+    cal ftrunc                  ; *iptr = trunc(x)
+    pop x, y
+    cal fisinf
+    jmz lib_fmath_modf_sub
+    lod a, [x:y]                ; infinity: +-0
+    and a, 0x80
+    str [x:y], a
+    mov a, 0
+    str [x:y + 1], a
+    str [x:y + 2], a
+    str [x:y + 3], a
+    jmp lib_math_load
+lib_fmath_modf_sub:
+    cal fsub                    ; x - trunc(x): exact
+    cal fcopysign               ; the sign of trunc(x) = the sign of x
+    jmp lib_math_load
+
+; --- fenv.h -----------------------------------------------------------------
+; The flags are the byte fenv_flags of the float library (asm/math/float/
+; fenv.has). fexcept_t and fenv_t are one byte (the flags). Only rounding
+; to nearest exists. Every function returns 0 (success), but fesetround of
+; another mode (1) and fetestexcept (the flags).
+
+; int feclearexcept(int excepts)
+_feclearexcept:
+    lod a, [sp + 3]
+    cal fe_clear
+    jmp lib_fenv_ok
+
+; int feraiseexcept(int excepts)
+_feraiseexcept:
+    lod a, [sp + 3]
+    and a, FE_ALL_EXCEPT
+    cal fe_raise
+    jmp lib_fenv_ok
+
+; int fetestexcept(int excepts): the ones that are raised
+_fetestexcept:
+    lod a, [sp + 3]
+    cal fe_test
+    mov b, a
+    mov a, 0
+    ret
+
+; int fegetexceptflag(fexcept_t *flagp, int excepts)
+_fegetexceptflag:
+    lod a, [sp + 5]
+    cal fe_test
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    str [x:y], a
+    jmp lib_fenv_ok
+
+; int fesetexceptflag(const fexcept_t *flagp, int excepts): the flags of
+; excepts take their state in *flagp
+_fesetexceptflag:
+    lod a, [sp + 5]
+    cal fe_clear
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod b, [x:y]
+    and a, b
+    and a, FE_ALL_EXCEPT
+    cal fe_raise
+    jmp lib_fenv_ok
+
+; int fegetround(void)
+_fegetround:
+    jmp lib_fenv_ok             ; FE_TONEAREST = 0
+
+; int fesetround(int round): only FE_TONEAREST (0) works
+_fesetround:
+    lod a, [sp + 2]
+    or a, [sp + 3]
+    jmz lib_fenv_ok
+    mov a, 0
+    mov b, 1
+    ret
+
+; int fegetenv(fenv_t *envp)
+_fegetenv:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal fe_get
+    str [x:y], a
+    jmp lib_fenv_ok
+
+; int feholdexcept(fenv_t *envp): saves the flags, then clears them
+_feholdexcept:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal fe_get
+    str [x:y], a
+    mov a, 0
+    cal fe_set
+    jmp lib_fenv_ok
+
+; int fesetenv(const fenv_t *envp)
+_fesetenv:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod a, [x:y]
+    cal fe_set
+    jmp lib_fenv_ok
+
+; int feupdateenv(const fenv_t *envp): the saved flags, plus the ones raised
+; since
+_feupdateenv:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    cal fe_get
+    mov b, a
+    lod a, [x:y]
+    or a, b
+    cal fe_set
+lib_fenv_ok:
+    mov a, 0
+    mov b, 0
+    ret
+
+; const fenv_t __fe_dfl_env: FE_DFL_ENV, no flag raised
+.data ___fe_dfl_env 0
+
+; --- strtod, strtof, atof (stdlib.h) -----------------------------------------
+
+; double strtod(const char *str, char **str_end): spaces (' ', \t to \r)
+; first, then the text of atof (asm/math/float/fatof.has). *str_end (when
+; str_end is not NULL) = the first character not read, or str when there is
+; no number (the result is 0 then). errno = ERANGE when the result overflows
+; (+-HUGE_VAL) or underflows (a subnormal or 0 that is not exact).
+_strtod:
+    jmp lib_strtod
+_strtof:
+lib_strtod:
+    lod i, [sp + 2]
+    lod j, [sp + 3]
+lib_strtod_space:
+    lod a, [i:j]
+    cmp a, ' '
+    jme lib_strtod_next
+    sub a, 9                    ; \t to \r
+    cmp a, 5
+    jmf lib_strtod_next
+    jmp lib_strtod_go
+lib_strtod_next:
+    add j, 1
+    adc i, 0
+    jmp lib_strtod_space
+lib_strtod_go:
+    cal fe_get                  ; the flags of the program, kept apart
+    psh a
+    mov a, 0
+    cal fe_set
+    ssp 4                       ; the result
+    rsp [x:y]
+    cal atof
+    jmc lib_strtod_none
+    cal fe_get                  ; overflow or underflow: ERANGE
+    and a, 0x0C
+    jmz lib_strtod_end
+    mov a, 0
+    mov b, 2
+    str _errno, a
+    str _errno + 1, b
+    jmp lib_strtod_end
+lib_strtod_none:
+    mov a, 0                    ; no number: 0, and the end is str
+    str [x:y], a
+    str [x:y + 1], a
+    str [x:y + 2], a
+    str [x:y + 3], a
+    lod i, [sp + 7]
+    lod j, [sp + 8]
+lib_strtod_end:
+    lod a, [sp + 9]             ; str_end
+    lod b, [sp + 10]
+    or a, b
+    jmz lib_strtod_res
+    lod a, [sp + 9]
+    mov x, a
+    mov y, b
+    str [x:y], i
+    str [x:y + 1], j
+lib_strtod_res:
+    lod b, [sp + 4]             ; the program's flags, plus the new ones
+    cal fe_get
+    or a, b
+    cal fe_set
+    rsp [x:y]
+    cal lib_math_load
+    asp 5
+    ret
+
+; double atof(const char *str): strtod(str, NULL)
+_atof:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    mov c, 0
+    mov d, 0
+    psh d, c, b, a
+    cal _strtod
+    asp 4
+    ret
