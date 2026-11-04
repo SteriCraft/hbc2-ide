@@ -26,9 +26,9 @@ Each of the flag-changing instructions is checked against the real CPU by `hbc2 
 
 Things that differ from what was expected before reading the code:
 - **IRT does not pop I from a byte.** It pops three bytes, the return address and the *register* I (the interrupt data register, not the flag), then sets the I flag to 1. In the register it's a single-flag write, like STI.
-- **HLT:** `Opcode::info()` lists H and I, but cpu.rs only sets H. cpu.rs wins; the table entry looks like a leftover. The `flags_cpu` vectors check HLT against cpu.rs, not the table.
+- **HLT:** `Opcode::info()` listed H and I, but cpu.rs only sets H. Gianni confirmed HLT doesn't affect I, and the table was fixed on 2026-11-04 (isa.rs: HLT lists H only; the one emulator change he authorised).
 - **Interrupt entry clears H too**, so an interrupt wakes a halted CPU (with I = 1). It happens whether the CPU was halted or not.
-- **An invalid instruction changes two flags** (H = 1, I = 0), and so does interrupt entry (I = 0, H = 0). The register writes one flag per clock, so the control unit spends two steps on each (see the mapping below). Both events already take several steps (interrupt entry pushes three bytes).
+- **An invalid instruction changes two flags** (H = 1, I = 0), and so does interrupt entry (I = 0, H = 0). The register writes one flag per clock, so the control unit spends two steps on each (see the mapping below). Gianni kept the two steps (2026-11-04): interrupt entry already takes several steps (pushes and vector fetch), so the two flag writes overlap them at no cost, and the invalid-mode case halts anyway. The control unit must schedule them: [control-requirements.md](control-requirements.md) C2.
 - **STI takes effect after the next instruction** (`interrupt_delay`). That belongs to the control unit, not to this register: the I flag is 1 right after STI, the control unit must ignore it for one instruction.
 
 ## Interface
@@ -107,9 +107,9 @@ Worst case: an ALU flag into the register, 366 ns of the 500 ns step at 2 MHz (1
 
 Both are sequences (Logisim's `<set>`/`<seq>` columns), run by `python designs/flags.py --test`.
 
-## Need Gianni's review
+## Gianni's decisions (2026-11-04)
 
-1. **flags_op as one 4-bit code** instead of separate load lines (above). It removes the clash question and saves 3 control lines, for one 74HCT138.
-2. **Two-step interrupt entry and invalid instruction** (two flags each). Doing them in one step would need a fifth source on the I and H multiplexers.
-3. **HLT in `Opcode::info()`** lists I, cpu.rs doesn't change it. Should the table be corrected (emulator change, so your call)?
-4. **74HCT175 added** to the parts (CD74HCT175E / CD74HCT175M96, both active).
+1. **flags_op as one 4-bit code**, with its 74HCT138: approved.
+2. **Two-step interrupt entry and invalid instruction**: kept. A fifth multiplexer source for I and H (1–2 chips) isn't worth it; the control unit schedules them (control-requirements.md C2).
+3. **HLT in `Opcode::info()`**: fixed, HLT lists only H (isa.rs). The emulator's full test suite was run afterwards.
+4. **74HCT175**: approved.

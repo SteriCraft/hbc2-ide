@@ -389,7 +389,7 @@ pub static INSTRUCTION_TABLE: [OpcodeInfo; OPCODE_COUNT] = [
         &[F::Superior, F::Equal, F::Inferior],
     ),
     op(Opcode::Dec, "dec", INC_DEC, CNZ),
-    op(Opcode::Hlt, "hlt", NONE, &[F::Halt, F::Interrupt]),
+    op(Opcode::Hlt, "hlt", NONE, &[F::Halt]),
     op(Opcode::In, "in", REG, &[]),
     op(Opcode::Out, "out", REG, &[]),
     op(Opcode::Inc, "inc", INC_DEC, CNZ),
