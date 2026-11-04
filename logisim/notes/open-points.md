@@ -9,5 +9,5 @@ Settled:
 - 2026-11-04: floating subcircuit inputs are warnings.
 - 2026-11-04: file layout: one module per `circuits/<m>/<m>.circ`, and cpu.circ holds only main and loads libraries.
 - 2026-11-04: folders are functional units (`circuits/alu/add8.circ`), not one folder per module.
-- 2026-11-04: add_sub8 symbol: control (sub, usec, cin) on top, a/b left, s right, c bottom.
-- 2026-11-04: add_sub8 role notes added next to U1, U2, U5 and U6.
+- 2026-11-04: 1-bit taps allowed for every TTL chip whose pins mix inputs and outputs (gates, 74283); see ttl-chips.md.
+- 2026-11-04: add8 became add_sub8 (subtraction by B inversion); the user's earlier add_sub8 test is gone.

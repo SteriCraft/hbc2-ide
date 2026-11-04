@@ -1,6 +1,6 @@
 # Tools (logisim/tools/)
 
-Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/<name>`, then `circuits/<name>/<name>.circ` and `circuits/*/<name>.circ`, so `add_sub8`, `alu`, `add8` and `cpu.circ` all work. On this Windows machine, use Windows paths for Python.
+Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/<name>`, then `circuits/<name>/<name>.circ` and `circuits/*/<name>.circ`, so `add_sub8`, `alu` and `cpu.circ` all work. On this Windows machine, use Windows paths for Python.
 
 | Script | Use |
 |---|---|
@@ -12,10 +12,10 @@ Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/
 | `render.py file [-c C] [--check]` | Approximate PNG of a layout, so I can review it without Logisim. PNGs are git-ignored. |
 | `logitest.py file circuit --emu [module]` | Test vectors from the emulator (`hbc2 vectors`) → Logisim run headless (`logisim-evolution.exe -w`) |
 | `logitest.py file circuit vectors.txt` | Run an existing vector file |
-| `logitest.py file --open` | Does Logisim open the file? It runs `-tty table` headless, and a missing library fails. |
+| `logitest.py file --open` | Does Logisim open the file? It runs `-tty stats` headless (loads and counts parts, about 1 s; `-tty table` simulated every input and timed out on alu), and a missing library fails. |
 
 ## Design scripts (logisim/designs/)
-One script per generated file, e.g. `add8.py` → `circuits/alu/add8.circ`.
+One script per generated file, e.g. `add_sub8.py` → `circuits/alu/add_sub8.circ`.
 - `python designs/x.py` writes the file, then runs circcheck and conventions.
 - `--test` also runs the Logisim test.
 - `--png` also draws a render.
@@ -27,13 +27,13 @@ circgen API, in short:
 - Parts: `c.input` / `c.output(loc, label, width)`, `c.tunnel`, `c.text`, `c.splitter(loc, width, ends, facing, appear, spacing)`.
 - Bus helpers: `c.tap(at, to, bits, width)` and `c.bus(start, taps, width)`.
 - Routing: `nested_rails(pins, toward)` gives each pin a rail depth, so wires leaving one chip edge never cross.
-- Libraries: `lib = p.library(path_to_other.circ)`, then `u = c.sub(lib, "add8", loc)`. `u["add8_a"]` gives a port's location, computed from the other file's symbol. On save, the relative path is written the way Logisim writes it (backslashes on Windows).
-- Symbol: `c.symbol(top=[...], left=[...], right=[...], bottom=[...])`, listing pin labels. It writes a custom appearance: a box sized to the labels, full port names, the module name in bold, and the anchor on the first right port. Without it, the module gets Logisim's default symbol (inputs left, outputs right). See designs/alu.py.
+- Libraries: `lib = p.library(path_to_other.circ)`, then `u = c.sub(lib, "add_sub8", loc)`. `u["add_sub8_a"]` gives a port's location, computed from the other file's symbol. On save, the relative path is written the way Logisim writes it (backslashes on Windows).
+- Symbol (ports always on the 10 px grid): `c.symbol(top=[...], left=[...], right=[...], bottom=[...])`, listing pin labels. It writes a custom appearance: a box sized to the labels, full port names, the module name in bold, and the anchor on the first right port. Without it, the module gets Logisim's default symbol (inputs left, outputs right). See designs/alu.py.
 - Wires are split automatically at T-junctions.
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.
-- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval` that calls `hbc2_core::alu`. Current modules: `add_sub8`, `add8`.
+- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval` that calls `hbc2_core::alu`. Current modules: `add_sub8`, `alu`. Flags come from `alu::zn` (also used by the CPU).
 - `logitest.check_emulator(file, circuit, module=None)` rebuilds the CLI (`cargo build --release -p hbc2-cli`), writes the vectors, checks the pin names and widths, and runs them.
 - `logitest.check(..., model=...)` with a Python model still exists, for quick experiments only. It is not the reference.
 
@@ -49,7 +49,6 @@ circgen API, in short:
 ## Libraries across files
 - `netlist.Project` loads every `file#` library up front, the way Logisim does, and accepts backslashes. `proj.file_libs` maps id → (desc, Project or None if missing). `proj.libraries()` returns this file plus every loaded one, each once.
 - circcheck and conventions check the whole tree from the file given, so `conventions.py cpu.circ` checks everything. A missing library is an error.
-- circgen doesn't write library references yet. alu/cpu were split by text surgery on the XML.
 
 ## Splitter geometry (netlist.make_splitter)
 - Attributes: `facing`, `fanout`, `incoming`, `appear` (left/right/center), `spacing` (× 10 px), and `bit<i>` = end index or `none`.

@@ -19,9 +19,9 @@ These rules come from the user and apply to every circuit I create or modify. If
 - `main` only connects modules and holds no logic.
 
 ## Files (added 2026-11-04)
-- Folders are **functional units**, not modules: `logisim/circuits/<unit>/<module>.circ`, e.g. `circuits/alu/add8.circ`. Planned units: `alu/`, later `registers/`, `control/`, and so on. This keeps the number of folders down. No `modules/` folder.
+- Folders are **functional units**, not modules: `logisim/circuits/<unit>/<module>.circ`, e.g. `circuits/alu/add_sub8.circ`. Planned units: `alu/`, later `registers/`, `control/`, and so on. This keeps the number of folders down. No `modules/` folder.
 - Each .circ holds one module and its `test_<module>` bench, nothing else.
-- `logisim/cpu.circ` holds only `main`. It loads the modules as Logisim libraries (Project > Load Library > Logisim Library) with relative paths. A module that uses another module loads it the same way, e.g. alu.circ loads `add8.circ` (same folder). A module in another unit would be `..\<unit>\<module>.circ`.
+- `logisim/cpu.circ` holds only `main`. It loads the modules as Logisim libraries (Project > Load Library > Logisim Library) with relative paths. A module that uses another module loads it the same way, e.g. alu.circ loads `add_sub8.circ` (same folder). A module in another unit would be `..\<unit>\<module>.circ`.
 - When saving, Logisim writes library paths relative to the file, with `..\` and backslashes on Windows (seen in `LibraryManager.toRelative`). Write them the same way so a save in Logisim changes nothing.
 - **Change one module at a time, with a git commit before and after each module change.**
 - **If a module's ports change, tell the user which files instantiate it** (`tools/usages.py <module>`): those instances need rewiring.
@@ -46,7 +46,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 
 ## Wiring and readability
 - Use one splitter per group of contiguous bits (8 → 4+4, 8 → 8), not piles of 1-bit splitters.
-  - Exception approved for the 74283, see ttl-chips.md.
+  - Exception approved for the 74283 and for gate chips whose pins mix inputs and outputs (1-bit taps on vertical bus lines), see ttl-chips.md.
 - Use tunnels for long or crossing connections. A tunnel's label is exactly the signal name.
 - Data inputs go on the left, outputs on the right, control on top, flags at the bottom. This applies to both the schematic and the symbol.
 - A custom symbol shows the module name and the real port names. Update it whenever a port changes.

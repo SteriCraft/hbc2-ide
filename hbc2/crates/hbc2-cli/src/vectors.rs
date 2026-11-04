@@ -45,12 +45,25 @@ const MODULES: &[Module] = &[
     },
     Module {
         name: "alu",
-        inputs: &[("alu_a", 8), ("alu_b", 8), ("alu_cin", 1)],
-        outputs: &[("alu_s", 8), ("alu_c", 1)],
-        // For now the ALU only adds (ADD / ADC).
+        inputs: &[
+            ("alu_sub", 1),
+            ("alu_use_c", 1),
+            ("alu_cin", 1),
+            ("alu_a", 8),
+            ("alu_b", 8),
+        ],
+        outputs: &[("alu_s", 8), ("alu_c", 1), ("alu_n", 1), ("alu_z", 1)],
+        // For now the ALU does ADD/ADC/SUB/SBB (see add_sub8) and sets C, N, Z.
         eval: |v| {
-            let (s, c) = alu::add(v[0] as u8, v[1] as u8, v[2] != 0);
-            vec![s as u32, c as u32]
+            let (sub, use_c, cin) = (v[0] != 0, v[1] != 0, v[2] != 0);
+            let (a, b) = (v[3] as u8, v[4] as u8);
+            let (s, c) = if sub {
+                alu::sub(a, b, use_c && cin)
+            } else {
+                alu::add(a, b, use_c && cin)
+            };
+            let (z, n) = alu::zn(s);
+            vec![s as u32, c as u32, n as u32, z as u32]
         },
     },
 ];

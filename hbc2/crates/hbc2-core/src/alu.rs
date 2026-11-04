@@ -18,3 +18,9 @@ pub fn sub(a: u8, b: u8, borrow_in: bool) -> (u8, bool) {
     let diff = a as i16 - b as i16 - borrow_in as i16;
     (diff as u8, diff < 0)
 }
+
+/// Z and N flags of a result: (zero, negative). N is bit 7.
+#[inline(always)]
+pub fn zn(value: u8) -> (bool, bool) {
+    (value == 0, value & 0x80 != 0)
+}

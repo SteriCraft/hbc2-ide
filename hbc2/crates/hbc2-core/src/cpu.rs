@@ -254,8 +254,9 @@ impl Cpu {
 
     #[inline(always)]
     fn set_zn(&mut self, value: u8) {
-        self.flags.set(Flag::Zero, value == 0);
-        self.flags.set(Flag::Negative, value & 0x80 != 0);
+        let (zero, negative) = alu::zn(value);
+        self.flags.set(Flag::Zero, zero);
+        self.flags.set(Flag::Negative, negative);
     }
 
     #[inline(always)]

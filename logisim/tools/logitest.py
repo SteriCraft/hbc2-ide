@@ -133,10 +133,10 @@ def run_vectors(circ_file, circuit: str, vec_file, show: int = 10, timeout: int 
 
 
 def opens(circ_file, timeout: int = 300) -> bool:
-    """Load the file headless in Logisim (-tty table). False, with Logisim's
+    """Load the file headless in Logisim (-tty stats: loads, counts parts, no simulation). False, with Logisim's
     messages, when it fails, e.g. a library file is missing."""
     path = Path(circ_file).resolve()
-    proc = subprocess.run([logisim_exe(), "-tty", "table", str(path)], capture_output=True, text=True,
+    proc = subprocess.run([logisim_exe(), "-tty", "stats", str(path)], capture_output=True, text=True,
                           errors="replace", timeout=timeout, cwd=tempfile.gettempdir())
     out = (proc.stdout + proc.stderr).replace("\r\n", "\n")
     bad = proc.returncode != 0 or re.search(r"missing|Error|Exception", out)
