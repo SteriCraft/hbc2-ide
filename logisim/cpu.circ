@@ -20,7 +20,7 @@
   <lib desc="#Input/Output-Extra" name="11"/>
   <lib desc="#Soc" name="12"/>
   <lib desc="file#circuits\alu\alu.circ" name="13"/>
-  <lib desc="file#circuits\alu\add8.circ" name="14"/>
+  <lib desc="file#circuits\alu\add_sub8.circ" name="14"/>
   <main name="main"/>
   <options>
     <a name="gateUndefined" val="ignore"/>

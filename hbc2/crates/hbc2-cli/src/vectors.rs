@@ -24,21 +24,21 @@ const MODULES: &[Module] = &[
         name: "add_sub8",
         inputs: &[
             ("add_sub8_sub", 1),
-            ("add_sub8_usec", 1),
+            ("add_sub8_use_c", 1),
             ("add_sub8_cin", 1),
             ("add_sub8_a", 8),
             ("add_sub8_b", 8),
         ],
         outputs: &[("add_sub8_s", 8), ("add_sub8_c", 1)],
-        // ADD/ADC when sub = 0, SUB/SBB when sub = 1; usec selects ADC/SBB,
-        // which use the carry flag (cin).
+        // ADD/ADC when sub = 0, SUB/SBB when sub = 1; use_c selects ADC/SBB,
+        // which use the carry flag (cin). After SUB/SBB, c is the borrow.
         eval: |v| {
-            let (sub, usec, cin) = (v[0] != 0, v[1] != 0, v[2] != 0);
+            let (sub, use_c, cin) = (v[0] != 0, v[1] != 0, v[2] != 0);
             let (a, b) = (v[3] as u8, v[4] as u8);
             let (s, c) = if sub {
-                alu::sub(a, b, usec && cin)
+                alu::sub(a, b, use_c && cin)
             } else {
-                alu::add(a, b, usec && cin)
+                alu::add(a, b, use_c && cin)
             };
             vec![s as u32, c as u32]
         },
@@ -48,15 +48,6 @@ const MODULES: &[Module] = &[
         inputs: &[("alu_a", 8), ("alu_b", 8), ("alu_cin", 1)],
         outputs: &[("alu_s", 8), ("alu_c", 1)],
         // For now the ALU only adds (ADD / ADC).
-        eval: |v| {
-            let (s, c) = alu::add(v[0] as u8, v[1] as u8, v[2] != 0);
-            vec![s as u32, c as u32]
-        },
-    },
-    Module {
-        name: "add8",
-        inputs: &[("add8_a", 8), ("add8_b", 8), ("add8_cin", 1)],
-        outputs: &[("add8_s", 8), ("add8_cout", 1)],
         eval: |v| {
             let (s, c) = alu::add(v[0] as u8, v[1] as u8, v[2] != 0);
             vec![s as u32, c as u32]
