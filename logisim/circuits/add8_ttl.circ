@@ -48,10 +48,10 @@
     <a name="circuitnamedboxfixedsize" val="true"/>
     <a name="simulationFrequency" val="1.0"/>
     <comp lib="7" loc="(360,300)" name="74283">
-      <a name="label" val="U2"/>
+      <a name="label" val="U1"/>
     </comp>
     <comp lib="7" loc="(360,620)" name="74283">
-      <a name="label" val="U1"/>
+      <a name="label" val="U2"/>
     </comp>
     <comp lib="9" loc="(590,300)" name="Text">
       <a name="text" val="bits 7..4"/>
@@ -398,31 +398,31 @@
     <comp lib="0" loc="(150,80)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="east"/>
-      <a name="label" val="A"/>
+      <a name="label" val="add8_a"/>
       <a name="width" val="8"/>
     </comp>
     <comp lib="0" loc="(150,120)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="east"/>
-      <a name="label" val="B"/>
+      <a name="label" val="add8_b"/>
       <a name="width" val="8"/>
     </comp>
     <comp lib="0" loc="(600,50)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
-      <a name="label" val="S"/>
+      <a name="label" val="add8_s"/>
       <a name="type" val="output"/>
       <a name="width" val="8"/>
     </comp>
     <comp lib="0" loc="(150,790)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="east"/>
-      <a name="label" val="Cin"/>
+      <a name="label" val="add8_cin"/>
     </comp>
     <comp lib="0" loc="(600,240)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
-      <a name="label" val="Cout"/>
+      <a name="label" val="add8_cout"/>
       <a name="type" val="output"/>
     </comp>
     <wire from="(150,80)" to="(240,80)"/>

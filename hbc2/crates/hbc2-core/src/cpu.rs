@@ -14,6 +14,7 @@
 //! interrupts only after the next instruction, so `sti` + `hlt` can't miss
 //! an interrupt arriving between the two.
 
+use crate::alu;
 use crate::board::Board;
 use crate::isa::{
     AddrMode, Flag, IVT_START, Instruction, Opcode, PROGRAM_START, Register, STACK_RESET,
@@ -359,19 +360,17 @@ impl Cpu {
             // ----- Arithmetic and logic: R1 = R1 <op> operand
             O::Adc | O::Add => {
                 if let Some((dest, b)) = self.alu_operands(board, mode, i) {
-                    let carry_in = (op == O::Adc && self.flags.get(Flag::Carry)) as u16;
-                    let sum = self.r(dest) as u16 + b as u16 + carry_in;
-                    let result = sum as u8;
-                    self.set_czn(sum > 0xFF, result);
+                    let carry_in = op == O::Adc && self.flags.get(Flag::Carry);
+                    let (result, carry) = alu::add(self.r(dest), b, carry_in);
+                    self.set_czn(carry, result);
                     self.set_r(dest, result);
                 }
             }
             O::Sub | O::Sbb => {
                 if let Some((dest, b)) = self.alu_operands(board, mode, i) {
-                    let borrow_in = (op == O::Sbb && self.flags.get(Flag::Carry)) as i16;
-                    let diff = self.r(dest) as i16 - b as i16 - borrow_in;
-                    let result = diff as u8;
-                    self.set_czn(diff < 0, result);
+                    let borrow_in = op == O::Sbb && self.flags.get(Flag::Carry);
+                    let (result, borrow) = alu::sub(self.r(dest), b, borrow_in);
+                    self.set_czn(borrow, result);
                     self.set_r(dest, result);
                 }
             }

@@ -350,7 +350,8 @@ class Project:
         return head + "\n".join(c.xml() for c in self.circuits) + "\n</project>\n"
 
     def save(self, path, main: str | None = None, check: bool = True) -> int:
-        """Write the file, then run circcheck on it. Returns the number of errors."""
+        """Write the file, then run circcheck and the conventions check on it.
+        Returns the number of errors."""
         path = Path(path)
         path.write_text(self.xml(main), encoding="utf-8")
         n_wires = sum(len(c._split_wires()) for c in self.circuits)
@@ -359,4 +360,5 @@ class Project:
         if not check:
             return 0
         import circcheck
-        return circcheck.report(path)
+        import conventions
+        return circcheck.report(path) + conventions.report(path)

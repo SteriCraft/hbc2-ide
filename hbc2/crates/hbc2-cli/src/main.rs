@@ -1,5 +1,7 @@
 //! `hbc2`: command-line tools for the HBC-2. See [`USAGE`].
 
+mod vectors;
+
 use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
@@ -32,7 +34,10 @@ usage:
         the columns that differ and the 3 lines before it; exit code 0 if
         identical, 1 if they differ, 2 on error
   hbc2 bench [--seconds N] [--hz N]
-        measure emulation speed (flat out, or paced on the emulator thread)";
+        measure emulation speed (flat out, or paced on the emulator thread)
+  hbc2 vectors <module> [-o file] | --list
+        Logisim test vectors for a CPU circuit (e.g. add_sub8), every input
+        combination, expected outputs computed by the emulator's own code";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -45,6 +50,7 @@ fn main() -> ExitCode {
         Some("cc") => cc(&args[1..]),
         Some("run") => run(&args[1..]),
         Some("trace") => trace(&args[1..]),
+        Some("vectors") => vectors::vectors(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
     match result {

@@ -9,20 +9,28 @@ From Python:
     import logitest
     ok = logitest.check(
         "add8_ttl.circ", "add8",
-        inputs={"A": 8, "B": 8, "Cin": 1},
-        outputs={"S": 8, "Cout": 1},
-        model=lambda A, B, Cin: {"S": (A + B + Cin) & 0xFF, "Cout": (A + B + Cin) >> 8},
+        inputs={"add8_a": 8, "add8_b": 8, "add8_cin": 1},
+        outputs={"add8_s": 8, "add8_cout": 1},
+        model=lambda add8_a, add8_b, add8_cin: ...,
     )
 
 Inputs are tested exhaustively when there are at most 2**exhaustive_bits
-combinations (default 2**12). Otherwise: every combination of edge values
+combinations (default 2**20). Otherwise: every combination of edge values
 (0, 1, max, msb, msb-1, alternating bits) when there are few enough, then
 random rows. The model returns a dict (or a tuple in output order); a value
 of None means "don't care".
 
-From the command line, run an existing vector file:
+Against the emulator (the reference for CPU modules): the vectors come from
+`hbc2 vectors <module>`, which computes the expected outputs with the
+emulator's own ALU code (hbc2-core/src/alu.rs). The hbc2 CLI is rebuilt with
+cargo first when needed.
 
-    python logitest.py add8_ttl.circ add8 vectors.txt
+    ok = logitest.check_emulator("cpu.circ", "add_sub8")
+
+From the command line:
+
+    python logitest.py cpu.circ add_sub8 --emu          # emulator vectors
+    python logitest.py add8_ttl.circ add8 vectors.txt   # an existing vector file
 
 Logisim is found through $LOGISIM, then the default Windows install path,
 then logisim-evolution on PATH. Combinational circuits only.
@@ -60,7 +68,7 @@ def edge_values(width: int) -> list[int]:
     return sorted(vals)
 
 
-def rows_for(inputs: dict, n_random: int = 500, exhaustive_bits: int = 12, edge_limit: int = 2000,
+def rows_for(inputs: dict, n_random: int = 500, exhaustive_bits: int = 20, edge_limit: int = 2000,
              seed: int = 1) -> list[tuple]:
     widths = list(inputs.values())
     if sum(widths) <= exhaustive_bits:
@@ -142,6 +150,43 @@ def check(circ_file, circuit: str, inputs: dict, outputs: dict, model, rows=None
         return run_vectors(circ_file, circuit, vec)
 
 
+HBC2_DIR = Path(__file__).resolve().parents[2] / "hbc2"
+
+
+def emulator_vectors(module: str, out: Path) -> None:
+    """Write the emulator's vectors for `module` (hbc2 vectors) to `out`."""
+    build = subprocess.run(["cargo", "build", "--release", "-q", "-p", "hbc2-cli"], cwd=HBC2_DIR,
+                           capture_output=True, text=True, errors="replace")
+    if build.returncode:
+        raise SystemExit("error: cargo build failed:\n" + build.stderr)
+    exe = HBC2_DIR / "target" / "release" / ("hbc2.exe" if os.name == "nt" else "hbc2")
+    run = subprocess.run([str(exe), "vectors", module, "-o", str(out)], capture_output=True, text=True,
+                         errors="replace")
+    if run.returncode:
+        raise SystemExit(f"error: hbc2 vectors {module}: {run.stderr.strip()}")
+
+
+def check_emulator(circ_file, circuit: str, module: str | None = None, keep: str | None = None) -> bool:
+    """Test `circuit` with the vectors of emulator module `module` (default:
+    same name). Returns True when all pass."""
+    with tempfile.TemporaryDirectory() as tmp:
+        vec = Path(keep) if keep else Path(tmp) / f"{circuit}.vec"
+        emulator_vectors(module or circuit, vec)
+        with open(vec, encoding="utf-8") as f:
+            head = f.readline().split()
+        pins = _pins(circ_file, circuit)
+        for cell in head:
+            name, _, w = cell.partition("[")
+            width = int(w.rstrip("]")) if w else 1
+            if name not in pins:
+                raise SystemExit(f"error: {circuit} has no pin {name}; pins: {', '.join(sorted(pins))}")
+            if pins[name] != width:
+                raise SystemExit(f"error: pin {name} is {pins[name]} bits wide, not {width}")
+        n = sum(1 for _ in open(vec, encoding="utf-8")) - 1
+        print(f"{circuit}: running {n} vectors from the emulator (hbc2 vectors {module or circuit})")
+        return run_vectors(circ_file, circuit, vec, timeout=1800)
+
+
 def _pins(circ_file, circuit) -> dict:
     proj = nl.Project(Path(circ_file))
     if circuit not in proj.circuits:
@@ -155,9 +200,17 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Run a Logisim test vector file on a circuit.")
     ap.add_argument("file")
     ap.add_argument("circuit")
-    ap.add_argument("vectors")
+    ap.add_argument("vectors", nargs="?", help="vector file (or use --emu)")
+    ap.add_argument("--emu", nargs="?", const="", metavar="MODULE",
+                    help="vectors from the emulator (hbc2 vectors MODULE, default: the circuit name)")
     args = ap.parse_args(argv)
-    ok = run_vectors(nl.resolve_file(args.file), args.circuit, args.vectors)
+    path = nl.resolve_file(args.file)
+    if args.emu is not None:
+        ok = check_emulator(path, args.circuit, args.emu or None)
+    elif args.vectors:
+        ok = run_vectors(path, args.circuit, args.vectors)
+    else:
+        ap.error("give a vector file or --emu")
     sys.exit(0 if ok else 1)
 
 

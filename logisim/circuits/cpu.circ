@@ -73,19 +73,19 @@
     <a name="simulationFrequency" val="1.0"/>
     <appear>
       <rect height="3" stroke="none" width="10" x="50" y="59"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="64">alu_Sub</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="64">add_sub8_sub</text>
       <rect height="3" stroke="none" width="10" x="50" y="79"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="84">add_sub8_...</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="84">add_sub8_usec</text>
       <rect height="3" stroke="none" width="10" x="50" y="99"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="104">add_sub8_Cin</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="104">add_sub8_cin</text>
       <rect height="4" stroke="none" width="10" x="50" y="118"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="124">add_sub8_A</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="124">add_sub8_a</text>
       <rect height="4" stroke="none" width="10" x="50" y="138"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="144">add_sub8_B</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="144">add_sub8_b</text>
       <rect height="3" stroke="none" width="10" x="260" y="59"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="255" y="64">add_sub8_...</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="255" y="64">add_sub8_c</text>
       <rect height="4" stroke="none" width="10" x="260" y="78"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="255" y="84">add_sub8_S</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="255" y="84">add_sub8_s</text>
       <rect height="20" stroke="none" width="200" x="60" y="150"/>
       <rect fill="none" height="120" stroke="#000000" stroke-width="2" width="200" x="60" y="50"/>
       <text dominant-baseline="alphabetic" fill="#ffffff" font-family="Dialog" font-size="14" font-weight="bold" text-anchor="middle" x="160" y="164">add_sub8</text>
@@ -101,7 +101,7 @@
     <comp lib="0" loc="(1010,440)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
-      <a name="label" val="add_sub8_S"/>
+      <a name="label" val="add_sub8_s"/>
       <a name="type" val="output"/>
       <a name="width" val="8"/>
     </comp>
@@ -111,13 +111,13 @@
     <comp lib="0" loc="(1070,130)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
-      <a name="label" val="add_sub8_C"/>
+      <a name="label" val="add_sub8_c"/>
       <a name="type" val="output"/>
     </comp>
     <comp lib="0" loc="(210,120)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="south"/>
-      <a name="label" val="add_sub8_Sub"/>
+      <a name="label" val="add_sub8_sub"/>
     </comp>
     <comp lib="0" loc="(230,890)" name="Splitter">
       <a name="bit0" val="none"/>
@@ -134,11 +134,11 @@
     </comp>
     <comp lib="0" loc="(240,210)" name="Pin">
       <a name="appearance" val="NewPins"/>
-      <a name="label" val="add_sub8_UseC"/>
+      <a name="label" val="add_sub8_usec"/>
     </comp>
     <comp lib="0" loc="(240,260)" name="Pin">
       <a name="appearance" val="NewPins"/>
-      <a name="label" val="add_sub8_Cin"/>
+      <a name="label" val="add_sub8_cin"/>
     </comp>
     <comp lib="0" loc="(250,480)" name="Splitter">
       <a name="appear" val="right"/>
@@ -156,12 +156,12 @@
     </comp>
     <comp lib="0" loc="(310,310)" name="Pin">
       <a name="appearance" val="NewPins"/>
-      <a name="label" val="add_sub8_A"/>
+      <a name="label" val="add_sub8_a"/>
       <a name="width" val="8"/>
     </comp>
     <comp lib="0" loc="(310,360)" name="Pin">
       <a name="appearance" val="NewPins"/>
-      <a name="label" val="add_sub8_B"/>
+      <a name="label" val="add_sub8_b"/>
       <a name="width" val="8"/>
     </comp>
     <comp lib="0" loc="(340,150)" name="Ground">
@@ -265,15 +265,25 @@
       <a name="fanout" val="4"/>
       <a name="incoming" val="8"/>
     </comp>
-    <comp lib="7" loc="(140,600)" name="7486"/>
-    <comp lib="7" loc="(140,770)" name="7486"/>
+    <comp lib="7" loc="(140,600)" name="7486">
+      <a name="label" val="U5"/>
+    </comp>
+    <comp lib="7" loc="(140,770)" name="7486">
+      <a name="label" val="U6"/>
+    </comp>
     <comp lib="7" loc="(390,180)" name="7408">
       <a name="facing" val="north"/>
+      <a name="label" val="U1"/>
     </comp>
-    <comp lib="7" loc="(690,350)" name="74283"/>
-    <comp lib="7" loc="(690,580)" name="74283"/>
+    <comp lib="7" loc="(690,350)" name="74283">
+      <a name="label" val="U3"/>
+    </comp>
+    <comp lib="7" loc="(690,580)" name="74283">
+      <a name="label" val="U4"/>
+    </comp>
     <comp lib="7" loc="(980,180)" name="7486">
       <a name="facing" val="north"/>
+      <a name="label" val="U2"/>
     </comp>
     <wire from="(1010,110)" to="(1020,110)"/>
     <wire from="(1010,130)" to="(1070,130)"/>

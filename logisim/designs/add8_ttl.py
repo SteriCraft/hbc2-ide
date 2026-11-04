@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """8-bit adder from two 74283 (4-bit adders) -> circuits/add8_ttl.circ
 
-    S, Cout = A + B + Cin
+    add8_s, add8_cout = add8_a + add8_b + add8_cin
 
-Layout: U2 (bits 7..4) above U1 (bits 3..0), so the carry between them is a
+Layout: U1 (bits 7..4) above U2 (bits 3..0), so the carry between them is a
 short jog. Every chip pin leaves toward the left on a nested rail, where it
 meets the A, B or S bus through a 1-bit tap. Bit wires never cross each
 other; they only cross the bus lines.
@@ -26,8 +26,8 @@ p = Project()
 c = p.circuit("add8")
 
 X = 360                                  # left edge of both chips
-hi = c.ttl("74283", (X, 300), label="U2")
-lo = c.ttl("74283", (X, 620), label="U1")
+hi = c.ttl("74283", (X, 300), label="U1")
+lo = c.ttl("74283", (X, 620), label="U2")
 c.text((X + 230, 300), "bits 7..4")
 c.text((X + 230, 620), "bits 3..0")
 
@@ -54,13 +54,13 @@ for bus, x in BUS_X.items():
     c.bus((x, BUS_TOP[bus]), taps[bus], width=8)
 
 # pins
-c.wire(c.input((150, BUS_TOP["A"]), "A", 8), (BUS_X["A"], BUS_TOP["A"]))
-c.wire(c.input((150, BUS_TOP["B"]), "B", 8), (BUS_X["B"], BUS_TOP["B"]))
-c.wire((BUS_X["S"], BUS_TOP["S"]), c.output((600, BUS_TOP["S"]), "S", 8))
+c.wire(c.input((150, BUS_TOP["A"]), "add8_a", 8), (BUS_X["A"], BUS_TOP["A"]))
+c.wire(c.input((150, BUS_TOP["B"]), "add8_b", 8), (BUS_X["B"], BUS_TOP["B"]))
+c.wire((BUS_X["S"], BUS_TOP["S"]), c.output((600, BUS_TOP["S"]), "add8_s", 8))
 
 # carry in: one rail below U1's six rails
 y = lo["CIN"][1] + 140
-c.wire(c.input((150, y), "Cin"), (lo["CIN"][0], y), lo["CIN"])
+c.wire(c.input((150, y), "add8_cin"), (lo["CIN"][0], y), lo["CIN"])
 
 # carry U1 -> U2: up the right side, jog just under U2
 y = hi["CIN"][1] + 10
@@ -68,7 +68,7 @@ c.wire(lo["C4"], (lo["C4"][0], y), (hi["CIN"][0], y), hi["CIN"])
 
 # carry out
 y = hi["C4"][1] - 30
-c.wire(hi["C4"], (hi["C4"][0], y), c.output((600, y), "Cout"))
+c.wire(hi["C4"], (hi["C4"][0], y), c.output((600, y), "add8_cout"))
 
 if __name__ == "__main__":
     bad = p.save(OUT)
@@ -78,7 +78,6 @@ if __name__ == "__main__":
         print(render.render(netlist.Project(OUT).circuits["add8"], OUT.with_suffix(".png")))
     if "--test" in sys.argv:
         import logitest
-        ok = logitest.check(OUT, "add8", inputs={"A": 8, "B": 8, "Cin": 1}, outputs={"S": 8, "Cout": 1},
-                            model=lambda A, B, Cin: {"S": (A + B + Cin) & 0xFF, "Cout": (A + B + Cin) >> 8})
+        ok = logitest.check_emulator(OUT, "add8")
         bad += not ok
     sys.exit(1 if bad else 0)

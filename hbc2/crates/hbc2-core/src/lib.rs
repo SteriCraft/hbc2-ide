@@ -7,6 +7,7 @@
 //! caller drives it with [`Machine::tick`], [`Machine::step`] or [`Machine::run`],
 //! and reads its state directly.
 
+pub mod alu;
 pub mod board;
 pub mod cpu;
 pub mod iod;
