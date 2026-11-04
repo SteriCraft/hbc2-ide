@@ -203,7 +203,25 @@ def check_emulator(circ_file, circuit: str, module: str | None = None, keep: str
                 raise SystemExit(f"error: pin {name} is {pins[name]} bits wide, not {width}")
         n = sum(1 for _ in open(vec, encoding="utf-8")) - 1
         print(f"{circuit}: running {n} vectors from the emulator (hbc2 vectors {module or circuit})")
-        return run_vectors(circ_file, circuit, vec, timeout=1800)
+        if n <= CHUNK:
+            return run_vectors(circ_file, circuit, vec, timeout=1800)
+        # Big files in chunks: Logisim holds the whole vector file in memory.
+        ok = True
+        with open(vec, encoding="utf-8") as f:
+            header = f.readline()
+            for k in itertools.count():
+                lines = list(itertools.islice(f, CHUNK))
+                if not lines:
+                    break
+                part = Path(tmp) / f"{circuit}.{k}.vec"
+                part.write_text(header + "".join(lines), encoding="utf-8")
+                print(f"  rows {k * CHUNK + 1}..{k * CHUNK + len(lines)}: ", end="", flush=True)
+                ok &= run_vectors(circ_file, circuit, part, timeout=1800)
+                part.unlink()
+        return ok
+
+
+CHUNK = 524_288   # rows per Logisim run (the size known to work, about 90 s)
 
 
 def _pins(circ_file, circuit) -> dict:
