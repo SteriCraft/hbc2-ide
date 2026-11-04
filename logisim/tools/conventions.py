@@ -17,6 +17,16 @@ Checks:
             carrying non-contiguous bits, name ending in the bus width,
             test bench whose module does not exist
 
+File organisation (logisim/notes/conventions.md):
+  errors    logisim/cpu.circ holding anything but `main`; a module file
+            circuits/<dir>/<m>.circ holding anything but <m> and test_<m>;
+            library path absolute or not found
+  warnings  module file whose folder is not named after it; .circ file
+            elsewhere under logisim/
+
+Library files loaded by the file are checked too, each once (--no-libs to
+skip them).
+
 Constant is allowed in modules: it stands for inputs tied to GND/5V.
 
 Usage:
@@ -153,21 +163,65 @@ def summary(circ: nl.Circuit, st: dict) -> list[str]:
     return lines
 
 
-def report(path, circuits=None) -> int:
-    """Print the conventions check of one file. Returns the number of errors."""
-    proj = nl.Project(Path(path))
+def check_file_layout(proj: nl.Project) -> list[circcheck.Issue]:
+    """Where the file sits, what it holds, how it loads its libraries."""
+    issues = []
+
+    def add(level, text):
+        issues.append(circcheck.Issue(level, "-", (0, 0), text))
+
+    names = set(proj.circuits)
+    try:
+        rel = proj.path.resolve().relative_to(nl.LOGISIM_DIR)
+    except ValueError:
+        rel = None                       # outside logisim/: no layout rule
+    if rel is not None:
+        parts = rel.parts
+        if parts == ("cpu.circ",):
+            if names != {"main"}:
+                add("error", f"cpu.circ must hold only main, not {', '.join(sorted(names - {'main'})) or 'nothing'}")
+        elif len(parts) == 3 and parts[0] == "circuits":
+            m = proj.path.stem
+            extra = names - {m, f"test_{m}"}
+            if m not in names:
+                add("error", f"{rel.as_posix()} has no circuit named {m!r}")
+            if extra:
+                add("error", f"{rel.as_posix()} must hold only {m} and test_{m}, not {', '.join(sorted(extra))}")
+            if parts[1] != m:
+                add("warning", f"{rel.as_posix()}: module {m} is not in its own folder circuits/{m}/")
+        else:
+            add("warning", f"{rel.as_posix()} is not where the file layout puts .circ files "
+                           f"(logisim/cpu.circ or logisim/circuits/<module>/<module>.circ)")
+    for desc, lib in proj.file_libs.values():
+        path = desc[5:]
+        if re.match(r"^([A-Za-z]:|[\\/])", path):
+            add("error", f"library {path} is an absolute path; use a relative one")
+        if lib is None:
+            add("error", f"library file {path} not found")
+    return issues
+
+
+def report(path, circuits=None, libs: bool = True) -> int:
+    """Print the conventions check of one file and, with libs, of every
+    library file it loads. Returns the number of errors."""
+    top = nl.Project(Path(path))
     errors = 0
-    for name, circ in proj.circuits.items():
-        if circuits and name not in circuits:
-            continue
-        issues, st = check_circuit(circ)
-        errs = sum(i.level == "error" for i in issues)
-        print(f"{name} ({st['role']}): conventions -- {errs} errors, {len(issues) - errs} warnings")
-        for line in summary(circ, st):
-            print("  " + line)
-        for i in sorted(issues, key=lambda i: (i.level != "error", i.where[1], i.where[0])):
+    for proj in top.libraries() if libs else [top]:
+        print(f"[{circcheck._rel(proj.path)}]")
+        for i in check_file_layout(proj):
             print(f"  {i.level:7} {i.text}")
-        errors += errs
+            errors += i.level == "error"
+        for name, circ in proj.circuits.items():
+            if proj is top and circuits and name not in circuits:
+                continue
+            issues, st = check_circuit(circ)
+            errs = sum(i.level == "error" for i in issues)
+            print(f"{name} ({st['role']}): conventions -- {errs} errors, {len(issues) - errs} warnings")
+            for line in summary(circ, st):
+                print("  " + line)
+            for i in sorted(issues, key=lambda i: (i.level != "error", i.where[1], i.where[0])):
+                print(f"  {i.level:7} {i.text}")
+            errors += errs
     return errors
 
 
@@ -175,8 +229,9 @@ def main(argv=None):
     ap = argparse.ArgumentParser(description="Check Logisim circuits against the HBC-2 conventions.")
     ap.add_argument("files", nargs="+")
     ap.add_argument("-c", "--circuit", action="append", help="only this circuit (repeatable)")
+    ap.add_argument("--no-libs", action="store_true", help="don't check the library files it loads")
     args = ap.parse_args(argv)
-    bad = sum(report(nl.resolve_file(f), args.circuit) for f in args.files)
+    bad = sum(report(nl.resolve_file(f), args.circuit, not args.no_libs) for f in args.files)
     sys.exit(1 if bad else 0)
 
 

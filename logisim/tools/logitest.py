@@ -31,6 +31,7 @@ From the command line:
 
     python logitest.py cpu.circ add_sub8 --emu          # emulator vectors
     python logitest.py add8_ttl.circ add8 vectors.txt   # an existing vector file
+    python logitest.py cpu.circ --open                  # does Logisim open it (libraries found)?
 
 Logisim is found through $LOGISIM, then the default Windows install path,
 then logisim-evolution on PATH. Combinational circuits only.
@@ -131,6 +132,24 @@ def run_vectors(circ_file, circuit: str, vec_file, show: int = 10, timeout: int 
     return failed == 0
 
 
+def opens(circ_file, timeout: int = 300) -> bool:
+    """Load the file headless in Logisim (-tty table). False, with Logisim's
+    messages, when it fails, e.g. a library file is missing."""
+    path = Path(circ_file).resolve()
+    proc = subprocess.run([logisim_exe(), "-tty", "table", str(path)], capture_output=True, text=True,
+                          errors="replace", timeout=timeout, cwd=tempfile.gettempdir())
+    out = (proc.stdout + proc.stderr).replace("\r\n", "\n")
+    bad = proc.returncode != 0 or re.search(r"missing|Error|Exception", out)
+    if bad:
+        msgs = [ln for ln in out.splitlines() if re.search(r"INFO|ERROR|Exception:", ln)]
+        print(f"{path.name}: Logisim could not open it cleanly (exit {proc.returncode})")
+        for ln in dict.fromkeys(msgs):
+            print("  " + ln.strip())
+        return False
+    print(f"{path.name}: opens in Logisim, no errors")
+    return True
+
+
 def check(circ_file, circuit: str, inputs: dict, outputs: dict, model, rows=None,
           keep: str | None = None, **opts) -> bool:
     """Generate vectors from `model`, run them, return True when all pass.
@@ -199,13 +218,18 @@ def main(argv=None):
     import argparse
     ap = argparse.ArgumentParser(description="Run a Logisim test vector file on a circuit.")
     ap.add_argument("file")
-    ap.add_argument("circuit")
+    ap.add_argument("circuit", nargs="?")
     ap.add_argument("vectors", nargs="?", help="vector file (or use --emu)")
+    ap.add_argument("--open", action="store_true", help="only check that Logisim opens the file")
     ap.add_argument("--emu", nargs="?", const="", metavar="MODULE",
                     help="vectors from the emulator (hbc2 vectors MODULE, default: the circuit name)")
     args = ap.parse_args(argv)
     path = nl.resolve_file(args.file)
-    if args.emu is not None:
+    if args.open:
+        ok = opens(path)
+    elif not args.circuit:
+        ap.error("give a circuit (or --open)")
+    elif args.emu is not None:
         ok = check_emulator(path, args.circuit, args.emu or None)
     elif args.vectors:
         ok = run_vectors(path, args.circuit, args.vectors)

@@ -16,6 +16,9 @@ Usage:
     python circcheck.py add8_ttl.circ            # looked up in ../circuits too
     python circcheck.py cpu.circ -c add_sub8     # one circuit only
     python circcheck.py file.circ --strict       # warnings also fail (exit 1)
+
+Library files loaded by the file (Load Library > Logisim Library) are
+checked too, each once (--no-libs to skip them); a missing one is an error.
 """
 
 from __future__ import annotations
@@ -176,21 +179,37 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[Issue], dict]:
     return issues, stats
 
 
-def check_file(path: Path, circuits=None):
+def check_file(path: Path, circuits=None, libs: bool = True):
+    """[(file, circuit name, issues, stats)] for the file and, with libs, for
+    every library file it loads (each once). `circuits` filters the first
+    file only. A missing library file is an error on the first circuit."""
     proj = nl.Project(Path(path))
     out = []
-    for cname, circ in proj.circuits.items():
-        if circuits and cname not in circuits:
-            continue
-        issues, stats = check_circuit(circ)
-        out.append((cname, issues, stats))
+    for p in proj.libraries() if libs else [proj]:
+        missing = [d for d, lib in p.file_libs.values() if lib is None]
+        for cname, circ in p.circuits.items():
+            if p is proj and circuits and cname not in circuits:
+                continue
+            issues, stats = check_circuit(circ)
+            for d in missing:
+                issues.append(Issue("error", cname, (0, 0), f"library file {d[5:]} not found"))
+            missing = []
+            out.append((p.path, cname, issues, stats))
+        for d in missing:      # a file with no circuit
+            out.append((p.path, "-", [Issue("error", "-", (0, 0), f"library file {d[5:]} not found")],
+                        {"components": 0, "wires": 0, "crossings": 0, "junctions": 0, "unsupported": []}))
     return out
 
 
-def report(path, circuits=None, strict: bool = False) -> int:
-    """Print the check of one file. Returns the number of failures."""
+def report(path, circuits=None, strict: bool = False, libs: bool = True) -> int:
+    """Print the check of one file (and of the libraries it loads). Returns
+    the number of failures."""
     failures = 0
-    for cname, issues, st in check_file(Path(path), circuits):
+    shown = None
+    for fpath, cname, issues, st in check_file(Path(path), circuits, libs):
+        if fpath != shown:
+            print(f"[{_rel(fpath)}]")
+            shown = fpath
         errs = sum(i.level == "error" for i in issues)
         warns = len(issues) - errs
         line = (f"{cname}: {st['components']} components, {st['wires']} wires, "
@@ -205,15 +224,23 @@ def report(path, circuits=None, strict: bool = False) -> int:
     return failures
 
 
+def _rel(path: Path) -> str:
+    try:
+        return Path(path).resolve().relative_to(nl.LOGISIM_DIR).as_posix()
+    except ValueError:
+        return str(path)
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Check wiring and layout of Logisim .circ files.")
     ap.add_argument("files", nargs="+")
     ap.add_argument("-c", "--circuit", action="append", help="only this circuit (repeatable)")
     ap.add_argument("--strict", action="store_true", help="warnings also make the check fail")
+    ap.add_argument("--no-libs", action="store_true", help="don't check the library files it loads")
     args = ap.parse_args(argv)
     bad = 0
     for f in args.files:
-        bad += report(nl.resolve_file(f), args.circuit, args.strict)
+        bad += report(nl.resolve_file(f), args.circuit, args.strict, not args.no_libs)
     sys.exit(1 if bad else 0)
 
 

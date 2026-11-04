@@ -33,7 +33,14 @@ import xml.etree.ElementTree as ET
 from dataclasses import dataclass, field
 from pathlib import Path
 
-CIRCUITS_DIR = Path(__file__).resolve().parent.parent / "circuits"
+LOGISIM_DIR = Path(__file__).resolve().parent.parent
+CIRCUITS_DIR = LOGISIM_DIR / "circuits"
+
+
+def all_circ_files() -> list[Path]:
+    """logisim/*.circ, then circuits/**/*.circ."""
+    files = sorted(LOGISIM_DIR.glob("*.circ")) + sorted(CIRCUITS_DIR.rglob("*.circ"))
+    return [f for f in files if not f.name.startswith(".")]
 
 # --------------------------------------------------------------------------
 # TTL library (#TTL), extracted from logisim-evolution-5.0.0-all.jar.
@@ -532,6 +539,9 @@ class Project:
         self.warnings: list[str] = []
         root = ET.parse(path).getroot()
         self.libs = {lib.get("name"): lib.get("desc") for lib in root.findall("lib")}
+        # file# libraries, loaded up front like Logisim does: lib id -> (desc, Project or None)
+        self.file_libs: dict[str, tuple[str, "Project | None"]] = {
+            i: (d, self._external(d)) for i, d in self.libs.items() if d and d.startswith("file#")}
         main = root.find("main")
         self.main = main.get("name") if main is not None else None
         self.circuits: dict[str, Circuit] = {}
@@ -544,13 +554,25 @@ class Project:
         if msg not in self.warnings:
             self.warnings.append(msg)
 
+    def lib_path(self, desc: str) -> Path:
+        """File of a "file#" library. Logisim writes paths relative to the
+        loading file, with the OS separator (backslashes on Windows)."""
+        return (self.path.parent / desc[5:].replace("\\", "/")).resolve()
+
     def _external(self, desc: str) -> "Project | None":
         if not desc.startswith("file#"):
             return None
-        p = (self.path.parent / desc[5:]).resolve()
+        p = self.lib_path(desc)
+        if not p.exists():
+            self.warn(f"library file {desc[5:]} not found ({p})")
+            return None
         if p not in self.loaded:
             Project(p, self.loaded)
         return self.loaded[p]
+
+    def libraries(self) -> list["Project"]:
+        """Every project loaded with this one (this file first), each once."""
+        return list(dict.fromkeys(self.loaded.values()))
 
     def _read_circuit(self, circ: Circuit):
         for w in circ.elem.findall("wire"):
@@ -773,7 +795,9 @@ def resolve_file(arg: str) -> Path:
     p = Path(arg)
     if p.exists():
         return p
-    for cand in (CIRCUITS_DIR / arg, CIRCUITS_DIR / f"{arg}.circ"):
+    stem = Path(arg).stem
+    for cand in (LOGISIM_DIR / arg, LOGISIM_DIR / f"{arg}.circ", CIRCUITS_DIR / arg, CIRCUITS_DIR / f"{arg}.circ",
+                 CIRCUITS_DIR / stem / f"{stem}.circ", *CIRCUITS_DIR.glob(f"*/{stem}.circ")):
         if cand.exists():
             return cand
     raise SystemExit(f"error: circuit file not found: {arg}")
@@ -781,7 +805,7 @@ def resolve_file(arg: str) -> Path:
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Extract netlists from Logisim-evolution .circ files.")
-    ap.add_argument("files", nargs="*", help=f"circuit files (default: every .circ in {CIRCUITS_DIR})")
+    ap.add_argument("files", nargs="*", help=f"circuit files (default: every .circ in {LOGISIM_DIR})")
     ap.add_argument("--circuit", "-c", action="append", help="only list this circuit (repeatable)")
     ap.add_argument("--flat", nargs="?", const="", metavar="TOP",
                     help="flattened bit-level netlist from TOP (default: the file's main circuit)")
@@ -789,10 +813,9 @@ def main(argv=None):
     ap.add_argument("-o", "--output", help="write to this file instead of stdout")
     args = ap.parse_args(argv)
 
-    files = [resolve_file(f) for f in args.files] or sorted(
-        p for p in CIRCUITS_DIR.glob("*.circ") if not p.name.startswith("."))
+    files = [resolve_file(f) for f in args.files] or all_circ_files()
     if not files:
-        raise SystemExit(f"error: no .circ files in {CIRCUITS_DIR}")
+        raise SystemExit(f"error: no .circ files in {LOGISIM_DIR}")
 
     results = []
     text = []
