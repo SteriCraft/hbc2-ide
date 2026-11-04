@@ -100,7 +100,7 @@ def main(argv=None):
     for e in errors:
         print("error  " + e, file=sys.stderr)
     if args.check:
-        same = Path(args.check).is_file() and Path(args.check).read_text(encoding="utf8") == text
+        same = Path(args.check).is_file() and Path(args.check).read_text(encoding="utf8").splitlines() == text.splitlines()
         print(f"{args.check}: {'up to date' if same else 'OUT OF DATE (run bom.py -o)'}")
         sys.exit(1 if errors or not same else 0)
     if args.out:
