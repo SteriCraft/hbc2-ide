@@ -2,7 +2,7 @@
 
 PC, SP, the 16-bit address adder and the address latch are built and tested: module `addr` in [circuits/addr/addr.circ](../circuits/addr/addr.circ), made by [designs/addr.py](../designs/addr.py). Every timing limit is met at max 25 °C. Design and decisions: [addr-decisions.md](addr-decisions.md) (phase 2 decisions: section 4, A1–A9).
 
-Commits (not pushed): `7eee36f` (Logisim's 74377 checked, 377 delays), `f7ed5d1` (the module, tests, timing), then the notes.
+Commits: `7eee36f` (Logisim's 74377 checked, 377 delays), `f7ed5d1` (the module, tests, timing), then the notes; pushed after Gianni's review (2026-11-05).
 
 ## Chips
 
@@ -58,6 +58,8 @@ Pass at 25 °C: all limits met. At 85 °C one path is over: the register-operand
 - control-requirements.md: C11–C15 copied from phase 1, **C16 new** (the reset word, a synchronous release of `rst_n`). C10's bus load updated (372 pF).
 
 ## Need Gianni's review
+
+**Reviewed 2026-11-05: all 8 accepted as recommended** (addr-decisions.md section 5). Item 2 became control-requirements.md C17 (reset generator: RC + 74HCT14 + 74HCT74); item 4 is to check on the breadboard with a scope (breadboard-checks.md B1).
 
 1. **Reset relies on the control unit's reset word** (C16). The alternative that keeps everything inside `addr` costs 3–4 more chips (A1). Which do you want?
 2. **`rst_n` must be released synchronously to `clk`** (a flip-flop in the reset generator), and must cover at least one `clk` edge. The flag register's asynchronous /MR doesn't care, but this section does.
