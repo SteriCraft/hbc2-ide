@@ -1,6 +1,8 @@
 # PC, SP and address path: requirements from other sections
 
-What the other sections need from the PC / SP / address section (PC, SP, the 16-bit address adder, the address latch; not designed yet). Add each new requirement here, with the section that needs it and why.
+What the other sections need from the PC / SP / address section (PC, SP, the 16-bit address adder, the address latch). Add each new requirement here, with the section that needs it and why.
+
+**Status (2026-11-04, phase 2):** the section is built (`circuits/addr/addr.circ`, addr-decisions.md, addr-report.md) and meets P1–P4: P1 the address latch (2 × 74HCT377, 00 in the high byte for IN / OUT, tested by `addr_cpu`); P2 bus A high, bus B low (one 153 input per bit, path 416 ns at 25 °C, margin 84); P3 SP high then low onto `bus_data` (96 ns, limit 335); P4 is a control-unit rule (C11).
 
 Times are in ns from the rising edge of `clk` that starts the step, max at 85 °C (chips.md "Delays"); the step is 500 ns. The pass criterion is max 25 °C (timing.py); 85 °C figures are kept as the stricter case.
 

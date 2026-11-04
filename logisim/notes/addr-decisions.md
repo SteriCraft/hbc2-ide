@@ -1,6 +1,6 @@
 # Address section (PC, SP, address adder, address latch): decisions
 
-**Phase 1, on paper (2026-11-04): waiting for Gianni's go-ahead.** No circuit yet. Planned module: `addr` in `circuits/addr/addr.circ`, made by `designs/addr.py`, one module like `regs`.
+**Phase 2 done (night of 2026-11-04, unattended).** Module `addr` in `circuits/addr/addr.circ`, made by `designs/addr.py`: 34 chips, tests 31,640 / 31,640 (`hbc2 vectors addr`, model) and 65,114 / 65,114 (`addr_cpu`, the real CPU). Summary for Gianni: [addr-report.md](addr-report.md). Phase 2 decisions: section 4 (A1–A9). Sections 1–3 are the phase 1 design, updated where phase 2 changed it.
 
 Source of truth: `hbc2-core/src/cpu.rs` (and `isa.rs`, `board.rs`). Requirements met here: [pc-sp-requirements.md](pc-sp-requirements.md) P1–P4. Out of scope (ports only): the IR, memory, the IOD, the control unit.
 
@@ -96,7 +96,7 @@ Step sequences (one line per clock step; "latch :=" takes effect at the end of t
 
 ## 3. Chips, timing, open questions
 
-### Chips (32)
+### Chips (34: phase 1's 32 + 2 × 74HCT08 for the reset, A1)
 
 | Chips | Part | Role |
 |---|---|---|
@@ -107,10 +107,11 @@ Step sequences (one line per clock step; "latch :=" takes effect at the end of t
 | 2 + 2 | 74HCT377 + 74HCT541 | address latch + its bus_addr drivers (/OE per byte) |
 | 2 + 2 | 74HCT377 + 74HCT541 | PC + its bus_data drivers (hi, lo) |
 | 2 + 2 | 74HCT377 + 74HCT541 | SP + its bus_data drivers (hi, lo, P3) |
+| 2 | 74HCT08 | reset: PC bits 15..9 and the IVT's p7 AND `rst_n` (A1) |
 
-Every part is in Logisim's #TTL (chips.md). New part: **74HCT377** (CD74HCT377E): its DIP / SOIC references and its datasheet delays are to be checked before phase 2; the timings below use the 574's figures as placeholders.
+Every part is in Logisim's #TTL (chips.md). New part: **74HCT377**: CD74HCT377E (DIP) and CD74HCT377M96 (SOIC), both active in TI's SCHS184C addendum. Its datasheet delays (CP → Q 38 / 48 ns, setup 12 / 15 ns) replace phase 1's 574 placeholders (A4). Logisim's 74377 was checked against the datasheet (A5).
 
-### Timing estimate (max 25 °C = pass / max 85 °C = information, bus loading included)
+### Timing: phase 1 estimate (the built circuit's figures are in section 4, A4)
 
 | Path | Through | 25 °C | 85 °C | Limit | Margin 25 / 85 |
 |---|---|---|---|---|---|
@@ -122,7 +123,7 @@ Every part is in Logisim's #TTL (chips.md). New part: **74HCT377** (CD74HCT377E)
 
 Bus loading from this section: `regs_a` and `regs_b` get 1 input per bit (the BASE 153), as P2 assumed. `bus_data` gets 4 three-state outputs (PC, SP) and **no inputs**: timing.py's estimate (2 in + 2 out each for PC and SP) drops by 4 inputs. `bus_addr` (low byte, worst): 3 outputs (latch, IOD, software vector) and about 5 inputs (memory, IOD, BASE, the software latch). Every path passes at 25 °C; the register path has 5 ns left at 85 °C (information only).
 
-### Open questions (recommended answer first)
+### Phase 1 questions: all answered (Gianni, 2026-11-04: Q1 done, Q2–Q6 accepted as recommended)
 
 - **Q1. Pending software interrupt. Decided (Gianni, 2026-11-04): keep the port only.** A pending port latch in the control unit, 1 × 377 + 1 × 541, loaded while INT puts 00:V1 on bus_addr and driving the low byte back in the vector step (the address latch drives 00 on the high byte). The data is I when the interrupt is taken, so the vector step does not write I, and the pushed I is that same value. The 4-chip option (port and data, like the IOD) was dropped.
   - **Emulator changed to match** (cpu.rs: `pending_software_interrupt` is `Option<u8>`, the port; I is read on entry; the IDE's CPU view shows the port only). Before, cpu.rs kept (V1, I) from INT, and a handler saw the old I when I changed while the interrupt was pending.
@@ -134,10 +135,105 @@ Bus loading from this section: `regs_a` and `regs_b` get 1 input per bit (the BA
 - **Q5. Invalid instruction.** **Recommended:** PC is incremented during the fetch; for `stops()` the control unit undoes it with PC − 1 (1 or 2 steps, then the CPU halts). Alternative: a fetch offset counter feeding OFFSET (more chips, every fetch).
 - **Q6. 377 or counters for PC.** **Recommended:** 377 (PC + 1 goes through the adder with the latch, one step per byte). 4 × 74HCT161 would also count but adds 2 chips and still needs the adder for the other loads.
 
-### For the control unit (to add to control-requirements.md with phase 2)
+### For the control unit (copied to control-requirements.md in phase 2, plus C16 for the reset)
 
 - C11: drive the section's controls from the clocked control register (BASE sel + 2 enables, OFFSET lo sel + 2 enables, inv, Cin, 3 load enables, 6 output enables). At most one driver on `bus_addr` (latch per byte, IOD, software vector). P4 applies (no load from `regs_a`/`regs_b` while `regs_we_n` is low).
 - C12: the interrupt entry sequence above (Q2), including the vector step: latch outputs off, RAM and IOD not enabled by the CPU, I written from `bus_data` (hardware interrupts only).
 - C13: the pending software interrupt port latch (Q1): 1 × 377 + 1 × 541, loaded by INT (00:V1 on bus_addr), cleared when taken, drives bus_addr low byte in the software vector step; I is not written there.
 - C14: the IR loads V1 and V2 from `bus_data` in any step (Q4).
 - C15: undo the fetch increments on an invalid instruction (Q5).
+
+## 4. Phase 2 (night of 2026-11-04): decisions taken alone
+
+Gianni was away; per his instructions, each question got the answer I'd recommend, logged here. What he should look at is in [addr-report.md](addr-report.md), "Need Gianni's review".
+
+### A1. PC := 0000 and SP := FE00 from the reset line
+
+Gianni: the 377 has no clear or preset, but the reset values must come from `rst_n`, not from a sequence; pick the cheapest compliant option and log why.
+
+PC and SP load the **same** sum, so forcing the sum gives only one of the two values; something must differ on one register's D inputs. Options counted:
+
+| Option | Chips added | Notes |
+|---|---|---|
+| **(chosen)** While `rst_n` is low the control unit holds a **reset word**: BASE = IVT, high byte only (`addr_base_sel` = 11, `addr_base_oe_n` = 01), no offset, `inv` = `cin` = 0, PC and SP loaded, every driver off. The sum is the IVT's high byte, 1111111 p7 : 00. **2 × 74HCT08**: p7 AND `rst_n` (so the sum is FE00 whatever the bus shows), and PC's D bits 15..9 = sum AND `rst_n` (so PC takes 0000 from the same sum). SP := FE00 and PC := 0000 on every `clk` edge while `rst_n` is low. | **+2** | Uses `rst_n` directly: no inverter, no new global. The control unit must have a defined control word while `rst_n` is low anyway (otherwise the buses contend at power-up), so the word costs it nothing (C16). +24 / 30 ns on PC loads, included in A4. |
+| The same with the sum forced to 0000 and SP's bits 15..9 ORed with `rst` | +2, plus an inverter | Needs `rst` active high: a new global or an inverter. |
+| Self-contained: the forcing gates inside `addr` (BASE and OFFSET enables off, inv and cin 0, PC and SP loads on), plus the 7 SP gates | +5 or 6 (3 × 32, 2 × 08, an inverter) | Doesn't depend on the control unit's reset word. **The fallback if Gianni prefers it.** |
+| PC as 4 × 74HCT161 (asynchronous clear, synchronous load, hold) | +2 | Solves PC only: SP still needs FE00, so the forcing is needed anyway. |
+| PC as 74HCT273 (clear) | — | No load enable: PC would need a feedback multiplexer (P1 forbids a gated clock). |
+
+The reset is **synchronous**: it needs at least one `clk` edge while `rst_n` is low (the clock runs from the oscillator during reset), and the **release of `rst_n` must be synchronous to `clk`** (a flip-flop in the reset generator), since the control word and the 08s are sampled at the edge. The address latch is not loaded by the reset; the first fetch starts with "latch := PC" (C16).
+
+Tested: `addr` resets from power-up and from random states with p7 = 0 and 1 on the bus; every `addr_cpu` sequence ends with a reset, checked against the emulator's `Cpu::new()` (PC = PROGRAM_START, SP = STACK_RESET). A mutant without the p7 gate fails both tests (173 and 5,764 rows).
+
+### A2. Interface (the module's pins)
+
+| Pin | Width | Meaning |
+|---|---|---|
+| `clk`, `rst_n` | 1 | global |
+| `addr_base_sel` | 2 | BASE: 00 PC, 01 SP, 10 bus A : bus B (R1:R2), 11 IVT (1111111 p7 : p6..p0 0) |
+| `addr_base_oe_n` | 2 | BASE byte enables (bit 1 high, bit 0 low; off = 00), the 153s' /E |
+| `addr_off_sel` | 1 | OFFSET low byte: 0 = V2, 1 = V1 (the high byte is always V1) |
+| `addr_off_oe_n` | 2 | OFFSET byte enables (off = 00), the 157s' /G |
+| `addr_inv`, `addr_cin` | 1 | invert the offset; adder carry in (`inv` + `cin` = subtract; `inv` alone with offset 0 = −1) |
+| `addr_lat_ld_n`, `addr_pc_ld_n`, `addr_sp_ld_n` | 1 | 377 /E: load the sum on the next `clk` edge |
+| `addr_lat_oe_n` | 2 | latch onto the address bus, per byte (541 /OE) |
+| `addr_pc_oe_n`, `addr_sp_oe_n` | 2 | PC / SP byte onto the data bus (bit 1 high, bit 0 low); at most one of the four low |
+| `addr_bus_a`, `addr_bus_b` | 8 | `regs_a` (R1, high byte), `regs_b` (R2, low byte), P2 |
+| `addr_v1`, `addr_v2` | 8 | the IR's V1 and V2 |
+| `addr_bus_addr_lo_in` | 8 | the address bus's low byte, read back (IVT: the IOD's or the pending latch's port) |
+| `addr_bus_addr_hi`, `addr_bus_addr_lo` | 8 | out, tri-state: the latch onto the address bus |
+| `addr_bus_out` | 8 | out, tri-state: PC / SP onto the data bus |
+
+The address bus is **two 8-bit pins** instead of one 16-bit `bus_addr`: each byte has its own enable (the software vector step drives the high byte only), and a Logisim test vector can't expect a half-floating 16-bit value. At CPU level a splitter joins them into `bus_addr`. `addr_bus_addr_lo_in` is the same bus's low byte as an input, like `regs_bus_in` / `regs_bus_out`.
+
+### A3. OFFSET high byte
+
+A 74HCT157 with SELECT and the B inputs tied to Ground, used as "V1 or 00" through its /G. Two 74HCT08s would do the same; the 157 keeps the two bytes alike. Same chip count.
+
+### A4. 74HCT377 timings (TI SCHS184C) and the section's timing
+
+The 377 is slower than the 574 placeholder: CP → Q 38 / 48 ns (574: 33 / 41); setup 12 / 15 ns (the same). Built-circuit figures (`python tools/timing.py --section addr`, bus loading counted on the circuits):
+
+| Path | Max 25 °C | Max 85 °C | Limit | Margin 25 °C (pass) / 85 °C (info) |
+|---|---|---|---|---|
+| control (OFFSET select) → 157 → 86 → 4 × 283 → 08 → PC setup | 323 | 404 | 500 | 177 / 96 |
+| control (BASE select) → 153 → adder → PC setup | 296 | 371 | 500 | 204 / 129 |
+| V1 / V2 (IR) → adder → PC setup | 319 | 399 | 500 | 181 / 101 |
+| PC / SP (377) → BASE → adder → PC setup (PC + 1, SP − 1) | 301 | 378 | 500 | 199 / 122 |
+| **regs_a / regs_b → BASE → adder → PC setup** (Reg16, mode 4, IN / OUT) | **416** | **525** | 500 | **84 / −25** |
+| bus_addr low byte → IVT → adder → PC setup | 263 | 330 | 500 | the IOD must drive the bus by **237 / 170 ns** |
+| clk → latch → bus_addr valid | 71 | 90 | 335 / 325 (C10) | 264 / 235: what memory gets to put its byte on the data bus |
+| control → latch drivers on | 73 | 92 | 335 / 325 | 262 / 233 |
+| PC / SP → bus_data | 96 | 121 | 335 / 325 (C10, P3) | 239 / 204 |
+
+Every path passes at 25 °C. The register path is 25 ns over at 85 °C (information only, like the register section's end-to-end path). If the hardware shows errors there, the chips.md fallback applies: 74ACT153 for the 8 BASE multiplexers (I → Y 16 ns instead of 43 at 85 °C) gives back about 27 ns.
+
+Loads are now counted on the circuit instead of estimated: `bus_a` / `bus_b` take one 153 input per bit (as P2 assumed); `bus_data` takes 4 tri-state outputs and **no input** (phase 1's estimate had 4 more inputs): 372 pF instead of about 420. `bus_addr` (low byte, worst bit): 146 pF, with an estimate for memory, the IOD and the pending port latch. The other sections still pass (`timing.py --section alu / flags / regs`).
+
+Hold times: 377 D hold 3 ns, /E hold 5 ns after the edge. The sum can't change that fast (it goes through a 377 or 574 and the 153 / 283 chain), but the load enables come straight from the control register, and TI gives no minimum CP → Q for the 574. Review item.
+
+### A5. Logisim's 74377 checked
+
+`designs/test_74377.py` → `circuits/chips/test_74377.circ`: Logisim's chip against the datasheet's truth table, 250 / 250 rows, including /E moving while CP is high (no load: /E is sampled at the edge, not a clock gate). No model needed. The datasheet is `circuits/chips/cd74hct377.pdf`.
+
+### A6. Phase 1 answers applied
+
+Q1 was done by Gianni (emulator). Q2 (push before INR, port in the vector step), Q3 (separate PC / SP drivers), Q4 (RET / IRT / IVT bytes through V1 and V2), Q5 (undo the fetch increments on an invalid instruction) and Q6 (377, not counters) are built and tested as recommended.
+
+### A7. Tests
+
+- `addr` (model, `hbc2/crates/hbc2-cli/src/vectors/addr.rs`): the reset (32 times, p7 = 0 / 1); all 512 combinations of BASE select × BASE enables × OFFSET enables × OFFSET select × inv × cin with random data (4 passes), loaded into the latch and alternately PC / SP, read back; every load and output enable on its own (the others hold); 40 random sequences of 200 steps, `rst_n` low now and then. 31,640 rows.
+- `addr_cpu` (the real CPU): 48 (PC, SP) pairs, 6 of them corners (PC = FFFF / FFFE wrapping, SP = 0000 / FFFF / FE00, SP near the IVT), × 40 events: every addressing mode that touches memory (Vx, R1:R2 + V2, SP + V1, read-modify-write), PSH / POP / PSF / POF, CAL / RET / IRT, taken and untaken jumps, ASP / SSP / WSP / RSP, IN / OUT, HLT, NOP, MOV, INT + the software entry, a hardware entry through the IOD handshake (random port, p ≥ 128 included), an invalid instruction. Checked against the CPU: the address of every fetched byte, every operand address, every pushed PC byte, PC and SP at the end, then the reset (its RAM writes through a `Probe`, `board.address_bus` for I/O and INT, the loaded bytes for reads). 65,114 rows.
+- Mutation check: removing the p7 gate, or breaking the carry between the second and third 283, fails both tests.
+- Not covered (other sections): the pending port latch (C13), INR and the IOD's timing, memory.
+
+### A8. Steps the bench uses (for the control unit)
+
+Section 2's step table, as tested. Two details found while writing it:
+- Interrupt entry: the last push step also does "latch := 0000", so the latch shows 00 on the high byte during the software vector step (low byte off, the pending latch drives p). The hardware entry does the same (harmless: the latch's outputs are off then).
+- RET / IRT: the return address's high byte goes to V1 at the end of the step that reads it, the low byte to V2 one step later; "latch, PC := Vx" comes after both.
+
+### A9. Not done in phase 2
+
+- The control unit, the IR, memory, the IOD and the pending port latch are other sections (ports only here).
+- `cpu.circ` doesn't instantiate `addr` yet (nor the other sections); `tools/usages.py addr` finds no user, so nothing needs rewiring.
