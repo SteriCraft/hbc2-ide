@@ -290,4 +290,17 @@ Phase 2 runs unattended: take the recommended option on any new question, log it
 5. **Not accepted as is**: widen the RAM write pulse by design first (the address is stable from 71 ns, the RAM needs tWP 45 ns), aiming for **≥ 30 ns margin at 25 °C** (pulse ≥ 75 ns). Keep B2 in breadboard-checks.md.
 7. IOD synchronous to `clk`, no WAIT line: accepted. Record in the IOD requirements that a future microcontroller-based IOD must answer through hardware latches / a FIFO that it fills asynchronously.
 
-Phase 2 status: not started (plan: section 8; first step: the RAM write pulse redesign, then the chip models).
+### Phase 2 decisions
+
+**M1 — RAM write strobe `clk_mem_wr_n` = /Q2 of the clock generator** (answer 5). FF2 (C6) already exists: it is `clk` sampled on the osc fall, so Q2 is high from about 125 ns to 375 ns of each step, and its /Q2 output is unused. The RAM's /WE becomes `clk_mem_wr_n` OR `mem_we_n` (the same 74HCT32 gate; no new chip), low about 125–375 ns instead of 250–375. Both edges come from the same flip-flop on osc falls 250 ns apart, so the pulse no longer depends on FF1 or the NAND3. Figures (max 25 °C / 85 °C, minimum delays 0, t = 0 = clk rising, which can be FF1's 28 / 35 ns after its osc edge):
+
+| Check | Computation | 25 °C | 85 °C | Need | Margin 25 / 85 |
+|---|---|---|---|---|---|
+| pulse, shortest | 250 − FF2 (28 / 35) − NAND inverter (24 / 30) − OR (24 / 30) | 174 | 155 | tWP 45 | **129 / 110** (was 4 / −15) |
+| falls, earliest | 125 − FF1 (28 / 35) | 97 | 90 | address valid 71 / 90 (tAS 0) | 26 / 0 |
+| rises, earliest | 375 − FF1 | 347 | 340 | data valid + tDW 25: 232 / 295 | 90 / 20 |
+| rises, latest (+ tWR = tDH = 0) | 375 + NAND + FF2 + OR | 451 | 470 | before the next edge (500): the address and data change only after it | 49 / 30 |
+
+The new tight point is the address setup before /WE falls (26 ns at 25 °C, 0 at 85 °C, on paper with FF1 at max and FF2 at 0: the two are in the same 74HCT74 package, so in practice their delays track). Writing garbage into the cell during the pulse before the data arrives is harmless: a /WE-controlled SRAM write takes the data present tDW before the rise. `clk_mem_wr_n` is a new global signal (control unit's clock generator, C6 updated in phase 2); the 670 writes keep `clk_wr_n`. B2 (breadboard-checks.md) measures the /WE pulse and the address-to-/WE-fall setup at the RAM pins.
+
+Phase 2 status: M1 decided. Next: chip models as6c1008 + at28c256 (designs/as6c1008.py, at28c256.py), then ir, addr_cout, mem, benches, timing.py, requirement notes, report (section 8).
