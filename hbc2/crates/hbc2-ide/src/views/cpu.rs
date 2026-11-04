@@ -173,9 +173,9 @@ pub fn cpu_sections<'a>(
                         note(ui, RichText::new(detail).weak());
                         ui.end_row();
 
-                        if let Some((port, data)) = cpu.pending_software_interrupt() {
+                        if let Some(port) = cpu.pending_software_interrupt() {
                             ui.label("INT");
-                            ui.label(mono(format!("port {port:02X}, data {data:02X}"), false));
+                            ui.label(mono(format!("port {port:02X}"), false));
                             note(ui, RichText::new("waiting for the I flag").weak());
                             ui.end_row();
                         }

@@ -200,6 +200,34 @@ fn software_interrupt_waits_for_sti() {
 }
 
 #[test]
+fn pending_software_interrupt_takes_i_when_taken() {
+    // INT with interrupts off keeps only its port. I changes before STI: the
+    // handler gets the new I, and the new I is the one pushed (Q1 in
+    // logisim/notes/addr-decisions.md).
+    let mut m = Image::new()
+        .program(&[
+            none(O::Cli),
+            reg_imm8(O::Mov, I, 0x11),
+            imm8(O::Int, 0x10),
+            reg_imm8(O::Mov, I, 0x22),
+            none(O::Sti),
+            none(O::Nop),
+            none(O::Cli),
+            none(O::Hlt),
+        ])
+        .vector(0x10, 0xF000)
+        .code(0xF000, &[reg(O::Mov, A, I), reg_imm8(O::Mov, I, 0x33), none(O::Irt)])
+        .build(bare());
+    steps(&mut m, 4);
+    assert_eq!(m.cpu.pending_software_interrupt(), Some(0x10));
+    m.run(100);
+    assert!(m.cpu.is_stopped());
+    assert_eq!(m.cpu.reg(A), 0x22, "data = I when the interrupt is taken");
+    assert_eq!(ram(&m, STACK_RESET - 1), 0x22, "pushed I = I when taken");
+    assert_eq!(m.cpu.reg(I), 0x22, "IRT restores the pushed I");
+}
+
+#[test]
 fn hlt_wakes_up_on_interrupt() {
     let config = MachineConfig {
         keyboard: true,

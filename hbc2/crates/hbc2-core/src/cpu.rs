@@ -68,8 +68,10 @@ pub struct Cpu {
     /// and IRT (wrapping; only differences matter).
     pub call_depth: u32,
     pub state: CpuState,
-    /// Software interrupt (port, data) raised by `INT`, waiting for the Interrupt flag.
-    pending_software_interrupt: Option<(u8, u8)>,
+    /// Port of a software interrupt raised by `INT`, waiting for the Interrupt
+    /// flag. Only the port is kept: the data is register I when the interrupt
+    /// is taken (as the hardware's port latch does).
+    pending_software_interrupt: Option<u8>,
     /// Set by STI: no interrupt is taken before the next instruction has run.
     interrupt_delay: bool,
 }
@@ -143,7 +145,7 @@ impl Cpu {
         self.is_stopped() && self.ir.stops()
     }
 
-    pub fn pending_software_interrupt(&self) -> Option<(u8, u8)> {
+    pub fn pending_software_interrupt(&self) -> Option<u8> {
         self.pending_software_interrupt
     }
 
@@ -184,7 +186,8 @@ impl Cpu {
                         return false;
                     }
                     // Software interrupts have no priority over hardware ones.
-                    if let Some((port, data)) = self.pending_software_interrupt.take() {
+                    if let Some(port) = self.pending_software_interrupt.take() {
+                        let data = self.reg(Register::I);
                         board.address_bus = port as u16;
                         board.data_bus = data;
                         self.enter_interrupt(board, probe, port, data);
@@ -578,7 +581,7 @@ impl Cpu {
                     let data = self.reg(Register::I);
                     board.address_bus = i.v1() as u16;
                     board.data_bus = data;
-                    self.pending_software_interrupt = Some((i.v1(), data));
+                    self.pending_software_interrupt = Some(i.v1());
                 }
             }
             O::Hlt => self.set_flag_if_none(mode, Flag::Halt, true),
