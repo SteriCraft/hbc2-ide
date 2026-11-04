@@ -89,6 +89,9 @@ c.wire((x, min(ends["fill"])), (x, 460), c.tunnel((x + 20, 460), f"{M}_fill"))
 c.symbol(top=[f"{M}_sel", f"{M}_asr", f"{M}_c_add"], left=[f"{M}_a"],
          right=[f"{M}_shl", f"{M}_sr"], bottom=[f"{M}_c"])
 
+# Gianni moved everything by (20, 60) in Logisim so the labels show.
+c.move(20, 60)
+
 if __name__ == "__main__":
     bad = p.save(OUT)
     if "--png" in sys.argv:

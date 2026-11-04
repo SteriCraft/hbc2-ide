@@ -1,6 +1,6 @@
 # ALU: report (unattended run, night of 2026-11-04)
 
-The `alu` section now covers every ALU instruction of the HBC-2: ADD ADC SUB SBB INC DEC AND OR XOR NOT SHL ASR SHR CMP. Each module was tested against the emulator's own code, and the whole ALU exhaustively (every alu_op, cin, a, b: 2,097,152 rows). Decisions and points to review: [alu-decisions.md](alu-decisions.md). Chip sourcing and delays: [chips.md](chips.md).
+The `alu` section now covers every ALU instruction of the HBC-2: ADD ADC SUB SBB INC DEC AND OR XOR NOT SHL ASR SHR CMP. Each module was tested against the emulator's own code, and the whole ALU exhaustively (every alu_op, cin, a, b: 2,097,152 rows). Decisions and points to review: [alu-decisions.md](alu-decisions.md). Chip references, sourcing rules and delays: [chips.md](chips.md).
 
 ## Interface
 
@@ -50,25 +50,50 @@ Values in brackets are what the hardware gives where the emulator doesn't write 
 | `rmux8` | result on a tri-state bus; NOT a | 6 × 74HCT541, 1 × 74HCT240, 1 × 74HCT138, 1 × 74HCT11 |
 | `alu` | instances and tunnels only | none |
 
-By part number: 74HCT541 × 6, 74HCT86 × 5, 74HCT08 × 3, 74HCT283 × 2, 74HCT32 × 2, 74HCT157 × 2, 74HCT11 × 2, 74HCT153 × 1, 74HCT27 × 1, 74HCT02 × 1, 74HCT138 × 1, 74HCT240 × 1. **Total: 27 chips** (26 if flags8 and rmux8 are merged, see decisions D10).
+By part number: 74HCT541 × 6, 74HCT86 × 5, 74HCT08 × 3, 74HCT283 × 2, 74HCT32 × 2, 74HCT157 × 2, 74HCT11 × 2, 74HCT153 × 1, 74HCT27 × 1, 74HCT02 × 1, 74HCT138 × 1, 74HCT240 × 1. **Total: 27 chips, 12 part numbers** (26 if flags8 and rmux8 are merged, see decisions D10). With 15 % spares (at least 1 per part), buy 39.
+
+Bill of materials, with the DIP and SOIC references to order: [bom-alu.csv](bom-alu.csv). `python designs/alu.py` rewrites it from the circuits, and `python tools/bom.py alu --check notes/bom-alu.csv` says whether it is up to date. Every chip in circuits/alu/ is in chips.md's "Parts in use" table, and no other part number is used.
 
 ## Worst-case delay, per path
 
-Typical values, 74HCT at 4.5 V and 50 pF (chips.md). Inputs a, b, cin and alu_op are stable at t = 0.
+From the TI datasheets of the DIP parts we will buy (chips.md, "Delays"), CL = 50 pF. Max values are at 4.5 V. Inputs a, b, cin and alu_op are stable at t = 0. Each stage counts its own worst case, so the sums are pessimistic. `python tools/timing.py` regenerates this table from chips.md.
 
-| Path | Through | Typ. |
-|---|---|---|
-| alu_r, arithmetic | op2 → 157 select (18) → add_sub8 B xor (14) → 283 low, B to C4 (21) → 283 high, Cin to Σ (23) → 541 (14) | **90 ns** |
-| alu_r, logic | a → 08/32/86 (14) → 541 (14) | 28 ns |
-| alu_r, NOT | a → 240 (12) | 12 ns |
-| alu_r, shifts | op → 138 (17) → 7411 (16) → 541 enable (16) | 49 ns |
-| alu_n | = alu_r bit 7 | 90 ns |
-| alu_z, alu_e | alu_r (90) → 7427 (14) → 7411 (16) | 120 ns |
-| alu_s | alu_z (120) → 7402 (11) | **131 ns** |
-| alu_f | add_sub8 carry: … 283 high Cin to C4 (20) → 86 (14) | 87 ns |
-| alu_c | alu_f path (87) → 153 data (19) | 106 ns |
+| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |
+|---|---|---|---|---|
+| alu_r, arithmetic (bit 7) | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → S3 (66) → 541 A → Y (29) | 83 | 185 | 231 |
+| alu_r, AND OR XOR | 138 A/B/C → Y (45) → 541 OE → Y (38) | 44 | 66 | 83 |
+| alu_r, NOT | 138 A/B/C → Y (45) → 240 OE → Y (38) | 35 | 66 | 83 |
+| alu_r, shifts | 138 A/B/C → Y (45) → 11 A/B/C → Y (35) → 541 OE → Y (38) | 55 | 94 | 118 |
+| alu_f (borrow), carry out | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → C4 (58) → 86 A/B → Y (40) | 80 | 187 | 234 |
+| alu_c | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → C4 (58) → 86 A/B → Y (40) → 153 I → Y (43) | 94 | 221 | 277 |
+| alu_n | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → S3 (66) → 541 A → Y (29) | 83 | 185 | 231 |
+| alu_z, alu_e | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → S3 (66) → 541 A → Y (29) → 27 A/B/C → Y (29) → 11 A/B/C → Y (35) | 103 | 236 | 295 |
+| alu_s | 157 S → Y (36) → 86 A/B → Y (40) → 283 A/B → C4 (60) → 283 Cin → S3 (66) → 541 A → Y (29) → 27 A/B/C → Y (29) → 11 A/B/C → Y (35) → 02 A/B → Y (26) | 111 | 257 | 321 |
 
-Worst case: **alu_s ≈ 131 ns typical**, under the 200 ns target. With 25 °C maximum values (about 1.5 ×) it is about 200 ns, and over the full temperature range it would be more. A faster option, if needed: make S from the borrow and a 74HCT688-style equality, or simply give CMP its own microstep.
+Typ is only a rough guide: the CD74HCT datasheets give their typical at 5 V and 15 pF (chips.md).
+
+**Worst case: alu_s, 111 ns typ / 257 ns max 25 °C / 321 ns max 85 °C.** Over 250 ns at 85 °C: alu_s (321), alu_z and alu_e (295), alu_c (277). The result itself (alu_r, alu_n) is 231 ns, and the borrow (alu_f) 234 ns. The 74HCT283 pair is 126 ns of every arithmetic path (B to C4, then Cin to S3 or C4).
+
+### What it means at 2 MHz
+
+A 2 MHz step lasts 500 ns. If the registers feeding the ALU and the flag register clock on the same edge, a full step gives: SN74HCT574 clock to Q (45) + alu_s (321) + 574 setup (25) = **391 ns at 85 °C max**, with 109 ns of margin. Only a design that gives the ALU half a step (250 ns) misses.
+
+### Fixes, if the ALU must fit in 250 ns (not applied)
+
+Max 85 °C after the fix, in ns; costs are for the ALU alone.
+
+| Fix | alu_r | alu_c | alu_z | alu_s | Cost |
+|---|---|---|---|---|---|
+| none (as built) | 231 | 277 | 295 | 321 | |
+| F1. Give the ALU a full step (above) | | | | | 0 chips. A control-unit timing rule |
+| F2. E from a 74HCT688 on a and b; S = nor(F, E) | 231 | 277 | 295 | 260 | +1 chip, and a new Logisim model (the 688 is missing from #TTL). Fixes CMP only |
+| F3. Remove the 2 × 74HCT157: the control unit puts 01 on B for INC/DEC | 195 | 241 | 259 | 285 | −2 chips, but 01 must come from somewhere else (e.g. a 541 with tied inputs on the B operand bus: +1) |
+| F4. Carry select on the high nibble (3rd 283 for cin = 1, 2 × 157 pick the result) | 201 | 255 | 265 | 291 | +3 chips |
+| F3 + F4 | 165 | 219 | 229 | 255 | +2 chips (with the 01 source) |
+| F2 + F3 + F4 | 165 | 219 | 229 | 202 | +3 chips and the 688 model |
+| F5. Store the flags one step after the result (or a separate CMP step) | | | | | 0 chips; one more microstep per flag-setting instruction, unless it overlaps the next fetch |
+
+My recommendation is F1, which is the normal arrangement and costs nothing. If the control unit can't give the ALU a full step, F5 costs nothing in chips. F2 to F4 are only worth it together, for +3 chips.
 
 ## Tests (hbc2 vectors → Logisim headless, logitest.py)
 
@@ -89,7 +114,7 @@ Checks: circcheck and conventions report 0 errors, 0 warnings on every file. cir
 ## What is left
 
 - Gianni's review of the items in alu-decisions.md (SHR wording in the manual, unsigned CMP, the tri-state bus, the 27 vs 26 chips, the alu_op encoding).
-- Check the delay figures against the exact datasheets of the parts to be bought (the 74HCT283 first).
+- Decide the ALU's time budget in the control unit (F1 or F5 above), since three flags are over 250 ns at 85 °C max.
 - Look at the layouts in Logisim. I only saw approximate renders, so labels may overlap in places.
 - Next sections, out of scope tonight: the flag register (with a write mask per flag group) and the control unit that produces alu_op.
 - cpu.circ still loads only alu and add_sub8 as libraries. Loading alu now pulls in the other modules through alu.circ.

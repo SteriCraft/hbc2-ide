@@ -1,35 +1,82 @@
 # Chips: what to buy, how fast they are, what Logisim has
 
-The parts used or considered for the HBC-2, so the next module doesn't have to search again. Pinouts and wiring choices are in [ttl-chips.md](ttl-chips.md).
+The parts used or considered for the HBC-2, so the next module doesn't have to search again. Pinouts and wiring choices are in [ttl-chips.md](ttl-chips.md). Stock and prices (Octopart, 2026-11-04): [disponibilite-74hct.md](disponibilite-74hct.md).
+
+Two tools read the tables below, so keep their column names:
+- `tools/bom.py` reads **Parts in use** and writes a bill of materials, such as [bom-alu.csv](bom-alu.csv). It fails if a circuit uses a chip that isn't listed there.
+- `tools/timing.py` reads **Delays** and prints the path table of [alu-report.md](alu-report.md).
 
 ## Rules (Gianni, 2026-11-04)
 
 - Every chip must be sold as a **74HCTxx**, the CMOS family with TTL-compatible inputs.
-- Both DIP and **SMD (SOIC)** are fine; it doesn't have to be through-hole.
+- Both DIP and **SMD (SOIC)** are fine; it doesn't have to be through-hole. DIP is for the breadboard, SOIC for the final PCBs.
 - If a chip is missing from Logisim's `#TTL` library, pick another real part instead of building it from gates.
+
+Sourcing rules, for every section:
+- **Never use Nexperia DIP parts** (suffix `N`, such as 74HCT86N). They have been obsolete since 2015, and what is left is sold by unauthorised resellers.
+- **Avoid TI variants that are NRND or have no offer left**: SN74HCT02N, SN74HCT157N, SN74HCT86N. Use the CD74HCT…E version of the same chip.
+- **Use authorised distributors only** (Mouser, DigiKey, TME, LCSC). No eBay or AliExpress, where "74HCT" parts are sometimes remarked HC or LS chips.
+- Before adding a part, check that its DIP and SOIC references are active, and write both in the table below.
 
 ## Parts in use
 
-Delays are **typical values at VCC = 4.5 V, CL = 50 pF, 25 °C**, as given in Nexperia/NXP 74HC_HCT datasheets. At 5 V they are about 10 % shorter. The datasheet's 25 °C maximum is roughly 1.5 × typical, and the 85 °C maximum roughly 1.9 ×. I didn't open every datasheet: values marked ~ are estimates for the family and need checking before the timing is final.
+| Part | Function | Logisim | DIP | SOIC |
+|---|---|---|---|---|
+| 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) |
+| 74HCT08 | quad 2-input AND | 7408 | SN74HCT08N | 74HCT08D (Nexperia) |
+| 74HCT11 | triple 3-input AND | 7411 | CD74HCT11E | 74HCT11D (Nexperia) |
+| 74HCT27 | triple 3-input NOR | 7427 | CD74HCT27E | 74HCT27D (Nexperia) |
+| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) |
+| 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) |
+| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) |
+| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) |
+| 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) |
+| 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) |
 
-| Part | Function | Logisim | Typ. delay (4.5 V) | Packages / makers seen | Used in |
+All DIP references are TI and active. For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
+
+## Delays
+
+From the TI datasheets of the DIP references above, CL = 50 pF. **Max** columns are at VCC = 4.5 V, at 25 °C and over −40…85 °C. **Typ** is at 25 °C, but at the conditions each datasheet uses:
+- SN74HCT parts (08, 32, 138, 541) give it at 4.5 V and 50 pF;
+- CD74HCT parts give it only at **5 V and 15 pF**, which is quicker than 4.5 V and 50 pF.
+
+So Typ is a rough guide only. Use Max 85 °C for timing budgets.
+
+| Part | Path | Typ | Max 25 °C | Max 85 °C | Datasheet |
 |---|---|---|---|---|---|
-| 74HCT02 | quad 2-in NOR | 7402 | ~11 ns | Nexperia SO-14, TI DIP | flags8 |
-| 74HCT08 | quad 2-in AND | 7408 | ~14 ns | Nexperia, TI (DIP and SO) | add_sub8, logic8 |
-| 74HCT11 | triple 3-in AND | 7411 | 16 ns (max 24) | Nexperia 74HCT11N DIP / D SO-14, TI CD74HCT11E | flags8, rmux8 |
-| 74HCT27 | triple 3-in NOR | 7427 | ~14 ns | TI CD74HCT27E DIP (distributors), Nexperia 74HCT27D SO-14; Tayda DIP out of stock | flags8 |
-| 74HCT32 | quad 2-in OR | 7432 | ~14 ns | Nexperia, TI | logic8 |
-| 74HCT86 | quad 2-in XOR | 7486 | ~14 ns | Nexperia, TI CD74HCT86 | add_sub8, logic8 |
-| 74HCT138 | 3-to-8 decoder | 74138 | 17 ns (A to Y) | Nexperia, TI | rmux8 |
-| 74HCT153 | dual 4-to-1 mux | 74153 | 19 ns (data), ~20 ns (select) | Nexperia 74HCT153D SO-16, TI | shift8 |
-| 74HCT157 | quad 2-to-1 mux | 74157 | 16 ns (data), ~18 ns (select) | Nexperia, TI SN74HCT157N DIP | arith8 |
-| 74HCT240 | octal inverting buffer, tri-state | 74240 | ~12 ns, enable ~15 ns | TI CD74HCT240E DIP (DigiKey), Nexperia | rmux8 (NOT) |
-| 74HCT283 | 4-bit adder | 74283 | ~21 ns (A/B to C4), ~20 ns (Cin to C4), ~23 ns (Cin to S) | TI CD74HCT283E DIP, Nexperia 74HCT283D SO-16 | add_sub8 |
-| 74HCT541 | octal buffer, tri-state | 74541 | ~14 ns, enable ~16 ns | TI SN74HCT541N DIP (DigiKey: active), CD74HCT541E, Nexperia | rmux8 |
+| 74HCT02 | A/B → Y | 8 | 21 | 26 | CD74HCT02, SCHS400 |
+| 74HCT08 | A/B → Y | 15 | 24 | 30 | SN74HCT08, SCLS063G |
+| 74HCT11 | A/B/C → Y | 11 | 28 | 35 | CD74HCT11, SCHS405 |
+| 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
+| 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
+| 74HCT86 | A/B → Y | 13 | 32 | 40 | CD74HCT86, SCHS410A |
+| 74HCT138 | A/B/C → Y | 23 | 36 | 45 | SN74HCT138, SCLS171F |
+| 74HCT138 | G → Y | 22 | 33 | 42 | SN74HCT138, SCLS171F |
+| 74HCT153 | S → Y | 14 | 34 | 43 | CD74HCT153, SCHS151C |
+| 74HCT153 | I → Y | 14 | 34 | 43 | CD74HCT153, SCHS151C (see note) |
+| 74HCT153 | E → Y | 11 | 27 | 34 | CD74HCT153, SCHS151C |
+| 74HCT157 | I → Y | 12 | 25 | 31 | CD74HCT157, SCHS153C |
+| 74HCT157 | S → Y | 15 | 29 | 36 | CD74HCT157, SCHS153C |
+| 74HCT240 | A → Y | 9 | 22 | 28 | CD74HCT240, SCHS167G |
+| 74HCT240 | OE → Y | 12 | 30 | 38 | CD74HCT240, SCHS167G (typ: HC value) |
+| 74HCT283 | Cin → S0 | 13 | 31 | 39 | CD74HCT283, SCHS176E |
+| 74HCT283 | Cin → S1 | 18 | 43 | 54 | CD74HCT283, SCHS176E |
+| 74HCT283 | Cin → S2 | 19 | 46 | 58 | CD74HCT283, SCHS176E |
+| 74HCT283 | Cin → S3 | 22 | 53 | 66 | CD74HCT283, SCHS176E |
+| 74HCT283 | Cin → C4 | 19 | 46 | 58 | CD74HCT283, SCHS176E |
+| 74HCT283 | A/B → C4 | 20 | 48 | 60 | CD74HCT283, SCHS176E |
+| 74HCT283 | A/B → S | 21 | 49 | 61 | CD74HCT283, SCHS176E |
+| 74HCT541 | A → Y | 13 | 23 | 29 | SN74HCT541, SCLS306E |
+| 74HCT541 | OE → Y | 21 | 30 | 38 | SN74HCT541, SCLS306E |
 
-Sourcing notes:
-- The 74HCT27 is the least common part on this list. If it can't be found, Z can be computed differently (see alu-decisions.md D8), but every option found so far costs one more chip.
-- On TI parts, check the exact suffix: SN74HCT541NE4 shows as obsolete on Arrow while SN74HCT541N is active.
+Notes:
+- The CD74HCT153 datasheet lists "I to Y" twice for the HCT types, at 24/30 ns (typ 9) and at 34/43 ns (typ 14). The table keeps the slower one.
+- The CD74HCT240 gives no HCT typical for the enable time. 12 ns is the HC typical.
+- At 5 V instead of 4.5 V, everything is about 10 % faster. Every Max 85 °C figure is about 1.25 × the Max 25 °C one.
+- The Nexperia SOIC parts are in the same range, but they are specified differently (typ at 4.5 V and 50 pF). Check their datasheet before relying on a SOIC timing.
 
 ## In Logisim but not a 74HCT part (don't use)
 
@@ -39,7 +86,7 @@ Sourcing notes:
 
 ## Real 74HCT parts missing from Logisim
 
-- **74HCT688** (8-bit equality comparator): would give A = B in one chip. CMP uses the subtractor instead (D6).
-- **74HCT4078** (8-input NOR/OR): would give Z in one chip instead of 74HCT27 + 74HCT11.
+- **74HCT688** (8-bit equality comparator): would give A = B in one chip. CMP uses the subtractor instead (alu-decisions.md D6).
+- **74HCT4078** (8-input NOR/OR): would give Z in one chip instead of 74HCT27 + 74HCT11. Not used: the 4078 is mostly sold as HC, and the 27 + 11 cost one chip more but no new model.
 - **74HCT540** (inverting 541): the 74HCT240 does the same job here.
 - **74HCT154** (4-to-16 decoder): would remove the 7411 gate behind the shift-right enable.

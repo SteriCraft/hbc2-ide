@@ -1,0 +1,14 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT02,quad 2-input NOR,1,CD74HCT02E,SN74HCT02D or 74HCT02D (Nexperia),flags8,1
+74HCT08,quad 2-input AND,3,SN74HCT08N,74HCT08D (Nexperia),add_sub8 logic8,1
+74HCT11,triple 3-input AND,2,CD74HCT11E,74HCT11D (Nexperia),flags8 rmux8,1
+74HCT27,triple 3-input NOR,1,CD74HCT27E,74HCT27D (Nexperia),flags8,1
+74HCT32,quad 2-input OR,2,SN74HCT32N,74HCT32D (Nexperia),logic8,1
+74HCT86,quad 2-input XOR,5,CD74HCT86E,74HCT86D (Nexperia),add_sub8 logic8,1
+74HCT138,3-to-8 decoder,1,SN74HCT138N,74HCT138D (Nexperia),rmux8,1
+74HCT153,dual 4-to-1 multiplexer,1,CD74HCT153E,74HCT153D (Nexperia),shift8,1
+74HCT157,quad 2-to-1 multiplexer,2,CD74HCT157E,74HCT157D (Nexperia),arith8,1
+74HCT240,"octal inverting buffer, tri-state",1,CD74HCT240E,74HCT240D (Nexperia),rmux8,1
+74HCT283,4-bit binary adder,2,CD74HCT283E,CD74HCT283M96 (TI),add_sub8,1
+74HCT541,"octal buffer, tri-state",6,SN74HCT541N,74HCT541D (Nexperia),rmux8,1
+total,12 part numbers,27,,,,12

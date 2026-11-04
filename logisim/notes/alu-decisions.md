@@ -50,7 +50,7 @@ Reason: same chip count as (b) and (c), no extra gate, and only the select line 
 
 Options: (a) 2 × 74HCT85 magnitude comparators in cascade; (b) the 74HCT688 for E, which is missing from Logisim and doesn't give S/F; (c) run CMP as SUB and derive the flags from it.
 Choice: **(c)**. The emulator compares unsigned, so after a - b: F = borrow, E = Z of the result, S = nor(borrow, Z). This costs one 74HCT02 gate, in flags8. CMP uses the same alu_op as SUB (0001): the ALU always computes the same thing, and the control unit stores S E F instead of r C Z N.
-Reason: saves 2 chips. Cost: S comes last in the timing (≈ 131 ns typ), still under 200 ns.
+Reason: saves 2 chips. Cost: S comes last in the timing (321 ns at 85 °C max, see D13).
 
 ## D7. Result multiplexer: a tri-state bus (rmux8)
 
@@ -60,7 +60,7 @@ Reason: fewest chips, and the shifts are free because they are wiring into their
 
 ## D8. Z: 74HCT27 + 74HCT11, as before
 
-Options: 74HCT4078 (8-input NOR), missing from Logisim; 74HCT30 (8-input NAND), which needs 8 inverters; a NOR tree of 74HCT02s, 3 chips. Kept: 3 × NOR3 (74HCT27), then AND3 (74HCT11), 2 chips.
+Options: 74HCT4078 (8-input NOR), missing from Logisim; 74HCT30 (8-input NAND), which needs 8 inverters; a NOR tree of 74HCT02s, 3 chips. Kept: 3 × NOR3 (74HCT27), then AND3 (74HCT11), 2 chips. Gianni confirmed on 2026-11-04: no 4078 model. Saving one chip isn't worth an HC part and a new model type.
 
 ## D9. alu_op encoding (4 bits, no decoding glue)
 
@@ -99,7 +99,7 @@ It has 60 input bits, and there is no emulator function for a multiplexer. Its r
 
 ## D13. Timing
 
-The worst case is the S flag, about 131 ns typical (alu-report.md). That is under the 200 ns target with typical values. With 25 °C maximum values (about 1.5 ×) it is about 200 ns. See the review list.
+Redone on 2026-11-04 from the TI datasheets of the DIP parts (chips.md "Delays", `tools/timing.py`). The worst case is the S flag: 111 ns typ, 257 ns max at 25 °C, **321 ns max at 85 °C**. Z/E (295) and C (277) are also over 250 ns at 85 °C. That is fine if the ALU gets a full 2 MHz step (391 ns with the registers' clock-to-Q and setup), and too slow if it gets half a step. The report lists fixes and their cost, none applied. See the review list.
 
 ## D14. Layout margin
 
@@ -112,7 +112,7 @@ Gianni moved add_sub8 and alu so the input pin labels show. New circuits put the
 3. **Tri-state result bus** (D7): brief overlap between buffers when alu_op changes. It's fine at 2 MHz, but if you'd rather avoid any contention, an 8 × 74HCT151 multiplexer costs about 2 more chips.
 4. **27 chips; 26 if flags8 and rmux8 are merged** (D10). Tell me if you prefer fewer chips over separate modules.
 5. **alu_op encoding** (D9): check that it suits the control unit you have in mind. CMP shares 0001 with SUB.
-6. **Delay figures are estimates** (chips.md): typical values at 4.5 V, some from the family rather than the exact datasheet. The 74HCT283 figures matter most, since it is on every critical path.
+6. **ALU time budget**: with datasheet maxima at 85 °C, S, Z/E and C need 277 to 321 ns, so the ALU needs a full 500 ns step at 2 MHz (391 ns with register timing). Decide this when the control unit is designed; the fixes F1 to F5 and their cost are in alu-report.md. I recommend F1 (a full step, 0 chips).
 7. **`alu` ports changed**: alu_s (result) became alu_r, alu_s is now the Superior flag, and alu_sub/alu_use_c became alu_op. Nothing instantiates alu yet (`tools/usages.py alu`), so nothing needs rewiring.
-8. **The 74HCT27 is the hardest part to find** (chips.md). It's still in stock at some distributors, and Nexperia makes it in SO-14.
+8. ~~The 74HCT27 is the hardest part to find.~~ Wrong: Gianni's Octopart check (2026-11-04) shows all 12 part numbers are easy to buy, the 74HCT27 included. The references to order are in chips.md and bom-alu.csv.
 9. No emulator bug found. Each ALU instruction writes exactly the flags listed in the instruction table, which `hbc2 vectors` checks on every row.

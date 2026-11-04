@@ -9,6 +9,8 @@ Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/
 | `circcheck.py file [-c C] [--strict] [--no-libs]` | Wiring check: ports in the middle of a wire, overlaps, dangling ends, floating inputs, wires through chips; counts crossings |
 | `conventions.py file [-c C] [--no-libs]` | HBC-2 rules (conventions.md), file layout included, plus a summary of chips and ports |
 | `usages.py <module>` | Every instance of a module across logisim/*.circ, to report when its ports change |
+| `bom.py file [-c C] [-o CSV] [--check CSV]` | Bill of materials: counts the chips of a circuit and of every subcircuit instance, and takes the DIP/SOIC references from chips.md "Parts in use". A chip missing from that table is an error. `designs/alu.py` writes notes/bom-alu.csv with it. |
+| `timing.py [--limit NS]` | ALU path delays (typ, max 25 °C, max 85 °C) from chips.md "Delays". The paths are written by hand in the script; update them when a module changes. |
 | `render.py file [-c C] [--check]` | Approximate PNG of a layout, so I can review it without Logisim. PNGs are git-ignored. |
 | `logitest.py file circuit --emu [module]` | Test vectors from the emulator (`hbc2 vectors`) → Logisim run headless (`logisim-evolution.exe -w`) |
 | `logitest.py file circuit vectors.txt` | Run an existing vector file |

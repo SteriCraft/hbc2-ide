@@ -24,7 +24,7 @@ S E F for CMP (alu_op 0001).
 The blocks talk through tunnels named alu_<signal>; inputs on the left,
 alu_r on the right, flags at the bottom.
 
-    python alu.py           # write, check
+    python alu.py           # write, check, and write notes/bom-alu.csv
     python alu.py --test    # ... and run it in Logisim against the emulator (hbc2 vectors)
     python alu.py --png     # ... and draw it next to the .circ
 """
@@ -118,6 +118,13 @@ c.symbol(top=[f"{M}_op", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"], right=[f"{M}_r"
 
 if __name__ == "__main__":
     bad = p.save(OUT)
+    import bom      # the bill of materials follows the circuits (notes/bom-alu.csv)
+    text, errors = bom.bom(str(OUT), M)
+    for e in errors:
+        print("error  " + e)
+    (ROOT / "notes" / "bom-alu.csv").write_text(text, encoding="utf8", newline="\n")
+    print("wrote notes/bom-alu.csv")
+    bad += len(errors)
     if "--png" in sys.argv:
         import render
         import netlist

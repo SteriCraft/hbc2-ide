@@ -88,6 +88,9 @@ c.wire(port("c"), c.output((port("c")[0], 1000), f"{M}_c", facing="north"))
 c.symbol(top=[f"{M}_one", f"{M}_sub", f"{M}_use_c", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"],
          right=[f"{M}_s"], bottom=[f"{M}_c"])
 
+# Gianni moved everything by (20, 80) in Logisim so the labels show.
+c.move(20, 80)
+
 if __name__ == "__main__":
     bad = p.save(OUT)
     if "--png" in sys.argv:
