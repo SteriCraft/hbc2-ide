@@ -154,6 +154,22 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[Issue], dict]:
         elif c.kind == "tunnel":
             add("warning", loc, f"tunnel {c.label} is not connected")
 
+    # a Ground / Power / Constant tied to a net that something else drives:
+    # usually a rail that ran into a constant's port by accident
+    for net in circ.nets:
+        consts, drivers = [], []
+        for ci, pi in net.members:
+            c = circ.comps[ci]
+            p = c.ports[pi]
+            if c.kind in ("const", "power", "ground"):
+                consts.append(c)
+            elif (c.kind in ("ttl", "sub") and p.dir == "out") or \
+                    (c.kind == "pin" and c.attrs.get("type") != "output"):
+                drivers.append(f"{c.ident}.{nl.port_label(c, p)}")
+        if consts and (drivers or len(consts) > 1):
+            what = ", ".join([c.ident for c in consts] + drivers)
+            add("error", consts[0].loc, f"constant driven by something else on net {net.name}: {what}")
+
     # wires through chips
     for c in circ.comps:
         if c.kind == "ttl":

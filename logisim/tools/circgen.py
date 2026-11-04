@@ -472,6 +472,41 @@ def nested_rails(pins: dict, toward: str, first: int = 20, pitch: int = 20) -> d
     return {n: first + i * pitch for i, n in enumerate(order)}
 
 
+def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict, ends: dict,
+               first: int = 20) -> None:
+    """The add_sub8 wiring style for a chip facing east: every pin in
+    `signals` leaves its edge (top pins up, bottom pins down) on a nested
+    rail, then runs left to:
+
+      ("<bus>", bit)  a 1-bit tap 20 px right of line_x[bus]; the tap end is
+                      added to taps[bus] (draw the bus later with c.bus)
+      ("<line>", None) a 1-bit vertical line at line_x[line]; the rail's y is
+                      added to ends[line] (draw the line through them later)
+      ("gnd", None) / ("vcc", None)  a Ground / Power facing west, 10 px left
+                      of the chip's anchor
+    A line is a bus when it is a key of `taps`, a 1-bit line when it is a key
+    of `ends`."""
+    for side in ("top", "bottom"):
+        edge_y = chip.loc[1] + (-30 if side == "top" else 30)
+        away = -1 if side == "top" else 1
+        pins = {n: chip[n] for n in signals if chip[n][1] == edge_y}
+        for name, depth in nested_rails(pins, toward="left", first=first).items():
+            line, bit = signals[name]
+            y = edge_y + away * depth
+            if line in ("gnd", "vcc"):
+                end = (chip.loc[0] - 10, y)
+                c.add("#Wiring", "Ground" if line == "gnd" else "Power", end, facing="west")
+            elif line in taps:
+                end = (line_x[line] + 20, y)
+                taps[line].append((end, bit))
+            elif line in ends:
+                end = (line_x[line], y)
+                ends[line].append(y)
+            else:
+                raise KeyError(f"{chip.label}: {name} goes to unknown line {line!r}")
+            c.wire(end, (chip[name][0], y), chip[name])
+
+
 # --------------------------------------------------------------------------
 # Project
 # --------------------------------------------------------------------------
