@@ -115,6 +115,9 @@ c.bus((S_X, port("s")[1]), taps, width=8)
 c.symbol(top=[f"{M}_sub", f"{M}_use_c", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"],
          right=[f"{M}_s"], bottom=[f"{M}_c", f"{M}_n", f"{M}_z"])
 
+# Gianni moved everything by (160, 30) in Logisim so the labels on the left show.
+c.move(160, 30)
+
 if __name__ == "__main__":
     bad = p.save(OUT)
     if "--png" in sys.argv:

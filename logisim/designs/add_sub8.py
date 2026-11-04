@@ -160,6 +160,9 @@ for chip, top_free in ((and_, ("3B", "3A")), (xor_c, ())):
 c.symbol(top=[f"{M}_sub", f"{M}_use_c", f"{M}_cin"], left=[f"{M}_a", f"{M}_b"],
          right=[f"{M}_s"], bottom=[f"{M}_c"])
 
+# Gianni moved everything by (210, 90) in Logisim so the labels on the left show.
+c.move(210, 90)
+
 if __name__ == "__main__":
     bad = p.save(OUT)
     if "--png" in sys.argv:

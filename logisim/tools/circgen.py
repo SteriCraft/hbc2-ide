@@ -400,6 +400,18 @@ class Circuit:
             self.wire(a, b)
         return points
 
+    def move(self, dx: int, dy: int) -> None:
+        """Shift the whole drawing. Call it last: Part locations taken before
+        the move keep their old values. Used to keep a margin on the left and
+        top, where Logisim can't show labels that fall below x = 0 or y = 0."""
+        if not _on_grid((dx, dy)):
+            raise ValueError(f"move ({dx}, {dy}): not on the 10 px grid")
+        for p in self.parts:
+            p.loc = (p.loc[0] + dx, p.loc[1] + dy)
+            for port in p.ports:
+                port.loc = (port.loc[0] + dx, port.loc[1] + dy)
+        self.wires = [((a[0] + dx, a[1] + dy), (b[0] + dx, b[1] + dy)) for a, b in self.wires]
+
     # ---- output ----
     def _split_wires(self) -> list[tuple[Pt, Pt]]:
         """Split wires at the ends of other wires (T-junctions)."""
