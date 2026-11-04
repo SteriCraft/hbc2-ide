@@ -35,3 +35,6 @@ compiler/build/
 
 # installer output (installer.cmd)
 installer/output/
+
+# KiCad local history (a git repository of its own)
+kicad/**/.history/
