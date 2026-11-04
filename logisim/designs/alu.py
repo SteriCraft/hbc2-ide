@@ -12,7 +12,7 @@ Groups the ALU blocks (each a library file in circuits/alu/):
 
 alu_op (op3 op2 op1 op0) drives them directly, without any glue logic:
 
-    op3 = 0: arithmetic, op0 = sub, op1 = use_c, op2 ignored (01xx = 00xx)
+    op3 = 0: arithmetic, op0 = sub, op1 = use_c, op2 no effect (01xx = 00xx)
         0000 ADD (INC with b = 01)   0001 SUB, CMP (DEC with b = 01)
         0010 ADC   0011 SBB
     op3 = 1: 1000 AND  1001 OR  1010 XOR  1011 NOT  1100 SHL  1110 SHR  1111 ASR
@@ -100,12 +100,13 @@ flag_ports.update({f: u[f"cmp8_{f}"] for f in ("s", "e", "f")})
 # ---- inputs, left: op also split into its bits ------------------------------------
 X_IN = 220
 c.wire(c.input((X_IN, 100), f"{M}_op", 4), (X_IN + 80, 100), c.tunnel((X_IN + 100, 100), f"{M}_op", 4))
-sp = c.splitter((X_IN + 40, 140), 4, [[0], [1], [2], [3]], facing="east", appear="right", spacing=3)
+# op2 has no effect on arithmetic codes (01xx = 00xx); only rmux8 reads it, from alu_op
+sp = c.splitter((X_IN + 40, 140), 4, [[0], [1], [3]], facing="east", appear="right", spacing=3)
 c.wire((X_IN + 40, 100), (X_IN + 40, 140))
-for k in range(4):
+for k, bit in enumerate((0, 1, 3)):
     e = sp[f"end{k}"]
     c.wire(e, (e[0] + 20, e[1]))
-    c.tunnel((e[0] + 20, e[1]), f"{M}_op_{k}")
+    c.tunnel((e[0] + 20, e[1]), f"{M}_op_{bit}")
 for i, (n, w) in enumerate((("cin", 1), ("a", 8), ("b", 8))):
     y = 320 + 40 * i
     c.wire(c.input((X_IN, y), f"{M}_{n}", w), c.tunnel((X_IN + 20, y), f"{M}_{n}", w))

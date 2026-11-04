@@ -8,9 +8,16 @@ These rules come from the user and apply to every circuit I create or modify. If
 - Anything that will become a chip must come from `#TTL`. The board uses 74HCT, so a `7486` in Logisim is a 74HCT86.
 - Allowed for wiring: Pin, Splitter, Tunnel, Probe, Clock, Ground, Power, Constant, Text.
 - RAM and EEPROM come from `#Memory` (RAM, ROM) and use the real chip's pinout, e.g. 62256 / 28C256 with `ce_n`, `oe_n`, `we_n`.
-- Forbidden in a module: `#Gates`, `#Plexers`, `#Arithmetic`, and the registers and counters of `#Memory`. Test benches may use them.
+- Forbidden in a module: `#Gates`, `#Plexers`, `#Arithmetic`, and the registers and counters of `#Memory`. Test benches and chip models may use them.
 - Constant is allowed in modules: it stands for inputs tied to GND/5V (e.g. the value 01 for INC).
-- If a chip is missing from `#TTL`, don't build it from gates. Tell the user, and suggest a real 74HCT part in a DIP package.
+- If a chip is missing from `#TTL`, model it (2026-11-04):
+  - one file per chip, `circuits/chips/<part>.circ` (part number without the family, e.g. `74574.circ`), circuit named `<part>`, made by `designs/<part>.py`;
+  - from the datasheet, never from memory; the datasheet PDF goes in `circuits/chips/` (ask Gianni when it's missing);
+  - pins: the datasheet's numbers and names, in DIP order, VCC and GND included and left unconnected inside (`Circuit.dip_symbol`);
+  - behaviour exactly as the datasheet's function table (tri-state outputs, active-low pins, asynchronous set/clear, transparent latches);
+  - inside: generic Logisim components (gates, flip-flops, registers, controlled buffers) are allowed in a model only;
+  - tests: `test_<part>` in the same file, exhaustive for the combinational part, sequences for stored state;
+  - an instance of a model is a chip: `U<n>` label, counted by bom.py, a row in chips.md "Parts in use".
 - Don't wire VCC and GND. Tie every unused input to Ground (or Power if the logic needs it). Leave unused outputs unconnected.
 
 ## Circuits

@@ -102,7 +102,7 @@ It has 60 input bits, and there is no emulator function for a multiplexer. Its r
 
 ## D13. Timing
 
-Final figures after D15–D17 (`tools/timing.py`): worst case **alu_z, 95 ns typ / 205 ns max 25 °C / 257 ns max 85 °C**, 7 ns over 250. Everything else is at or under 247 ns (alu_c). See alu-report.md.
+Final figures after D15–D17 (`tools/timing.py`): worst case **alu_z, 95 ns typ / 205 ns max 25 °C / 257 ns max 85 °C**. The budget is the 500 ns step (F1), so that leaves 173 ns of margin with the registers; the earlier 250 ns target was arbitrary (Gianni, 2026-11-04). Everything else is at or under 247 ns (alu_c). See alu-report.md.
 
 Before D15–D17 (kept for the record): redone on 2026-11-04 from the TI datasheets of the DIP parts (chips.md "Delays", `tools/timing.py`). The worst case is the S flag: 111 ns typ, 257 ns max at 25 °C, **321 ns max at 85 °C**. Z/E (295) and C (277) are also over 250 ns at 85 °C. That is fine if the ALU gets a full 2 MHz step (391 ns with the registers' clock-to-Q and setup), and too slow if it gets half a step. The report lists fixes and their cost, none applied. See the review list.
 
@@ -130,9 +130,9 @@ With the 157s of D16 removed, the slowest way into U6's carry is now the carry-i
 2. **CMP is unsigned** in the emulator (`a > b` on u8). The manual only says `FR = R1 ? R2`. Signed compares would need different logic (S/F from N xor V); today they need a software trick.
 3. **Tri-state result bus** (D7): brief overlap between buffers when alu_op changes. It's fine at 2 MHz, but if you'd rather avoid any contention, an 8 × 74HCT151 multiplexer costs about 2 more chips.
 4. **29 chips; 28 if flags8 and rmux8 are merged** (D10). Tell me if you prefer fewer chips over separate modules.
-5. **alu_op encoding** (D9): check that it suits the control unit you have in mind. CMP shares 0001 with SUB, INC is 0000 and DEC 0001 with b = 01, and op2 is free when op3 = 0.
-6. **ALU time budget**: decided, F1 (a full step) plus F2–F4 built (D15–D17). alu_z is still 7 ns over 250 at 85 °C max (257 ns). With a full 500 ns step the worst case is 257 + 45 + 25 = 327 ns. Two ways to get under 250 are in alu-report.md, not applied. Tell me if you want one.
-10. **01 source for INC/DEC** (D16): needed in the register/bus section.
+5. **alu_op encoding** (D9): check that it suits the control unit you have in mind. CMP shares 0001 with SUB, INC is 0000 and DEC 0001 with b = 01, and op2 has no effect on arithmetic codes (01xx = 00xx). alu.py no longer splits op2 out; only rmux8 reads it, from alu_op.
+6. **ALU time budget**: closed (2026-11-04). F1 (a full step) plus F2–F4 built (D15–D17). alu_z = 257 ns at 85 °C max is within the 500 ns step: 257 + 45 + 25 = 327 ns, 173 ns of margin. Options A/B of alu-report.md not applied.
+10. **01 source for INC/DEC** (D16): handed to the register/bus section, [registers-requirements.md](registers-requirements.md) R1.
 7. **`alu` ports changed**: alu_s (result) became alu_r, alu_s is now the Superior flag, and alu_sub/alu_use_c became alu_op. Nothing instantiates alu yet (`tools/usages.py alu`), so nothing needs rewiring.
 8. ~~The 74HCT27 is the hardest part to find.~~ Wrong: Gianni's Octopart check (2026-11-04) shows all 12 part numbers are easy to buy, the 74HCT27 included. The references to order are in chips.md and bom-alu.csv.
 9. No emulator bug found. Each ALU instruction writes exactly the flags listed in the instruction table, which `hbc2 vectors` checks on every row.

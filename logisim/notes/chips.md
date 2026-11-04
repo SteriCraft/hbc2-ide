@@ -10,7 +10,7 @@ Two tools read the tables below, so keep their column names:
 
 - Every chip must be sold as a **74HCTxx**, the CMOS family with TTL-compatible inputs.
 - Both DIP and **SMD (SOIC)** are fine; it doesn't have to be through-hole. DIP is for the breadboard, SOIC for the final PCBs.
-- If a chip is missing from Logisim's `#TTL` library, pick another real part instead of building it from gates.
+- If a chip is missing from Logisim's `#TTL` library, it can be **modelled** (rule replaced 2026-11-04): one file per chip, `circuits/chips/<part>.circ`, made from the datasheet (kept next to it), with the datasheet's pin numbers and names in DIP order, VCC and GND included, and tested in `test_<part>` in the same file. Generic Logisim components are allowed inside a model only. A model instance is a chip like any other: `U<n>` label, counted by bom.py, listed below. See [conventions.md](conventions.md). Choices made under the old rule stand (cmp8 keeps its 7485s).
 
 Sourcing rules, for every section:
 - **Never use Nexperia DIP parts** (suffix `N`, such as 74HCT86N). They have been obsolete since 2015, and what is left is sold by unauthorised resellers.
@@ -92,7 +92,7 @@ Notes:
 
 ## Real 74HCT parts missing from Logisim
 
-- **74HCT688** (8-bit equality comparator): would give A = B in one chip, but it would need a home-made model. cmp8 uses two 74HCT85 instead, which give S, E and F (alu-decisions.md D15).
+- **74HCT688** (8-bit equality comparator): would give A = B in one chip, but it would have needed a model (not allowed then). cmp8 uses two 74HCT85 instead, and keeps them, which give S, E and F (alu-decisions.md D15).
 - **74HCT4078** (8-input NOR/OR): would give Z in one chip instead of 74HCT27 + 74HCT11. Not used: the 4078 is mostly sold as HC, and the 27 + 11 cost one chip more but no new model.
 - **74HCT540** (inverting 541): the 74HCT240 does the same job here.
 - **74HCT154** (4-to-16 decoder): would remove the 7411 gate behind the shift-right enable.

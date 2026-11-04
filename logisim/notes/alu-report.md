@@ -25,7 +25,7 @@ The ALU never stores anything. The control unit chooses which flags the flag reg
 | 0001 | SUB, CMP; DEC with b = 01 | a - b | borrow |
 | 0010 | ADC | a + b + cin | carry |
 | 0011 | SBB | a - b - cin | borrow |
-| 01xx | (aliases of 00xx) | | |
+| 01xx | (aliases of 00xx: op2 has no effect on arithmetic codes, 01xx = 00xx) | | |
 | 1000 | AND | a and b | (a7) |
 | 1001 | OR | a or b | (a0) |
 | 1010 | XOR | a xor b | (a7) |
@@ -72,7 +72,7 @@ From the TI datasheets of the DIP parts (chips.md, "Delays"), CL = 50 pF. Max va
 
 Typ is only a rough guide: the CD74HCT datasheets give their typical at 5 V and 15 pF (chips.md).
 
-**Worst case: alu_z, 95 ns typ / 205 ns max 25 °C / 257 ns max 85 °C**, 7 ns over the 250 ns target. Every other output is at or under 247 ns (alu_c). The arithmetic result is 193 ns, and S/E/F 84–89 ns.
+**Worst case: alu_z, 95 ns typ / 205 ns max 25 °C / 257 ns max 85 °C.** The budget is the full 500 ns step (F1), not 250 ns: the 250 ns figure was an arbitrary early target, so 257 ns is not a miss (Gianni, 2026-11-04). Every other output is at or under 247 ns (alu_c). The arithmetic result is 193 ns, and S/E/F 84–89 ns.
 
 Before the fixes, the worst case was alu_s at 111 / 257 / 321 ns. My estimate for the fixes was 229 ns for Z, and the build gives 257 ns. Once the 157 is gone from the B path, the carry-in logic (74HCT08 then 74HCT86, 70 ns at 85 °C) reaches U6's carry later than b does (40 ns), and I had left that path out.
 
@@ -80,14 +80,16 @@ Before the fixes, the worst case was alu_s at 111 / 257 / 321 ns. My estimate fo
 
 The ALU gets a full 500 ns step (F1, approved). Register clock to Q (SN74HCT574, 45) + alu_z (257) + setup (25) = **327 ns at 85 °C max**, so 173 ns of margin.
 
-### Getting alu_z under 250 ns (not applied)
+### Getting alu_z under 250 ns (not needed, not applied)
+
+Kept for the record. Gianni decided on 2026-11-04 to leave alu_z as it is.
 
 | Option | alu_z max 85 °C | Cost |
 |---|---|---|
 | A. The control unit gives the ALU the adder's carry in ready-made (sub xor (use_c and C), computed in an earlier step), instead of alu_cin | 229 | −1 74HCT08 in the ALU. The gates move to the control unit, which must have them ready at the start of the step |
 | B. Regulated 5 V ±5 % supply (4.75 V minimum instead of 4.5 V) | about 245 | no change. The datasheets only give 4.5 V and 6 V, so this is an estimate |
 
-My recommendation: none. With the full step there is enough margin, and A changes the ALU's interface for 28 ns. If the control unit ends up with spare time before the ALU step, A is cheap.
+Decision: neither. With the full step there are 173 ns of margin.
 
 ## Tests (hbc2 vectors → Logisim headless, logitest.py)
 
