@@ -55,8 +55,8 @@
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="230" y="67">add_sub8_use_c</text>
       <rect height="10" stroke="none" width="3" x="339" y="40"/>
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="340" y="67">add_sub8_cin</text>
-      <rect height="10" stroke="none" width="3" x="224" y="170"/>
-      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="225" y="162">add_sub8_c</text>
+      <rect height="10" stroke="none" width="3" x="219" y="170"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="220" y="162">add_sub8_c</text>
       <rect height="4" stroke="none" width="10" x="50" y="98"/>
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="104">add_sub8_a</text>
       <rect height="4" stroke="none" width="10" x="50" y="128"/>
@@ -68,7 +68,7 @@
       <circ-port dir="in" pin="140,60" x="110" y="40"/>
       <circ-port dir="in" pin="400,60" x="230" y="40"/>
       <circ-port dir="in" pin="680,60" x="340" y="40"/>
-      <circ-port dir="out" pin="1100,1060" x="225" y="180"/>
+      <circ-port dir="out" pin="1100,1060" x="220" y="180"/>
       <circ-port dir="in" pin="60,130" x="50" y="100"/>
       <circ-port dir="in" pin="60,170" x="50" y="130"/>
       <circ-port dir="out" pin="1180,150" x="410" y="100"/>

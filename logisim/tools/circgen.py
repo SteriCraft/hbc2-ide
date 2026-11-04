@@ -216,7 +216,7 @@ def symbol_xml(name: str, sides: dict, pins: dict) -> str:
     L.append(f'<rect fill="none" height="{H}" stroke="#000000" stroke-width="2" width="{W}" x="{x0}" y="{y0}"/>')
     for edge in ("top", "bottom"):
         labs = side[edge]
-        x = x0 + (W - row_w(labs)) // 2
+        x = x0 + (W - row_w(labs)) // 20 * 10      # keep ports on the 10 px grid
         for lab in labs:
             cx = x + slot(lab) // 2 // 10 * 10
             x += slot(lab)
