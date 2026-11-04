@@ -142,6 +142,10 @@ void term_prompt(void);             // '>' at the start of the row, cursor after
 char *term_readline(void);
 void term_update(void);             // cursor blink and keys; called by term_readline
 
+// Cursor position
+void term_get_cursor_pos(char *row, char *column);   // 0, 0 is top left
+char term_set_cursor_pos(char row, char column);     // 0, 0 is top left, returns 0 if values are in bound
+
 
 // --- Real-time clock --------------------------------------------------
 

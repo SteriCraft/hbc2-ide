@@ -301,6 +301,49 @@ term_blink_end:
     ret
 
 ; ------------------------------------------------------------
+; void term_get_cursor_pos(char *row, char *column)
+; _term_get_cursor_pos: stores the cursor row and column positions
+; at the addresses given in the parameters
+; ------------------------------------------------------------
+
+_term_get_cursor_pos:
+    lod x, [sp + 2]                     ; [sp + 2]: char *row pointer's MSB
+    lod y, [sp + 3]                     ; [sp + 3]: char *row pointer's LSB
+    lod a, term_row
+    str [x:y], a                        ; Store row number at the pointer's address
+    lod x, [sp + 4]                     ; [sp + 4]: char *column pointer's MSB
+    lod y, [sp + 5]                     ; [sp + 5]: char *column pointer's LSB
+    lod a, term_col
+    str [x:y], a                        ; Store column number at the pointer's address
+    ret
+
+; ------------------------------------------------------------
+; char term_set_cursor_pos(char row, char column)
+; _term_set_cursor_pos: sets the cursor row and column positions
+; returns 0 if values are in bound
+; ------------------------------------------------------------
+
+_term_set_cursor_pos:
+    lod a, [sp + 2]                     ; [sp + 2]: char row
+    cmp a, SCREEN_ROWS
+    jmf term_set_cursor_pos_row_ok  ; row < 24
+    mov b, 1
+    ret
+term_set_cursor_pos_row_ok:
+    lod b, [sp + 3]                     ; [sp + 3]: char column
+    cmp b, SCREEN_COLUMNS
+    jmf term_set_cursor_pos_col_ok  ; column < 42
+    mov b, 1
+    ret
+term_set_cursor_pos_col_ok:
+    cal term_cursor_hide
+    str term_row, a
+    str term_col, b
+    cal term_cursor_show
+    mov b, 0
+    ret
+
+; ------------------------------------------------------------
 ; Keyboard
 ; ------------------------------------------------------------
 ; The keyboard interrupts the CPU for each key pressed (first port) and
