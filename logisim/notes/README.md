@@ -45,7 +45,7 @@ Register section (circuits/registers/, designs/regs.py):
 |---|---|---|
 | `regs` (8 registers, two read ports, write path, operand latches, A/B buses, data bus drivers) | 8 × 74HCT670, 4 × 74HCT153, 3 × 74HCT574, 2 × 74HCT541, 74HCT32 (18) | 30,756 / 30,756 (`regs`, model) and 148,864 / 148,864 (`regs_cpu`, the real CPU) |
 
-Chip models (circuits/chips/, rules in conventions.md; the circuit inside is named `ttl<part>`): `74574` (2,064 / 2,064 datasheet rows); `test_74670` checks Logisim's own 74670 (912 / 912).
+Chip models (circuits/chips/, rules in conventions.md; the circuit inside is named `ttl<part>`): `74574` (2,064 / 2,064 datasheet rows); `test_74670` checks Logisim's own 74670 (912 / 912), `test_74377` its 74377 (250 / 250).
 
 `arith8` (add_sub8 + 2 × 74HCT157 for B := 01) was removed on 2026-11-04: INC and DEC now take b = 01 from the control unit (alu-decisions.md D16).
 

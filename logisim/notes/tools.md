@@ -44,7 +44,7 @@ A chip missing from #TTL is a circuit named after the part, in `circuits/chips/<
 - netlist.py marks a model as kind "chip" (`chip_model`), numbers its ports by DIP pin (shown `pin:name`), and knows the generic parts allowed inside a model (NOT Gate, Controlled Buffer, Register, D Flip-Flop: kind "generic").
 - conventions.py checks a model (VCC/GND pins present and unwired, unique pin names, a DIP symbol, only allowed parts) and treats its instances as chips (`U<n>`, floating inputs are errors); bom.py counts them.
 - The model circuit is named `ttl<part>` (`netlist.chip_model` maps it back to the part number; conventions.py checks it). Instantiate it from another file with `c.sub(p.library(".../chips/74574.circ"), "ttl74574", loc)`.
-- Done: `74574` (designs/74574.py, 2,064 datasheet rows). `test_74670.circ` (designs/test_74670.py) checks Logisim's own 74670 against its datasheet (912 rows), so it has no model.
+- Done: `74574` (designs/74574.py, 2,064 datasheet rows). `test_74670.circ` (designs/test_74670.py) checks Logisim's own 74670 against its datasheet (912 rows), so it has no model; `test_74377.circ` (designs/test_74377.py) does the same for the 74377 (250 rows).
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.

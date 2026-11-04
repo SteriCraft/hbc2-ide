@@ -116,6 +116,8 @@ So Typ is a rough guide only.
 | 74HCT283 | Cin → C4 | 19 | 46 | 58 | CD74HCT283, SCHS176E |
 | 74HCT283 | A/B → C4 | 20 | 48 | 60 | CD74HCT283, SCHS176E |
 | 74HCT283 | A/B → S | 21 | 49 | 61 | CD74HCT283, SCHS176E |
+| 74HCT377 | CP → Q | 16 | 38 | 48 | CD74HCT377, SCHS184C (typ: 5 V, 15 pF; standard outputs) |
+| 74HCT377 | setup D, /E → CP | 12 | 12 | 15 | CD74HCT377, SCHS184C (a minimum; hold D 3, /E 5) |
 | 74HCT541 | A → Y | 13 | 23 | 29 | SN74HCT541, SCLS306E |
 | 74HCT541 | OE → Y | 21 | 30 | 38 | SN74HCT541, SCLS306E |
 | 74HCT574 | CP → Q | 15 | 33 | 41 | CD74HCT574, SCHS183E |
@@ -162,6 +164,7 @@ Before buying: check that the DIP and SOIC references are active and sold by an 
 | Part | In #TTL | Note |
 |---|---|---|
 | 7474, 74138, 74153, 74157, 74161, 74175, 74193, 74377, 74541, 74670 | yes | |
+| 74377 | yes | checked against cd74hct377.pdf (TI SCHS184C) by [circuits/chips/test_74377.circ](../circuits/chips/test_74377.circ): loads on CP rising with /E low, /E is sampled at the edge (no gated clock: /E moving while CP is high loads nothing), 250 / 250 rows |
 | 74574 | **no** | modelled: [circuits/chips/74574.circ](../circuits/chips/74574.circ) (circuit `ttl74574`), from cd74hct574.pdf |
 
 Logisim's 74670 was checked against the CD74HCT670 datasheet (cd74hc670.pdf, which covers HCT) by [circuits/chips/test_74670.circ](../circuits/chips/test_74670.circ): writes are transparent while /WE is low (the addressed word follows D), reads with /RE high are high impedance. It needs no model.
