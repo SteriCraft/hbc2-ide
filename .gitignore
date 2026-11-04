@@ -9,7 +9,10 @@ Documentation/doxygen_working_dir
 Documentation/Logisim
 Documentation/Code Doc
 Documentation/Files sources
-Logisim/
+
+# Python caches, and layout previews drawn by logisim/tools/render.py
+__pycache__/
+logisim/**/*.png
 
 # ignore code line counter script
 codeLinesNumbers.sh
