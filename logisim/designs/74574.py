@@ -35,7 +35,7 @@ OUT = ROOT / "circuits" / "chips" / f"{PART}.circ"
 ORDER = ["/OE"] + [f"D{k}" for k in range(8)] + ["GND", "CP"] + [f"Q{k}" for k in range(7, -1, -1)] + ["VCC"]
 
 p = Project()
-m = p.circuit(PART)
+m = p.circuit("ttl" + PART)            # not "74574": see netlist.chip_model
 
 X_PIN, X_SP, X_R, Y0 = 100, 200, 280, 200       # D pins, D splitter, register; Y0 = the 8-bit data line
 X_B = X_R + 100                                  # output buffer

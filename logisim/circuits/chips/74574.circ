@@ -19,7 +19,7 @@
   <lib desc="#BFH-Praktika" name="10"/>
   <lib desc="#Input/Output-Extra" name="11"/>
   <lib desc="#Soc" name="12"/>
-  <main name="74574"/>
+  <main name="ttl74574"/>
   <options>
     <a name="gateUndefined" val="ignore"/>
     <a name="simlimit" val="1000"/>
@@ -42,9 +42,9 @@
       <a name="type" val="output"/>
     </tool>
   </toolbar>
-  <circuit name="74574">
+  <circuit name="ttl74574">
     <a name="appearance" val="custom"/>
-    <a name="circuit" val="74574"/>
+    <a name="circuit" val="ttl74574"/>
     <a name="circuitnamedboxfixedsize" val="true"/>
     <a name="simulationFrequency" val="1.0"/>
     <appear>
@@ -319,7 +319,7 @@
     <a name="circuit" val="test_74574"/>
     <a name="circuitnamedboxfixedsize" val="true"/>
     <a name="simulationFrequency" val="1.0"/>
-    <comp loc="(400,400)" name="74574">
+    <comp loc="(400,400)" name="ttl74574">
       <a name="label" val="U1"/>
     </comp>
     <comp lib="0" loc="(400,420)" name="Tunnel">

@@ -51,7 +51,7 @@ import circcheck  # noqa: E402
 import netlist as nl  # noqa: E402
 
 SNAKE = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
-GLOBAL = re.compile(r"^(clk|rst_n|pc|sp|reg_[a-z]|flag_[a-z]|bus_[a-z0-9_]+)$")
+GLOBAL = re.compile(r"^(clk|clk_wr_n|rst_n|pc|sp|reg_[a-z]|flag_[a-z]|bus_[a-z0-9_]+)$")
 WIRING_OK = {"Pin", "Splitter", "Tunnel", "Probe", "Clock", "Ground", "Power"}
 MODULE_WIRING_OK = WIRING_OK | {"Constant"}   # tied to GND/5V, e.g. 01 for INC
 MEMORY_OK = {"RAM", "ROM"}
@@ -101,7 +101,7 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
             for c in circ.comps if c.kind == "pin"]}
     if not SNAKE.match(circ.name):
         add("error", (0, 0), f"circuit name {circ.name!r} is not lowercase snake_case")
-    if kind == "test" and circ.name[5:] not in circ.project.circuits:
+    if kind == "test" and circ.name[5:] not in circ.project.circuits and "ttl" + circ.name[5:] not in circ.project.circuits:
         add("warning", (0, 0), f"test bench {circ.name}: no module named {circ.name[5:]!r}")
 
     chips, ports = [], []
@@ -128,7 +128,7 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
             add("error", loc, f"{what} is not lowercase snake_case")
         elif kind == "module" and not label.startswith(circ.name + "_") and not GLOBAL.match(label):
             add("error", loc, f"{what} lacks the module prefix '{circ.name}_'")
-        if width > 1 and label.endswith(str(width)):
+        if width > 1 and label.endswith(str(width)) and not re.search(r"_r\d$", label):  # R1..R3 are field names
             add("warning", loc, f"{what} seems to carry its width ({width}) in its name")
 
     # chip labels
@@ -140,8 +140,8 @@ def check_circuit(circ: nl.Circuit) -> tuple[list[circcheck.Issue], dict]:
             add("error", loc, f"{name} at {loc}: label {lab} is used {seen[lab]} times")
     def body(chip):         # (top, left) of the chip body; the anchor depends on the facing
         name, loc, _, facing = chip
-        if name not in nl.TTL:
-            return loc[1], loc[0]
+        if name not in nl.TTL:   # chip model: DIP symbol, anchor = pin 1 at the bottom, body 100 px tall
+            return loc[1] - 100, loc[0]
         x1, y1, _, _ = circcheck.ttl_body(nl.Comp("ttl", name, "#TTL", loc, {"facing": facing}))
         return y1, x1
     order = [c[2] for c in sorted(chips, key=body)]
@@ -227,11 +227,14 @@ def check_file_layout(proj: nl.Project) -> list[circcheck.Issue]:
                 add("error", f"cpu.circ must hold only main, not {', '.join(sorted(names - {'main'})) or 'nothing'}")
         elif len(parts) == 3 and parts[0] == "circuits":
             m = proj.path.stem
-            extra = names - {m, f"test_{m}"}
-            if m not in names:
-                add("error", f"{rel.as_posix()} has no circuit named {m!r}")
+            main = m
+            if parts[1] == "chips" and not m.startswith("test_"):
+                main = "ttl" + m         # chip model circuit: ttl<part> (netlist.chip_model)
+            extra = names - {main, f"test_{m}"}
+            if main not in names:
+                add("error", f"{rel.as_posix()} has no circuit named {main!r}")
             if extra:
-                add("error", f"{rel.as_posix()} must hold only {m} and test_{m}, not {', '.join(sorted(extra))}")
+                add("error", f"{rel.as_posix()} must hold only {main} and test_{m}, not {', '.join(sorted(extra))}")
             if not SNAKE.match(parts[1]):
                 add("error", f"folder circuits/{parts[1]}/ is not lowercase snake_case")
         else:

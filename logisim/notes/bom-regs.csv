@@ -1,0 +1,8 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT32,quad 2-input OR,1,SN74HCT32N,74HCT32D (Nexperia),regs,1
+74HCT153,dual 4-to-1 multiplexer,4,CD74HCT153E,74HCT153D (Nexperia),regs,1
+74HCT240,"octal inverting buffer, tri-state",1,CD74HCT240E,74HCT240D (Nexperia),regs,1
+74HCT541,"octal buffer, tri-state",2,SN74HCT541N,74HCT541D (Nexperia),regs,1
+74HCT574,"octal D flip-flop, tri-state",3,CD74HCT574E,CD74HCT574M96 (TI),regs,1
+74HCT670,"4 × 4 register file, tri-state",8,CD74HCT670E,CD74HCT670M (TI),regs,2
+total,6 part numbers,19,,,,7

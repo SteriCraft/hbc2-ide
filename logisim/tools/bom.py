@@ -54,7 +54,7 @@ def parts_table(path: Path = CHIPS_MD) -> dict[str, dict]:
             head = cells
         elif not cells[0].startswith("---"):
             row = dict(zip(head, cells))
-            parts.setdefault(row["Logisim"], row)
+            parts.setdefault(row["Logisim"].replace(" (model)", ""), row)  # "74574 (model)" = circuits/chips/74574
     return parts
 
 
@@ -63,8 +63,9 @@ def count(circ: nl.Circuit, chips: Counter, where: dict, n: int = 1):
     for c in circ.comps:
         model = nl.chip_model(c.sub) if c.kind == "sub" and c.sub is not None else None
         if c.kind == "ttl" or model:
-            chips[c.name] += n
-            where[c.name].add(circ.name)
+            part = model or c.name          # a model instance is named ttl<part>
+            chips[part] += n
+            where[part].add(circ.name)
         elif c.kind == "sub" and c.sub is not None:
             count(c.sub, chips, where, n)
 

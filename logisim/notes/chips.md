@@ -51,15 +51,24 @@ One table per module, so a module's parts can be read (and bought) on their own.
 | 74HCT175 | quad D flip-flop with clear | 74175 | CD74HCT175E | CD74HCT175M96 (TI) | 2 |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 1 |
 
+### Registers
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) | 1 |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 4 |
+| 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) | 1 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 2 |
+| 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 3 |
+| 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) | 8 |
+
 ### Not in a circuit yet
 
-Listed for the modules to come (registers: 74HCT574, 74HCT670) or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.
+Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.
 
 | Part | Function | Logisim | DIP | SOIC | Qty |
 |---|---|---|---|---|---|
 | 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
-| 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 0 |
-| 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) | 0 |
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 
@@ -106,10 +115,17 @@ So Typ is a rough guide only. Use Max 85 °C for timing budgets.
 | 74HCT541 | OE → Y | 21 | 30 | 38 | SN74HCT541, SCLS306E |
 | 74HCT574 | CP → Q | 15 | 33 | 41 | CD74HCT574, SCHS183E |
 | 74HCT574 | OE → Q | 12 | 30 | 38 | CD74HCT574, SCHS183E (setup D → CP 15, hold 5, at 85 °C) |
+| 74HCT574 | setup D → CP | 12 | 12 | 15 | CD74HCT574, SCHS183E (a minimum; hold 5 at 85 °C) |
 | 74HCT670 | read address → Q | 17 | 40 | 50 | CD74HCT670, SCHS195C |
 | 74HCT670 | /WE → Q | 21 | 50 | 63 | CD74HCT670, SCHS195C |
 | 74HCT670 | D → Q | 21 | 50 | 63 | CD74HCT670, SCHS195C (write transparent) |
 | 74HCT670 | /RE → Q | 16 | 38 | 48 | CD74HCT670, SCHS195C |
+| 74HCT670 | /RE → Q off | 14 | 35 | 44 | CD74HCT670, SCHS195C (output disable) |
+| 74HCT670 | setup D → /WE | 12 | 12 | 15 | CD74HCT670, SCHS195C (a minimum, to /WE rising) |
+| 74HCT670 | setup WA → /WE | 18 | 18 | 23 | CD74HCT670, SCHS195C (a minimum, to /WE falling) |
+| 74HCT670 | hold D, WA after /WE | 5 | 5 | 5 | CD74HCT670, SCHS195C (a minimum) |
+| 74HCT670 | /WE pulse width | 20 | 20 | 25 | CD74HCT670, SCHS195C (a minimum) |
+| 74HCT139 | A/B → Y | 14 | 34 | 43 | SN74HCT139, SCLS066E (not used: registers-decisions.md D5) |
 
 Notes:
 - The CD74HCT153 datasheet lists "I to Y" twice for the HCT types, at 24/30 ns (typ 9) and at 34/43 ns (typ 14). The table keeps the slower one.

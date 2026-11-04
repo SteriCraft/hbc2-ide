@@ -578,13 +578,13 @@ def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict
             c.wire(end, (chip[name][0], y), chip[name])
 
 
-def pin_tunnels(c: "Circuit", chip: Part, names: dict, first: int = 20, stagger: int = 30) -> None:
+def pin_tunnels(c: "Circuit", chip: Part, names: dict, first: int = 20, stagger: int = 30, levels: int = 2) -> None:
     """Wire chip pins to tunnels: a stub straight out of the chip, then a
     tunnel. names maps a pin (number or name) to a tunnel label, or to
     "gnd" / "vcc" for a Ground / Power. Works for chips on any facing: pins
     on the left or right side get 20 px stubs (tunnel text runs sideways);
-    top and bottom pins alternate between two depths so the tunnel boxes
-    don't touch."""
+    top and bottom pins cycle through `levels` depths (2 by default) so the
+    tunnel boxes don't touch; 20 px pin pitch with long labels needs ~6."""
     xs = {p.loc[0] for p in chip.ports}
     ys = {p.loc[1] for p in chip.ports}
     TUNNEL = {(-1, 0): "east", (1, 0): "west", (0, 1): "north", (0, -1): "south"}
@@ -595,7 +595,7 @@ def pin_tunnels(c: "Circuit", chip: Part, names: dict, first: int = 20, stagger:
         stubs = []
         for edge_y, away in ((max(ys), 1), (min(ys), -1)):
             row = sorted((k for k in names if chip[k][1] == edge_y), key=lambda k: chip[k][0])
-            stubs += [(k, (0, away), first + stagger * (i % 2)) for i, k in enumerate(row)]
+            stubs += [(k, (0, away), first + stagger * (i % levels)) for i, k in enumerate(row)]
     for k, d, depth in stubs:
         x, y = chip[k]
         end = (x + d[0] * depth, y + d[1] * depth)

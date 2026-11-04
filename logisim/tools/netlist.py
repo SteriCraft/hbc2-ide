@@ -39,11 +39,15 @@ CHIPS_DIR = CIRCUITS_DIR / "chips"     # home-made models of 74HCT chips missing
 
 
 def chip_model(circ) -> str | None:
-    """Part name ("74574") when circ is a chip model, i.e. the circuit named
-    like its file in circuits/chips/; None otherwise."""
+    """Part name ("74574") when circ is a chip model, i.e. the circuit
+    ttl<part> in circuits/chips/<part>.circ; None otherwise. The circuit name
+    can't be the bare part number: Logisim-evolution 5.0 doesn't simulate a
+    library circuit whose name starts with a digit (its instances in other
+    files read U), so models are named ttl74574 and so on."""
     path = circ.project.path.resolve()
-    if path.parent == CHIPS_DIR.resolve() and circ.name == path.stem and not circ.name.startswith("test_"):
-        return circ.name
+    in_chips = path.parent == CHIPS_DIR.resolve()
+    if in_chips and circ.name in (path.stem, "ttl" + path.stem) and not circ.name.startswith("test_"):
+        return path.stem
     return None
 
 

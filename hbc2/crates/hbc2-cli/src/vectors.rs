@@ -759,8 +759,15 @@ const SEQ_MODULES: &[SeqModule] = &[
     SeqModule { name: "flags_cpu", inputs: FLAGS_IN, outputs: FLAGS_OUT, sets: flags_cpu_sets },
 ];
 
+mod regs;
+
+/// Every sequential module: the flag register and the register section (vectors/regs.rs).
+fn seq_modules() -> impl Iterator<Item = &'static SeqModule> {
+    SEQ_MODULES.iter().chain(regs::MODULES)
+}
+
 fn names() -> String {
-    MODULES.iter().map(|m| m.name).chain(SEQ_MODULES.iter().map(|m| m.name)).collect::<Vec<_>>().join(", ")
+    MODULES.iter().map(|m| m.name).chain(seq_modules().map(|m| m.name)).collect::<Vec<_>>().join(", ")
 }
 
 /// `hbc2 vectors <module> [-o file]`, or `hbc2 vectors --list`.
@@ -774,7 +781,7 @@ pub fn vectors(args: &[String]) -> Result<(), String> {
         return Ok(());
     }
     let out = crate::option(args, "-o");
-    if let Some(seq) = SEQ_MODULES.iter().find(|m| m.name == name) {
+    if let Some(seq) = seq_modules().find(|m| m.name == name) {
         return match out {
             Some(path) => {
                 let file = std::fs::File::create(path).map_err(|e| format!("{path}: {e}"))?;
