@@ -486,9 +486,8 @@ def rails_left(c: "Circuit", chip: Part, signals: dict, line_x: dict, taps: dict
                       of the chip's anchor
     A line is a bus when it is a key of `taps`, a 1-bit line when it is a key
     of `ends`."""
-    for side in ("top", "bottom"):
-        edge_y = chip.loc[1] + (-30 if side == "top" else 30)
-        away = -1 if side == "top" else 1
+    ys = [p.loc[1] for p in chip.ports]
+    for edge_y, away in ((min(ys), -1), (max(ys), 1)):     # top edge, bottom edge
         pins = {n: chip[n] for n in signals if chip[n][1] == edge_y}
         for name, depth in nested_rails(pins, toward="left", first=first).items():
             line, bit = signals[name]
