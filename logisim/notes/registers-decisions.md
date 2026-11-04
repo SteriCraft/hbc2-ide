@@ -238,3 +238,42 @@ The control unit's steps used by `regs_cpu` (one line per clock step; "write" = 
 | op R3, mode 4 | A = R1, B = R2 → address latch; memory on the bus; A = R3, B = operand latch; write R3 |
 | INC R1 | A = R1, B = constant 01; write R1 |
 | INC / NOT on memory | (mode 4: address step); memory on the bus; A = operand latch, B = 01 (INC); port A off, result latch → data bus (memory write) |
+
+## 6. Timing
+
+`python tools/timing.py --section regs`, max 85 °C. The IR fields and the control signals come from registers clocked by `clk` (74HCT574, 41 ns), like the flag register's analysis.
+
+| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |
+|---|---|---|---|---|
+| index → word read (bits 1..0) | 574 CP → Q (41) → 153 S → Y (43) → 670 read address → Q (50) | 46 | 107 | 134 |
+| bank enable, words 0–3 (bit 2) | 574 CP → Q (41) → 153 I → Y (43) → 670 /RE → Q (48) | 45 | 105 | 132 |
+| bank enable, words 4–7 (not bit 2) | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) → 670 /RE → Q (48) | 54 | 127 | 160 |
+| operand latch onto bus A / B | 574 CP → Q (41) → 574 OE → Q (38) | 27 | 63 | 79 |
+| constant 00 / 01 onto bus B | 574 CP → Q (41) → 541 OE → Y (38) | 36 | 63 | 79 |
+| operands valid on regs_a / regs_b (alu_a, alu_b, address path) | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) → 670 /RE → Q (48) | 54 | 127 | 160 |
+| end to end: register read → ALU (alu_z) → flag register setup | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) → 670 /RE → Q (48) → [alu_z] (257) → 153 I → Y (43) → 175 setup D → CLK (25) | 183 | 386 | 485 |
+| register read → ALU (alu_r) → result latch setup | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) → 670 /RE → Q (48) → [alu_r, arithmetic (bit 7)] (193) → 574 setup D → CP (15) | 141 | 293 | 368 |
+| register → data bus (STR, PSH, OUT, INT) | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) → 670 /RE → Q (48) → 541 A → Y (29) | 67 | 150 | 189 |
+| result latch → data bus (enable) | 574 CP → Q (41) → 574 OE → Q (38) | 27 | 63 | 79 |
+| write address + setup, before /WE falls (≤ 250) | 574 CP → Q (41) → 153 S → Y (43) → 670 setup WA → /WE (23) | 47 | 85 | 107 |
+| bank enable at the /WE gate (≤ 250) | 574 CP → Q (41) → 240 A → Y (28) → 153 I → Y (43) | 38 | 89 | 112 |
+| /WE falls | clk_wr_n falls (250) → 32 A/B → Y (30) → 32 A/B → Y (30) | 280 | 298 | 310 |
+| /WE rises, + hold (≤ 500) | clk_wr_n rises (375) → 32 A/B → Y (30) → 32 A/B → Y (30) → 670 hold D, WA after /WE (5) | 410 | 428 | 440 |
+
+- **Operands valid at 160 ns** (the words 4–7 bank enable: IR → 240 → 153 → 670 /RE). With the 74HCT139 decoder of the first draft it was 175 ns (D5).
+- **End to end, 485 ns of the 500 ns step**: register read (160) + the ALU's slowest flag (alu_z, 257) + the flag register's input multiplexer and setup (68). **15 ns of margin.** The previous figure, 366 ns (flags-decisions.md), assumed the operands came straight from a 574 (41 ns).
+- The result latch is not critical: 368 ns.
+- Write: the write address is set up at 107 ns and the bank enables are ready at 112 ns, well before /WE falls (250–310 ns); /WE rises by 435 ns, hold included 440 ns, before the next edge at 500 ns. Data written from `bus_data` must be valid by 235 ns (C10).
+- **Load not counted.** The datasheet figures are at 50 pF. Bus A carries 4 × 670 outputs (20 pF each), a 574 output, the 541 driver input, the ALU's a inputs (about 10 gate inputs per bit, 10 pF each) and the address path. Real loads around 150–200 pF add perhaps 10–20 ns to the 670's output delay, which would eat most of the 15 ns. Ways to get margin back, if the board shows it's needed: the IR provides bit 2 of R1/R2/R3 already inverted (−28 ns, no 240), or a 74HCT541 buffer between port A and the ALU (+1 chip, but the 670 then drives one load).
+
+## 7. Need Gianni's review
+
+1. **15 ns of margin end to end** (section 6), before the bus loading is counted. It's the sum of datasheet maxima at 85 °C, so it is pessimistic, but it's the thinnest margin in the CPU so far. Options: IR with inverted bit 2 (−28 ns), a buffer on bus A, or accept.
+2. **`clk_wr_n`, a second clock phase** (D7, control-requirements.md C6): needs a 4 MHz oscillator divided by 2 in the clock generator. I see no way to time a level-sensitive write inside the step with `clk` alone.
+3. **Chip model naming** (D12): models are now `ttl74574` inside `74574.circ`, because Logisim doesn't simulate library circuits whose name starts with a digit. conventions.md is updated; tell me if you prefer another prefix.
+4. **Address latch required from the PC/SP section** (pc-sp-requirements.md P1): STR mode 4 needs three registers, and without the latch LOD R3 with R3 = R1 and IN A, A would loop through the transparent 670.
+5. **No separate write bus** (D6): every register write uses the data bus, so a write step can't overlap the next fetch. A write bus would cost 2–3 chips.
+6. **No bus-A driver alternative** (D10): dropping U14 saves 1 chip and costs one step per STR/PSH/OUT.
+7. **Exactly one source per bus is up to the control unit** (D5, C5): the selects aren't fully decoded (that would cost a 74HCT139 and push the operands past 175 ns). `regs_cu_bank_n` = 00 would make both banks drive bus A.
+8. **`cu-requirements.md`**: I kept the control unit's requirements in the existing `control-requirements.md` (C5–C10) rather than starting a second file (D11).
+9. Emulator: no change, no bug found. Every step list in section 5 is asserted against the CPU while the vectors are generated.

@@ -10,7 +10,7 @@ Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/
 | `conventions.py file [-c C] [--no-libs]` | HBC-2 rules (conventions.md), file layout included, plus a summary of chips and ports |
 | `usages.py <module>` | Every instance of a module across logisim/*.circ, to report when its ports change |
 | `bom.py file [-c C] [-o CSV] [--check CSV]` | Bill of materials: counts the chips of a circuit and of every subcircuit instance, and takes the DIP/SOIC references from chips.md "Parts in use". A chip missing from that table is an error. `designs/alu.py` writes notes/bom-alu.csv with it. |
-| `timing.py [--limit NS]` | ALU path delays (typ, max 25 °C, max 85 °C) from chips.md "Delays". The paths are written by hand in the script; update them when a module changes. |
+| `timing.py [--section alu\|flags\|regs] [--limit NS]` | Path delays (typ, max 25 °C, max 85 °C) from chips.md "Delays". The paths are written by hand in the script; update them when a module changes. A stage can also be `("@", ns, what)` (a fixed time in the step, e.g. clk_wr_n) or `("path", name, what)` (another path in series, for end-to-end sums). |
 | `render.py file [-c C] [--check]` | Approximate PNG of a layout, so I can review it without Logisim. PNGs are git-ignored. |
 | `logitest.py file circuit --emu [module]` | Test vectors from the emulator (`hbc2 vectors`) → Logisim run headless (`logisim-evolution.exe -w`) |
 | `logitest.py file circuit vectors.txt` | Run an existing vector file |
@@ -35,7 +35,7 @@ circgen API, in short:
 - `rails_left(c, chip, signals, line_x, taps, ends, pitch=20)`: the add_sub8 style for any chip facing east. Each pin goes to a bus tap, a 1-bit line, Ground/Power (`"gnd"`/`"vcc"`) or a tunnel (`("tunnel", name)`, use pitch=30). Edges come from the real pin positions (the 74153 is taller).
 - `c.move(dx, dy)` shifts the whole drawing, so a script can reproduce a layout Gianni shifted by hand (add_sub8: 210, 90; alu: 160, 30, before the 2026-11-04 rebuild).
 - Vertical splitters (facing north/south) put end 0 at the right: use ends `[[7 - k] for k in range(8)]` to have bit 0 on the left.
-- Chips facing south are drawn as the datasheet's top view (pin 1 top left). `pin_tunnels(c, chip, {pin: signal})` puts a tunnel on each pin listed (`"gnd"`/`"vcc"` give Ground/Power), on every side; `bus_tunnels(c, at, name, width, output=False)` gives a module pin with a splitter to tunnels `name_k`. See designs/flags.py.
+- Chips facing south are drawn as the datasheet's top view (pin 1 top left). `pin_tunnels(c, chip, {pin: signal})` puts a tunnel on each pin listed (`"gnd"`/`"vcc"` give Ground/Power), on every side (`levels=6, stagger=20` for 20 px pitch symbols such as a model's DIP, designs/regs.py); `bus_tunnels(c, at, name, width, output=False)` gives a module pin with a splitter to tunnels `name_k`. See designs/flags.py.
 
 ## Chip models (circuits/chips/)
 A chip missing from #TTL is a circuit named after the part, in `circuits/chips/<part>.circ`, with its datasheet next to it (rules: conventions.md "Components").
@@ -43,11 +43,12 @@ A chip missing from #TTL is a circuit named after the part, in `circuits/chips/<
 - `t.model(chip, loc, label="U1")`: an instance of a model of the same file, with `u["D0"]` port locations (used by the `test_<part>` bench).
 - netlist.py marks a model as kind "chip" (`chip_model`), numbers its ports by DIP pin (shown `pin:name`), and knows the generic parts allowed inside a model (NOT Gate, Controlled Buffer, Register, D Flip-Flop: kind "generic").
 - conventions.py checks a model (VCC/GND pins present and unwired, unique pin names, a DIP symbol, only allowed parts) and treats its instances as chips (`U<n>`, floating inputs are errors); bom.py counts them.
+- The model circuit is named `ttl<part>` (`netlist.chip_model` maps it back to the part number; conventions.py checks it). Instantiate it from another file with `c.sub(p.library(".../chips/74574.circ"), "ttl74574", loc)`.
 - Done: `74574` (designs/74574.py, 2,064 datasheet rows). `test_74670.circ` (designs/test_74670.py) checks Logisim's own 74670 against its datasheet (912 rows), so it has no model.
 
 ## Emulator vectors (hbc2 vectors)
 - `hbc2/target/release/hbc2 vectors <module> [-o file]` (or `--list`). It covers every input combination, up to 2^20.
-- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, shift8, flags8, cmp8, rmux8, alu; sequential: flags, flags_cpu.
+- Modules are defined in `hbc2/crates/hbc2-cli/src/vectors.rs`: pin names and widths, plus an `eval`. Current modules: add_sub8, logic8, shift8, flags8, cmp8, rmux8, alu; sequential: flags, flags_cpu, and regs, regs_cpu (in `vectors/regs.rs`).
 - `eval` uses `hbc2_core::alu` where it exists. Otherwise `exec(op, a, b, carry)` runs the real CPU on that instruction (Reg mode) and returns the register and the flags. A flag missing from the instruction's flag list comes back None, written `x`. The emulator is never changed.
 - A module whose inputs are too many for an exhaustive test gives its own `rows` (rmux8). The limit is 2^21; logitest runs big files in chunks of 524,288 rows (2^21 rows take about 10 minutes).
 - `logitest.check_emulator(file, circuit, module=None)` rebuilds the CLI (`cargo build --release -p hbc2-cli`), writes the vectors, checks the pin names and widths, and runs them.

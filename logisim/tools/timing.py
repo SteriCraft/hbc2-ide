@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Worst-case delays of the ALU and flag-register paths, from the "Delays" table of
+"""Worst-case delays of the ALU, flag-register and register-section paths, from the "Delays" table of
 logisim/notes/chips.md (TI datasheets, CL = 50 pF).
 
 Each path is a start (t = 0, or the latest of other paths) followed by a
@@ -12,6 +12,7 @@ them here when a module changes.
 
     python timing.py            # the ALU table
     python timing.py --section flags   # the flag register, within one 500 ns step
+    python timing.py --section regs    # the register section and the end-to-end ALU step
     python timing.py --limit 250   # ... and exit 1 if a max 85 °C is over 250 ns
 """
 
@@ -157,8 +158,72 @@ FLAGS = {
         ("74HCT175", "/MR → Q", "flags: clear"),
     ]),
 }
-SECTIONS = {"alu": PATHS, "flags": FLAGS}
-PATHS = {**PATHS, **FLAGS}
+# Register section (designs/regs.py, notes/registers-decisions.md), one 500 ns
+# step from the rising edge of clk. Two kinds of extra stages:
+#   ("@", ns, what)        a fixed time in the step (the write phase clk_wr_n)
+#   ("path", name, what)   a whole earlier path added in series (end to end)
+REGS = {
+    "r_ctl": (False, "IR / control unit outputs", [], [
+        ("74HCT574", "CP → Q", "IR fields, control register"),
+    ]),
+    "r_ra": (True, "index → word read (bits 1..0)", ["r_ctl"], [
+        ("74HCT153", "S → Y", "U6 / U15: index multiplexer"),
+        ("74HCT670", "read address → Q", "port A / B"),
+    ]),
+    "r_re_lo": (True, "bank enable, words 0–3 (bit 2)", ["r_ctl"], [
+        ("74HCT153", "I → Y", "U11 / U19: bit 2"),
+        ("74HCT670", "/RE → Q", "port A / B"),
+    ]),
+    "r_re_hi": (True, "bank enable, words 4–7 (not bit 2)", ["r_ctl"], [
+        ("74HCT240", "A → Y", "U1: not bit 2"),
+        ("74HCT153", "I → Y", "U11 / U19"),
+        ("74HCT670", "/RE → Q", "port A / B"),
+    ]),
+    "r_lat": (True, "operand latch onto bus A / B", ["r_ctl"], [
+        ("74HCT574", "OE → Q", "U10 / U18 (data from the edge: CP → Q 41)"),
+    ]),
+    "r_const": (True, "constant 00 / 01 onto bus B", ["r_ctl"], [
+        ("74HCT541", "OE → Y", "U9"),
+    ]),
+    "r_op": (True, "**operands valid** on regs_a / regs_b (alu_a, alu_b, address path)",
+             ["r_ra", "r_re_lo", "r_re_hi", "r_lat", "r_const"], []),
+    "r_flags": (True, "**end to end**: register read → ALU (alu_z) → flag register setup", ["r_op"], [
+        ("path", "z", "ALU, slowest flag"),
+        ("74HCT153", "I → Y", "flags: D2, ALU input"),
+        ("74HCT175", "setup D → CLK", "flags: flip-flop"),
+    ]),
+    "r_res": (True, "register read → ALU (alu_r) → result latch setup", ["r_op"], [
+        ("path", "sum", "ALU, slowest result bit"),
+        ("74HCT574", "setup D → CP", "U5: result latch"),
+    ]),
+    "r_dbus": (True, "register → data bus (STR, PSH, OUT, INT)", ["r_op"], [
+        ("74HCT541", "A → Y", "U14"),
+    ]),
+    "r_resbus": (True, "result latch → data bus (enable)", ["r_ctl"], [
+        ("74HCT574", "OE → Q", "U5"),
+    ]),
+    "w_wa": (True, "write address + setup, before /WE falls (≤ 250)", ["r_ctl"], [
+        ("74HCT153", "S → Y", "U6: index multiplexer"),
+        ("74HCT670", "setup WA → /WE", "all 8 chips"),
+    ]),
+    "w_bank": (True, "bank enable at the /WE gate (≤ 250)", ["r_ctl"], [
+        ("74HCT240", "A → Y", "U1: not bit 2"),
+        ("74HCT153", "I → Y", "U11: /RE words 4–7 = U4 input"),
+    ]),
+    "w_fall": (True, "/WE falls", [], [
+        ("@", 250, "clk_wr_n falls"),
+        ("74HCT32", "A/B → Y", "U4: regs_wr_n"),
+        ("74HCT32", "A/B → Y", "U4: bank /WE"),
+    ]),
+    "w_rise": (True, "/WE rises, + hold (≤ 500)", [], [
+        ("@", 375, "clk_wr_n rises"),
+        ("74HCT32", "A/B → Y", "U4: regs_wr_n"),
+        ("74HCT32", "A/B → Y", "U4: bank /WE"),
+        ("74HCT670", "hold D, WA after /WE", "all 8 chips"),
+    ]),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS}
+PATHS = {**PATHS, **FLAGS, **REGS}
 
 
 def compute(table):
@@ -167,10 +232,17 @@ def compute(table):
 
     def run(stages):
         t, names = (0, 0, 0), []
-        for part, p, _ in stages:
-            d = table[(part, p)]
+        for part, p, what in stages:
+            if part == "@":                          # a fixed time in the step
+                d = (p, p, p)
+                names.append(f"{what} ({p})")
+            elif part == "path":                     # another path in series
+                d = get(p)
+                names.append(f"[{PATHS[p][1]}] ({d[2]})")
+            else:
+                d = table[(part, p)]
+                names.append(f"{part[5:]} {p} ({d[2]})")
             t = tuple(a + b for a, b in zip(t, d))
-            names.append(f"{part[5:]} {p} ({d[2]})")
         return t, names
 
     def get(name):

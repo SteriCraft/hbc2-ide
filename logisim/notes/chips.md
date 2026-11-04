@@ -145,7 +145,7 @@ Notes:
 | Part | In #TTL | Note |
 |---|---|---|
 | 7474, 74138, 74153, 74157, 74161, 74175, 74193, 74377, 74541, 74670 | yes | |
-| 74574 | **no** | modelled: [circuits/chips/74574.circ](../circuits/chips/74574.circ), from cd74hct574.pdf |
+| 74574 | **no** | modelled: [circuits/chips/74574.circ](../circuits/chips/74574.circ) (circuit `ttl74574`), from cd74hct574.pdf |
 
 Logisim's 74670 was checked against the CD74HCT670 datasheet (cd74hc670.pdf, which covers HCT) by [circuits/chips/test_74670.circ](../circuits/chips/test_74670.circ): writes are transparent while /WE is low (the addressed word follows D), reads with /RE high are high impedance. It needs no model.
 

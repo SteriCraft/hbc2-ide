@@ -11,7 +11,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 - Forbidden in a module: `#Gates`, `#Plexers`, `#Arithmetic`, and the registers and counters of `#Memory`. Test benches and chip models may use them.
 - Constant is allowed in modules: it stands for inputs tied to GND/5V (e.g. the value 01 for INC).
 - If a chip is missing from `#TTL`, model it (2026-11-04):
-  - one file per chip, `circuits/chips/<part>.circ` (part number without the family, e.g. `74574.circ`), circuit named `<part>`, made by `designs/<part>.py`;
+  - one file per chip, `circuits/chips/<part>.circ` (part number without the family, e.g. `74574.circ`), circuit named **`ttl<part>`** (e.g. `ttl74574`: Logisim-evolution 5.0 doesn't simulate a library circuit whose name starts with a digit, registers-decisions.md D12), made by `designs/<part>.py`;
   - from the datasheet, never from memory; the datasheet PDF goes in `circuits/chips/` (ask Gianni when it's missing);
   - pins: the datasheet's numbers and names, in DIP order, VCC and GND included and left unconnected inside (`Circuit.dip_symbol`);
   - behaviour exactly as the datasheet's function table (tri-state outputs, active-low pins, asynchronous set/clear, transparent latches);
@@ -35,7 +35,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 
 ## Signal names: `<module>_<signal>`, lowercase snake_case
 - Pins and tunnels inside a module: `add_sub8_a`, `add_sub8_b_inv`.
-- Global signals: `clk`, `rst_n`.
+- Global signals: `clk`, `rst_n`, `clk_wr_n` (the write phase, low 250–375 ns of each step: registers-decisions.md D7).
 - Registers: `reg_a` … `reg_y`, `pc`, `sp`.
 - Flags: `flag_c/e/i/n/s/z/f/h`.
 - Buses: `bus_data` (8 bits), `bus_addr` (16 bits).
