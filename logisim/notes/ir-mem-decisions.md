@@ -279,3 +279,15 @@ Levels: the AS6C1008 v1.0 datasheet gives VIH = 0.7 × VCC (3.5 V at 5 V). HCT o
 3. `addr_cout` on `addr` (if Q2 is accepted), its tests re-run.
 4. `mem`: tests `mem` (model: reads, writes, boot copy steps, random data, every output checked as a bus, `mem_d` included) and a combined bench (`addr` + `ir` + `mem` + the IOD stub, driven like `addr_cpu`): the boot copy against `Machine::power_on`'s RAM, fetches from real RAM, IN / OUT and queued hardware interrupts through the stub. Bus contention fails every test.
 5. `timing.py --section mem` (and `ir`), the new loads; control-requirements.md C18–C22; README, chips.md, a report with what needs Gianni's review.
+
+## 9. Gianni's answers (2026-11-05) — phase 2 go-ahead
+
+Phase 2 runs unattended: take the recommended option on any new question, log it here (M1, M2, …), commit after each module, don't push, finish with notes/ir-mem-report.md and its "Need Gianni's review" list.
+
+1. Boot: option A accepted (copy the 64 KiB ROM after every reset).
+2. `addr_cout`, 3. 6 × 377, 6. local bus behind 2 × 541, 8. AS6C1008-55PCN, 9. names `ir`, `mem`, `as6c1008`, `at28c256`: accepted.
+4. Accepted. **Decision: the control unit is microcoded** (EEPROMs indexed by opcode, mode and step, with a pipeline register on their outputs). To record in control-requirements.md.
+5. **Not accepted as is**: widen the RAM write pulse by design first (the address is stable from 71 ns, the RAM needs tWP 45 ns), aiming for **≥ 30 ns margin at 25 °C** (pulse ≥ 75 ns). Keep B2 in breadboard-checks.md.
+7. IOD synchronous to `clk`, no WAIT line: accepted. Record in the IOD requirements that a future microcontroller-based IOD must answer through hardware latches / a FIFO that it fills asynchronously.
+
+Phase 2 status: not started (plan: section 8; first step: the RAM write pulse redesign, then the chip models).
