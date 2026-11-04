@@ -3,7 +3,7 @@
 The parts used or considered for the HBC-2, so the next module doesn't have to search again. Pinouts and wiring choices are in [ttl-chips.md](ttl-chips.md). Stock and prices (Octopart, 2026-11-04): [disponibilite-74hct.md](disponibilite-74hct.md).
 
 Two tools read the tables below, so keep their column names:
-- `tools/bom.py` reads **Parts in use** and writes a bill of materials, such as [bom-alu.csv](bom-alu.csv). It fails if a circuit uses a chip that isn't listed there.
+- `tools/bom.py` reads the tables of **Parts in use** (one per module) and writes a bill of materials, such as [bom-alu.csv](bom-alu.csv). It fails if a circuit uses a chip that isn't listed there.
 - `tools/timing.py` reads **Delays** and prints the path table of [alu-report.md](alu-report.md).
 
 ## Rules (Gianni, 2026-11-04)
@@ -20,24 +20,46 @@ Sourcing rules, for every section:
 
 ## Parts in use
 
-| Part | Function | Logisim | DIP | SOIC |
-|---|---|---|---|---|
-| 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) |
-| 74HCT08 | quad 2-input AND | 7408 | SN74HCT08N | 74HCT08D (Nexperia) |
-| 74HCT11 | triple 3-input AND | 7411 | CD74HCT11E | 74HCT11D (Nexperia) |
-| 74HCT27 | triple 3-input NOR | 7427 | CD74HCT27E | 74HCT27D (Nexperia) |
-| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) |
-| 74HCT85 | 4-bit magnitude comparator | 7485 | CD74HCT85E | CD74HCT85M or CD74HCT85M96 (TI) |
-| 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) |
-| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) |
-| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) |
-| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) |
-| 74HCT175 | quad D flip-flop with clear | 74175 | CD74HCT175E | CD74HCT175M96 (TI) |
-| 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) |
-| 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) |
-| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) |
-| 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) |
-| 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) |
+One table per module, so a module's parts can be read (and bought) on their own. A chip used by several modules is repeated, with the same references. When a new module gets its circuit, add its table here, in the module's section. bom.py reads all the tables.
+
+### ALU
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT08 | quad 2-input AND | 7408 | SN74HCT08N | 74HCT08D (Nexperia) | 3 |
+| 74HCT11 | triple 3-input AND | 7411 | CD74HCT11E | 74HCT11D (Nexperia) | 2 |
+| 74HCT27 | triple 3-input NOR | 7427 | CD74HCT27E | 74HCT27D (Nexperia) | 1 |
+| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) | 2 |
+| 74HCT85 | 4-bit magnitude comparator | 7485 | CD74HCT85E | CD74HCT85M or CD74HCT85M96 (TI) | 2 |
+| 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) | 5 |
+| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) | 1 |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 1 |
+| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) | 2 |
+| 74HCT240 | octal inverting buffer, tri-state | 74240 | CD74HCT240E | 74HCT240D (Nexperia) | 1 |
+| 74HCT283 | 4-bit binary adder | 74283 | CD74HCT283E | CD74HCT283M96 (TI) | 3 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 6 |
+
+### Flags
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT11 | triple 3-input AND | 7411 | CD74HCT11E | 74HCT11D (Nexperia) | 3 |
+| 74HCT86 | quad 2-input XOR | 7486 | CD74HCT86E | 74HCT86D (Nexperia) | 1 |
+| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) | 2 |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 4 |
+| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) | 2 |
+| 74HCT175 | quad D flip-flop with clear | 74175 | CD74HCT175E | CD74HCT175M96 (TI) | 2 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 1 |
+
+### Not in a circuit yet
+
+Listed for the modules to come (registers: 74HCT574, 74HCT670) or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
+| 74HCT574 | octal D flip-flop, tri-state | 74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 0 |
+| 74HCT670 | 4 × 4 register file, tri-state | 74670 | CD74HCT670E | CD74HCT670M (TI) | 0 |
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 

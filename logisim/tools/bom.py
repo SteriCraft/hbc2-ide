@@ -43,12 +43,18 @@ def parts_table(path: Path = CHIPS_MD) -> dict[str, dict]:
     m = re.search(r"^## Parts in use\n(.*?)(?=^## )", text, re.S | re.M)
     if not m:
         raise SystemExit(f"{path}: no '## Parts in use' section")
-    rows = [line.strip().strip("|").split("|") for line in m.group(1).splitlines() if line.startswith("|")]
-    head = [h.strip() for h in rows[0]]
     parts = {}
-    for r in rows[2:]:
-        row = dict(zip(head, (c.strip() for c in r)))
-        parts[row["Logisim"]] = row
+    head = None
+    for line in m.group(1).splitlines():  # one table per module (### sections)
+        if not line.startswith("|"):
+            head = None
+            continue
+        cells = [c.strip() for c in line.strip().strip("|").split("|")]
+        if head is None:
+            head = cells
+        elif not cells[0].startswith("---"):
+            row = dict(zip(head, cells))
+            parts.setdefault(row["Logisim"], row)
     return parts
 
 
