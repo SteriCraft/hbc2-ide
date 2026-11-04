@@ -38,7 +38,7 @@ Nothing else touches PC, SP or the address (NOP, ALU Reg / RegImm8 modes, shifts
 What follows:
 - One adder does it all: **base + offset**, with the offset inverted for subtraction. Bases: PC, SP, R1:R2, the IVT entry; offsets: 0, V1, V2, Vx, ±1. SSP Imm16 needs a full 16-bit subtraction.
 - FE00 + 2p is wiring: high byte = `1111111 p7`, low byte = `p6..p0 0`. No adder needed for the vector itself.
-- A software interrupt stays pending across instructions (CLI, or a hardware interrupt goes first): its port and data must be stored somewhere (Q1).
+- A software interrupt stays pending across instructions (CLI, or a hardware interrupt goes first): its port must be stored somewhere (Q1; the data is I when the interrupt is taken).
 
 ## 2. Block diagram
 
@@ -61,7 +61,7 @@ What follows:
 ```
 
 - **Everything goes through the adder** and lands on `addr_sum`; the latch, PC and SP each load it when their enable is on (74HCT377: edge-triggered on `clk`, holds otherwise, no gated clock: P1).
-- **The latch is the only CPU driver of `bus_addr`**, through two 541s with a /OE per byte: off while the IOD drives the port (interrupt acknowledge), low byte off for a software vector (Q1).
+- **The latch is the only CPU driver of `bus_addr`**, through two 541s with a /OE per byte: off while the IOD drives the port (interrupt acknowledge), low byte off while the pending port latch drives it (software vector, Q1).
 - **PC and SP never load from the data bus.** RET, IRT and the IVT read put their two bytes in the IR's V1 and V2 latches, then PC := 0 + Vx (Q4). That removes 4 × 157 at PC's inputs and 4 inputs from the data bus.
 - **The same sum feeds the latch and PC (or SP) in one step**, which pipelines sequential accesses: "latch, PC := PC + 1" while memory reads at the old latch value. The settings:
 
@@ -91,7 +91,7 @@ Step sequences (one line per clock step; "latch :=" takes effect at the end of t
 | RET | latch := SP; read → V1, latch, SP := SP + 1; read → V2, SP := SP + 1; latch, PC := Vx |
 | IRT | as RET, with a third read (→ I) and SP + 1 before latch, PC := Vx |
 | JMx taken | latch, PC := Vx / R1:R2 |
-| interrupt entry | latch, SP := SP − 1; write I, latch, SP := SP − 1; write PC lo, latch, SP := SP − 1; write PC hi (latch := 0000); INR (hardware) and wait for INT low; **vector step**: latch outputs off (hardware) or low byte off (software), bus_addr = 00:p, I := bus_data, latch, PC := FE00 + 2p; read → V1, latch := PC + 1; read → V2; latch, PC := Vx |
+| interrupt entry | latch, SP := SP − 1; write I, latch, SP := SP − 1; write PC lo, latch, SP := SP − 1; write PC hi (latch := 0000); INR (hardware) and wait for INT low; **vector step**: latch outputs off (hardware) or low byte off (software), bus_addr = 00:p, I := bus_data (hardware only: for software the data is I itself, so I is not written), latch, PC := FE00 + 2p; read → V1, latch := PC + 1; read → V2; latch, PC := Vx |
 | reset | latch, PC := 0000; SP := IVT(bus_addr lo = 00) + 0 = FE00 (inside the reset sweep, C7) |
 
 ## 3. Chips, timing, open questions
@@ -124,7 +124,10 @@ Bus loading from this section: `regs_a` and `regs_b` get 1 input per bit (the BA
 
 ### Open questions (recommended answer first)
 
-- **Q1. Pending software interrupt.** cpu.rs keeps (V1, I) from INT until the interrupt is taken, which can be many instructions later (interrupts off) or after a hardware handler (hardware goes first). **Recommended:** a pending latch in the control unit, 2 × 377 + 2 × 541 (port, data), loaded while INT puts 00:V1 on bus_addr and I on bus_data, and driving them back in the vector step, like the IOD; the address latch drives 00 on the high byte. Cheaper option: keep the port only (2 chips) and use I's value at entry; it differs from cpu.rs only when I changes while the interrupt is pending.
+- **Q1. Pending software interrupt. Decided (Gianni, 2026-11-04): keep the port only.** A pending port latch in the control unit, 1 × 377 + 1 × 541, loaded while INT puts 00:V1 on bus_addr and driving the low byte back in the vector step (the address latch drives 00 on the high byte). The data is I when the interrupt is taken, so the vector step does not write I, and the pushed I is that same value. The 4-chip option (port and data, like the IOD) was dropped.
+  - **Emulator changed to match** (cpu.rs: `pending_software_interrupt` is `Option<u8>`, the port; I is read on entry; the IDE's CPU view shows the port only). Before, cpu.rs kept (V1, I) from INT, and a handler saw the old I when I changed while the interrupt was pending.
+  - Test: `pending_software_interrupt_takes_i_when_taken` (hbc2-core/tests/interrupts.rs): CLI, I := 11, INT 10, I := 22, STI → the handler gets I = 22, 22 is pushed, IRT restores 22.
+  - Checks: the emulator test suite passes, except `hbc2-cc` `error_lines`, which fails the same way without this change (the uncommitted compiler/fcc work). All 11 `hbc2 vectors` modules are byte-identical before and after (none uses INT), so no vectors needed regenerating. The section tests (alu, flags, regs) were re-run on the existing circuits.
 - **Q2. Interrupt entry order.** **Recommended:** push I and PC *before* raising INR, then take the port (bus_addr) and the data (→ I) in the vector step. Memory, registers and the wire protocol (INR one step, the IOD's reply one step) are the same as the manual's order; the manual's order would need the port and the data held for 3 steps (2–4 more chips).
 - **Q3. PC and SP onto the data bus.** **Recommended:** separate drivers (4 × 541). Sharing 2 × 541 behind the BASE multiplexer saves 2 chips but CAL and interrupt entry take 2 more steps (the multiplexer can't show PC while it computes SP − 1); same reasoning as registers D1 (c).
 - **Q4. RET / IRT / IVT bytes through the IR's V1 and V2.** **Recommended** (saves 4 × 157 and 4 data bus inputs, costs 1 step on RET, IRT and entry). Needs the IR to load V1 and V2 from the data bus in any step.
@@ -134,7 +137,7 @@ Bus loading from this section: `regs_a` and `regs_b` get 1 input per bit (the BA
 ### For the control unit (to add to control-requirements.md with phase 2)
 
 - C11: drive the section's controls from the clocked control register (BASE sel + 2 enables, OFFSET lo sel + 2 enables, inv, Cin, 3 load enables, 6 output enables). At most one driver on `bus_addr` (latch per byte, IOD, software vector). P4 applies (no load from `regs_a`/`regs_b` while `regs_we_n` is low).
-- C12: the interrupt entry sequence above (Q2), including the vector step: latch outputs off, RAM and IOD not enabled by the CPU, I written from `bus_data`.
-- C13: the pending software interrupt latch (Q1).
+- C12: the interrupt entry sequence above (Q2), including the vector step: latch outputs off, RAM and IOD not enabled by the CPU, I written from `bus_data` (hardware interrupts only).
+- C13: the pending software interrupt port latch (Q1): 1 × 377 + 1 × 541, loaded by INT (00:V1 on bus_addr), cleared when taken, drives bus_addr low byte in the software vector step; I is not written there.
 - C14: the IR loads V1 and V2 from `bus_data` in any step (Q4).
 - C15: undo the fetch increments on an invalid instruction (Q5).

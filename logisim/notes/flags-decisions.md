@@ -83,20 +83,20 @@ Two-flag events, two steps each: interrupt entry = 1010 with 0 (I), then 1111 wi
 
 ## Timing
 
-`python tools/timing.py --section flags`, max 85 °C, the register's clock-to-output taken as the CD74HCT574's (41 ns):
+`python tools/timing.py --section flags` (pass criterion: max 25 °C; 85 °C for information), the register's clock-to-output taken as the CD74HCT574's (41 ns):
 
-| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |
-|---|---|---|---|---|
-| ALU flag → flip-flop (C Z N S E F) | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 541 A → Y (29) → 27 A/B/C → Y (29) → 11 A/B/C → Y (35) → 574 CP → Q (41) → 153 I → Y (43) → 175 setup D → CLK (25) | 144 | 292 | 366 |
-| flags_op → flip-flop (I, the slowest) | 574 CP → Q (41) → 138 A/B/C → Y (45) → 11 A/B/C → Y (35) → 153 S → Y (43) → 86 A/B → Y (40) → 175 setup D → CLK (25) | 96 | 183 | 229 |
-| single-flag write → flip-flop (I) | 574 CP → Q (41) → 157 S → Y (36) → 153 I → Y (43) → 86 A/B → Y (40) → 175 setup D → CLK (25) | 77 | 148 | 185 |
-| flags_bus_in → flip-flop (I), from the bus being valid | 153 I → Y (43) → 86 A/B → Y (40) → 175 setup D → CLK (25) | 47 | 86 | 108 |
-| clk → flag_c ... flag_h | 175 CLK → Q (41) | 13 | 33 | 41 |
-| clk → flags_bus_out (PSF, already enabled) | 175 CLK → Q (41) → 541 A → Y (29 + 49 load) | 52 | 93 | 119 |
-| flags_oe_n → flags_bus_out | 541 OE → Y (38 + 49 load) | 47 | 67 | 87 |
-| rst_n → flags | 175 /MR → Q (44) | 17 | 35 | 44 |
+| Path | Through (per stage, max 25 / 85 °C, ns) | Typ | Max 25 °C | Max 85 °C | Limit (25 / 85 °C) | Margin 25 °C (pass) | Margin 85 °C (info) |
+|---|---|---|---|---|---|---|---|
+| ALU flag → flip-flop (C Z N S E F) | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 541 A → Y (23 / 29) → 27 A/B/C → Y (23 / 29) → 11 A/B/C → Y (28 / 35) → 574 CP → Q (33 / 41) → 153 I → Y (34 / 43) → 175 setup D → CLK (20 / 25) | 144 | 292 | 366 | ≤ 500 | 208 | 134 |
+| flags_op → flip-flop (I, the slowest) | 574 CP → Q (33 / 41) → 138 A/B/C → Y (36 / 45) → 11 A/B/C → Y (28 / 35) → 153 S → Y (34 / 43) → 86 A/B → Y (32 / 40) → 175 setup D → CLK (20 / 25) | 96 | 183 | 229 | ≤ 500 | 317 | 271 |
+| single-flag write → flip-flop (I) | 574 CP → Q (33 / 41) → 157 S → Y (29 / 36) → 153 I → Y (34 / 43) → 86 A/B → Y (32 / 40) → 175 setup D → CLK (20 / 25) | 77 | 148 | 185 | ≤ 500 | 352 | 315 |
+| flags_bus_in → flip-flop (I), from the bus being valid | 153 I → Y (34 / 43) → 86 A/B → Y (32 / 40) → 175 setup D → CLK (20 / 25) | 47 | 86 | 108 | — | — | — |
+| clk → flag_c ... flag_h | 175 CLK → Q (33 / 41) | 13 | 33 | 41 | — | — | — |
+| clk → flags_bus_out (PSF, already enabled) | 175 CLK → Q (33 / 41) → 541 A → Y (23 + 37 / 29 + 49 load) | 52 | 93 | 119 | ≤ 500 | 407 | 381 |
+| flags_oe_n → flags_bus_out | 541 OE → Y (30 + 37 / 38 + 49 load) | 47 | 67 | 87 | ≤ 500 | 433 | 413 |
+| rst_n → flags | 175 /MR → Q (35 / 44) | 17 | 35 | 44 | — | — | — |
 
-The data-bus rows include its load (about 420 pF, registers-decisions.md section 6), added 2026-11-04. Worst case: an ALU flag into the register, 366 ns of the 500 ns step at 2 MHz (134 ns margin). The prompt quoted alu_s at 321 ns: that was before fix F2; S/E/F now take 84–89 ns, and alu_z (257 ns) is the slowest ALU output.
+The data-bus rows include its load (about 420 pF, registers-decisions.md section 6), added 2026-11-04. Worst case: an ALU flag into the register, **292 ns at max 25 °C, 208 ns of margin** in the 500 ns step at 2 MHz (the pass criterion); 366 ns at max 85 °C (134 ns, for information). The prompt quoted alu_s at 321 ns: that was before fix F2; S/E/F now take 84–89 ns, and alu_z (257 ns) is the slowest ALU output.
 
 ## Tests
 

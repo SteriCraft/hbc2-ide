@@ -57,18 +57,18 @@ Bill of materials, with the DIP and SOIC references to order: [bom-alu.csv](bom-
 
 From the TI datasheets of the DIP parts (chips.md, "Delays"), CL = 50 pF. Max values are at 4.5 V. Inputs a, b, cin and alu_op are stable at t = 0. Each stage counts its own worst case, so the sums are pessimistic. A multiplexer output counts the later of its data and its select. `python tools/timing.py` regenerates this table.
 
-| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |
-|---|---|---|---|---|
-| alu_r, arithmetic (bit 7) | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 541 A → Y (29) | 75 | 154 | 193 |
-| alu_r, AND OR XOR | 138 A/B/C → Y (45) → 541 OE → Y (38) | 44 | 66 | 83 |
-| alu_r, NOT | 138 A/B/C → Y (45) → 240 OE → Y (38) | 35 | 66 | 83 |
-| alu_r, shifts | 138 A/B/C → Y (45) → 11 A/B/C → Y (35) → 541 OE → Y (38) | 55 | 94 | 118 |
-| adder carry / borrow | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 86 A/B → Y (40) | 75 | 163 | 204 |
-| alu_c | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 86 A/B → Y (40) → 153 I → Y (43) | 89 | 197 | 247 |
-| alu_n | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 541 A → Y (29) | 75 | 154 | 193 |
-| alu_z | 08 A/B → Y (30) → 86 A/B → Y (40) → 283 Cin → C4 (58) → 157 S → Y (36) → 541 A → Y (29) → 27 A/B/C → Y (29) → 11 A/B/C → Y (35) | 95 | 205 | 257 |
-| alu_s, alu_f | 85 A/B → A>B, A<B (46) → 85 cascade in → A>B, A<B (38) | 27 | 67 | 84 |
-| alu_e | 85 A/B → A=B (50) → 85 cascade in → A=B (39) | 30 | 71 | 89 |
+| Path | Through (per stage, max 25 / 85 °C, ns) | Typ | Max 25 °C | Max 85 °C | Limit (25 / 85 °C) | Margin 25 °C (pass) | Margin 85 °C (info) |
+|---|---|---|---|---|---|---|---|
+| alu_r, arithmetic (bit 7) | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 541 A → Y (23 / 29) | 75 | 154 | 193 | — | — | — |
+| alu_r, AND OR XOR | 138 A/B/C → Y (36 / 45) → 541 OE → Y (30 / 38) | 44 | 66 | 83 | — | — | — |
+| alu_r, NOT | 138 A/B/C → Y (36 / 45) → 240 OE → Y (30 / 38) | 35 | 66 | 83 | — | — | — |
+| alu_r, shifts | 138 A/B/C → Y (36 / 45) → 11 A/B/C → Y (28 / 35) → 541 OE → Y (30 / 38) | 55 | 94 | 118 | — | — | — |
+| adder carry / borrow | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 86 A/B → Y (32 / 40) | 75 | 163 | 204 | — | — | — |
+| alu_c | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 86 A/B → Y (32 / 40) → 153 I → Y (34 / 43) | 89 | 197 | 247 | — | — | — |
+| alu_n | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 541 A → Y (23 / 29) | 75 | 154 | 193 | — | — | — |
+| alu_z | 08 A/B → Y (24 / 30) → 86 A/B → Y (32 / 40) → 283 Cin → C4 (46 / 58) → 157 S → Y (29 / 36) → 541 A → Y (23 / 29) → 27 A/B/C → Y (23 / 29) → 11 A/B/C → Y (28 / 35) | 95 | 205 | 257 | — | — | — |
+| alu_s, alu_f | 85 A/B → A>B, A<B (37 / 46) → 85 cascade in → A>B, A<B (30 / 38) | 27 | 67 | 84 | — | — | — |
+| alu_e | 85 A/B → A=B (40 / 50) → 85 cascade in → A=B (31 / 39) | 30 | 71 | 89 | — | — | — |
 
 Typ is only a rough guide: the CD74HCT datasheets give their typical at 5 V and 15 pF (chips.md).
 

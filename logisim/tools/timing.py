@@ -5,7 +5,12 @@ logisim/notes/chips.md (TI datasheets, CL = 50 pF).
 Each path is a start (t = 0, or the latest of other paths) followed by a
 list of chip stages. The three columns (typ, max 25 °C, max 85 °C) are
 added up separately. Prints a Markdown table for alu-report.md
-(--section alu) or flags-decisions.md (--section flags).
+(--section alu), flags-decisions.md (--section flags) or
+registers-decisions.md (--section regs).
+
+Pass criterion (Gianni, 2026-11-04): every path with a limit (LIMITS) must
+meet it at **max 25 °C**, bus loading included. Max 85 °C is reported too,
+for information only. The exit code is 1 if a path fails at max 25 °C.
 
 The paths are written by hand from the circuits (designs/*.py): change
 them here when a module changes.
@@ -13,7 +18,7 @@ them here when a module changes.
     python timing.py            # the ALU table
     python timing.py --section flags   # the flag register, within one 500 ns step
     python timing.py --section regs    # the register section and the end-to-end ALU step
-    python timing.py --limit 250   # ... and exit 1 if a max 85 °C is over 250 ns
+    python timing.py --limit 250   # ... and exit 1 if a shown path is over 250 ns at max 25 °C
 """
 
 from __future__ import annotations
@@ -265,8 +270,11 @@ def derate(part, nets):
 
 # Register section (designs/regs.py, notes/registers-decisions.md), one 500 ns
 # step from the rising edge of clk. Two kinds of extra stages:
-#   ("@", ns, what)        a fixed time in the step (the write phase clk_wr_n)
+#   ("@", ns, what)        a fixed time in the step (the oscillator's edges)
 #   ("path", name, what)   a whole earlier path added in series (end to end)
+#   ("-", part, path, what) a chip delay subtracted: the earliest an edge can
+#                          come when it may be that much early (minimum delays
+#                          are taken as 0)
 REGS = {
     "r_ctl": (False, "IR / control unit outputs", [], [
         ("74HCT574", "CP → Q", "IR fields, control register"),
@@ -308,36 +316,41 @@ REGS = {
     # fall (osc rise, 250) to the osc fall (375). Minimum delays are taken as 0:
     # t = 0 is clk rising, up to 35 ns after its osc edge, so the osc fall can
     # come 35 ns early (375 - 35 = 340), and the clk fall 35 ns early or late.
-    "w_wa": (True, "write address + setup, before /WE falls (≤ 215, the earliest fall)", ["r_ctl"], [
+    "w_wa": (True, "write address + setup, before /WE falls", ["r_ctl"], [
         ("74HCT153", "S → Y", "U1: index multiplexer", ("a_idx",)),
         ("74HCT670", "setup WA → /WE", "all 8 chips"),
     ]),
-    "w_en": (True, "bank write enable, stable before clk_wr_n falls (≤ 215)", ["r_ctl"], [
+    "w_en": (True, "bank write enable, stable before clk_wr_n falls", ["r_ctl"], [
         ("74HCT153", "I → Y", "U6: /RE words 4–7", ("a_re_hi",)),
         ("74HCT32", "A/B → Y", "U4: regs_we_n OR /RE"),
     ]),
     "w_fall_min": (True, "/WE falls, earliest", [], [
-        ("@", 215, "clk falls 35 early, no gate delay"),
+        ("@", 250, "osc rises"),
+        ("-", "74HCT74", "CLK → Q", "t = 0 (clk rising) can be this late, no gate delay"),
     ]),
     "w_fall": (True, "/WE falls, latest", [], [
         ("@", 250, "osc rises"),
-        ("74HCT74", "CLK → Q", "FF1: clk falls (35 late)"),
+        ("74HCT74", "CLK → Q", "FF1: clk falls (late)"),
         ("74HCT10", "A/B/C → Y", "clk_wr_n"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
     ]),
     "w_rise_min": (True, "/WE rises, earliest (D setup is to this edge)", [], [
-        ("@", 340, "osc falls 35 before 375, no gate delay"),
+        ("@", 375, "osc falls"),
+        ("-", "74HCT74", "CLK → Q", "t = 0 can be this late, no gate delay"),
     ]),
     "w_data": (True, "**data on bus_data valid by** (the earliest rise − setup)", [], [
-        ("@", 325, "340 − 670 setup D → /WE 15"),
+        ("path", "w_rise_min", "earliest /WE rise"),
+        ("-", "74HCT670", "setup D → /WE", "all 8 chips"),
     ]),
     # the two ends move together with clk: the pulse is 125 ns of osc minus
     # what can delay its start only (FF1, the NAND, the OR)
-    "w_pulse": (True, "/WE pulse, shortest (≥ 25)", [], [
-        ("@", 125, "osc rise to osc fall − FF1 35 − NAND 30 − OR 30 = 30"),
-        ("@", -95, "start delays"),
+    "w_pulse": (True, "/WE pulse, shortest", [], [
+        ("@", 125, "osc rise to osc fall"),
+        ("-", "74HCT74", "CLK → Q", "FF1"),
+        ("-", "74HCT10", "A/B/C → Y", "the NAND"),
+        ("-", "74HCT32", "A/B → Y", "the OR"),
     ]),
-    "w_rise": (True, "/WE rises, latest, + hold (≤ 500)", [], [
+    "w_rise": (True, "/WE rises, latest, + hold", [], [
         ("@", 375, "osc falls"),
         ("74HCT10", "A/B/C → Y", "clk_wr_n"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
@@ -347,6 +360,28 @@ REGS = {
 SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS}
 PATHS = {**PATHS, **FLAGS, **REGS}
 
+# ---- pass criterion --------------------------------------------------------------------
+# name: (op, bound). "<=": the path must end by the bound; ">=": it must last
+# at least that long. The bound is a time in ns, another path (compared column
+# by column), or a chip delay (part, path) from chips.md. Paths without a
+# limit (the ALU outputs, the reference times of the write phase) are parts
+# of a longer path that has one. The latest /WE fall is not compared with the
+# earliest rise: they assume opposite clk skews; w_pulse checks the pulse.
+STEP = 500                                   # ns, one step at 2 MHz
+COL = {"typ": 0, "25": 1, "85": 2}
+PASS = COL["25"]                             # the design must pass at max 25 °C
+LIMITS = {
+    # flag register: inside the step
+    "f_alu": ("<=", STEP), "f_ctl": ("<=", STEP), "f_bit": ("<=", STEP),
+    "f_psf": ("<=", STEP), "f_oe": ("<=", STEP),
+    # register section
+    "r_flags": ("<=", STEP), "r_res": ("<=", STEP), "r_dbus": ("<=", STEP),
+    "r_resbus": ("<=", "w_data"),            # the result latch's data for a register write
+    "w_wa": ("<=", "w_fall_min"), "w_en": ("<=", "w_fall_min"),
+    "w_pulse": (">=", ("74HCT670", "/WE pulse width")),
+    "w_rise": ("<=", STEP),                  # D and WA change at the next edge
+}
+
 
 def compute(table):
     done: dict[str, tuple[int, int, int]] = {}
@@ -354,21 +389,26 @@ def compute(table):
 
     def run(stages):
         t, names = (0, 0, 0), []
-        for part, p, what, *nets in stages:
+        for part, p, *rest in stages:
             if part == "@":                          # a fixed time in the step
                 d = (p, p, p)
-                names.append(f"{what} ({p})")
+                names.append(f"{rest[0]} ({p})")
             elif part == "path":                     # another path in series
                 d = get(p)
-                names.append(f"[{PATHS[p][1]}] ({d[2]})")
+                names.append(f"[{PATHS[p][1].replace('*', '')}] ({d[1]} / {d[2]})")
+            elif part == "-":                        # a delay that makes an edge early
+                part, p = p, rest[0]
+                d = tuple(-x for x in table[(part, p)])
+                names.append(f"− {part[5:]} {p} ({-d[1]} / {-d[2]})")
             else:
                 d = table[(part, p)]
+                nets = rest[1:]
                 if nets:                             # driving a loaded bus
                     extra = derate(part, nets[0])
+                    names.append(f"{part[5:]} {p} ({d[1]} + {extra[1]} / {d[2]} + {extra[2]} load)")
                     d = tuple(a + b for a, b in zip(d, extra))
-                    names.append(f"{part[5:]} {p} ({d[2] - extra[2]} + {extra[2]} load)")
                 else:
-                    names.append(f"{part[5:]} {p} ({d[2]})")
+                    names.append(f"{part[5:]} {p} ({d[1]} / {d[2]})")
             t = tuple(a + b for a, b in zip(t, d))
         return t, names
 
@@ -380,8 +420,8 @@ def compute(table):
         t0 = tuple(max(col) for col in zip(*starts)) if starts else (0, 0, 0)
         t, names = run(stages)
         done[name] = tuple(a + b for a, b in zip(t0, t))
-        # the start that is latest at 85 °C is the one that counts
-        lead = [via[max(start, key=lambda s: done[s][2])]] if start else []
+        # the start that is latest in the pass column is the one shown
+        lead = [via[max(start, key=lambda s: done[s][PASS])]] if start else []
         via[name] = " → ".join(lead + names)
         return done[name]
 
@@ -390,39 +430,67 @@ def compute(table):
     return done, via
 
 
+def margins(name, done, table):
+    """(limit text, margin per column) of a path, or None if it has no limit."""
+    if name not in LIMITS:
+        return None
+    op, b = LIMITS[name]
+    if isinstance(b, int):
+        lim, what = (b, b, b), None
+    elif isinstance(b, tuple):
+        lim, what = table[b], f"{b[0][5:]} {b[1]}"
+    else:
+        lim, what = done[b], PATHS[b][1].replace("*", "").split(" (")[0]
+    m = tuple((l - v) if op == "<=" else (v - l) for v, l in zip(done[name], lim))
+    sign = "≤" if op == "<=" else "≥"
+    need = f"{sign} {b}" if what is None else f"{sign} {lim[1]} / {lim[2]} ({what})"
+    return need, m
+
+
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="ALU and flag-register path delays from chips.md.")
+    ap = argparse.ArgumentParser(description="ALU, flag-register and register-section path delays from chips.md.")
     ap.add_argument("--section", choices=SECTIONS, default="alu", help="which paths to show (default alu)")
-    ap.add_argument("--limit", type=int, help="exit 1 if a shown path is over this at max 85 °C")
+    ap.add_argument("--limit", type=int, help="also fail if a shown path is over this at max 25 °C")
     args = ap.parse_args(argv)
     sys.stdout.reconfigure(encoding="utf-8")
     table = delays()
     done, via = compute(table)
-    print("| Path | Through (max 85 °C per stage, ns) | Typ | Max 25 °C | Max 85 °C |")
-    print("|---|---|---|---|---|")
-    over = []
+    print("| Path | Through (per stage, max 25 / 85 °C, ns) | Typ | Max 25 °C | Max 85 °C "
+          "| Limit (25 / 85 °C) | Margin 25 °C (pass) | Margin 85 °C (info) |")
+    print("|---|---|---|---|---|---|---|---|")
+    fail, hot = [], []
     for n, (shown, label, _, _) in SECTIONS[args.section].items():
         if not shown:
             continue
         t = done[n]
-        hot = args.limit and t[2] > args.limit
-        over += [label] if hot else []
         cells = [str(x) for x in t]
-        if hot:
-            cells[2] = f"**{cells[2]}**"
+        lm = margins(n, done, table)
+        if lm is None and args.limit:
+            lm = (f"≤ {args.limit}", tuple(args.limit - x for x in t))
+        if lm:
+            need, m = lm
+            name = label.replace("*", "")
+            if m[PASS] < 0:
+                fail.append(f"{name} ({m[PASS]})")
+            if m[COL["85"]] < 0:
+                hot.append(f"{name} ({m[COL['85']]})")
+            cells += [need] + [f"**{x}**" if x < 0 else str(x) for x in m[1:]]
+        else:
+            cells += ["—", "—", "—"]
         print(f"| {label} | {via[n]} | " + " | ".join(cells) + " |")
     if args.section == "regs":
-        print("\n| Bus (worst bit) | Inputs | 3-state outputs | Load (pF) | Extra delay, bus driver / standard output (max 85 °C, ns) | Counted (worst bit of each) |")
-        print("|---|---|---|---|---|---|")
+        print("\n| Bus (worst bit) | Inputs | 3-state outputs | Load (pF) | Extra delay, bus driver (max 25 / 85 °C, ns) "
+              "| Extra delay, standard output (max 25 / 85 °C, ns) | Counted (worst bit of each) |")
+        print("|---|---|---|---|---|---|---|")
         for bus in BUSES:
             i, o, parts = bus_pins(bus)
             c = bus_pf(bus)
-            ex = [math.ceil(SLOPE[k][2] * max(0, c - 50)) for k in ("bus", "std")]
+            ex = [" / ".join(str(math.ceil(SLOPE[k][col] * max(0, c - 50))) for col in (1, 2)) for k in ("bus", "std")]
             what = "; ".join(f"{w}: {a} in, {b} out" for w, a, b in parts)
-            print(f"| {bus} | {i} | {o} | {c} | {ex[0]} / {ex[1]} | {what} |")
-    if args.limit:
-        print(f"\n{len(over)} paths over {args.limit} ns at max 85 °C" + (": " + "; ".join(over) if over else ""))
-    sys.exit(1 if over else 0)
+            print(f"| {bus} | {i} | {o} | {c} | {ex[0]} | {ex[1]} | {what} |")
+    print("\nPass (max 25 °C): " + ("all limits met" if not fail else f"{len(fail)} FAIL: " + "; ".join(fail)))
+    print("Max 85 °C (information only): " + ("all limits met" if not hot else f"{len(hot)} over: " + "; ".join(hot)))
+    sys.exit(1 if fail else 0)
 
 
 if __name__ == "__main__":

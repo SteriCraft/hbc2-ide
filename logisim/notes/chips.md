@@ -79,7 +79,9 @@ From the TI datasheets of the DIP references above, CL = 50 pF. **Max** columns 
 - SN74HCT parts (08, 32, 138, 541) give it at 4.5 V and 50 pF;
 - CD74HCT parts give it only at **5 V and 15 pF**, which is quicker than 4.5 V and 50 pF.
 
-So Typ is a rough guide only. Use Max 85 °C for timing budgets.
+So Typ is a rough guide only.
+
+**Pass criterion** (Gianni, 2026-11-04): every path must meet its limit at **Max 25 °C**, bus loading included (`tools/timing.py`, which exits 1 otherwise). Max 85 °C is reported next to it, for information only.
 
 | Part | Path | Typ | Max 25 °C | Max 85 °C | Datasheet |
 |---|---|---|---|---|---|
@@ -136,6 +138,18 @@ Notes:
 - The CD74HCT240 gives no HCT typical for the enable time. 12 ns is the HC typical.
 - At 5 V instead of 4.5 V, everything is about 10 % faster. Every Max 85 °C figure is about 1.25 × the Max 25 °C one.
 - The Nexperia SOIC parts are in the same range, but they are specified differently (typ at 4.5 V and 50 pF). Check their datasheet before relying on a SOIC timing.
+
+## Fallbacks if the hardware shows timing errors (74ACT)
+
+Decision (Gianni, 2026-11-04): the CPU stays **all-HCT**. If the built hardware shows timing errors, these 74ACT parts are pin-compatible drop-in replacements: same pinout and logic, TTL-level inputs like HCT, so only the chip changes, not the board or the circuit. Not in any Parts in use table; move a row there only if a fallback is fitted.
+
+| Part | Replaces | Where | What it gains (max 85 °C) |
+|---|---|---|---|
+| 74ACT153 | 74HCT153 | registers U1, U6, U11, U15 (index multiplexers); flags, the 4 input multiplexers | CD74ACT153: S → Y 20 ns, I → Y 16.4 ns, against 43. End to end (register read → ALU → flag setup) 520 → 477 ns with the 4 in the registers, 451 ns with the 8 (registers-decisions.md section 6) |
+| 74ACT74 | 74HCT74 | clock generator (control-requirements.md C6) | /WE pulse about 75 ns instead of 30 ns at max 85 °C (registers-decisions.md D7) |
+| 74ACT10 | 74HCT10 | clock generator (C6) | the same, with the 74ACT74 |
+
+Before buying: check that the DIP and SOIC references are active and sold by an authorised distributor (Rules, above), and add them to this table. AC parts switch fast (edges of about 3 ns) and drive 24 mA: decouple each one (100 nF at the pins) and keep its lines short. In these positions they drive only local nets (the 670 addresses and enables, the 175 inputs, the clock generator), none of the buses.
 
 ## In Logisim but not a 74HCT part (don't use)
 
