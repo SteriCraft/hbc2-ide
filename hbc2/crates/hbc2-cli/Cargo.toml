@@ -14,3 +14,4 @@ hbc2-core = { path = "../hbc2-core" }
 hbc2-asm = { path = "../hbc2-asm" }
 hbc2-cc = { path = "../hbc2-cc" }
 hbc2-runner = { path = "../hbc2-runner" }
+hbc2-ucode = { path = "../hbc2-ucode" }

@@ -1419,6 +1419,7 @@ dependencies = [
  "hbc2-cc",
  "hbc2-core",
  "hbc2-runner",
+ "hbc2-ucode",
 ]
 
 [[package]]
@@ -1449,6 +1450,13 @@ version = "0.1.0"
 dependencies = [
  "chrono",
  "hbc2-asm",
+ "hbc2-core",
+]
+
+[[package]]
+name = "hbc2-ucode"
+version = "0.1.0"
+dependencies = [
  "hbc2-core",
 ]
 

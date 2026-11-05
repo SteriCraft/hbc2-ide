@@ -40,7 +40,12 @@ usage:
         measure emulation speed (flat out, or paced on the emulator thread)
   hbc2 vectors <module> [-o file] | --list
         Logisim test vectors for a CPU circuit (e.g. add_sub8), every input
-        combination, expected outputs computed by the emulator's own code";
+        combination, expected outputs computed by the emulator's own code
+  hbc2 ucode [-o dir] [--cycles file.md] [--check]
+        compile the control unit's microcode (hbc2-ucode/microcode/hbc2.uc)
+        and check its rules; -o writes the 7 AT28C256 images (ucode0.bin ..
+        ucode6.bin) and listing.txt; --cycles writes the cycle-count table;
+        --check runs it on the datapath model against the emulator";
 
 fn main() -> ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
@@ -54,6 +59,7 @@ fn main() -> ExitCode {
         Some("run") => run(&args[1..]),
         Some("trace") => trace(&args[1..]),
         Some("vectors") => vectors::vectors(&args[1..]),
+        Some("ucode") => ucode(&args[1..]),
         _ => Err(USAGE.to_string()),
     };
     match result {
@@ -97,6 +103,45 @@ fn compare(args: &[String]) -> ExitCode {
 }
 
 /// Returns the value following `--name`, if present.
+/// `hbc2 ucode`: the control unit's microcode.
+fn ucode(args: &[String]) -> Result<(), String> {
+    let mc = hbc2_ucode::build().map_err(|e| format!("{} error(s):
+{}", e.len(), e.join("
+")))?;
+    println!(
+        "microcode: {} words used of 32768, 54 bits (7 x AT28C256)",
+        mc.origin.iter().filter(|o| o.is_some()).count()
+    );
+    for (what, n) in &mc.checks {
+        println!("  ok {n:6}  {what}");
+    }
+    if let Some(dir) = option(args, "-o") {
+        let dir = Path::new(dir);
+        std::fs::create_dir_all(dir).map_err(|e| format!("{}: {e}", dir.display()))?;
+        for (k, image) in mc.images().iter().enumerate() {
+            let path = dir.join(format!("ucode{k}.bin"));
+            std::fs::write(&path, image).map_err(|e| format!("{}: {e}", path.display()))?;
+        }
+        let path = dir.join("listing.txt");
+        std::fs::write(&path, mc.listing()).map_err(|e| format!("{}: {e}", path.display()))?;
+        println!(
+            "wrote {}: ucode0.bin .. ucode6.bin, listing.txt",
+            dir.display()
+        );
+    }
+    if let Some(path) = option(args, "--cycles") {
+        std::fs::write(path, mc.cycle_table()).map_err(|e| format!("{path}: {e}"))?;
+        println!("wrote {path}");
+    }
+    if args.iter().any(|a| a == "--check") {
+        use hbc2_ucode::check;
+        println!("  ok  {}", check::every_instruction_and_mode(&mc, 64)?);
+        println!("  ok  {}", check::random_programs(&mc, 4000)?);
+        println!("  ok  {}", check::boot(&mc)?);
+    }
+    Ok(())
+}
+
 fn option<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
     args.iter()
         .position(|a| a == name)

@@ -1,0 +1,9 @@
+[package]
+name = "hbc2-ucode"
+description = "Microcode of the HBC-2 hardware control unit: source language, generator (7 AT28C256 images) and a fast datapath model checked against the emulator"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+
+[dependencies]
+hbc2-core = { path = "../hbc2-core" }

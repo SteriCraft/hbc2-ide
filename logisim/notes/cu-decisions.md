@@ -428,3 +428,128 @@ The 74HCT10 had two jobs: `clk_wr_n` = NAND3(`clk_n`, `osc`, Q2), and NOT `osc` 
 - **Margins at 25 °C:** pulse 49 ns (36 with a 45 % duty), latest rise + hold 484 ns (16 ns before the edge; **3.5 ns with a 55 % duty**). The write data deadline (C10, 335 / 322 ns) and `clk_mem_wr_n` (M1) don't change; FF2 clocks 8 ns later (14 instead of 10), which only shifts `clk_mem_wr_n`'s two edges together.
 - **At 85 °C (information):** the hold is 10 ns short. Breadboard check with B1 (breadboard-checks.md), with the duty cycle measured. Fallback if it fails there: a faster inverter for `osc_n` (a 74HCT00 gate, 24 / 30 ns: +8 ns of margin), or the 74ACT74 fallback.
 - **Chips:** module `clk` keeps 5 chips: 2 × 74HCT74, 74HCT32 (2 gates spare), 74HCT14, 74HCT541. The 74HCT10 leaves chips.md's lists.
+
+## 13. Phase 2: the microcode (2026-11-05)
+
+**Done:** the microcode for the whole instruction set, interrupts, halt and boot, compiled into the 7 EEPROM images, checked by the generator's rules and by a datapath model against the emulator. No circuit yet (phase 3).
+
+| File | What |
+|---|---|
+| `hbc2/crates/hbc2-ucode/microcode/hbc2.uc` | **the microcode source** (its header is the language reference) |
+| `hbc2/crates/hbc2-ucode/src/` | `source.rs` parser, `generate.rs` + `place.rs` generator, `word.rs` bit layout, `model.rs` datapath model, `check.rs` comparisons with the emulator |
+| `logisim/circuits/cu/microcode/ucode0.bin` … `ucode6.bin` | the 7 AT28C256 images (32 KiB each; EEPROM k = bits 8k..8k+7) |
+| `logisim/circuits/cu/microcode/listing.txt` | every used address: word, source line, next step, condition, the fields that aren't idle |
+| [cu-cycles.md](cu-cycles.md) | cycle counts per instruction × mode (generated) |
+
+Rebuild: `hbc2 ucode -o logisim/circuits/cu/microcode --cycles logisim/notes/cu-cycles.md` (add `--check` for the emulator comparisons). Tests: `cargo test -p hbc2-ucode`.
+
+### 13.1 The source language
+
+One line = one step. Example (ADD … RegRam, 8 steps with F0):
+
+```
+instr add adc sub sbb and or xor : regram
+     f1                                   # macro: bus<-ram, ir1<-bus, lat<-pc+1, pc<-pc+1
+     fv1
+     fv2
+     lat<-vx
+     bus<-ram, lat<-pc
+     alu=$alu, a=r1, flags<-$fl           # $alu, $fl: per-opcode parameters
+     r1<-bus, bus<-res, end
+```
+
+| Kind | Syntax |
+|---|---|
+| bus_data source | `bus<-ram a res flags pchi pclo sphi splo io` |
+| memory, I/O | `ram<-bus`, `ram<-rom` (boot copy), `io<-bus` (OUT), `hwvec`, `swvec`, `inr` |
+| loads | `ir0<-bus ir1<-bus v1<-bus v2<-bus`, `swi<-bus` (pending latch, sets P), `r1<-bus` … `reg7<-bus`, `i<-bus` |
+| buses A / B | `a=r1 r2 r3 i reg0..reg7` (default: the A latch); `b=r2 r1 r3 one zero` (default: the B latch) |
+| ALU, flags | `alu=add sub adc sbb and or xor not shl shr asr`; `flags<-czn zn sef bus`; `C<-0` … `H<-1` |
+| address section | `lat<-E`, `pc<-E`, `sp<-E` (one sum per step): `pc pc±1 sp sp±1 sp±v1 sp±vx a:b a:b+v2 0:b vx ivt ivt.hi 0` |
+| exits | default: the next line; `next L`; `if jc/noint/hwq/xn L1 else L0`; `end` (boundary); `end nocheck` (an F0 copy); `end halt` (a W1 copy); `dispatch` (F0); `restart` (S1) |
+| blocks | `seq NAME` (forced, reset, boot, stop1, stop2); `instr OPS : MODES`; `macro`, `param`; `-` = no step after F0 (NOP) |
+
+### 13.2 Bit layout (54 bits + 2 spare, `word.rs`)
+
+| EEPROM | Bits 0 → 7 |
+|---|---|
+| 0 | `alu_op` 0–3, `flags_op` 0–3 |
+| 1 | `flags_bit_val`, `regs_we_n`, `regs_a_sel` 0–1, `regs_cu_idx` 0–1, `regs_cu_bank_n` 0–1 |
+| 2 | `regs_b_sel` 0–1, `regs_const_oe_n`, `dbus` 0–2, `abus` 0–1 |
+| 3 | `addr_base_sel` 0–1, `addr_base_oe_n` 0–1, `addr_off_sel`, `addr_off_oe_n` 0–1, `addr_inv` |
+| 4 | `addr_cin`, `addr_lat_ld_n`, `addr_pc_ld_n`, `addr_sp_ld_n`, `ir_b0_ld_n`, `ir_b1_ld_n`, `ir_v1_ld_n`, `ir_v2_ld_n` |
+| 5 | `mem_re`, `mem_oe_n`, `mem_we_n`, `mem_wbuf_oe_n`, `mem_rom_oe_n`, `inr`, `cu_swi_ld_n`, `cu_force` |
+| 6 | `cu_next` 0–3, `cu_cond_sel` 0–1, spare × 2 (kept at 1) |
+
+Each section's controls sit on one or two EEPROMs, so the board routes them in groups. Codes: `dbus` and `abus` as in section 2; `cu_cond_sel` 00 jc, 01 noint (`bnd_n`), 10 hwq, 11 xn.
+
+### 13.3 Placement (as built)
+
+| Where | Holds |
+|---|---|
+| every row, step 0 | the reset word (cond 0), S1 (cond 1) |
+| forced row (00, 0) | step 1: the boundary pair (W1 / F0); steps 2–14: W2 / IE1h, W1 / IE1s, IE2h–IE5h, IE2s–IE5s, IE6–IE8; step 15 unused |
+| boot row (3F, B) | step 1: the boundary pair (3F is an invalid opcode); steps 2–12: S2–S9, the copy loop C, FIX, an F0 copy |
+| opcode with operands, each m3 m2 group | step 1: the byte-1 fetch, the same word in the group's 4 rows (m1 m0 aren't known yet; the generator refuses a group whose modes differ there). Its condition is jc if a mode branches right after it (JMx Reg16) |
+| that opcode's mode rows | steps 2 onwards: the instruction, or `stop2` for a mode it doesn't accept |
+| opcode without operands | rows with m3 m2 = 00: the instruction from step 1 (the 4 rows identical); other rows: `stop1` |
+| invalid opcode 36–3F, NOP | step 1: the boundary pair (1 step) |
+| unused (24,220 of 32,768 words) | a trap word: H := 1, then the boundary, so the CPU halts there (with I = 1 an interrupt still gets in) |
+
+8,548 words are used.
+
+### 13.4 Generator rules (checked at each build; `hbc2 ucode` prints them)
+
+| Rule | Checked on |
+|---|---|
+| at most one source on `bus_data`; a write, an IR or pending latch load, or `flags<-bus` needs one; bus A never with a register write (C5); `b=one` / `b=zero` agree with `regs_const_0` = NOT `alu_op3` | 458 steps |
+| memory strobes only C19's four cases; RE never with IE or a vector step; one `bus_addr` mode per step; OUT drives bus A | 458 steps |
+| one adder sum per step (C11); no address load from bus A / B in a write step (P4) | 458 steps |
+| ALU flags only in a step with `alu=` and no write (C1, C9); `bus<-res` only right after a full ALU step (or the sweep's AND with 00) | 55 uses |
+| flag changes per opcode = `Opcode::info().flags` | 54 opcodes |
+| C18: the fetch steps load exactly the mode's length, in order; no field (R1, R2, R3, V1, V2) used before its byte is loaded | 107 programs |
+| every opcode × mode: a block exactly for the modes isa.rs lists; the rest NOP (invalid opcode) or stop | 1,024 rows |
+| every step has a next step; every next address of every placed word holds a word | 8,548 words |
+
+### 13.5 Datapath model and tests
+
+`model.rs` runs the 7 images as the hardware reads them:
+- the encodings of section 2;
+- buses A and B, with the 670's transparent write;
+- the adder, with the reset gating (A1);
+- the ALU (alu_op table) and the flag register (flags_op);
+- the IR, memory (C19), the pending port latch and P, `hw_q` and `cout_q`;
+- the 157 bypass, the condition multiplexer, the reset generator's two signals;
+- the IOD stub (I3–I6).
+
+An undriven value is "unknown": loading or writing one fails, and so does any bus with two drivers.
+
+| Test (`cargo test -p hbc2-ucode`; `hbc2 ucode --check` runs the long version) | Result |
+|---|---|
+| every opcode (64) × every mode pattern (16) × 64 random states: one instruction (plus the software entry after INT with I set); registers, flags, PC, SP, RAM and port writes; cycles = cu-cycles.md | **65,536 / 65,536** equal to cpu.rs |
+| 4,000 random programs (mostly valid instructions, IVT and Imm16 targets on instruction starts), hardware interrupts raised at random boundaries, halts woken by an interrupt | **217,100** instructions and entries equal, **9,435** of them interrupt entries |
+| boot from 3 power-up states (reset held 2, 3, 7 steps) | RAM = the ROM image, state = `Cpu::new()`, latch 0000, **65,548** steps |
+| 14 mutations of the source: STI without the delay, taken / not taken swapped, entry without H := 0, no INR, boot exit inverted, R1 for R3, RET byte order, CMP with C Z N, flags in the write step, two bus sources, P4, no next step, a missing mode, a short fetch | **all 14 caught** (6 by the rules, 8 by the comparisons) |
+
+The tests take about 4 s in a debug build; the `--check` version takes about 10 s in release.
+
+### 13.6 Cycle counts
+
+See [cu-cycles.md](cu-cycles.md). **Every count equals section 8's estimate.** A hardware entry takes 9 steps after the boundary, a software one 10. A stop takes 3 steps (no operands) or 4 before the halt loop.
+
+### 13.7 Decisions taken in phase 2
+
+| # | Decision | Why |
+|---|---|---|
+| U1 | IE8 ends with the normal boundary (`end`), not a no-check F0 | I and H are 0 there, so the check always gives F0; one F0 copy less |
+| U2 | The reset word also does the sweep's step 0 (AND 00 into the result latch), and so does S1, so S2 writes register 0 at once | no extra step: still 8 sweep steps (C7) |
+| U3 | Unused addresses hold a trap word that halts (H := 1, then the boundary) | an unplaced address can't run garbage; the generator also proves none is reachable |
+| U4 | Step 1 of an operand opcode is shared by the 4 rows of its m3 m2 group; its condition is the one branch any mode needs (jc for JMx Reg16) | m1 m0 are only on `bus_data` during that step |
+| U5 | The model's power-up starts on the reset word, not on random 574 contents | section 6: a brief contention is possible before the first edge, which a step model can't show |
+| U6 | INT's pending latch loads in the V1 fetch step (`fv1, swi<-bus`), then one boundary step | Q4 as accepted: INT takes 4 steps |
+
+### 13.8 For phase 3
+
+- `at28c256` model: the 4-bit `IMAGE` pin (Q10); images 2–8 = `ucode0.bin` … `ucode6.bin`.
+- `timing.py --section cu`, with a duty-cycle parameter (Q9) and the datasheet figures for the 74HCT151, the 74HCT00 and the oscillator.
+- Test vectors for `cu` from the generator's images and the model (`hbc2 vectors cu`), with the IOD stub.

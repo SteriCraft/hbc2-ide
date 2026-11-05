@@ -13,6 +13,7 @@ is in the git history.
 | `hbc2-asm` | Assembler and disassembler for `.has` files. The language is described in `../Documentation/HBC-2 Assembly Language.md`. |
 | `hbc2-runner` | Runs a machine on its own thread at a chosen clock speed (1 Hz to "as fast as possible"). Commands in, state snapshots out. |
 | `hbc2-cc` | C compiler driver: runs the Fuzix Compiler Kit stages of `../compiler` (built by `../compiler/build.cmd`) and assembles the result with the C runtime and library. |
+| `hbc2-ucode` | Microcode of the hardware control unit: source language, generator (7 AT28C256 images), datapath model checked against the emulator (`hbc2 ucode`). |
 | `hbc2-cli` | `hbc2` command: assemble, compile C, headless run, speed benchmark. |
 | `hbc2-ide` | `hbc2-ide`: the IDE (egui). Editor, assembler, emulator controls, and views of the CPU, memory, disassembly, IOD and peripherals. |
 

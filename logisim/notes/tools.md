@@ -16,6 +16,10 @@ Run them from anywhere. A bare name is looked up as `logisim/<name>`, `circuits/
 | `logitest.py file circuit vectors.txt` | Run an existing vector file |
 | `logitest.py file --open` | Does Logisim open the file? It runs `-tty stats` headless (loads and counts parts, about 1 s; `-tty table` simulated every input and timed out on alu), and a missing library fails. |
 
+## Microcode (hbc2 workspace)
+
+`hbc2 ucode [-o dir] [--cycles file.md] [--check]` compiles `hbc2/crates/hbc2-ucode/microcode/hbc2.uc`, prints the rules it checked, writes the 7 AT28C256 images and `listing.txt` (`-o logisim/circuits/cu/microcode`) and the cycle table (`--cycles logisim/notes/cu-cycles.md`); `--check` runs the datapath model against the emulator. Rerun it after any change to the source and commit the outputs (cu-decisions.md section 13).
+
 ## Design scripts (logisim/designs/)
 One script per generated file, e.g. `add_sub8.py` → `circuits/alu/add_sub8.circ`.
 - `python designs/x.py` writes the file, then runs circcheck and conventions.
