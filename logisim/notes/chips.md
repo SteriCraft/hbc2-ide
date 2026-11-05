@@ -96,14 +96,15 @@ The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). 
 
 ### Not in a circuit yet
 
-Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 is the clock generator's (control-requirements.md C6); a second 74HCT74 and the 74HCT14 are the reset generator's (C17). **Control unit (cu-decisions.md section 9, accepted 2026-11-05):** 74HCT151 and 74HCT00 are new parts for `cu` (their references and datasheet delays go in with the phase 3 circuit); `clk` adds a 74HCT32 (in place of the 74HCT10, section 12), a 74HCT541 clock buffer and a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose).
+Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 and 74HCT10 are the clock generator's (control-requirements.md C6); a second 74HCT74 and the 74HCT14 are the reset generator's (C17). **Control unit (cu-decisions.md section 9, accepted 2026-11-05):** 74HCT151 and 74HCT00 are new parts for `cu` (their references and datasheet delays go in with the phase 3 circuit); `clk` adds a 74HCT541 clock buffer and a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose).
 
 | Part | Function | Logisim | DIP | SOIC | Qty |
 |---|---|---|---|---|---|
 | 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
+| 74HCT10 | triple 3-input NAND | 7410 | CD74HCT10E | 74HCT10D (Nexperia) | 0 |
 | 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 0 |
 
-The 74HCT10 was dropped on 2026-11-05: TI marks CD74HCT10E NRND, and Nexperia DIP is excluded (cu-decisions.md section 12). Its delay row stays below for the record.
+**74HCT10: NRND, used anyway (Gianni, 2026-11-05).** TI marks CD74HCT10E "not recommended for new designs" but still makes it: DigiKey stocks it (6-week factory lead time, Rochester Electronics as a second source). It is the only HCT 3-input NAND in DIP: TI has no SN74HCT10N, and the Nexperia 74HCT10N is discontinued. Gianni kept it in the clock generator over the 74HCT32 + 74HCT14 replacement, whose pulse end left 3.5 ns before the next edge at 55 % duty (cu-decisions.md section 14). **Buy spares** (at least 3 for the one fitted). If it can no longer be bought: **SN74ACT10N** (TI, PDIP-14, active, 9.5 ns max at 5 V) fits the same socket, see the 74ACT fallbacks below.
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
 
@@ -192,7 +193,7 @@ Decision (Gianni, 2026-11-04): the CPU stays **all-HCT**. If the built hardware 
 |---|---|---|---|
 | 74ACT153 | 74HCT153 | registers U1, U6, U11, U15 (index multiplexers); flags, the 4 input multiplexers | CD74ACT153: S → Y 20 ns, I → Y 16.4 ns, against 43. End to end (register read → ALU → flag setup) 520 → 477 ns with the 4 in the registers, 451 ns with the 8 (registers-decisions.md section 6) |
 | 74ACT74 | 74HCT74 | clock generator (control-requirements.md C6) | /WE pulse about 75 ns instead of 30 ns at max 85 °C (registers-decisions.md D7) |
-| 74ACT32 | 74HCT32 | clock generator (C6, the two `clk_wr_n` gates) | the same, with the 74ACT74 (replaces the 74ACT10 row: the 74HCT10 is no longer used, cu-decisions.md section 12) |
+| 74ACT10 | 74HCT10 | clock generator (C6) | the same, with the 74ACT74; also the replacement if the NRND CD74HCT10E can no longer be bought (SN74ACT10N, TI, PDIP-14, active 2026-11-05) |
 
 Before buying: check that the DIP and SOIC references are active and sold by an authorised distributor (Rules, above), and add them to this table. AC parts switch fast (edges of about 3 ns) and drive 24 mA: decouple each one (100 nF at the pins) and keep its lines short. In these positions they drive only local nets (the 670 addresses and enables, the 175 inputs, the clock generator), none of the buses.
 

@@ -111,7 +111,7 @@ The 670 writes while /WE is low (transparent: the word follows D) and keeps what
     osc -> NAND as inverter -> FF2 CLK, D2 = clk     Q2 = clk, half an osc period later
     clk_wr_n = NAND3(clk_n, osc, Q2)        (74HCT10: one gate here, one as the inverter)
 
-(**Superseded 2026-11-05:** the 74HCT10 is NRND; `clk_wr_n` = (osc_n OR Q2_n) OR clk with a 74HCT32 and a 74HCT14, same window and pulse, end up to 56 ns later: cu-decisions.md section 12, control-requirements.md C6.)
+(**Kept, 2026-11-05:** a 74HCT32 + 74HCT14 replacement for the NRND 74HCT10 was tried and reverted by Gianni: its pulse ended up to 56 ns later, 3.5 ns before the next edge at 55 % duty. The 74HCT10 stays, with spares: cu-decisions.md sections 12 and 14, chips.md.)
 
 `clk_wr_n` is low while clk is low, osc is high and Q2 is high: from the clk fall (an osc rise, 250 ns) to the next osc fall (375 ns). Q2 is there for the osc rise at 500 ns: osc rises a flip-flop delay before clk_n falls, so NAND(clk_n, osc) alone would glitch low; Q2 is already low then (it falls by 440 ns: the inverter 30 + FF2 35 after the osc fall). At every transition only one input of the NAND moves while the others hold it, so the strobe is glitch-free. Parts: the oscillator, a 74HCT74 and a 74HCT10 (one gate spare).
 

@@ -1,6 +1,6 @@
 # Control unit: decisions
 
-**Phase 1 (paper design, 2026-11-05): accepted.** Gianni's answers (all 10 recommendations accepted, plus the 74HCT10 replacement and the INT requirement) are in section 12. **Phase 2 (microcode) is in section 13.**
+**Phase 1 (paper design, 2026-11-05): accepted.** Gianni's answers (all 10 recommendations accepted, plus the 74HCT10 replacement and the INT requirement) are in section 12. **Phase 2 (microcode) is in section 13. Phase 3 (circuits `cu` and `clk`) is in section 14**: there the 74HCT10 came back (section 12's replacement was reverted by Gianni).
 
 Source of truth: `hbc2-core/src/cpu.rs`, `isa.rs` (`DECODE`, `INSTRUCTION_TABLE`). Requirements: control-requirements.md C1–C23, pc-sp-requirements.md P1–P4, registers-requirements.md, iod-requirements.md I1–I8. Interfaces: registers-, flags-, addr-, ir-mem-decisions.md, alu-report.md. Times are in ns from the rising `clk` edge that starts the step (500 ns), **max 25 °C (pass) / max 85 °C (information)**, bus loading included.
 
@@ -251,7 +251,7 @@ The EEPROMs (AT28C256-15: tACC 150 ns, /CE and /OE tied low, /WE high) read the 
 | `osc` | 4.000 MHz HCMOS oscillator module | FF1 CLK, NAND3, inverter → FF2 CLK | C6 |
 | `clk` | 74HCT74 #1 FF1 Q (D = /Q1) | every flip-flop's CLK, FF2 D, the IOD | 2 MHz, 50 % whatever `osc`'s duty |
 | `clk_n` | FF1 /Q | NAND3 only | |
-| `clk_wr_n` | ~~74HCT10: NAND3(`clk_n`, `osc`, Q2)~~ replaced (section 12): (`osc_n` OR Q2_n) OR `clk`, 2 gates of a 74HCT32 | regs (670 /WE), the IOD (OUT capture) | low 250–375 (C6, D7) |
+| `clk_wr_n` | 74HCT10: NAND3(`clk_n`, `osc`, Q2) (kept, section 14; the section 12 replacement was reverted) | regs (670 /WE), the IOD (OUT capture) | low 250–375 (C6, D7) |
 | `clk_mem_wr_n` | FF2 /Q (FF2: CLK = NOT `osc`, D = `clk`) | mem (RAM WE#) | low 125–375 (M1) |
 | `rst_early_n` | 74HCT74 #2 FF1 Q (D = VCC) | `x_n` (as `rst_early`, FF1's /Q) | C17 |
 | `rst_n` | FF2 Q (D = FF1 Q); both /CLR from the RC via 2 × 74HCT14 | flags, addr, cu, the IOD | asynchronous assert, release just after a `clk` edge |
@@ -328,7 +328,7 @@ Where the steps go:
 | 4 | 74HCT00, 74HCT08 × 2, 74HCT27 | `abus`, bus A / B latch enables, HW, SW, `bnd_n`, `x_n`, P next (exact mapping in phase 3) |
 | 1 + 1 | 74HCT377 + 74HCT541 | pending software interrupt port latch (C13) |
 | **29** | | module `cu` |
-| 2 + 1 + 1 + 1 | 74HCT74, 74HCT32 (was 74HCT10, section 12), 74HCT14, 74HCT541 | module `clk`: clock, reset, clock buffer; plus the oscillator module |
+| 2 + 1 + 1 + 1 | 74HCT74, 74HCT10 (NRND, spares; section 14), 74HCT14, 74HCT541 | module `clk`: clock, reset, clock buffer; plus the oscillator module |
 | **34** | | control unit in all. Three inverters (the constant, `abus`) use the reset 74HCT14's spare gates. |
 
 - **New parts:** 74HCT151 and 74HCT00. Their DIP and SOIC references and datasheets go into chips.md in phase 3; everything else is already in use or listed.
@@ -412,6 +412,8 @@ Where the steps go:
 
 ### The 74HCT10 replacement
 
+**Reverted 2026-11-05 (Gianni, section 14):** 3.5 ns before the next edge at 55 % duty is too tight; the 74HCT10 (NRND, still made) stays, with spares. The analysis below is kept for the record.
+
 The 74HCT10 had two jobs: `clk_wr_n` = NAND3(`clk_n`, `osc`, Q2), and NOT `osc` for FF2's clock. Candidates, at max 25 °C (pass) / 85 °C (info), with the 670 needing a /WE pulse of 20 / 25 ns and a 5 ns hold before the next edge (registers-decisions.md D7):
 
 | Option | `clk_wr_n` | Shortest /WE pulse | Latest /WE rise + hold | Result |
@@ -419,7 +421,7 @@ The 74HCT10 had two jobs: `clk_wr_n` = NAND3(`clk_n`, `osc`, Q2), and NOT `osc` 
 | 74HCT10 (before) | NAND3(`clk_n`, `osc`, Q2) | 49 / 30 | 428 / 440 | NRND |
 | 74HCT11 + 74HCT14 (suggested) | NOT AND3(`clk_n`, `osc`, Q2) | **13** / −15 | 464 / 485 | fails the pulse: the start of the pulse goes through two gates |
 | 74HCT27 + 74HCT14 | NOT NOR3(`clk`, `osc_n`, Q2_n) | **18** / −9 | 491 / 519 | fails the pulse |
-| **74HCT32 × 2 gates + 74HCT14 (chosen)** | (`osc_n` OR Q2_n) OR `clk` | **49 / 30** | **484** / 510 | passes at 25 °C |
+| 74HCT32 × 2 gates + 74HCT14 (chosen, then reverted) | (`osc_n` OR Q2_n) OR `clk` | **49 / 30** | **484** / 510 | passes at 25 °C |
 | 74HCT32, the other order | (`clk` OR Q2_n) OR `osc_n` | 25 / 0 | 460 / 480 | passes at 25 °C, but 12.5 ns with a 45 % duty |
 
 - **How it works:** `clk_wr_n` = `clk` OR `osc_n` OR Q2_n is low only while `clk` is low, `osc` is high and Q2 is high, the same window as before. `osc_n` comes from a spare gate of the reset block's 74HCT14 and also clocks FF2 (the 10's second gate did that). Q2_n is FF2's /Q, which is `clk_mem_wr_n` already.
@@ -553,3 +555,15 @@ See [cu-cycles.md](cu-cycles.md). **Every count equals section 8's estimate.** A
 - `at28c256` model: the 4-bit `IMAGE` pin (Q10); images 2–8 = `ucode0.bin` … `ucode6.bin`.
 - `timing.py --section cu`, with a duty-cycle parameter (Q9) and the datasheet figures for the 74HCT151, the 74HCT00 and the oscillator.
 - Test vectors for `cu` from the generator's images and the model (`hbc2 vectors cu`), with the IOD stub.
+
+## 14. Phase 3: the circuits `cu` and `clk` (2026-11-05)
+
+Gianni's go-ahead (2026-11-05):
+
+| Item | Answer | Where |
+|---|---|---|
+| `clk_wr_n` | **Back to the 74HCT10 NAND3** (section 12's 74HCT32 + 74HCT14 left 3.5 ns before the next edge at 55 % duty). NRND isn't obsolete: CD74HCT10E is still made and stocked (DigiKey, Rochester Electronics second source); TI has no SN74HCT10N and the Nexperia 74HCT10N is discontinued; **SN74ACT10N** (TI, PDIP-14, active) is the drop-in fallback. Buy spares. | chips.md, C6, D7, timing.py |
+| timing.py, every section | rerun with the 74HCT10: all pass at 25 °C (/WE pulse 49 ns, latest rise + hold 428 ns: 72 ns before the edge; RAM WE# pulse 174 ns) | — |
+| U1–U6 | accepted | section 13.7 |
+| U5, hardware | the pipeline 574s' /OE come from the reset (`rst_oe`, high from power-up), and resistor networks pull every control line to its idle level while they are off; the sequencer's lines are pulled to the reset word's (`cu_cond_sel` = 11, `cu_force` = 0), see C24. **No extra chip:** `rst_oe` is the reset 74HCT14's first output, already there. | C24, breadboard-checks.md B3 |
+
