@@ -465,6 +465,18 @@ GENERIC = {
     ("#Memory", "D Flip-Flop"): [("D", (-10, 10), "in", False), ("CLK", (-10, 50), "in", False),
                                  ("Q", (50, 10), "out", False), ("nQ", (50, 50), "out", False),
                                  ("R", (20, 60), "in", False), ("S", (20, 0), "in", False)],
+    # AND Gate: always 4 inputs, size 50, no negated inputs (AbstractGate.getInputOffset)
+    ("#Gates", "AND Gate"): [("Y", (0, 0), "out", True), ("A1", (-50, -20), "in", True),
+                             ("A2", (-50, -10), "in", True), ("A3", (-50, 10), "in", True),
+                             ("A4", (-50, 20), "in", True)],
+    # RAM: separate data bus ("bibus"), byte enables, trigger "high" (asynchronous
+    # level write, no clock pin), appearance logisim_evolution, 8-bit data
+    # (RamAppearance: control height 80, width 200 + 40). Widths by attribute name.
+    ("#Memory", "RAM"): [("ADDR", (0, 10), "in", "addrWidth"), ("DIN", (0, 80), "in", "dataWidth"),
+                         ("WE", (0, 50), "in", False), ("OE", (0, 60), "in", False),
+                         ("DOUT", (240, 80), "out", "dataWidth")],
+    # ROM: appearance logisim_evolution, 8-bit data (control height 60)
+    ("#Memory", "ROM"): [("ADDR", (0, 10), "in", "addrWidth"), ("DOUT", (240, 60), "out", "dataWidth")],
 }
 
 
@@ -473,7 +485,8 @@ def make_generic(c: "Comp"):
     facing = c.attrs.get("facing", "east")
     for name, (dx, dy), d, wide in GENERIC[(c.lib, c.name)]:
         rx, ry = rotate(dx, dy, "east", facing)
-        c.ports.append(Port(name, (c.loc[0] + rx, c.loc[1] + ry), width if wide else 1, d))
+        w = parse_int(c.attrs.get(wide), 8) if isinstance(wide, str) else width if wide else 1
+        c.ports.append(Port(name, (c.loc[0] + rx, c.loc[1] + ry), w, d))
 IGNORED = {"Text", "Label", "Image"}
 
 
@@ -516,7 +529,7 @@ def dip_numbers(iface) -> dict:
     offs = [o for o, _ in iface]
     bottom = sorted((o for o in offs if o[1] == max(y for _, y in offs)), key=lambda o: o[0])
     top = sorted((o for o in offs if o[1] == min(y for _, y in offs)), key=lambda o: -o[0])
-    if len(bottom) != len(top) or len(bottom) + len(top) != len(offs):
+    if len(bottom) != len(top):          # other ports: simulation-only extras, no number
         return {}
     return {o: i + 1 for i, o in enumerate(bottom + top)}
 

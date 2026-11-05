@@ -255,16 +255,18 @@ def symbol_xml(name: str, sides: dict, pins: dict) -> str:
     return "    <appear>\n" + "".join(f"      {ln}\n" for ln in L) + "    </appear>"
 
 
-def dip_symbol_xml(title: str, order: list, pins: dict) -> str:
+def dip_symbol_xml(title: str, order: list, pins: dict, extra: list = ()) -> str:
     """<appear> block of a chip model, drawn like Logisim's TTL chips: pins
     1..n/2 along the bottom from the left, n/2+1..n along the top from the
     right, 20 px apart. Each pin shows its number and its datasheet name.
 
     order: pin labels in pin-number order (pin 1 first).
     pins:  {label: (loc of the Pin in the circuit, width, is_output)}
-    The anchor is pin 1."""
+    The anchor is pin 1.
+    extra: simulation-only pins (no number, not on the real chip: a model's
+    data-in pins, ir-mem-decisions.md M2 / M3), on the left edge, 10 px apart."""
     n = len(order)
-    if n % 2 or sorted(order) != sorted(pins):
+    if n % 2 or sorted(list(order) + list(extra)) != sorted(pins) or len(extra) > 8:
         raise ValueError(f"DIP symbol of {title}: pins {sorted(order)} vs circuit pins {sorted(pins)}")
     half = n // 2
     W, H, x0, y0 = half * 20, 80, 50, 50
@@ -285,6 +287,12 @@ def dip_symbol_xml(title: str, order: list, pins: dict) -> str:
             L.append(f'<rect height="10" stroke="none" width="3" x="{x - 1}" y="{y}"/>')
             L.append(T.format(s=8, x=x, y=y0 + 10, t=num))
             L.append(T.format(s=8, x=x, y=y0 + 20, t=_esc(lab)))
+        ports.append((x, y, lab))
+    for k, lab in enumerate(extra):                   # left edge, outside the numbering
+        x, y = x0 - 10, y0 + 10 * k
+        L.append(f'<rect height="2" stroke="none" width="10" x="{x}" y="{y - 1}"/>')
+        L.append(f'<text dominant-baseline="central" font-family="Dialog" font-size="7" '
+                 f'text-anchor="start" x="{x0 + 3}" y="{y}">{_esc(lab)}</text>')
         ports.append((x, y, lab))
     L.append('<text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" font-weight="bold" '
              f'text-anchor="middle" x="{x0 + W // 2}" y="{y0 + H // 2 + 5}">{_esc(title)}</text>')
@@ -392,12 +400,16 @@ class Circuit:
             dx, dy = (20 * i, 0) if i < half else (20 * half - 20 * (i - half) - 20, -100)
             w, out = widths[lab]
             part.ports.append(nl.Port(lab, (loc[0] + dx, loc[1] + dy), w, "out" if out else "in", i + 1))
+        for k, lab in enumerate(chip._dip[2]):          # extra pins: left edge, no number
+            w, out = widths[lab]
+            part.ports.append(nl.Port(lab, (loc[0] - 20, loc[1] - 90 + 10 * k), w, "out" if out else "in"))
         return part
 
-    def dip_symbol(self, title: str, order: list) -> None:
+    def dip_symbol(self, title: str, order: list, extra: list = ()) -> None:
         """Symbol of a chip model (circuits/chips/): a DIP outline with the
-        pins in datasheet order, `order` = pin labels from pin 1 to pin n."""
-        self._dip = (title, list(order))
+        pins in datasheet order, `order` = pin labels from pin 1 to pin n;
+        `extra` = simulation-only pins on the left edge (no pin number)."""
+        self._dip = (title, list(order), list(extra))
 
     def text(self, loc: Pt, text: str, **attrs) -> None:
         self.add("#Base", "Text", loc, text=text, **attrs)
@@ -506,7 +518,7 @@ class Circuit:
         if custom:
             pins = {p.label: (p.loc, int(p.attrs.get("width", 1)), p.attrs.get("type") == "output")
                     for p in self.parts if p.lib == "#Wiring" and p.name == "Pin"}
-            lines.append(dip_symbol_xml(*self._dip, pins) if self._dip else symbol_xml(self.name, self._symbol, pins))
+            lines.append(dip_symbol_xml(self._dip[0], self._dip[1], pins, self._dip[2]) if self._dip else symbol_xml(self.name, self._symbol, pins))
         lines += [p.xml() for p in self.parts]
         lines += [f'    <wire from="({a[0]},{a[1]})" to="({b[0]},{b[1]})"/>' for a, b in self._split_wires()]
         lines.append("  </circuit>")
