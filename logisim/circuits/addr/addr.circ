@@ -48,7 +48,7 @@
     <a name="circuitnamedboxfixedsize" val="true"/>
     <a name="simulationFrequency" val="1.0"/>
     <appear>
-      <rect fill="none" height="190" stroke="#000000" stroke-width="2" width="1420" x="60" y="50"/>
+      <rect fill="none" height="210" stroke="#000000" stroke-width="2" width="1420" x="60" y="50"/>
       <rect height="10" stroke="none" width="3" x="79" y="40"/>
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="80" y="67">clk</text>
       <rect height="10" stroke="none" width="3" x="139" y="40"/>
@@ -77,6 +77,8 @@
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="1310" y="67">addr_pc_oe_n</text>
       <rect height="10" stroke="none" width="4" x="1419" y="40"/>
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="1420" y="67">addr_sp_oe_n</text>
+      <rect height="10" stroke="none" width="3" x="759" y="260"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="middle" x="760" y="252">addr_cout</text>
       <rect height="4" stroke="none" width="10" x="50" y="98"/>
       <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="104">addr_bus_a</text>
       <rect height="4" stroke="none" width="10" x="50" y="128"/>
@@ -109,6 +111,7 @@
       <circ-port dir="in" pin="220,840" x="1200" y="40"/>
       <circ-port dir="in" pin="220,920" x="1310" y="40"/>
       <circ-port dir="in" pin="220,1000" x="1420" y="40"/>
+      <circ-port dir="out" pin="3000,1100" x="760" y="270"/>
       <circ-port dir="in" pin="220,1080" x="50" y="100"/>
       <circ-port dir="in" pin="220,1280" x="50" y="130"/>
       <circ-port dir="in" pin="220,1480" x="50" y="160"/>
@@ -1382,6 +1385,10 @@
     <comp lib="0" loc="(1810,1130)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="addr_c4_2"/>
+    </comp>
+    <comp lib="0" loc="(1910,1150)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="addr_cout"/>
     </comp>
     <comp lib="0" loc="(1810,1090)" name="Tunnel">
       <a name="facing" val="east"/>
@@ -3013,6 +3020,16 @@
       <a name="facing" val="east"/>
       <a name="label" val="addr_bus_out_7"/>
     </comp>
+    <comp lib="0" loc="(3000,1100)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="addr_cout"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(2980,1100)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_cout"/>
+    </comp>
     <wire from="(220,120)" to="(240,120)"/>
     <wire from="(220,180)" to="(240,180)"/>
     <wire from="(220,240)" to="(240,240)"/>
@@ -3379,6 +3396,7 @@
     <wire from="(1890,1090)" to="(1910,1090)"/>
     <wire from="(1890,1110)" to="(1910,1110)"/>
     <wire from="(1890,1130)" to="(1910,1130)"/>
+    <wire from="(1890,1150)" to="(1910,1150)"/>
     <wire from="(2210,170)" to="(2230,170)"/>
     <wire from="(2210,190)" to="(2230,190)"/>
     <wire from="(2210,210)" to="(2230,210)"/>
@@ -3622,5 +3640,6 @@
     <wire from="(2980,440)" to="(3000,440)"/>
     <wire from="(2980,660)" to="(3000,660)"/>
     <wire from="(2980,880)" to="(3000,880)"/>
+    <wire from="(2980,1100)" to="(3000,1100)"/>
   </circuit>
 </project>

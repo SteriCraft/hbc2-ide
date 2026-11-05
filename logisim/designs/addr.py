@@ -12,7 +12,7 @@ Everything goes through one adder, sum = BASE + (OFFSET xor inv) + cin:
     OFFSET (4 x 74HCT157, /G per byte = addr_off_oe_n):
            high byte V1, low byte V2 (addr_off_sel = 0) or V1 (1); off = 00
     inv    (4 x 74HCT86): the offset inverted, for subtraction and -1
-    adder  (4 x 74HCT283), carry in addr_cin
+    adder  (4 x 74HCT283), carry in addr_cin, carry out addr_cout (the boot loop's end)
 
 The latch, PC and SP (2 x 74HCT377 each, clocked by clk on every edge, load
 enable /E) all load the sum. The latch drives the address bus through
@@ -123,8 +123,7 @@ for j in range(2):
 # ---- adder: 4 x 74HCT283 -------------------------------------------------------------------
 for j in range(4):
     pins = {"CIN": n("cin") if j == 0 else n("c4", j - 1)}
-    if j < 3:
-        pins["C4"] = n("c4", j)
+    pins["C4"] = n("c4", j) if j < 3 else n("cout")     # carry out: the boot loop's end (C20)
     for k in range(4):
         b = 4 * j + k
         pins.update({f"A{k + 1}": n("base", b), f"B{k + 1}": n("offx", b), f"∑{k + 1}": n("sum", b)})
@@ -162,6 +161,7 @@ TOP = [("clk", 1), ("rst_n", 1), (P + "base_sel", 2), (P + "base_oe_n", 2), (P +
        (P + "sp_ld_n", 1), (P + "lat_oe_n", 2), (P + "pc_oe_n", 2), (P + "sp_oe_n", 2)]
 LEFT = [(P + "bus_a", 8), (P + "bus_b", 8), (P + "v1", 8), (P + "v2", 8), (P + "bus_addr_lo_in", 8)]
 RIGHT = [(P + "bus_addr_hi", 8), (P + "bus_addr_lo", 8), (P + "bus_out", 8)]
+BOTTOM = [(P + "cout", 1)]
 X_IN, y = 220, 120
 for name, w in TOP + LEFT:
     bus_tunnels(c, (X_IN, y), name, w)
@@ -170,11 +170,15 @@ X_OUT, y = COL[5] + 300, ROW[1]
 for name, w in RIGHT:
     bus_tunnels(c, (X_OUT, y), name, w, output=True)
     y += 20 * w + 60
+for name, w in BOTTOM:
+    bus_tunnels(c, (X_OUT, y), name, w, output=True)
+    y += 60
 
-c.symbol(top=[n for n, _ in TOP], left=[n for n, _ in LEFT], right=[n for n, _ in RIGHT])
+c.symbol(top=[n for n, _ in TOP], left=[n for n, _ in LEFT], right=[n for n, _ in RIGHT],
+         bottom=[n for n, _ in BOTTOM])
 
 INPUTS = dict(TOP + LEFT)
-OUTPUTS = dict(RIGHT)
+OUTPUTS = dict(RIGHT + BOTTOM)
 
 if __name__ == "__main__":
     OUT.parent.mkdir(exist_ok=True)

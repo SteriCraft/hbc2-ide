@@ -41,7 +41,9 @@ pub const ADDR_IN: &[(&str, u32)] = &[
 /// All three outputs are tri-state buses: the address bus (two bytes, each
 /// with its own enable) and the data bus.
 const ADDR_BUSES: &[&str] = &["addr_bus_addr_hi", "addr_bus_addr_lo", "addr_bus_out"];
-pub const ADDR_OUT: &[(&str, u32)] = &[("addr_bus_addr_hi", 8), ("addr_bus_addr_lo", 8), ("addr_bus_out", 8)];
+/// addr_cout: the adder's carry out (the boot loop's end, ir-mem-decisions.md C20).
+pub const ADDR_OUT: &[(&str, u32)] =
+    &[("addr_bus_addr_hi", 8), ("addr_bus_addr_lo", 8), ("addr_bus_out", 8), ("addr_cout", 1)];
 
 /// The BASE input of the adder.
 #[derive(Clone, Copy, PartialEq, Debug)]
@@ -198,7 +200,15 @@ impl Model {
         }
     }
     fn sum(&self, s: &Step) -> Option<u16> {
-        let p = self.port(s);
+        self.sum17(s, self.port(s)).map(|v| v as u16)
+    }
+    /// The carry out of the last 74HCT283 (addr_cout): bit 16 of the sum,
+    /// with the port byte the bench drives on addr_bus_addr_lo_in (`p`).
+    fn cout(&self, s: &Step, p: u8) -> Out {
+        out(self.sum17(s, p).map(|v| (v >> 16) as u8))
+    }
+    /// sum = base + (off xor inv) + cin, 17 bits; `p` = the port (IVT).
+    fn sum17(&self, s: &Step, p: u8) -> Option<u32> {
         let src = match s.base_sel {
             0 => self.pc,
             1 => self.sp,
@@ -217,7 +227,7 @@ impl Model {
             s.v2
         };
         let off = u16::from_be_bytes([hi, lo]) ^ if s.inv { 0xFFFF } else { 0 };
-        base.map(|b| b.wrapping_add(off).wrapping_add(s.cin as u16))
+        base.map(|b| b as u32 + off as u32 + s.cin as u32)
     }
     fn outputs(&self, s: &Step) -> Vec<Out> {
         let hi = if s.lat_oe[1] { out(byte(self.lat, true)) } else { Out::Z };
@@ -226,7 +236,7 @@ impl Model {
             None => Out::Z,
             Some((r, h)) => out(byte(if r == 1 { self.pc } else { self.sp }, h == 1)),
         };
-        vec![hi, lo, bus]
+        vec![hi, lo, bus, self.cout(s, self.port(s))]
     }
     fn inputs(&self, s: &Step, clk: bool) -> Vec<u32> {
         let drv = |r| match s.drive {
@@ -271,7 +281,10 @@ impl Model {
         }
         let mut ins = ins;
         ins[0] = 1;
-        rows.push((ins, self.outputs(&s)));
+        // the bench keeps driving the pre-edge port byte for the whole step
+        let mut outs = self.outputs(&s);
+        *outs.last_mut().unwrap() = self.cout(&s, ins[18] as u8);
+        rows.push((ins, outs));
     }
 }
 
