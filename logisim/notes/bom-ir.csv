@@ -1,0 +1,4 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT14,hex Schmitt-trigger inverter,1,SN74HCT14N,SN74HCT14D or 74HCT14D (Nexperia),ir,1
+74HCT377,"octal D flip-flop, data enable",6,CD74HCT377E,CD74HCT377M96 (TI),ir,1
+total,2 part numbers,7,,,,2

@@ -619,11 +619,13 @@ def pin_tunnels(c: "Circuit", chip: Part, names: dict, first: int = 20, stagger:
             c.tunnel(end, names[k], facing=TUNNEL[d])
 
 
-def bus_tunnels(c: "Circuit", at: Pt, label: str, width: int, output: bool = False, gap: int = 20) -> None:
+def bus_tunnels(c: "Circuit", at: Pt, label: str, width: int, output: bool = False, gap: int = 20,
+                names: list | None = None) -> None:
     """A pin `label` at `at`, split into 1-bit tunnels named label_0,
     label_1, ... (bit 0 first, going down). An input pin faces east
     (tunnels on its right), an output pin faces west (tunnels on its left).
-    A 1-bit pin gets one tunnel named `label`."""
+    A 1-bit pin gets one tunnel named `label`. `names` overrides the tunnel
+    labels (a pin that shows bits of another bus, e.g. ir_r3 = V1 bits 2..0)."""
     x, y = at
     s = -1 if output else 1
     (c.output if output else c.input)(at, label, width)
@@ -637,7 +639,7 @@ def bus_tunnels(c: "Circuit", at: Pt, label: str, width: int, output: bool = Fal
     for k in range(width):
         e = sp[f"end{k}"]
         c.wire(e, (e[0] + 20 * s, e[1]))
-        c.tunnel((e[0] + 20 * s, e[1]), f"{label}_{k}", facing="east" if output else "west")
+        c.tunnel((e[0] + 20 * s, e[1]), names[k] if names else f"{label}_{k}", facing="east" if output else "west")
 
 
 # --------------------------------------------------------------------------
