@@ -1,0 +1,16 @@
+# IOD: what the CPU side requires
+
+The IOD (I/O device: port latches, interrupt queue, peripherals) is out of scope for now. This file is the contract the CPU's sections were built against, so a future IOD design starts from it. Source: ir-mem-decisions.md section 4 ("CPU-side IOD interface") and Gianni's answer 7 (2026-11-05). Times are from the rising `clk` edge that starts the step, at max 25 °C (the pass criterion); the CPU's step is 500 ns.
+
+| ID | From | Requirement | Why |
+|---|---|---|---|
+| I1 | ir / mem (2026-11-05) | **Connector lines**: `bus_data` (8, bidirectional), `bus_addr` (16; the CPU drives it except in the vector step), RW and IE (CPU → IOD), INT (IOD → CPU), INR (CPU → IOD), `clk`, `clk_wr_n`, `rst_n`. | The manual's lines, plus the clocks the synchronous contract needs. |
+| I2 | Gianni's answer 7 (2026-11-05) | **Synchronous to `clk`, no WAIT line**: the IOD answers every transaction within the step, at fixed times (I3–I6). | The manual's handshake is "one clock cycle"; the control unit (C21, C22) never waits. |
+| I3 | ir / mem | **IN** (IE = 1, RW = 1, one step): `bus_addr` = 00:port is valid by 72 ns; the IOD drives `bus_data` by **335 ns**, holds it to the edge, and is off by 50 ns after it. | The register write's setup (control-requirements.md C10). |
+| I4 | ir / mem | **OUT** (IE = 1, RW = 0, one step): `bus_addr` = 00:port by 72 ns, `bus_data` = R2 by 242 ns, both held to the edge; the IOD captures `bus_data` on the **rising edge of `clk_wr_n`** (about 375 ns). | Data valid more than 100 ns before it, held 125 ns after. |
+| I5 | ir / mem | **INT** changes only just after a rising `clk` edge, valid by 250 ns; high while the queue isn't empty. The CPU samples it only at instruction boundaries. | Synchronous: no synchronizer needed on the CPU side. |
+| I6 | ir / mem (C12, C21) | **Hardware interrupt**: the IOD sees INR = 1 at the edge ending step n; **in step n + 1 only** (the vector step) it holds INT = 0, drives `bus_addr` = 00:p by **237 ns** and `bus_data` = data by **335 ns**, and is off by 50 ns after the edge ending it; INT may rise again from step n + 2. | The address section computes FE00 + 2p in the vector step (addr-decisions.md A8). |
+| I7 | Gianni's answer 7 (2026-11-05) | **A microcontroller-based IOD** (a future redesign) can't answer IN or the vector step within 335 ns from firmware. It must answer through **hardware latches and a FIFO** that the CPU reads directly at the times above (e.g. a 74HCT574 per input port, a hardware FIFO of port + data for the interrupt queue, a 74HCT574 or 377 capturing OUT on `clk_wr_n`), which the microcontroller **fills and empties asynchronously**. INT then comes from the FIFO's "not empty" flag, resynchronised to `clk` (I5). | Keeps the CPU's contract fixed whatever the IOD's implementation. |
+| I8 | ir / mem | **Bus discipline**: the IOD drives `bus_data` only in IN and vector steps, and `bus_addr` only in vector steps; never two drivers on a bus (contention fails the tests). | control-requirements.md C5, C11. |
+
+The test benches use a simplified IOD stub (ir-mem-decisions.md M5): its queue and port latches are in the test vector generator, and its bus drivers are tri-state buffers in the bench, checked for contention like any other driver.
