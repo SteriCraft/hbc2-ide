@@ -37,7 +37,7 @@ These rules come from the user and apply to every circuit I create or modify. If
 
 ## Signal names: `<module>_<signal>`, lowercase snake_case
 - Pins and tunnels inside a module: `add_sub8_a`, `add_sub8_b_inv`.
-- Global signals: `clk` (from `clkgen`: a 5-bit pin, one bit per clock buffer branch, `clk_0` … `clk_4`; each module's input is `clk`), `rst_n`, `rst_early` (one edge before `rst_n`, C17), `rst_rc` (high while the reset RC is low, asynchronous: the pipeline /OE, C24), `clk_wr_n` (the write phase, low 250–375 ns of each step: registers-decisions.md D7), `clk_mem_wr_n` (the RAM write strobe, low about 125–375 ns: /Q2 of the clock generator, ir-mem-decisions.md M1).
+- Global signals: `clk` (from `clkgen`: a 6-bit pin, one bit per clock buffer branch, `clk_0` … `clk_5`; each module's input is `clk`, 2 bits for `cu`, which takes two branches), `rst_n`, `rst_early` (one edge before `rst_n`, C17), `rst_rc` (high while the reset RC is low, asynchronous: the pipeline /OE, C24), `clk_wr_n` (the write phase, low 250–375 ns of each step: registers-decisions.md D7), `clk_mem_wr_n` (the RAM write strobe, low about 125–375 ns: /Q2 of the clock generator, ir-mem-decisions.md M1).
 - Registers: `reg_a` … `reg_y`, `pc`, `sp`.
 - Flags: `flag_c/e/i/n/s/z/f/h`.
 - Buses: `bus_data` (8 bits), `bus_addr` (16 bits).

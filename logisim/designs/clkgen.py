@@ -8,8 +8,8 @@ pipeline /OE); cu-decisions.md sections 7 and 14.
              FF2 clocked by NOT osc (a 74HCT10 gate), D = clk: Q2, /Q2
              clk_wr_n     = NAND3(clk_n, osc, Q2)   (74HCT10)   low 250-375 ns
              clk_mem_wr_n = /Q2                                  low 125-375 ns
-    buffer   74HCT541: Y1..Y5 = clk branches (the 5-bit pin clk, one bit per
-             section), Y7 = clk_wr_n, Y8 = clk_mem_wr_n; all three through it,
+    buffer   74HCT541: Y1..Y6 = clk branches (the 6-bit pin clk, about 5 clock
+             inputs each), Y7 = clk_wr_n, Y8 = clk_mem_wr_n; all three through it,
              so their edges keep the same delay (section 7 item 1)
     reset    RC node -> 74HCT14 -> rst_rc (high while the RC is low: the
              pipeline 574s' /OE, C24) -> 74HCT14 -> both /CLR of a 74HCT74
@@ -36,7 +36,7 @@ from circgen import Project, bus_tunnels, pin_tunnels  # noqa: E402
 M = "clkgen"
 OUT = ROOT / "circuits" / "cu" / f"{M}.circ"
 P = f"{M}_"
-BRANCHES = 5            # clk branches out of the 541 (section 14: ir, addr, cu, regs + flags, reset FFs + IOD)
+BRANCHES = 6            # clk branches out of the 541 (section 14: ir, addr, cu x 2, regs + flags, reset FFs + IOD)
 
 p = Project()
 c = p.circuit(M)
@@ -68,20 +68,20 @@ chip("7410", 1, 0, {"1A": n("clk_n"), "1B": n("osc"), "1C": n("q2"), "1Y": n("wr
                     "2A": n("osc"), "2B": "vcc", "2C": "vcc", "2Y": n("osc_n"),
                     "3A": "gnd", "3B": "gnd", "3C": "gnd"},
      "clk_wr_n = NAND3(clk_n, osc, Q2); NOT osc for FF2")
-buf = {"nOE1": "gnd", "nOE2": "gnd", "A6": "gnd",
+buf = {"nOE1": "gnd", "nOE2": "gnd",
        "A7": n("wr_n"), "Y7": "clk_wr_n", "A8": n("q2_n"), "Y8": "clk_mem_wr_n"}
 for k in range(BRANCHES):
     buf[f"A{k + 1}"] = n("clk_q")
     buf[f"Y{k + 1}"] = f"clk_{k}"
-chip("74541", 2, 0, buf, "clock buffer: 5 clk branches, clk_wr_n, clk_mem_wr_n")
+chip("74541", 2, 0, buf, "clock buffer: 6 clk branches, clk_wr_n, clk_mem_wr_n")
 
 # ---- reset: 74HCT14 + 74HCT74 ------------------------------------------------------------------
 inv = {"1A": n("rc"), "1Y": "rst_rc", "2A": "rst_rc", "2Y": n("rst_clr_n")}
 inv.update({f"{g}A": "gnd" for g in range(3, 7)})
 chip("7414", 0, 1, inv, "reset: RC -> rst_rc -> /CLR (C17, C24)")
-chip("7474", 1, 1, {"CLK1": "clk_4", "D1": "vcc", "Q1": n("rst_early_n"), "nQ1": "rst_early",
+chip("7474", 1, 1, {"CLK1": "clk_5", "D1": "vcc", "Q1": n("rst_early_n"), "nQ1": "rst_early",
                     "nPRE1": "vcc", "nCLR1": n("rst_clr_n"),
-                    "CLK2": "clk_4", "D2": n("rst_early_n"), "Q2": "rst_n",
+                    "CLK2": "clk_5", "D2": n("rst_early_n"), "Q2": "rst_n",
                     "nPRE2": "vcc", "nCLR2": n("rst_clr_n")},
      "reset synchroniser: FF1 rst_early, FF2 rst_n (C17)")
 
@@ -99,7 +99,7 @@ X_OUT, y = COL[2] + 400, ROW[0]
 for name, w in RIGHT:
     bus_tunnels(c, (X_OUT, y), name, w, output=True)
     y += 60 if w == 1 else 20 * w + 60
-c.text((COL[0] - 10, ROW[1] + 200), "clk bits: 0 ir, 1 addr, 2 cu, 3 regs + flags, 4 the reset flip-flops + the IOD (cu-decisions.md section 14)")
+c.text((COL[0] - 10, ROW[1] + 200), "clk bits: 0 ir, 1 addr, 2 cu (574s 1-5), 3 cu (574s 6-8, 175s, 377), 4 regs + flags, 5 the reset flip-flops + the IOD (cu-decisions.md section 14)")
 
 c.symbol(left=[nm for nm, _ in LEFT], right=[nm for nm, _ in RIGHT])
 

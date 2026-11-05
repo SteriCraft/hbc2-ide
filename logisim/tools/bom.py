@@ -12,7 +12,10 @@ Only chips are counted, never pins, so the chip models' simulation-only pins
 CSV columns: part, function, qty, dip_ref, soic_ref, modules, spare
   spare    chips to buy on top of qty: 15 %, rounded up, at least 1
   modules  the circuits that hold the chip directly
-The last line is the total.
+The last line is the total (chips only). Pull Resistors (conventions.md:
+each one is a resistor of a bussed network, control-requirements.md C24)
+give one more row before it: the networks, 8 resistors each, one per group
+of up to 8 lines pulled the same way in a circuit.
 
 Usage:
     python bom.py alu                         # print the CSV
@@ -36,6 +39,8 @@ import netlist as nl  # noqa: E402
 
 CHIPS_MD = Path(__file__).resolve().parent.parent / "notes" / "chips.md"
 SPARE = 0.15
+NETWORK = 8                 # resistors per bussed SIP-9 network
+NETWORK_ROW = ("resistor network", "10 kΩ × 8, bussed, SIP-9 (pull resistors, C24)", "4609X-101-103LF (Bourns)")
 COLUMNS = ["part", "function", "qty", "dip_ref", "soic_ref", "modules", "spare"]
 
 
@@ -60,16 +65,20 @@ def parts_table(path: Path = CHIPS_MD) -> dict[str, dict]:
     return parts
 
 
-def count(circ: nl.Circuit, chips: Counter, where: dict, n: int = 1):
-    """Add the chips of circ (times n instances) and of its subcircuits."""
+def count(circ: nl.Circuit, chips: Counter, where: dict, n: int = 1, pulls: Counter | None = None):
+    """Add the chips of circ (times n instances) and of its subcircuits;
+    pulls[(circuit, level)] counts the Pull Resistors."""
     for c in circ.comps:
+        if pulls is not None and c.name == "Pull Resistor":
+            pulls[(circ.name, c.attrs.get("pull", "0"))] += n
+            continue
         model = nl.chip_model(c.sub) if c.kind == "sub" and c.sub is not None else None
         if c.kind == "ttl" or model:
             part = model or c.name          # a model instance is named ttl<part>
             chips[part] += n
             where[part].add(circ.name)
         elif c.kind == "sub" and c.sub is not None:
-            count(c.sub, chips, where, n)
+            count(c.sub, chips, where, n, pulls)
 
 
 def bom(target: str, circuit: str | None = None) -> tuple[str, list[str]]:
@@ -79,8 +88,8 @@ def bom(target: str, circuit: str | None = None) -> tuple[str, list[str]]:
     name = circuit or path.stem
     if name not in proj.circuits:
         raise SystemExit(f"{path}: no circuit {name!r}")
-    chips, where = Counter(), defaultdict(set)
-    count(proj.circuits[name], chips, where)
+    chips, where, pulls = Counter(), defaultdict(set), Counter()
+    count(proj.circuits[name], chips, where, pulls=pulls)
     parts = parts_table()
 
     errors = [f"{n}: used in {', '.join(sorted(where[n]))}, missing from chips.md 'Parts in use'"
@@ -96,6 +105,13 @@ def bom(target: str, circuit: str | None = None) -> tuple[str, list[str]]:
         tq, ts = tq + qty, ts + spare
         w.writerow([p.get("Part", f"74HCT{n[2:]}?"), p.get("Function", ""), qty,
                     p.get("DIP", ""), p.get("SOIC", ""), " ".join(sorted(where[n])), spare])
+    if pulls:
+        # networks per circuit and level; a circuit instantiated k times counts k times
+        nets = sum(math.ceil(v / NETWORK) for v in pulls.values())
+        ups = sum(v for (_, lvl), v in pulls.items() if lvl == "1")
+        downs = sum(v for (_, lvl), v in pulls.items() if lvl != "1")
+        w.writerow([NETWORK_ROW[0], f"{NETWORK_ROW[1]}: {ups} up, {downs} down", nets, NETWORK_ROW[2], "",
+                    " ".join(sorted({c for c, _ in pulls})), 1])
     w.writerow(["total", f"{len(chips)} part numbers", tq, "", "", "", ts])
     return out.getvalue(), errors
 

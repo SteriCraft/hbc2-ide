@@ -274,16 +274,42 @@ def check_emulator(circ_file, circuit: str, module: str | None = None, keep: str
         if n <= CHUNK:
             return run_vectors(circ_file, circuit, vec, timeout=1800)
         # Big files in chunks: Logisim holds the whole vector file in memory.
+        # Sequential vectors are cut between sets only: each chunk starts at
+        # Logisim's power-up, so a set must not be split.
         ok = True
+        sequential = "<set>" in [h.lower() for h in head]
+
+        def chunks(f):
+            if not sequential:
+                while lines := list(itertools.islice(f, CHUNK)):
+                    yield lines
+                return
+            part, cur, prev = [], [], None
+            for line in f:
+                s = line.split(None, 1)[0]
+                if s != prev and cur:
+                    if len(part) + len(cur) > CHUNK and part:
+                        yield part
+                        part = []
+                    part += cur
+                    cur = []
+                prev = s
+                cur.append(line)
+                if len(cur) > CHUNK:
+                    raise SystemExit(f"error: set {s} has more than {CHUNK} rows: split it")
+            if len(part) + len(cur) > CHUNK and part:
+                yield part
+                part = []
+            yield part + cur
+
         with open(vec, encoding="utf-8") as f:
             header = f.readline()
-            for k in itertools.count():
-                lines = list(itertools.islice(f, CHUNK))
-                if not lines:
-                    break
+            row = 0
+            for k, lines in enumerate(chunks(f)):
                 part = Path(tmp) / f"{circuit}.{k}.vec"
                 part.write_text(header + "".join(lines), encoding="utf-8")
-                print(f"  rows {k * CHUNK + 1}..{k * CHUNK + len(lines)}: ", end="", flush=True)
+                print(f"  rows {row + 1}..{row + len(lines)}: ", end="", flush=True)
+                row += len(lines)
                 ok &= run_vectors(circ_file, circuit, part, timeout=1800)
                 part.unlink()
         return ok

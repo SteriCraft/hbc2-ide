@@ -574,10 +574,109 @@ Gianni's go-ahead (2026-11-05):
 | Name | **`clkgen`**, not `clk`: Logisim-evolution doesn't allow a pin labelled like its circuit, and the module's output is `clk` |
 | Chips (5) | U1 74HCT74 (FF1 `clk`, FF2 Q2), U2 74HCT10 (`clk_wr_n` = NAND3(`clk_n`, `osc`, Q2); NOT `osc` for FF2; gate 3 spare), U3 74HCT541 (clock buffer), U4 74HCT14 (RC → `rst_rc` → /CLR; 4 gates spare), U5 74HCT74 (reset synchroniser) |
 | Inputs | `clkgen_osc` (the oscillator module's output), `clkgen_rc` (the RC node at the 74HCT14 input: the RC, button and diode are analog) |
-| Outputs | `clk` (5 bits: the 541's Y1–Y5, one branch each: 0 `ir`, 1 `addr`, 2 `cu`, 3 `regs` + `flags`, 4 the reset flip-flops + the IOD), `clk_wr_n` (Y7), `clk_mem_wr_n` (Y8), `rst_n`, `rst_early` (FF1's /Q, for `x_n`), `rst_rc` |
-| Clock loads per branch | 6 (6 × 377), 6 (6 × 377), **11** (8 × 574, 2 × 175, 377), 5 (3 × 574, 2 × 175), 2 (the reset 74 and the IOD). `cu`'s branch is the heaviest: `timing.py --section cu` counts its extra delay (later edges in `cu` only make the other sections' hold times easier) |
-| New global names | `rst_early`, `rst_rc`, and `clk_0` … `clk_4` for the branches (conventions.md, conventions.py) |
+| Outputs | `clk` (6 bits: the 541's Y1–Y6, one branch each), `clk_wr_n` (Y7), `clk_mem_wr_n` (Y8), `rst_n`, `rst_early` (FF1's /Q, for `x_n`), `rst_rc` |
+| Clock branches (section 7 item 1: about 5 inputs each) | 0 `ir` (6 × 377), 1 `addr` (6 × 377), 2 `cu` pipeline 574s 1–5, 3 `cu` 574s 6–8 + both 175s + the 377, 4 `regs` (3 × 574) + `flags` (2 × 175), 5 the reset 74 (2 clock inputs) + the IOD. Loads 6, 6, 5, 6, 5, 3: **skew from the loads 4 ns** at 25 °C (5 at 85 °C), `timing.py --section cu` |
+| New global names | `rst_early`, `rst_rc`, and `clk_0` … `clk_5` for the branches (conventions.md, conventions.py) |
 | Test (`python designs/clkgen.py --test`) | 12 runs from Logisim's power-up, one row per osc half period: RC released, the button pressed again, waveforms as C6 / C17 give them: **848 / 848**. A deliberately wrong expectation (`clk_wr_n` without Q2, `rst_n` one edge early) fails 96 rows |
 
-The 74HCT14's 4 spare gates stay in `clkgen`: `cu` takes its own 74HCT14 rather than send 4 signals out and back between the modules (section 14.2).
+### 14.2 Module `cu` (circuits/cu/cu.circ, designs/cu.py)
 
+**30 chips** (phase 1 planned 29: see U7):
+
+| Role | Chips |
+|---|---|
+| address | 3 × 74HCT157 (opcode / mode from the IR or, in the step that loads it, from `bus_data`; /E = `cu_force`), 74HCT151 (jc), 74HCT153 (one half: the condition), 74HCT175 (step register) |
+| microcode | 7 × AT28C256 (the `at28c256` model, IMAGE 2–8) |
+| decode | 74HCT138 (`dbus`), 74HCT00, 2 × 74HCT08, 74HCT14, 74HCT27 (gate by gate below) |
+| pipeline | 8 × 74HCT574 (the model), /OE = `rst_rc`, 60 lines, 4 spare bits; **60 pull resistors** (36 up, 24 down: 8 bussed networks, `bom.py`) |
+| state, pending port | 74HCT175 (`hw_q`, `cout_q`, P), 74HCT377 + 74HCT541 (C13) |
+
+| Gate | Does | Before / after the 574s |
+|---|---|---|
+| 00 #1 | `cu_swi_oe_n` = NAND(`abus`) | before |
+| 00 #2 | `regs_a_lat_oe_n` = NAND(`regs_cu_bank_n`) | before |
+| 00 #3 | `regs_b_lat_oe_n` = NAND(`regs_b_sel` = 11, `regs_const_oe_n`) | before |
+| 08 (1) #1, #2 | `addr_lat_oe_n` bit 1 = `abus1` · NOT `abus0`; IE = NOT `abus1` · `abus0` | before |
+| 08 (1) #3, #4 | HW = I · INT, SW = I · P | after |
+| 08 (2) #1 | `regs_b_sel` = 11 | before |
+| 08 (2) #2 | P · `cu_swi_oe_n` (P kept) | after |
+| 14 #1–#3 | NOT `alu_op3` (`regs_const_0`), NOT `abus0`, NOT `abus1` | before |
+| 14 #4, #5 | NOT `cu_swi_ld_n`; P_next = NOT the 27's NOR | after |
+| 27 #1, #2, #3 | `bnd_n` = NOR3(HW, SW, H); `x_n` = NOR3(SW, `cout_q`, `rst_early`); NOR(P kept, NOT `cu_swi_ld_n`) | after |
+| 138 | `dbus` → `regs_a_bus_oe_n` and RW (Y1), `regs_res_oe_n` (Y2), `flags_oe_n` (Y3), PC hi / lo (Y4, Y5), SP hi / lo (Y6, Y7) | before |
+
+`addr_lat_oe_n` bit 0 is `abus1` itself (a wire). Spare: one 00, two 08, one 14 gate, the 153's second half, the 157 #3's two last muxes.
+
+| Port | Names |
+|---|---|
+| inputs | `clk` (2 bits: clkgen branches 2 and 3), `rst_n`, `rst_early`, `rst_rc`, `cu_bus_in` (8), `cu_ir_op` (6), `cu_ir_mode` (4), `cu_flag_c` … `cu_flag_h`, `cu_int`, `cu_addr_cout` |
+| outputs | `cu_` + the receiving section's name for each control line (`cu_alu_op`, `cu_regs_we_n`, …, `cu_ie`, `cu_rw`, `cu_inr`: 55 lines in 39 pins), and `cu_bus_addr_lo` (8, the pending port onto the low byte of `bus_addr`). Phase 4's `main` wires each to its section |
+| inside only | `cu_force`, `cu_cond_sel`, `cu_swi_ld_n`, `cu_swi_oe_n` (574 outputs, pulled too) |
+
+### 14.3 Tests (`hbc2 vectors cu`, `python designs/cu.py --test`)
+
+The reference is the microcode as built, run by the datapath model (section 13.5, equal to the emulator). Each step gives `cu` what the model's sections give it (`bus_data`, the IR, the flags, INT, `addr_cout`, the reset lines) and expects the decoded word (`word::outputs`) or, while `rst_rc` is high, the pulled levels (`word::pulled`). One step = 2 rows.
+
+| Run | Result |
+|---|---|
+| 10 sets from Logisim's power-up, each: the reset held 3–8 steps (`rst_rc` high for all but the last 2), the whole boot, a random program with hardware interrupts from the IOD stub and halts woken by an interrupt; when the CPU stops for good (an invalid mode, HLT with I = 0), the button and a new boot, up to 3 per set. Half of the power-ups have the IR's opcode bits 2..0 = 111 (jc = 1 during the reset) | **4,217,896 / 4,217,896** rows (2.1 million steps, 30 boots, about 141,000 program steps, 279 of the 1,024 opcode × mode rows), **no bus contention** on `cu_bus_addr_lo` |
+| 9 deliberate wiring bugs (153 selects swapped; mode 1..0 bypass on byte 0's load; P kept by the load; 151 C / F swapped; `x_n` without `rst_early`; `cu_cond_sel` pulled to 00, to 01; the 574 /OE tied low, i.e. no C24) | **all 9 caught** (2-set runs). A pull to 10 is not caught, and is harmless: it selects `hw_q`, which the reset clears |
+
+Coverage: the program runs are short (random stores overwrite the program), so 279 rows ran. The ROM contents of every row are checked elsewhere: the `at28c256` test reads images 2–8 in full, and the model runs every opcode × mode against the emulator (section 13.5). This test checks what only the circuit can get wrong: the address (every opcode, mode, step and condition bit through the bypass and the IR), the decode, the pipeline, the sequencing, P, the pending port and the reset with C24.
+
+**The circuit test found a model bug** (fixed, U11): the step register is cleared at the reset's last edge, so the first step after the release still reads step 0, whatever that word's `cu_next` says. The model used `rst_n` of the current step. It only mattered when the power-up IR was on the boot row (3F, B), whose S1 goes on to S2: the model ran S1 once and the hardware twice. `check::boot` now includes that power-up state (65,548 steps, as the others).
+
+### 14.4 Timing (`timing.py --section cu`, `--duty`)
+
+`--duty PCT` (default 50) sets the oscillator's duty cycle: the osc falls (and with them `clk_wr_n`'s rise, `clk_mem_wr_n`'s edges, the write data deadline) move. **Every section passes at 25 °C at 45, 50 and 55 %.** The `cu` paths use the datasheet figures now (74HCT151 CD74HCT151E, 74HCT00 CD74HCT00E, 74HCT157 /E → Y, chips.md); the slowest decode is `abus` (14 → 08, 56 ns at 25 °C), not the 138 (36) of section 6.
+
+| Path (to the 574 setup, or as named) | Max 25 °C | Margin 25 / 85 °C |
+|---|---|---|
+| step register → EEPROM → decode | 261 | 239 / 211 |
+| IR (just loaded) → 157 → EEPROM → decode | 291 | 209 / 173 |
+| **bypass** (RAM → `bus_data` → 157 → EEPROM → decode) | **439** | **61 / −2** |
+| bypass → `cu_next` → step register | 391 | 109 / 58 |
+| `cu_force` → 157 /E | 288 | 212 / 177 |
+| jc: IR opcode → 151 → 153 | 341 | 159 / 110 |
+| **boundary**: INT valid by 150 (I5) → 08 → 27 → 153 | **459** | **41 / 0** |
+| `hw_q` / `cout_q` / `rst_early` → 27 → 153 | 318 | 182 / 139 |
+| `cu_cond_sel` → 153 S | 295 | 205 / 168 |
+| boot loop: PC + 1 → `addr_cout` → `cout_q` | 278 | 222 / 150 |
+| P next | 140 | 360 / 325 |
+| pending port: V1 fetched → 377 setup | 198 | 302 / 262 |
+| pending port onto `bus_addr` (by the IOD's deadline) | 74 | 163 / 76 |
+
+| Clock generator, max 25 °C | 45 % | 50 % | 55 % |
+|---|---|---|---|
+| /WE pulse, shortest (≥ 20) | 36.5 | 49 | 61.5 |
+| /WE rise + hold, latest (≤ 500) | 415.5 | 428 | 440.5 |
+| write data on `bus_data` by (C10) | 322.5 | 335 | 347.5 |
+| RAM WE# pulse (≥ 45) | 174 | 174 | 174 |
+| address before RAM WE# falls (margin) | 12.5 | 25 | 37.5 |
+
+At 85 °C (information only): the bypass is 2 ns over, the boundary has 0, the /WE pulse 7.5 ns short at 45 %; the others as in sections regs, addr, mem.
+
+### 14.5 Decisions taken in phase 3
+
+| # | Decision | Why |
+|---|---|---|
+| U7 | `cu` has its own 74HCT14 (+1 chip: `cu` 30, the control unit 35, the CPU 146) instead of the reset 74HCT14's spare gates in `clkgen` | phase 1's plan would send 4 signals out of `cu` and back; and the B-latch NAND3 had no gate in it (U8) |
+| U8 | `regs_b_lat_oe_n` = NAND(AND(`regs_b_sel`), `regs_const_oe_n`) (08 → 00, 44 ns); P_next moved to spare 08, 14, 27 gates (140 ns, 360 ns of slack) to free the NAND | section 2 listed a NAND3 no chip provided; AND-AND-inverter would have been 80 ns on the bypass path |
+| U9 | Six balanced clock branches; `cu` takes two (its `clk` is 2 bits) | one branch for `cu` had 11 loads: about 9 ns of skew against the others, on hold times section 6 already can't prove |
+| U10 | The clock module is `clkgen` | Logisim-evolution refuses a pin named like its circuit (`clk`) |
+| U11 | Model fixes: the step register reads 0 in the first step after the reset (above); AND with 00 gives 00 even from an unloaded A latch | the first was a model bug the circuit test found; the second is what the 74HCT08s do, and the boot-row power-up needed it |
+| U12 | `cu`'s outputs are `cu_<the receiver's name>` (`cu_regs_we_n` → `regs_we_n` in `main`) | the module prefix rule (conventions.md); the receiver's name keeps the mapping obvious |
+| U13 | The RC-level reset is `rst_rc` (C24 called it `rst_oe`) | it is the reset itself (high while the RC is low), used as an /OE |
+
+### 14.6 For phase 4
+
+- `cpu.circ` `main`: `clkgen`, `cu` and the sections; `cu_<x>` → `<x>`, `clk` bits per section 14.1, `cu_bus_addr_lo` onto the low byte of `bus_addr`.
+- `hbc2 compare`: the whole CPU against the emulator; the internal buses as output pins (conventions.md).
+- The IOD stub's clock is branch 5; INT must come from a `clk` flip-flop by 150 ns (I5): the boundary path has 0 ns left at 85 °C.
+
+### 14.7 Status when work stopped (2026-11-05, out of tokens)
+
+- Done and committed: the 74HCT10 revert, C24, the IMAGE pin, `clkgen`, `cu`, `hbc2 vectors cu`, `timing.py --section cu --duty`, the notes above.
+- The last full `cu` test (4.2 M rows) passed **before** U8 (gate remap) and U9 (2-bit `clk`); a rerun on the current circuit was running when work stopped: rerun `python designs/cu.py --test` and fill in the row count in 14.3.
+- To rerun on the current gate map: the 9 wiring mutants of 14.3 (a scratch script, not committed: rebuild from the list in 14.3, `HBC2_CU_SETS=2`).
+- Then the short phase 3 report to Gianni, and stop before phase 4.

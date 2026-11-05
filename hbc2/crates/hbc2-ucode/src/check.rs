@@ -280,19 +280,45 @@ pub fn every_instruction_and_mode(mc: &Microcode, cases: u32) -> Result<String, 
     ))
 }
 
+/// How wild [`random_program`] is.
+#[derive(Clone, Copy)]
+pub struct Wild {
+    /// One instruction in `random_bytes` is a random byte (0: never).
+    pub random_bytes: u64,
+    /// Of the jumps, calls and returns, keep 1 in `jumps` (they land
+    /// anywhere, often inside an instruction).
+    pub jumps: u64,
+    /// Of HLT, CLI and POF, keep 1 in `stops`.
+    pub stops: u64,
+    /// Jumps and calls with a 16-bit target always kept (their target is
+    /// set to an instruction start): only the other modes and RET / IRT
+    /// go through the `jumps` filter.
+    pub imm16_free: bool,
+}
+
+/// What `random_programs` uses.
+pub const WILD: Wild = Wild {
+    random_bytes: 200,
+    jumps: 3,
+    stops: 4,
+    imm16_free: false,
+};
+
 /// A random valid instruction (mostly), as bytes.
-fn random_instruction(r: &mut Rng) -> Vec<u8> {
-    if r.below(200) == 0 {
+fn random_instruction(r: &mut Rng, wild: Wild) -> Vec<u8> {
+    if wild.random_bytes != 0 && r.below(wild.random_bytes) == 0 {
         return vec![r.byte()];
     }
     loop {
         let info = &INSTRUCTION_TABLE[r.below(INSTRUCTION_TABLE.len() as u64) as usize];
         // fewer ways to stop the run for good
-        if matches!(info.opcode, Opcode::Hlt | Opcode::Cli | Opcode::Pof) && r.below(4) != 0 {
+        if matches!(info.opcode, Opcode::Hlt | Opcode::Cli | Opcode::Pof)
+            && r.below(wild.stops) != 0
+        {
             continue;
         }
         // jumps and returns land anywhere, often inside an instruction
-        if matches!(
+        let jump = matches!(
             info.opcode,
             Opcode::Jmp
                 | Opcode::Jmc
@@ -304,11 +330,15 @@ fn random_instruction(r: &mut Rng) -> Vec<u8> {
                 | Opcode::Cal
                 | Opcode::Ret
                 | Opcode::Irt
-        ) && r.below(3) != 0
-        {
+        );
+        if jump && !wild.imm16_free && r.below(wild.jumps) != 0 {
             continue;
         }
         let mode = info.modes[r.below(info.modes.len() as u64) as usize];
+        let safe = mode == AddrMode::Imm16 && !matches!(info.opcode, Opcode::Ret | Opcode::Irt);
+        if jump && wild.imm16_free && !safe && r.below(wild.jumps) != 0 {
+            continue;
+        }
         let i = encode::raw(info.opcode, mode, r.byte(), r.byte(), r.byte(), r.byte());
         let len = if info.opcode.takes_operands() {
             mode.length()
@@ -342,6 +372,41 @@ fn emu_item(cpu: &mut Cpu, board: &mut Board, rec: &mut Rec) -> bool {
     false
 }
 
+/// A 64 KiB RAM image of random instructions (mostly valid; jump and call
+/// targets with a 16-bit address land on instruction starts, and so do the
+/// IVT entries at FE00-FFFF), with the instruction starts.
+pub fn random_program(r: &mut Rng, wild: Wild) -> (Vec<u8>, Vec<u16>) {
+    let mut ram = Vec::with_capacity(65536 + 4);
+    let mut starts = Vec::new();
+    let mut imm16 = Vec::new(); // jumps / calls with a 16-bit target
+    while ram.len() < 0xFE00 {
+        let i = random_instruction(r, wild);
+        starts.push(ram.len() as u16);
+        let op = i[0] >> 2;
+        let mode = ((i[0] & 3) << 2) | (i.get(1).copied().unwrap_or(0) >> 6);
+        if (0x14..=0x1A).contains(&op) || op == 0x04 {
+            if mode == AddrMode::Imm16 as u8 {
+                imm16.push(ram.len() + 2);
+            }
+        }
+        ram.extend(i);
+    }
+    ram.truncate(0xFE00);
+    // targets and handlers at instruction starts, so runs last longer
+    for at in imm16 {
+        if at + 1 < ram.len() {
+            let t = starts[r.below(starts.len() as u64) as usize].to_be_bytes();
+            ram[at] = t[0];
+            ram[at + 1] = t[1];
+        }
+    }
+    while ram.len() < 65536 {
+        let t = starts[r.below(starts.len() as u64) as usize].to_be_bytes();
+        ram.extend(t);
+    }
+    (ram, starts)
+}
+
 /// Random programs, with hardware interrupts raised at random boundaries:
 /// every instruction and interrupt entry compared with cpu.rs.
 pub fn random_programs(mc: &Microcode, runs: u32) -> Result<String, String> {
@@ -350,34 +415,7 @@ pub fn random_programs(mc: &Microcode, runs: u32) -> Result<String, String> {
     let mut entries = 0u64;
     for seed in 0..runs {
         let mut r = Rng(0xA5A5_0000_0000_0001 ^ (seed as u64).wrapping_mul(0x9E37_79B9_7F4A_7C15));
-        let mut ram = Vec::with_capacity(65536 + 4);
-        let mut starts = Vec::new();
-        let mut imm16 = Vec::new(); // jumps / calls with a 16-bit target
-        while ram.len() < 0xFE00 {
-            let i = random_instruction(&mut r);
-            starts.push(ram.len() as u16);
-            let op = i[0] >> 2;
-            let mode = ((i[0] & 3) << 2) | (i.get(1).copied().unwrap_or(0) >> 6);
-            if (0x14..=0x1A).contains(&op) || op == 0x04 {
-                if mode == AddrMode::Imm16 as u8 {
-                    imm16.push(ram.len() + 2);
-                }
-            }
-            ram.extend(i);
-        }
-        ram.truncate(0xFE00);
-        // targets and handlers at instruction starts, so runs last longer
-        for at in imm16 {
-            if at + 1 < ram.len() {
-                let t = starts[r.below(starts.len() as u64) as usize].to_be_bytes();
-                ram[at] = t[0];
-                ram[at + 1] = t[1];
-            }
-        }
-        while ram.len() < 65536 {
-            let t = starts[r.below(starts.len() as u64) as usize].to_be_bytes();
-            ram.extend(t);
-        }
+        let (ram, starts) = random_program(&mut r, WILD);
         let ports: Vec<u8> = (0..256).map(|_| r.byte()).collect();
         let regs: [u8; 8] = std::array::from_fn(|_| r.byte());
         let flags = (r.byte() & 0x7F) | 0x04;
@@ -513,10 +551,17 @@ pub fn random_programs(mc: &Microcode, runs: u32) -> Result<String, String> {
 /// power-on (`Cpu::new`, the RAM = the boot image).
 pub fn boot(mc: &Microcode) -> Result<String, String> {
     let mut m = mc.model();
-    for (seed, reset_steps) in [(1u64, 2u32), (2, 3), (3, 7)] {
+    for (seed, reset_steps) in [(1u64, 2u32), (2, 3), (3, 7), (4, 3)] {
         let mut r = Rng(seed * 0x1234_5678);
         let rom: Vec<u8> = (0..65536).map(|_| r.byte()).collect();
         m.power_on(&rom, seed, reset_steps);
+        if seed == 4 {
+            // the power-up IR on the boot row (3F, B), whose S1 goes on to
+            // S2: the step register, cleared at the reset's last edge, still
+            // gives S1 twice (found by the cu circuit test)
+            m.ir[0] = 0xFE;
+            m.ir[1] |= 0xC0;
+        }
         let mut steps_after_reset = 0u64;
         loop {
             let released = m.rst_n;
@@ -540,7 +585,7 @@ pub fn boot(mc: &Microcode) -> Result<String, String> {
         );
     }
     Ok(format!(
-        "boot from 3 power-up states: RAM = ROM image, state = Cpu::new(), {} steps",
+        "boot from 4 power-up states (one with the IR on the boot row): RAM = ROM image, state = Cpu::new(), {} steps",
         mc.boot_steps
     ))
 }

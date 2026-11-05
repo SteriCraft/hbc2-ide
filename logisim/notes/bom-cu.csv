@@ -1,0 +1,16 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT00,quad 2-input NAND,1,CD74HCT00E,CD74HCT00M96 (TI),cu,1
+74HCT08,quad 2-input AND,2,SN74HCT08N,74HCT08D (Nexperia),cu,1
+74HCT14,hex Schmitt-trigger inverter,1,SN74HCT14N,SN74HCT14D or 74HCT14D (Nexperia),cu,1
+74HCT27,triple 3-input NOR,1,CD74HCT27E,74HCT27D (Nexperia),cu,1
+AT28C256,"32 K × 8 parallel EEPROM, 150 ns",7,AT28C256-15PU,AT28C256-15SU (Microchip),cu,2
+74HCT138,3-to-8 decoder,1,SN74HCT138N,74HCT138D (Nexperia),cu,1
+74HCT151,8-to-1 multiplexer,1,CD74HCT151E,CD74HCT151M96 (TI),cu,1
+74HCT153,dual 4-to-1 multiplexer,1,CD74HCT153E,74HCT153D (Nexperia),cu,1
+74HCT157,quad 2-to-1 multiplexer,3,CD74HCT157E,74HCT157D (Nexperia),cu,1
+74HCT175,quad D flip-flop with clear,2,CD74HCT175E,CD74HCT175M96 (TI),cu,1
+74HCT377,"octal D flip-flop, data enable",1,CD74HCT377E,CD74HCT377M96 (TI),cu,1
+74HCT541,"octal buffer, tri-state",1,SN74HCT541N,74HCT541D (Nexperia),cu,1
+74HCT574,"octal D flip-flop, tri-state",8,CD74HCT574E,CD74HCT574M96 (TI),cu,2
+resistor network,"10 kΩ × 8, bussed, SIP-9 (pull resistors, C24): 36 up, 24 down",8,4609X-101-103LF (Bourns),,cu,1
+total,13 part numbers,30,,,,15

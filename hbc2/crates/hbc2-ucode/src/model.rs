@@ -53,6 +53,12 @@ pub struct Event {
     pub halt_loop: bool,
     pub ram_write: Option<(u16, u8)>,
     pub io_write: Option<(u8, u8)>,
+    /// What the control unit read in the step (for `hbc2 vectors cu`):
+    /// `bus_data` (None: undriven), INT, the adder's carry out (None: the
+    /// sum is undefined).
+    pub bus_data: Option<u8>,
+    pub int: bool,
+    pub cout: Option<bool>,
 }
 
 #[derive(Clone, Debug)]
@@ -105,6 +111,10 @@ pub struct Model {
     pub iod: Iod,
     pub rst_n: bool,
     pub rst_early_n: bool,
+    /// `rst_n` in the step before: the step register (74HCT175, /CLR =
+    /// `rst_n`) only holds the word's `cu_next` if it wasn't cleared at the
+    /// edge that loaded it.
+    prev_rst_n: bool,
     /// Steps left with `rst_n` low.
     reset_left: u32,
     pub steps: u64,
@@ -172,6 +182,7 @@ impl Model {
             iod: Iod::default(),
             rst_n: true,
             rst_early_n: true,
+            prev_rst_n: true,
             reset_left: 0,
             steps: 0,
             entry_marks: Vec::new(),
@@ -204,6 +215,7 @@ impl Model {
         self.reset_left = reset_steps.max(2);
         self.rst_n = false;
         self.rst_early_n = false;
+        self.prev_rst_n = false;
         let row = ((self.ir[0] as usize) << 2) | (self.ir[1] as usize >> 6);
         self.addr = row << 5;
         self.w = self.words[self.addr];
@@ -231,10 +243,16 @@ impl Model {
         self.swi = None;
         self.rst_n = true;
         self.rst_early_n = true;
+        self.prev_rst_n = true;
         self.reset_left = 0;
         self.addr = address(0, 0, 1, true);
         self.w = self.words[self.addr];
         self.steps = 0;
+    }
+
+    /// Steps left with `rst_n` low (0 once the reset is over).
+    pub fn reset_left(&self) -> u32 {
+        self.reset_left
     }
 
     pub fn reg(&self, i: usize) -> Option<u8> {
@@ -552,6 +570,9 @@ impl Model {
         let hw = i_flag && int;
         let sw = i_flag && self.p;
         let h = self.flags & FLAG_H != 0;
+        ev.bus_data = bus_data;
+        ev.int = int;
+        ev.cout = cout;
         let cond_sel = g(word::CU_COND_SEL);
         let c = match cond_sel {
             cond::JC => {
@@ -598,14 +619,27 @@ impl Model {
             };
             (b0 >> 2, ((b0 & 3) << 2) | (b1 >> 6))
         };
-        let step = if rst_n { g(word::CU_NEXT) } else { 0 };
+        // the step register: cleared while rst_n is low, and still 0 in the
+        // first step after the release (it was cleared at the edge that
+        // loaded this word)
+        let step = if rst_n && self.prev_rst_n {
+            g(word::CU_NEXT)
+        } else {
+            0
+        };
         let next_addr = address(op6, mode, step, c);
 
         // ----- the clock edge
         if we {
             self.regs[port_a.unwrap()] = bus_data;
         }
-        self.res = alu_out.map(|(_, _, (r, _))| r);
+        // AND with 00 is 00 whatever A holds (the reset word and S1 clear the
+        // result latch that way, even when the A latch was never loaded)
+        self.res = match alu_out {
+            Some((_, _, (r, _))) => Some(r),
+            None if alu_op == 0b1000 && alu_b == Some(0) => Some(0),
+            None => None,
+        };
         self.a_lat = bus_data;
         self.b_lat = bus_data;
         self.flags = if rst_n { flags } else { FLAG_I };
@@ -692,6 +726,7 @@ impl Model {
             }
             self.iod.ack = true;
         }
+        self.prev_rst_n = rst_n;
         if self.reset_left > 0 {
             self.reset_left -= 1;
         }

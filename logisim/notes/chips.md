@@ -105,9 +105,29 @@ The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). 
 
 Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74HCT10, C6), the reset generator (74HCT14 + 74HCT74, C17) and the clock buffer (74HCT541). Off the logic: a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose) and the RC (resistor, capacitor, push button, diode).
 
+### Control unit (cu)
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT00 | quad 2-input NAND | 7400 | CD74HCT00E | CD74HCT00M96 (TI) | 1 |
+| 74HCT08 | quad 2-input AND | 7408 | SN74HCT08N | 74HCT08D (Nexperia) | 2 |
+| 74HCT14 | hex Schmitt-trigger inverter | 7414 | SN74HCT14N | SN74HCT14D or 74HCT14D (Nexperia) | 1 |
+| 74HCT27 | triple 3-input NOR | 7427 | CD74HCT27E | 74HCT27D (Nexperia) | 1 |
+| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) | 1 |
+| 74HCT151 | 8-to-1 multiplexer | 74151 | CD74HCT151E | CD74HCT151M96 (TI) | 1 |
+| 74HCT153 | dual 4-to-1 multiplexer | 74153 | CD74HCT153E | 74HCT153D (Nexperia) | 1 |
+| 74HCT157 | quad 2-to-1 multiplexer | 74157 | CD74HCT157E | 74HCT157D (Nexperia) | 3 |
+| 74HCT175 | quad D flip-flop with clear | 74175 | CD74HCT175E | CD74HCT175M96 (TI) | 2 |
+| 74HCT377 | octal D flip-flop, data enable | 74377 | CD74HCT377E | CD74HCT377M96 (TI) | 1 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 1 |
+| 74HCT574 | octal D flip-flop, tri-state | ttl74574 (model) | CD74HCT574E | CD74HCT574M96 (TI) | 8 |
+| AT28C256 | 32 K × 8 parallel EEPROM, 150 ns | at28c256 (model) | AT28C256-15PU | AT28C256-15SU (Microchip) | 7 |
+
+Added 2026-11-05 (cu-decisions.md section 14). New parts: **74HCT00 = CD74HCT00E** (TI SCHS398, active; the SN74HCT00N is NRND, so not that one) and **74HCT151 = CD74HCT151E** (TI SCHS150D, active). Off the logic: the pull resistors of C24, **bussed resistor networks, 10 kΩ, SIP-9** (8 resistors and a common pin; e.g. Bourns 4609X-101-103LF, to check before buying), one network per group of up to 8 lines pulled the same way: `bom.py` counts them from the Pull Resistors.
+
 ### Not in a circuit yet
 
-Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. **Control unit (cu-decisions.md section 9, accepted 2026-11-05):** 74HCT151 and 74HCT00 are new parts for `cu` (their references and datasheet delays go in with the phase 3 circuit).
+Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.
 
 | Part | Function | Logisim | DIP | SOIC | Qty |
 |---|---|---|---|---|---|
@@ -129,6 +149,7 @@ So Typ is a rough guide only.
 
 | Part | Path | Typ | Max 25 °C | Max 85 °C | Datasheet |
 |---|---|---|---|---|---|
+| 74HCT00 | A/B → Y | 8 | 20 | 25 | CD74HCT00, SCHS398 (typ: 5 V, 15 pF) |
 | 74HCT02 | A/B → Y | 8 | 21 | 26 | CD74HCT02, SCHS400 |
 | 74HCT08 | A/B → Y | 15 | 24 | 30 | SN74HCT08, SCLS063G |
 | 74HCT10 | A/B/C → Y | 9 | 24 | 30 | CD74HCT10, SCHS404 (typ: 5 V, 15 pF) |
@@ -144,11 +165,15 @@ So Typ is a rough guide only.
 | 74HCT86 | A/B → Y | 13 | 32 | 40 | CD74HCT86, SCHS410A |
 | 74HCT138 | A/B/C → Y | 23 | 36 | 45 | SN74HCT138, SCLS171F |
 | 74HCT138 | G → Y | 22 | 33 | 42 | SN74HCT138, SCLS171F |
+| 74HCT151 | S (A/B/C) → Y | 17 | 41 | 51 | CD74HCT151, SCHS150D (typ: 5 V, 15 pF) |
+| 74HCT151 | D → Y | 16 | 38 | 48 | CD74HCT151, SCHS150D |
+| 74HCT151 | /G → Y | 12 | 29 | 36 | CD74HCT151, SCHS150D |
 | 74HCT153 | S → Y | 14 | 34 | 43 | CD74HCT153, SCHS151C |
 | 74HCT153 | I → Y | 14 | 34 | 43 | CD74HCT153, SCHS151C (see note) |
 | 74HCT153 | E → Y | 11 | 27 | 34 | CD74HCT153, SCHS151C |
 | 74HCT157 | I → Y | 12 | 25 | 31 | CD74HCT157, SCHS153C |
 | 74HCT157 | S → Y | 15 | 29 | 36 | CD74HCT157, SCHS153C |
+| 74HCT157 | /E → Y | 12 | 27 | 34 | CD74HCT157, SCHS153C (enable: outputs forced low) |
 | 74HCT175 | CLK → Q | 13 | 33 | 41 | CD74HCT175, SCHS160C |
 | 74HCT175 | /MR → Q | 17 | 35 | 44 | CD74HCT175, SCHS160C |
 | 74HCT175 | setup D → CLK | 20 | 20 | 25 | CD74HCT175, SCHS160C (a minimum; no typ, 25 °C value repeated) |

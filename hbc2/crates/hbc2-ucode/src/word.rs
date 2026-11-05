@@ -203,6 +203,95 @@ pub fn from_images(images: &[Vec<u8>]) -> Vec<Word> {
         .collect()
 }
 
+/// The control outputs of the pipeline register for a word: the ROM bits
+/// and the signals decoded before the 574s (cu-decisions.md section 2), named
+/// as their receiving section names them, (name, width, value). The
+/// sequencing fields that stay inside the control unit (`cu_next`,
+/// `cu_force`, `cu_cond_sel`, `cu_swi_ld_n`, `cu_swi_oe_n`) are not listed.
+pub fn outputs(w: Word) -> Vec<(&'static str, u32, u32)> {
+    let g = |f: Field| u32::from(w.get(f));
+    let d = g(DBUS);
+    let not_dbus = |k: u8| u32::from(d != u32::from(k)); // the 74HCT138's active-low outputs
+    let ab = w.get(ABUS);
+    let (lat_hi, lat_lo, ie) = match ab {
+        abus::LATCH => (true, true, false),
+        abus::IO => (true, true, true),
+        abus::HW_VECTOR => (false, false, false),
+        _ => (true, false, false),
+    };
+    let lat_oe_n = (u32::from(!lat_hi) << 1) | u32::from(!lat_lo);
+    let const_on = g(REGS_CONST_OE_N) == 0;
+    vec![
+        ("alu_op", 4, g(ALU_OP)),
+        ("flags_op", 4, g(FLAGS_OP)),
+        ("flags_bit_val", 1, g(FLAGS_BIT_VAL)),
+        ("flags_oe_n", 1, not_dbus(dbus::FLAGS)),
+        ("regs_we_n", 1, g(REGS_WE_N)),
+        ("regs_a_sel", 2, g(REGS_A_SEL)),
+        ("regs_cu_idx", 2, g(REGS_CU_IDX)),
+        ("regs_cu_bank_n", 2, g(REGS_CU_BANK_N)),
+        ("regs_b_sel", 2, g(REGS_B_SEL)),
+        ("regs_a_lat_oe_n", 1, u32::from(g(REGS_CU_BANK_N) != 0b11)),
+        (
+            "regs_b_lat_oe_n",
+            1,
+            u32::from(!(g(REGS_B_SEL) == 0b11 && !const_on)),
+        ),
+        ("regs_const_oe_n", 1, g(REGS_CONST_OE_N)),
+        ("regs_const_0", 1, u32::from(g(ALU_OP) & 0b1000 == 0)),
+        ("regs_a_bus_oe_n", 1, not_dbus(dbus::BUS_A)),
+        ("regs_res_oe_n", 1, not_dbus(dbus::RES)),
+        ("addr_base_sel", 2, g(ADDR_BASE_SEL)),
+        ("addr_base_oe_n", 2, g(ADDR_BASE_OE_N)),
+        ("addr_off_sel", 1, g(ADDR_OFF_SEL)),
+        ("addr_off_oe_n", 2, g(ADDR_OFF_OE_N)),
+        ("addr_inv", 1, g(ADDR_INV)),
+        ("addr_cin", 1, g(ADDR_CIN)),
+        ("addr_lat_ld_n", 1, g(ADDR_LAT_LD_N)),
+        ("addr_pc_ld_n", 1, g(ADDR_PC_LD_N)),
+        ("addr_sp_ld_n", 1, g(ADDR_SP_LD_N)),
+        ("addr_lat_oe_n", 2, lat_oe_n),
+        (
+            "addr_pc_oe_n",
+            2,
+            (not_dbus(dbus::PC_HI) << 1) | not_dbus(dbus::PC_LO),
+        ),
+        (
+            "addr_sp_oe_n",
+            2,
+            (not_dbus(dbus::SP_HI) << 1) | not_dbus(dbus::SP_LO),
+        ),
+        ("ir_b0_ld_n", 1, g(IR_B0_LD_N)),
+        ("ir_b1_ld_n", 1, g(IR_B1_LD_N)),
+        ("ir_v1_ld_n", 1, g(IR_V1_LD_N)),
+        ("ir_v2_ld_n", 1, g(IR_V2_LD_N)),
+        ("mem_re", 1, g(MEM_RE)),
+        ("mem_oe_n", 1, g(MEM_OE_N)),
+        ("mem_we_n", 1, g(MEM_WE_N)),
+        ("mem_wbuf_oe_n", 1, g(MEM_WBUF_OE_N)),
+        ("mem_rom_oe_n", 1, g(MEM_ROM_OE_N)),
+        ("ie", 1, u32::from(ie)),
+        ("rw", 1, u32::from(d != u32::from(dbus::BUS_A))),
+        ("inr", 1, g(INR)),
+    ]
+}
+
+/// The pending port latch drives `bus_addr` low (`cu_swi_oe_n` = 0).
+pub fn swi_oe(w: Word) -> bool {
+    w.get(ABUS) == abus::SW_VECTOR
+}
+
+/// What the pull resistors hold the pipeline outputs at while the 574s are
+/// off during reset (control-requirements.md C24): the idle word, with the
+/// sequencer's lines at the reset word's values (`cu_cond_sel` = 11 `xn`,
+/// `cu_force` = 0), so the address stays on the reset word.
+pub fn pulled() -> Word {
+    let mut w = Word::idle();
+    w.set(CU_COND_SEL, cond::XN);
+    w.set(CU_FORCE, 0);
+    w
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
