@@ -565,5 +565,19 @@ Gianni's go-ahead (2026-11-05):
 | `clk_wr_n` | **Back to the 74HCT10 NAND3** (section 12's 74HCT32 + 74HCT14 left 3.5 ns before the next edge at 55 % duty). NRND isn't obsolete: CD74HCT10E is still made and stocked (DigiKey, Rochester Electronics second source); TI has no SN74HCT10N and the Nexperia 74HCT10N is discontinued; **SN74ACT10N** (TI, PDIP-14, active) is the drop-in fallback. Buy spares. | chips.md, C6, D7, timing.py |
 | timing.py, every section | rerun with the 74HCT10: all pass at 25 °C (/WE pulse 49 ns, latest rise + hold 428 ns: 72 ns before the edge; RAM WE# pulse 174 ns) | — |
 | U1–U6 | accepted | section 13.7 |
-| U5, hardware | the pipeline 574s' /OE come from the reset (`rst_oe`, high from power-up), and resistor networks pull every control line to its idle level while they are off; the sequencer's lines are pulled to the reset word's (`cu_cond_sel` = 11, `cu_force` = 0), see C24. **No extra chip:** `rst_oe` is the reset 74HCT14's first output, already there. | C24, breadboard-checks.md B3 |
+| U5, hardware | the pipeline 574s' /OE come from the reset (`rst_rc`, high from power-up), and resistor networks pull every control line to its idle level while they are off; the sequencer's lines are pulled to the reset word's (`cu_cond_sel` = 11, `cu_force` = 0), see C24. **No extra chip:** `rst_rc` is the reset 74HCT14's first output, already there. | C24, breadboard-checks.md B3 |
+
+### 14.1 Module `clkgen` (circuits/cu/clkgen.circ, designs/clkgen.py)
+
+| Item | As built |
+|---|---|
+| Name | **`clkgen`**, not `clk`: Logisim-evolution doesn't allow a pin labelled like its circuit, and the module's output is `clk` |
+| Chips (5) | U1 74HCT74 (FF1 `clk`, FF2 Q2), U2 74HCT10 (`clk_wr_n` = NAND3(`clk_n`, `osc`, Q2); NOT `osc` for FF2; gate 3 spare), U3 74HCT541 (clock buffer), U4 74HCT14 (RC → `rst_rc` → /CLR; 4 gates spare), U5 74HCT74 (reset synchroniser) |
+| Inputs | `clkgen_osc` (the oscillator module's output), `clkgen_rc` (the RC node at the 74HCT14 input: the RC, button and diode are analog) |
+| Outputs | `clk` (5 bits: the 541's Y1–Y5, one branch each: 0 `ir`, 1 `addr`, 2 `cu`, 3 `regs` + `flags`, 4 the reset flip-flops + the IOD), `clk_wr_n` (Y7), `clk_mem_wr_n` (Y8), `rst_n`, `rst_early` (FF1's /Q, for `x_n`), `rst_rc` |
+| Clock loads per branch | 6 (6 × 377), 6 (6 × 377), **11** (8 × 574, 2 × 175, 377), 5 (3 × 574, 2 × 175), 2 (the reset 74 and the IOD). `cu`'s branch is the heaviest: `timing.py --section cu` counts its extra delay (later edges in `cu` only make the other sections' hold times easier) |
+| New global names | `rst_early`, `rst_rc`, and `clk_0` … `clk_4` for the branches (conventions.md, conventions.py) |
+| Test (`python designs/clkgen.py --test`) | 12 runs from Logisim's power-up, one row per osc half period: RC released, the button pressed again, waveforms as C6 / C17 give them: **848 / 848**. A deliberately wrong expectation (`clk_wr_n` without Q2, `rst_n` one edge early) fails 96 rows |
+
+The 74HCT14's 4 spare gates stay in `clkgen`: `cu` takes its own 74HCT14 rather than send 4 signals out and back between the modules (section 14.2).
 

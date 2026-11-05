@@ -1,0 +1,514 @@
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<project source="5.0.0" version="1.0">
+  This file is intended to be loaded by Logisim-evolution v5.0.0(https://github.com/logisim-evolution/).
+
+  <lib desc="#Wiring" name="0">
+    <tool name="Pin">
+      <a name="appearance" val="classic"/>
+    </tool>
+  </lib>
+  <lib desc="#Gates" name="1"/>
+  <lib desc="#Plexers" name="2"/>
+  <lib desc="#Arithmetic" name="3"/>
+  <lib desc="#FPArithmetic" name="4"/>
+  <lib desc="#Memory" name="5"/>
+  <lib desc="#I/O" name="6"/>
+  <lib desc="#TTL" name="7"/>
+  <lib desc="#TCL" name="8"/>
+  <lib desc="#Base" name="9"/>
+  <lib desc="#BFH-Praktika" name="10"/>
+  <lib desc="#Input/Output-Extra" name="11"/>
+  <lib desc="#Soc" name="12"/>
+  <main name="clkgen"/>
+  <options>
+    <a name="gateUndefined" val="ignore"/>
+    <a name="simlimit" val="1000"/>
+    <a name="simrand" val="0"/>
+  </options>
+  <mappings>
+    <tool map="Button2" name="Poke Tool"/>
+    <tool map="Button3" name="Menu Tool"/>
+    <tool map="Ctrl Button1" name="Menu Tool"/>
+  </mappings>
+  <toolbar>
+    <tool name="Poke Tool"/>
+    <tool name="Edit Tool"/>
+    <tool name="Wiring Tool"/>
+    <tool name="Text Tool"/>
+    <sep/>
+    <tool name="Pin"/>
+    <tool name="Pin">
+      <a name="facing" val="west"/>
+      <a name="type" val="output"/>
+    </tool>
+  </toolbar>
+  <circuit name="clkgen">
+    <a name="appearance" val="custom"/>
+    <a name="circuit" val="clkgen"/>
+    <a name="circuitnamedboxfixedsize" val="true"/>
+    <a name="simulationFrequency" val="1.0"/>
+    <appear>
+      <rect fill="none" height="200" stroke="#000000" stroke-width="2" width="270" x="60" y="50"/>
+      <rect height="3" stroke="none" width="10" x="50" y="79"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="84">clkgen_osc</text>
+      <rect height="3" stroke="none" width="10" x="50" y="109"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="start" x="65" y="114">clkgen_rc</text>
+      <rect height="4" stroke="none" width="10" x="330" y="78"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="84">clk</text>
+      <rect height="3" stroke="none" width="10" x="330" y="109"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="114">clk_wr_n</text>
+      <rect height="3" stroke="none" width="10" x="330" y="139"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="144">clk_mem_wr_n</text>
+      <rect height="3" stroke="none" width="10" x="330" y="169"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="174">rst_n</text>
+      <rect height="3" stroke="none" width="10" x="330" y="199"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="204">rst_early</text>
+      <rect height="3" stroke="none" width="10" x="330" y="229"/>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="12" text-anchor="end" x="325" y="234">rst_rc</text>
+      <text dominant-baseline="alphabetic" font-family="Dialog" font-size="14" font-weight="bold" text-anchor="middle" x="195" y="155">clkgen</text>
+      <circ-anchor facing="east" x="340" y="80"/>
+      <circ-port dir="in" pin="220,120" x="50" y="80"/>
+      <circ-port dir="in" pin="220,180" x="50" y="110"/>
+      <circ-port dir="out" pin="1840,160" x="340" y="80"/>
+      <circ-port dir="out" pin="1840,320" x="340" y="110"/>
+      <circ-port dir="out" pin="1840,380" x="340" y="140"/>
+      <circ-port dir="out" pin="1840,440" x="340" y="170"/>
+      <circ-port dir="out" pin="1840,500" x="340" y="200"/>
+      <circ-port dir="out" pin="1840,560" x="340" y="230"/>
+    </appear>
+    <comp lib="7" loc="(600,160)" name="7474">
+      <a name="facing" val="south"/>
+      <a name="label" val="U1"/>
+    </comp>
+    <comp lib="0" loc="(550,210)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_osc"/>
+    </comp>
+    <comp lib="0" loc="(550,190)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_n"/>
+    </comp>
+    <comp lib="0" loc="(550,250)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(550,270)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_n"/>
+    </comp>
+    <comp lib="0" loc="(550,230)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(550,170)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(650,230)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_osc_n"/>
+    </comp>
+    <comp lib="0" loc="(650,210)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(650,270)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_q2"/>
+    </comp>
+    <comp lib="0" loc="(650,290)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_q2_n"/>
+    </comp>
+    <comp lib="0" loc="(650,250)" name="Power">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(650,190)" name="Power">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="9" loc="(590,110)" name="Text">
+      <a name="text" val="clock: FF1 = clk (osc / 2), FF2 = clk on the osc fall (C6)"/>
+    </comp>
+    <comp lib="7" loc="(1020,160)" name="7410">
+      <a name="facing" val="south"/>
+      <a name="label" val="U2"/>
+    </comp>
+    <comp lib="0" loc="(970,170)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_n"/>
+    </comp>
+    <comp lib="0" loc="(970,190)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_osc"/>
+    </comp>
+    <comp lib="0" loc="(1070,190)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_q2"/>
+    </comp>
+    <comp lib="0" loc="(1070,210)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(970,210)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_osc"/>
+    </comp>
+    <comp lib="0" loc="(970,230)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(970,250)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(970,270)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_osc_n"/>
+    </comp>
+    <comp lib="0" loc="(1070,270)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(1070,250)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(1070,230)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="9" loc="(1010,110)" name="Text">
+      <a name="text" val="clk_wr_n = NAND3(clk_n, osc, Q2); NOT osc for FF2"/>
+    </comp>
+    <comp lib="7" loc="(1440,160)" name="74541">
+      <a name="facing" val="south"/>
+      <a name="label" val="U3"/>
+    </comp>
+    <comp lib="0" loc="(1390,170)" name="Ground">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(1490,190)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(1390,290)" name="Ground">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(1390,310)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(1490,330)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(1390,330)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_q2_n"/>
+    </comp>
+    <comp lib="0" loc="(1490,350)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_mem_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(1390,190)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(1490,210)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_0"/>
+    </comp>
+    <comp lib="0" loc="(1390,210)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(1490,230)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_1"/>
+    </comp>
+    <comp lib="0" loc="(1390,230)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(1490,250)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_2"/>
+    </comp>
+    <comp lib="0" loc="(1390,250)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(1490,270)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_3"/>
+    </comp>
+    <comp lib="0" loc="(1390,270)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_clk_q"/>
+    </comp>
+    <comp lib="0" loc="(1490,290)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_4"/>
+    </comp>
+    <comp lib="9" loc="(1430,110)" name="Text">
+      <a name="text" val="clock buffer: 5 clk branches, clk_wr_n, clk_mem_wr_n"/>
+    </comp>
+    <comp lib="7" loc="(600,460)" name="7414">
+      <a name="facing" val="south"/>
+      <a name="label" val="U4"/>
+    </comp>
+    <comp lib="0" loc="(550,470)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_rc"/>
+    </comp>
+    <comp lib="0" loc="(550,490)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_rc"/>
+    </comp>
+    <comp lib="0" loc="(550,510)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_rc"/>
+    </comp>
+    <comp lib="0" loc="(550,530)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_rst_clr_n"/>
+    </comp>
+    <comp lib="0" loc="(550,550)" name="Ground">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(650,570)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(650,530)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(650,490)" name="Ground">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="9" loc="(590,410)" name="Text">
+      <a name="text" val="reset: RC -&gt; rst_rc -&gt; /CLR (C17, C24)"/>
+    </comp>
+    <comp lib="7" loc="(1020,460)" name="7474">
+      <a name="facing" val="south"/>
+      <a name="label" val="U5"/>
+    </comp>
+    <comp lib="0" loc="(970,510)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_4"/>
+    </comp>
+    <comp lib="0" loc="(970,490)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(970,550)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_rst_early_n"/>
+    </comp>
+    <comp lib="0" loc="(970,570)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_early"/>
+    </comp>
+    <comp lib="0" loc="(970,530)" name="Power">
+      <a name="facing" val="west"/>
+    </comp>
+    <comp lib="0" loc="(970,470)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_rst_clr_n"/>
+    </comp>
+    <comp lib="0" loc="(1070,530)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_4"/>
+    </comp>
+    <comp lib="0" loc="(1070,510)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_rst_early_n"/>
+    </comp>
+    <comp lib="0" loc="(1070,570)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="rst_n"/>
+    </comp>
+    <comp lib="0" loc="(1070,550)" name="Power">
+      <a name="facing" val="east"/>
+    </comp>
+    <comp lib="0" loc="(1070,490)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_rst_clr_n"/>
+    </comp>
+    <comp lib="9" loc="(1010,410)" name="Text">
+      <a name="text" val="reset synchroniser: FF1 rst_early, FF2 rst_n (C17)"/>
+    </comp>
+    <comp lib="0" loc="(220,120)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_osc"/>
+    </comp>
+    <comp lib="0" loc="(240,120)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_osc"/>
+    </comp>
+    <comp lib="0" loc="(220,180)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="east"/>
+      <a name="label" val="clkgen_rc"/>
+    </comp>
+    <comp lib="0" loc="(240,180)" name="Tunnel">
+      <a name="facing" val="west"/>
+      <a name="label" val="clkgen_rc"/>
+    </comp>
+    <comp lib="0" loc="(1840,160)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="clk"/>
+      <a name="type" val="output"/>
+      <a name="width" val="5"/>
+    </comp>
+    <comp lib="0" loc="(1820,160)" name="Splitter">
+      <a name="appear" val="left"/>
+      <a name="bit0" val="0"/>
+      <a name="bit1" val="1"/>
+      <a name="bit2" val="2"/>
+      <a name="bit3" val="3"/>
+      <a name="bit4" val="4"/>
+      <a name="facing" val="west"/>
+      <a name="fanout" val="5"/>
+      <a name="incoming" val="5"/>
+      <a name="spacing" val="2"/>
+    </comp>
+    <comp lib="0" loc="(1780,170)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_0"/>
+    </comp>
+    <comp lib="0" loc="(1780,190)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_1"/>
+    </comp>
+    <comp lib="0" loc="(1780,210)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_2"/>
+    </comp>
+    <comp lib="0" loc="(1780,230)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_3"/>
+    </comp>
+    <comp lib="0" loc="(1780,250)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_4"/>
+    </comp>
+    <comp lib="0" loc="(1840,320)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_wr_n"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(1820,320)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(1840,380)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="clk_mem_wr_n"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(1820,380)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="clk_mem_wr_n"/>
+    </comp>
+    <comp lib="0" loc="(1840,440)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="rst_n"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(1820,440)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_n"/>
+    </comp>
+    <comp lib="0" loc="(1840,500)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="rst_early"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(1820,500)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_early"/>
+    </comp>
+    <comp lib="0" loc="(1840,560)" name="Pin">
+      <a name="appearance" val="NewPins"/>
+      <a name="facing" val="west"/>
+      <a name="label" val="rst_rc"/>
+      <a name="type" val="output"/>
+    </comp>
+    <comp lib="0" loc="(1820,560)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rst_rc"/>
+    </comp>
+    <comp lib="9" loc="(590,660)" name="Text">
+      <a name="text" val="clk bits: 0 ir, 1 addr, 2 cu, 3 regs + flags, 4 the reset flip-flops + the IOD (cu-decisions.md section 14)"/>
+    </comp>
+    <wire from="(220,120)" to="(240,120)"/>
+    <wire from="(220,180)" to="(240,180)"/>
+    <wire from="(550,170)" to="(570,170)"/>
+    <wire from="(550,190)" to="(570,190)"/>
+    <wire from="(550,210)" to="(570,210)"/>
+    <wire from="(550,230)" to="(570,230)"/>
+    <wire from="(550,250)" to="(570,250)"/>
+    <wire from="(550,270)" to="(570,270)"/>
+    <wire from="(550,470)" to="(570,470)"/>
+    <wire from="(550,490)" to="(570,490)"/>
+    <wire from="(550,510)" to="(570,510)"/>
+    <wire from="(550,530)" to="(570,530)"/>
+    <wire from="(550,550)" to="(570,550)"/>
+    <wire from="(630,190)" to="(650,190)"/>
+    <wire from="(630,210)" to="(650,210)"/>
+    <wire from="(630,230)" to="(650,230)"/>
+    <wire from="(630,250)" to="(650,250)"/>
+    <wire from="(630,270)" to="(650,270)"/>
+    <wire from="(630,290)" to="(650,290)"/>
+    <wire from="(630,490)" to="(650,490)"/>
+    <wire from="(630,530)" to="(650,530)"/>
+    <wire from="(630,570)" to="(650,570)"/>
+    <wire from="(970,170)" to="(990,170)"/>
+    <wire from="(970,190)" to="(990,190)"/>
+    <wire from="(970,210)" to="(990,210)"/>
+    <wire from="(970,230)" to="(990,230)"/>
+    <wire from="(970,250)" to="(990,250)"/>
+    <wire from="(970,270)" to="(990,270)"/>
+    <wire from="(970,470)" to="(990,470)"/>
+    <wire from="(970,490)" to="(990,490)"/>
+    <wire from="(970,510)" to="(990,510)"/>
+    <wire from="(970,530)" to="(990,530)"/>
+    <wire from="(970,550)" to="(990,550)"/>
+    <wire from="(970,570)" to="(990,570)"/>
+    <wire from="(1050,190)" to="(1070,190)"/>
+    <wire from="(1050,210)" to="(1070,210)"/>
+    <wire from="(1050,230)" to="(1070,230)"/>
+    <wire from="(1050,250)" to="(1070,250)"/>
+    <wire from="(1050,270)" to="(1070,270)"/>
+    <wire from="(1050,490)" to="(1070,490)"/>
+    <wire from="(1050,510)" to="(1070,510)"/>
+    <wire from="(1050,530)" to="(1070,530)"/>
+    <wire from="(1050,550)" to="(1070,550)"/>
+    <wire from="(1050,570)" to="(1070,570)"/>
+    <wire from="(1390,170)" to="(1410,170)"/>
+    <wire from="(1390,190)" to="(1410,190)"/>
+    <wire from="(1390,210)" to="(1410,210)"/>
+    <wire from="(1390,230)" to="(1410,230)"/>
+    <wire from="(1390,250)" to="(1410,250)"/>
+    <wire from="(1390,270)" to="(1410,270)"/>
+    <wire from="(1390,290)" to="(1410,290)"/>
+    <wire from="(1390,310)" to="(1410,310)"/>
+    <wire from="(1390,330)" to="(1410,330)"/>
+    <wire from="(1470,190)" to="(1490,190)"/>
+    <wire from="(1470,210)" to="(1490,210)"/>
+    <wire from="(1470,230)" to="(1490,230)"/>
+    <wire from="(1470,250)" to="(1490,250)"/>
+    <wire from="(1470,270)" to="(1490,270)"/>
+    <wire from="(1470,290)" to="(1490,290)"/>
+    <wire from="(1470,330)" to="(1490,330)"/>
+    <wire from="(1470,350)" to="(1490,350)"/>
+    <wire from="(1780,170)" to="(1800,170)"/>
+    <wire from="(1780,190)" to="(1800,190)"/>
+    <wire from="(1780,210)" to="(1800,210)"/>
+    <wire from="(1780,230)" to="(1800,230)"/>
+    <wire from="(1780,250)" to="(1800,250)"/>
+    <wire from="(1820,160)" to="(1840,160)"/>
+    <wire from="(1820,320)" to="(1840,320)"/>
+    <wire from="(1820,380)" to="(1840,380)"/>
+    <wire from="(1820,440)" to="(1840,440)"/>
+    <wire from="(1820,500)" to="(1840,500)"/>
+    <wire from="(1820,560)" to="(1840,560)"/>
+  </circuit>
+</project>

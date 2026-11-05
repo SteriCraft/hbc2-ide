@@ -1,0 +1,6 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT10,triple 3-input NAND,1,CD74HCT10E,74HCT10D (Nexperia),clkgen,1
+74HCT14,hex Schmitt-trigger inverter,1,SN74HCT14N,SN74HCT14D or 74HCT14D (Nexperia),clkgen,1
+74HCT74,"dual D flip-flop, set / reset",2,SN74HCT74N,74HCT74D (Nexperia),clkgen,1
+74HCT541,"octal buffer, tri-state",1,SN74HCT541N,74HCT541D (Nexperia),clkgen,1
+total,4 part numbers,5,,,,4

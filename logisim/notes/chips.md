@@ -94,15 +94,24 @@ The 74HCT377 was added on 2026-11-04 for this section. TI lists CD74HCT377E (PDI
 
 The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). AS6C1008-55PCN: PDIP-32 600 mil, 0–70 °C, DigiKey "active"; the SOIC is the industrial -55SIN (not checked on Octopart). AT28C256-15PU: PDIP-28, Microchip, active at Arrow / findchips; AT28C256-15SU is the SOIC-28 (not checked). Both are programmed / socketed parts, not 74HCT: the 74HCT rule doesn't apply to memories. Levels: the AT28C256 guarantees VOH 2.4 V only, so it drives the RAM through a 74HCT541 (M4).
 
+### Clock and reset (clkgen)
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT10 | triple 3-input NAND | 7410 | CD74HCT10E | 74HCT10D (Nexperia) | 1 |
+| 74HCT14 | hex Schmitt-trigger inverter | 7414 | SN74HCT14N | SN74HCT14D or 74HCT14D (Nexperia) | 1 |
+| 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 2 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 1 |
+
+Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74HCT10, C6), the reset generator (74HCT14 + 74HCT74, C17) and the clock buffer (74HCT541). Off the logic: a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose) and the RC (resistor, capacitor, push button, diode).
+
 ### Not in a circuit yet
 
-Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 and 74HCT10 are the clock generator's (control-requirements.md C6); a second 74HCT74 and the 74HCT14 are the reset generator's (C17). **Control unit (cu-decisions.md section 9, accepted 2026-11-05):** 74HCT151 and 74HCT00 are new parts for `cu` (their references and datasheet delays go in with the phase 3 circuit); `clk` adds a 74HCT541 clock buffer and a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose).
+Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. **Control unit (cu-decisions.md section 9, accepted 2026-11-05):** 74HCT151 and 74HCT00 are new parts for `cu` (their references and datasheet delays go in with the phase 3 circuit).
 
 | Part | Function | Logisim | DIP | SOIC | Qty |
 |---|---|---|---|---|---|
 | 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
-| 74HCT10 | triple 3-input NAND | 7410 | CD74HCT10E | 74HCT10D (Nexperia) | 0 |
-| 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 0 |
 
 **74HCT10: NRND, used anyway (Gianni, 2026-11-05).** TI marks CD74HCT10E "not recommended for new designs" but still makes it: DigiKey stocks it (6-week factory lead time, Rochester Electronics as a second source). It is the only HCT 3-input NAND in DIP: TI has no SN74HCT10N, and the Nexperia 74HCT10N is discontinued. Gianni kept it in the clock generator over the 74HCT32 + 74HCT14 replacement, whose pulse end left 3.5 ns before the next edge at 55 % duty (cu-decisions.md section 14). **Buy spares** (at least 3 for the one fitted). If it can no longer be bought: **SN74ACT10N** (TI, PDIP-14, active, 9.5 ns max at 5 V) fits the same socket, see the 74ACT fallbacks below.
 
