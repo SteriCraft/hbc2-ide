@@ -13,15 +13,18 @@ use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register, TraceWriter};
 
 const USAGE: &str = "\
 usage:
-  hbc2 asm <main.has> [-o out.bin] [--eeprom] [--strip] [--symbols] [--map]
+  hbc2 asm <main.has> [-o out.bin] [--eeprom | --boot-rom] [--strip] [--symbols] [--map]
         assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom);
-        --strip leaves out unreached code and data
-  hbc2 cc <file.c | file.has>... [-o out.bin] [--eeprom] [--dir build] [--symbols] [--map]
+        --strip leaves out unreached code and data; --boot-rom also writes
+        the RAM image as the hardware CPU's boot ROM, one 32 KiB file per
+        AT28C256: out_lo.bin (0000-7FFF) and out_hi.bin (8000-FFFF)
+  hbc2 cc <file.c | file.has>... [-o out.bin] [--eeprom | --boot-rom] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir
         (default: .build next to the first file); unreached code and data
         are left out (--map lists what is kept and what is left out);
-        --eeprom: a 1 MiB EEPROM image that boots the program
+        --eeprom: a 1 MiB EEPROM image that boots the program;
+        --boot-rom: as for asm
   hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom [file.has | eeprom.bin]]
         run headless, then print the CPU state (C files: built as with cc;
         with --eeprom and no file, built for the EEPROM and started from it)
@@ -317,6 +320,9 @@ fn write_image(
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(source).with_extension("bin"));
     let image = eeprom.unwrap_or(&program.image);
+    if has(args, "--boot-rom") && has(args, "--eeprom") {
+        return Err("--boot-rom holds the 64 KiB RAM image: build without --eeprom".into());
+    }
     std::fs::write(&output, image).map_err(|e| format!("{}: {e}", output.display()))?;
     let removed = match program.bytes_removed() {
         0 => String::new(),
@@ -329,6 +335,14 @@ fn write_image(
         program.bytes_used,
         program.files.len()
     );
+    if has(args, "--boot-rom") {
+        let [lo, hi] = hbc2_core::boot_rom::write(image, &output)?;
+        println!(
+            "boot ROM -> {} (0000-7FFF), {} (8000-FFFF)",
+            lo.display(),
+            hi.display()
+        );
+    }
 
     let map = has(args, "--map");
     if has(args, "--symbols") || map {

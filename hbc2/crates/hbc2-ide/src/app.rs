@@ -104,6 +104,7 @@ pub enum Action {
     StepOut,
     Reset,
     ExportImage,
+    ExportBootRom,
     LoadImage,
     SaveEeprom,
     /// Starts recording an execution trace (asks for the file), or stops it.
@@ -1325,6 +1326,7 @@ impl Ide {
                 state.console.info("The machine was reset.");
             }
             Action::ExportImage => state.export_image(),
+            Action::ExportBootRom => state.export_boot_rom(),
             Action::ToggleTrace => state.toggle_trace(),
             Action::LoadImage => state.load_image(),
             Action::SaveEeprom => state.save_eeprom(),
@@ -2097,6 +2099,34 @@ impl State {
                 Err(e) => self
                     .console
                     .error(format!("Cannot write {}: {e}", path.display())),
+            }
+        }
+    }
+
+    /// Writes the RAM image as the hardware CPU's boot ROM: one 32 KiB file
+    /// per AT28C256, `name_lo.bin` (0000-7FFF) and `name_hi.bin` (8000-FFFF).
+    fn export_boot_rom(&mut self) {
+        let Some(Image::Ram(bytes)) = self.emulator.image().cloned() else {
+            self.console
+                .error("Nothing to export: assemble for the RAM target first.");
+            return;
+        };
+        let mut dialog = rfd::FileDialog::new()
+            .add_filter("Binary image", &["bin"])
+            .set_file_name("boot_rom.bin");
+        if let Some(project) = &self.project {
+            dialog = dialog.set_directory(&project.root);
+        }
+        if let Some(path) = dialog.save_file() {
+            match hbc2_core::boot_rom::write(&bytes, &path) {
+                Ok([lo, hi]) => self.console.success(format!(
+                    "Boot ROM written to {} (0000-7FFF) and {} (8000-FFFF).",
+                    lo.display(),
+                    hi.display()
+                )),
+                Err(e) => self
+                    .console
+                    .error(format!("Cannot write the boot ROM: {e}")),
             }
         }
     }

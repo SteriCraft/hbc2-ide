@@ -9,6 +9,7 @@
 
 pub mod alu;
 pub mod board;
+pub mod boot_rom;
 pub mod cpu;
 pub mod iod;
 pub mod isa;

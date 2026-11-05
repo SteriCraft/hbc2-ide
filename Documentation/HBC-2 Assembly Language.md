@@ -439,6 +439,23 @@ Interrupt handlers are not copied: the code in the first 512 bytes has to
 copy them (and anything else it needs) from the EEPROM into RAM before it
 enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
 
+## Boot ROM for the hardware CPU
+
+The hardware CPU (the Logisim design in `logisim/`) copies a 64 KiB boot ROM
+into RAM after every reset: the ROM holds the program's 64 KiB RAM image. It
+is two AT28C256 EEPROMs of 32 KiB each, so the image is written as two files:
+
+* `hbc2 asm main.has --boot-rom` (or `hbc2 cc … --boot-rom`) writes `main.bin`
+  as usual, plus `main_lo.bin` (`$0x0000-$0x7FFF`, the low chip) and
+  `main_hi.bin` (`$0x8000-$0xFFFF`, the high chip). With `-o out.bin` they
+  are `out_lo.bin` and `out_hi.bin`.
+* In the IDE: Build menu, "Export boot ROM…" (RAM target only).
+
+Each file is the chip's contents from its address 0, as an EEPROM
+programmer (an Arduino one, for instance) writes it. `--boot-rom` doesn't work
+with `--eeprom`: the EEPROM target is the emulator's EEPROM peripheral, not
+the boot ROM.
+
 ## Changes from the first IDE
 
 | Before | Now |

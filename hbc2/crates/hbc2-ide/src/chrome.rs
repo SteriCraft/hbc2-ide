@@ -6,6 +6,7 @@ use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
 use crate::app::{Action, Dialog, SettingsPage, State, can_undo};
+use crate::emulator::Image;
 use crate::find::FindMode;
 use crate::project::{
     Language, folder_name, new_file_content, project_folder_name, source_file_name,
@@ -205,6 +206,15 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     .clicked()
                 {
                     actions.push(Action::ExportImage);
+                }
+                let ram_image = matches!(state.emulator.image(), Some(Image::Ram(_)));
+                if ui
+                    .add_enabled(ram_image, Button::new("Export boot ROM…"))
+                    .on_hover_text("The RAM image as two 32 KiB files, one per AT28C256 of the hardware CPU: _lo.bin (0000-7FFF) and _hi.bin (8000-FFFF)")
+                    .on_disabled_hover_text("Assemble for the RAM target first.")
+                    .clicked()
+                {
+                    actions.push(Action::ExportBootRom);
                 }
             });
 
