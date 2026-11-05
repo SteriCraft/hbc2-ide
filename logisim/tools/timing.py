@@ -19,6 +19,7 @@ them here when a module changes.
     python timing.py --section flags   # the flag register, within one 500 ns step
     python timing.py --section regs    # the register section and the end-to-end ALU step
     python timing.py --section addr    # PC, SP, the address adder and latch
+    python timing.py --section mem     # the memory section, the fetch into the IR
     python timing.py --limit 250   # ... and exit 1 if a shown path is over 250 ns at max 25 °C
 """
 
@@ -192,13 +193,16 @@ BUSES = {
               ("addr/addr.circ", "addr", "addr_bus_b")],
     "bus_data": [("registers/regs.circ", "regs", "regs_bus_in"), ("registers/regs.circ", "regs", "regs_bus_out"),
                  ("flags/flags.circ", "flags", "flags_bus_in"), ("flags/flags.circ", "flags", "flags_bus_out"),
-                 ("est", 4, 0, "IR: opcode, byte 1, V1, V2 latches (not built)"),
+                 ("ir/ir.circ", "ir", "ir_bus_in"),
                  ("addr/addr.circ", "addr", "addr_bus_out"),
-                 ("est", 0, 3, "RAM, ROM, I/O port data (not built)")],
+                 ("mem/mem.circ", "mem", "mem_bus_in"), ("mem/mem.circ", "mem", "mem_bus_out"),
+                 ("est", 1, 1, "the IOD's port data (not built)")],
     # the low byte (the worst: the IVT reads it back)
     "bus_addr": [("addr/addr.circ", "addr", "addr_bus_addr_lo"), ("addr/addr.circ", "addr", "addr_bus_addr_lo_in"),
-                 ("est", 4, 2, "RAM and ROM address inputs, the IOD (in and out), the pending port latch "
-                               "(377 in, 541 out) (not built)")],
+                 ("mem/mem.circ", "mem", "mem_addr"),
+                 ("est", 2, 2, "the IOD (in and out), the pending port latch (377 in, 541 out) (not built)")],
+    # the memory section's local data bus (RAM, the ROM buffer, the write and read buffers)
+    "mem_d": [("mem/mem.circ", "mem", "mem_d")],
 }
 # nets local to the register section, driven by the index multiplexers
 REGS_F = "registers/regs.circ"
@@ -281,7 +285,7 @@ def derate(part, nets):
 #                          are taken as 0)
 REGS = {
     "r_ctl": (False, "IR / control unit outputs", [], [
-        ("74HCT574", "CP → Q", "IR fields, control register"),
+        ("74HCT377", "CP → Q", "IR fields (377, slower than the 574 control register)"),
     ]),
     "r_ra": (True, "index → word read (bits 1..0)", ["r_ctl"], [
         ("74HCT153", "S → Y", "U1 / U11: index multiplexer", IDX),
@@ -390,7 +394,7 @@ ADDR = {
         *RIPPLE, *TO_PC,
     ]),
     "a_ir": (True, "V1 / V2 (IR) → sum → PC setup", [], [
-        ("74HCT574", "CP → Q", "IR, V1 / V2 latch"),
+        ("74HCT377", "CP → Q", "IR, V1 / V2 (designs/ir.py)"),
         ("74HCT157", "I → Y", "OFFSET"),
         ("74HCT86", "A/B → Y", "inversion"),
         *RIPPLE, *TO_PC,
@@ -434,8 +438,66 @@ ADDR = {
     ]),
     "a_bus": (True, "PC / SP → bus_data (CAL, interrupt entry, RSP)", ["a_bus_oe", "a_bus_q"], []),
 }
-SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR}
-PATHS = {**PATHS, **FLAGS, **REGS, **ADDR}
+# Memory section (designs/mem.py, notes/ir-mem-decisions.md sections 4-5, M1-M4).
+# The RAM's WE# = clk_mem_wr_n OR mem_we_n; clk_mem_wr_n is /Q2 of the clock
+# generator's FF2 (clk sampled on the osc fall, through the NAND inverter):
+# low from the osc fall at 125 to the one at 375. Minimum delays are 0, t = 0
+# is clk rising, which can be FF1's delay after its osc edge (as for w_*).
+MEM = {
+    "m_read": (True, "**RAM read → bus_data** (address from the latch, tAA)", ["a_lat"], [
+        ("AS6C1008", "address → DQ (tAA)", "RAM"),
+        ("74HCT541", "A → Y", "read buffer", ("bus_data",)),
+    ]),
+    "m_read_ce": (True, "RAM read: control → CE2 → bus_data (tACE)", [], [
+        ("74HCT574", "CP → Q", "control register: mem_re"),
+        ("AS6C1008", "CE#, CE2 → DQ (tACE)", "RAM"),
+        ("74HCT541", "A → Y", "read buffer", ("bus_data",)),
+    ]),
+    "m_read_oe": (True, "RAM read: control → read buffer on → bus_data", [], [
+        ("74HCT574", "CP → Q", "control register: mem_oe_n"),
+        ("74HCT541", "OE → Y", "read buffer", ("bus_data",)),
+    ]),
+    "m_fetch": (True, "fetch: RAM → bus_data → 14 → IR setup (inverted bits, the slowest)", ["m_read"], [
+        ("74HCT14", "A → Y", "ir: NOT bus bit 5 / 2"),
+        ("74HCT377", "setup D, /E → CP", "ir: X1 / X2"),
+    ]),
+    "m_fall_min": (False, "RAM WE# falls, earliest", [], [
+        ("@", 125, "osc falls"),
+        ("-", "74HCT74", "CLK → Q", "t = 0 (clk rising) can be FF1's delay late"),
+    ]),
+    "m_addr": (True, "address on bus_addr before the RAM's WE# falls (tAS 0)", ["a_lat"], []),
+    "m_rise_min": (False, "RAM WE# rises, earliest", [], [
+        ("@", 375, "osc falls"),
+        ("-", "74HCT74", "CLK → Q", "t = 0 can be FF1's delay late"),
+    ]),
+    "m_wdl": (False, "RAM write data needed by (earliest rise − tDW)", ["m_rise_min"], [
+        ("-", "AS6C1008", "setup DIN → WE# rising (tDW)", "RAM"),
+    ]),
+    "m_wdata": (True, "RAM write data: register → bus_data → write buffer → RAM", ["r_dbus"], [
+        ("74HCT541", "A → Y", "write buffer", ("mem_d",)),
+    ]),
+    # both ends come from FF2 on osc falls 250 ns apart: the pulse loses what
+    # can delay its start only (the NAND inverter, FF2, the OR)
+    "m_pulse": (True, "RAM WE# pulse, shortest", [], [
+        ("@", 250, "osc fall to osc fall"),
+        ("-", "74HCT10", "A/B/C → Y", "NAND as the osc inverter"),
+        ("-", "74HCT74", "CLK → Q", "FF2 (/Q2)"),
+        ("-", "74HCT32", "A/B → Y", "mem: the OR"),
+    ]),
+    "m_rise": (True, "RAM WE# rises, latest (tWR = tDH = 0)", [], [
+        ("@", 375, "osc falls"),
+        ("74HCT10", "A/B/C → Y", "NAND as the osc inverter"),
+        ("74HCT74", "CLK → Q", "FF2 (/Q2)"),
+        ("74HCT32", "A/B → Y", "mem: the OR"),
+    ]),
+    "m_boot": (True, "boot copy: address → NOT A15 → ROM (tCE) → ROM buffer → RAM data", ["a_lat"], [
+        ("74HCT14", "A → Y", "mem: NOT A15"),
+        ("AT28C256", "/CE → I/O (tCE)", "ROM"),
+        ("74HCT541", "A → Y", "ROM buffer", ("mem_d",)),
+    ]),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR, "mem": MEM}
+PATHS = {**PATHS, **FLAGS, **REGS, **ADDR, **MEM}
 
 # ---- pass criterion --------------------------------------------------------------------
 # name: (op, bound). "<=": the path must end by the bound; ">=": it must last
@@ -462,6 +524,13 @@ LIMITS = {
     "a_regs": ("<=", STEP), "a_ivt": ("<=", STEP),
     "a_lat": ("<=", "w_data"), "a_lat_oe": ("<=", "w_data"),   # a memory read must reach the data bus by then
     "a_bus": ("<=", "w_data"),               # RSP: SP into a register (C10, P3); also the memory write data
+    # memory section
+    "m_read": ("<=", "w_data"), "m_read_ce": ("<=", "w_data"), "m_read_oe": ("<=", "w_data"),
+    "m_fetch": ("<=", STEP),
+    "m_addr": ("<=", "m_fall_min"),
+    "m_wdata": ("<=", "m_wdl"), "m_boot": ("<=", "m_wdl"),
+    "m_pulse": (">=", ("AS6C1008", "write pulse WE# (tWP)")),
+    "m_rise": ("<=", STEP),                  # the address and data change at the next edge
 }
 
 
@@ -560,7 +629,7 @@ def main(argv=None):
         else:
             cells += ["—", "—", "—"]
         print(f"| {label} | {via[n]} | " + " | ".join(cells) + " |")
-    if args.section in ("regs", "addr"):
+    if args.section in ("regs", "addr", "mem"):
         print("\n| Bus (worst bit) | Inputs | 3-state outputs | Load (pF) | Extra delay, bus driver (max 25 / 85 °C, ns) "
               "| Extra delay, standard output (max 25 / 85 °C, ns) | Counted (worst bit of each) |")
         print("|---|---|---|---|---|---|---|")
