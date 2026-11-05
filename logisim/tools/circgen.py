@@ -149,7 +149,8 @@ class Part:
         head = f'    <comp{lib} loc="({self.loc[0]},{self.loc[1]})" name="{_esc(self.name)}"'
         if not self.attrs:
             return head + "/>"
-        body = "".join(f'\n      <a name="{_esc(k)}" val="{_esc(v)}"/>' for k, v in sorted(self.attrs.items()))
+        body = "".join(f'\n      <a name="{_esc(k)}">{_esc(v)}</a>' if "\n" in str(v)   # ROM contents: text
+                       else f'\n      <a name="{_esc(k)}" val="{_esc(v)}"/>' for k, v in sorted(self.attrs.items()))
         return head + ">" + body + "\n    </comp>"
 
 
