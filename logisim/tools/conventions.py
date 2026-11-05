@@ -51,7 +51,7 @@ import circcheck  # noqa: E402
 import netlist as nl  # noqa: E402
 
 SNAKE = re.compile(r"^[a-z][a-z0-9]*(_[a-z0-9]+)*$")
-GLOBAL = re.compile(r"^(clk|clk_wr_n|rst_n|pc|sp|reg_[a-z]|flag_[a-z]|bus_[a-z0-9_]+)$")
+GLOBAL = re.compile(r"^(clk|clk_wr_n|clk_mem_wr_n|rst_n|pc|sp|reg_[a-z]|flag_[a-z]|bus_[a-z0-9_]+)$")
 WIRING_OK = {"Pin", "Splitter", "Tunnel", "Probe", "Clock", "Ground", "Power"}
 MODULE_WIRING_OK = WIRING_OK | {"Constant"}   # tied to GND/5V, e.g. 01 for INC
 MEMORY_OK = {"RAM", "ROM"}

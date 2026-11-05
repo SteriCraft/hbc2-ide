@@ -1,0 +1,7 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT14,hex Schmitt-trigger inverter,1,SN74HCT14N,SN74HCT14D or 74HCT14D (Nexperia),mem,1
+74HCT32,quad 2-input OR,1,SN74HCT32N,74HCT32D (Nexperia),mem,1
+AT28C256,"32 K × 8 parallel EEPROM, 150 ns",2,AT28C256-15PU,AT28C256-15SU (Microchip),mem,1
+AS6C1008,"128 K × 8 static RAM, 55 ns",1,AS6C1008-55PCN,AS6C1008-55SIN (Alliance),mem,1
+74HCT541,"octal buffer, tri-state",3,SN74HCT541N,74HCT541D (Nexperia),mem,1
+total,5 part numbers,8,,,,5
