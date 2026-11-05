@@ -320,8 +320,10 @@ REGS = {
     ]),
     # The write strobe comes from the clock generator (control-requirements.md C6):
     # osc (4 MHz) -> 74HCT74 FF1 = clk; FF2 = clk sampled on the falling osc
-    # edge; clk_wr_n = NAND3(not clk, osc, FF2) (74HCT10), low from the clk
-    # fall (osc rise, 250) to the osc fall (375). Minimum delays are taken as 0:
+    # edge; clk_wr_n = (osc_n OR /Q2) OR clk (74HCT32, 2 gates; osc_n from a
+    # 74HCT14 gate; it replaced the NRND 74HCT10 NAND3 on 2026-11-05,
+    # cu-decisions.md section 12), low from the clk fall (osc rise, 250) to the
+    # osc fall (375). Minimum delays are taken as 0:
     # t = 0 is clk rising, up to 35 ns after its osc edge, so the osc fall can
     # come 35 ns early (375 - 35 = 340), and the clk fall 35 ns early or late.
     "w_wa": (True, "write address + setup, before /WE falls", ["r_ctl"], [
@@ -339,7 +341,7 @@ REGS = {
     "w_fall": (True, "/WE falls, latest", [], [
         ("@", 250, "osc rises"),
         ("74HCT74", "CLK → Q", "FF1: clk falls (late)"),
-        ("74HCT10", "A/B/C → Y", "clk_wr_n"),
+        ("74HCT32", "A/B → Y", "clk_wr_n: the OR with clk"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
     ]),
     "w_rise_min": (True, "/WE rises, earliest (D setup is to this edge)", [], [
@@ -351,16 +353,18 @@ REGS = {
         ("-", "74HCT670", "setup D → /WE", "all 8 chips"),
     ]),
     # the two ends move together with clk: the pulse is 125 ns of osc minus
-    # what can delay its start only (FF1, the NAND, the OR)
+    # what can delay its start only (FF1, the OR with clk, the OR in regs)
     "w_pulse": (True, "/WE pulse, shortest", [], [
         ("@", 125, "osc rise to osc fall"),
         ("-", "74HCT74", "CLK → Q", "FF1"),
-        ("-", "74HCT10", "A/B/C → Y", "the NAND"),
+        ("-", "74HCT32", "A/B → Y", "clk_wr_n: the OR with clk"),
         ("-", "74HCT32", "A/B → Y", "the OR"),
     ]),
     "w_rise": (True, "/WE rises, latest, + hold", [], [
         ("@", 375, "osc falls"),
-        ("74HCT10", "A/B/C → Y", "clk_wr_n"),
+        ("74HCT14", "A → Y", "osc_n"),
+        ("74HCT32", "A/B → Y", "osc_n OR /Q2"),
+        ("74HCT32", "A/B → Y", "clk_wr_n: the OR with clk"),
         ("74HCT32", "A/B → Y", "U4: bank /WE"),
         ("74HCT670", "hold D, WA after /WE", "all 8 chips"),
     ]),
@@ -440,7 +444,7 @@ ADDR = {
 }
 # Memory section (designs/mem.py, notes/ir-mem-decisions.md sections 4-5, M1-M4).
 # The RAM's WE# = clk_mem_wr_n OR mem_we_n; clk_mem_wr_n is /Q2 of the clock
-# generator's FF2 (clk sampled on the osc fall, through the NAND inverter):
+# generator's FF2 (clk sampled on the osc fall, through the 74HCT14 inverter):
 # low from the osc fall at 125 to the one at 375. Minimum delays are 0, t = 0
 # is clk rising, which can be FF1's delay after its osc edge (as for w_*).
 MEM = {
@@ -477,16 +481,16 @@ MEM = {
         ("74HCT541", "A → Y", "write buffer", ("mem_d",)),
     ]),
     # both ends come from FF2 on osc falls 250 ns apart: the pulse loses what
-    # can delay its start only (the NAND inverter, FF2, the OR)
+    # can delay its start only (the osc inverter, FF2, the OR)
     "m_pulse": (True, "RAM WE# pulse, shortest", [], [
         ("@", 250, "osc fall to osc fall"),
-        ("-", "74HCT10", "A/B/C → Y", "NAND as the osc inverter"),
+        ("-", "74HCT14", "A → Y", "osc_n (the osc inverter)"),
         ("-", "74HCT74", "CLK → Q", "FF2 (/Q2)"),
         ("-", "74HCT32", "A/B → Y", "mem: the OR"),
     ]),
     "m_rise": (True, "RAM WE# rises, latest (tWR = tDH = 0)", [], [
         ("@", 375, "osc falls"),
-        ("74HCT10", "A/B/C → Y", "NAND as the osc inverter"),
+        ("74HCT14", "A → Y", "osc_n (the osc inverter)"),
         ("74HCT74", "CLK → Q", "FF2 (/Q2)"),
         ("74HCT32", "A/B → Y", "mem: the OR"),
     ]),

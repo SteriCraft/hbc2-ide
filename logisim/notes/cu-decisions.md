@@ -1,6 +1,6 @@
 # Control unit: decisions
 
-**Phase 1 (paper design, 2026-11-05).** No circuit, no microcode yet. Waiting for Gianni's go-ahead; questions in section 10.
+**Phase 1 (paper design, 2026-11-05): accepted.** Gianni's answers (all 10 recommendations accepted, plus the 74HCT10 replacement and the INT requirement) are in section 12. **Phase 2 (microcode) is in section 13.**
 
 Source of truth: `hbc2-core/src/cpu.rs`, `isa.rs` (`DECODE`, `INSTRUCTION_TABLE`). Requirements: control-requirements.md C1–C23, pc-sp-requirements.md P1–P4, registers-requirements.md, iod-requirements.md I1–I8. Interfaces: registers-, flags-, addr-, ir-mem-decisions.md, alu-report.md. Times are in ns from the rising `clk` edge that starts the step (500 ns), **max 25 °C (pass) / max 85 °C (information)**, bus loading included.
 
@@ -251,7 +251,7 @@ The EEPROMs (AT28C256-15: tACC 150 ns, /CE and /OE tied low, /WE high) read the 
 | `osc` | 4.000 MHz HCMOS oscillator module | FF1 CLK, NAND3, inverter → FF2 CLK | C6 |
 | `clk` | 74HCT74 #1 FF1 Q (D = /Q1) | every flip-flop's CLK, FF2 D, the IOD | 2 MHz, 50 % whatever `osc`'s duty |
 | `clk_n` | FF1 /Q | NAND3 only | |
-| `clk_wr_n` | 74HCT10: NAND3(`clk_n`, `osc`, Q2) | regs (670 /WE), the IOD (OUT capture) | low 250–375 (C6, D7) |
+| `clk_wr_n` | ~~74HCT10: NAND3(`clk_n`, `osc`, Q2)~~ replaced (section 12): (`osc_n` OR Q2_n) OR `clk`, 2 gates of a 74HCT32 | regs (670 /WE), the IOD (OUT capture) | low 250–375 (C6, D7) |
 | `clk_mem_wr_n` | FF2 /Q (FF2: CLK = NOT `osc`, D = `clk`) | mem (RAM WE#) | low 125–375 (M1) |
 | `rst_early_n` | 74HCT74 #2 FF1 Q (D = VCC) | `x_n` (as `rst_early`, FF1's /Q) | C17 |
 | `rst_n` | FF2 Q (D = FF1 Q); both /CLR from the RC via 2 × 74HCT14 | flags, addr, cu, the IOD | asynchronous assert, release just after a `clk` edge |
@@ -328,7 +328,7 @@ Where the steps go:
 | 4 | 74HCT00, 74HCT08 × 2, 74HCT27 | `abus`, bus A / B latch enables, HW, SW, `bnd_n`, `x_n`, P next (exact mapping in phase 3) |
 | 1 + 1 | 74HCT377 + 74HCT541 | pending software interrupt port latch (C13) |
 | **29** | | module `cu` |
-| 2 + 1 + 1 + 1 | 74HCT74, 74HCT10, 74HCT14, 74HCT541 | module `clk`: clock, reset, clock buffer; plus the oscillator module |
+| 2 + 1 + 1 + 1 | 74HCT74, 74HCT32 (was 74HCT10, section 12), 74HCT14, 74HCT541 | module `clk`: clock, reset, clock buffer; plus the oscillator module |
 | **34** | | control unit in all. Three inverters (the constant, `abus`) use the reset 74HCT14's spare gates. |
 
 - **New parts:** 74HCT151 and 74HCT00. Their DIP and SOIC references and datasheets go into chips.md in phase 3; everything else is already in use or listed.
@@ -389,3 +389,42 @@ Where the steps go:
   - C2 (Q7), C13 (Q4), C20 (Q8), C21 (Q5);
   - I3 / C10 (Q9), I5 (Q6);
   - chips.md (151, 00, the clock buffer, the oscillator).
+
+## 12. Gianni's answers (2026-11-05)
+
+**Go-ahead. All 10 recommendations of section 10 accepted**, and three more instructions:
+
+| # | Decision | Applied in |
+|---|---|---|
+| Q1 | 7 × AT28C256, 54 bits, decoded before 8 × 574 + the 175 | section 13 (bit layout) |
+| Q2 | fetch bypass (3 × 157) | section 13 |
+| Q3 | forced row (00, 0), boot row (3F, B), reset word in step 0 | section 13 |
+| Q4 | the pending port latch reads V1 from `bus_data` during INT's V1 fetch | control-requirements.md C13 |
+| Q5 | INR in the last push step (IE4) | C21 |
+| Q6 | INT valid by 150 ns, from a flip-flop clocked by `clk` | iod-requirements.md I5 (Gianni's wording) |
+| Q7 | invalid mode: I := 0, then H := 1 | C2 |
+| Q8 | boot loop leaves one step late, then PC − 1 | C20 |
+| Q9 | 74HCT541 clock buffer; oscillator 45–55 % duty, register write data by 322 ns | C6, C10, iod-requirements.md I3 |
+| Q10 | `at28c256` model: the simulation-only `HALF` pin becomes a 4-bit `IMAGE` pin (phase 3) | phase 3 |
+| — | **Replace the 74HCT10** (CD74HCT10E is NRND at TI) with parts already in the design | below, C6, chips.md |
+| — | iod-requirements.md: **INT comes from a flip-flop clocked by `clk`, valid by 150 ns** | I5 |
+| — | update the notes listed in section 11 | done with this section |
+
+### The 74HCT10 replacement
+
+The 74HCT10 had two jobs: `clk_wr_n` = NAND3(`clk_n`, `osc`, Q2), and NOT `osc` for FF2's clock. Candidates, at max 25 °C (pass) / 85 °C (info), with the 670 needing a /WE pulse of 20 / 25 ns and a 5 ns hold before the next edge (registers-decisions.md D7):
+
+| Option | `clk_wr_n` | Shortest /WE pulse | Latest /WE rise + hold | Result |
+|---|---|---|---|---|
+| 74HCT10 (before) | NAND3(`clk_n`, `osc`, Q2) | 49 / 30 | 428 / 440 | NRND |
+| 74HCT11 + 74HCT14 (suggested) | NOT AND3(`clk_n`, `osc`, Q2) | **13** / −15 | 464 / 485 | fails the pulse: the start of the pulse goes through two gates |
+| 74HCT27 + 74HCT14 | NOT NOR3(`clk`, `osc_n`, Q2_n) | **18** / −9 | 491 / 519 | fails the pulse |
+| **74HCT32 × 2 gates + 74HCT14 (chosen)** | (`osc_n` OR Q2_n) OR `clk` | **49 / 30** | **484** / 510 | passes at 25 °C |
+| 74HCT32, the other order | (`clk` OR Q2_n) OR `osc_n` | 25 / 0 | 460 / 480 | passes at 25 °C, but 12.5 ns with a 45 % duty |
+
+- **How it works:** `clk_wr_n` = `clk` OR `osc_n` OR Q2_n is low only while `clk` is low, `osc` is high and Q2 is high, the same window as before. `osc_n` comes from a spare gate of the reset block's 74HCT14 and also clocks FF2 (the 10's second gate did that). Q2_n is FF2's /Q, which is `clk_mem_wr_n` already.
+- **Why this order:** `clk` goes through one OR, so the start of the pulse is as early as with the 74HCT10 (the pulse is unchanged). Only the end moves: `osc_n` (14, 32 ns) and two ORs instead of one NAND.
+- **Glitch-free:** an OR output only falls when all its inputs are low, and at each edge one input moves while another holds the output high (at 250 `clk` and `osc_n` both fall: the output falls once both are low; at 500 Q2_n is already high, from about 435 ns).
+- **Margins at 25 °C:** pulse 49 ns (36 with a 45 % duty), latest rise + hold 484 ns (16 ns before the edge; **3.5 ns with a 55 % duty**). The write data deadline (C10, 335 / 322 ns) and `clk_mem_wr_n` (M1) don't change; FF2 clocks 8 ns later (14 instead of 10), which only shifts `clk_mem_wr_n`'s two edges together.
+- **At 85 °C (information):** the hold is 10 ns short. Breadboard check with B1 (breadboard-checks.md), with the duty cycle measured. Fallback if it fails there: a faster inverter for `osc_n` (a 74HCT00 gate, 24 / 30 ns: +8 ns of margin), or the 74ACT74 fallback.
+- **Chips:** module `clk` keeps 5 chips: 2 × 74HCT74, 74HCT32 (2 gates spare), 74HCT14, 74HCT541. The 74HCT10 leaves chips.md's lists.
