@@ -787,13 +787,14 @@ const SEQ_MODULES: &[SeqModule] = &[
 mod addr;
 mod ir;
 mod mem;
+mod mem_cpu;
 mod regs;
 
 /// Every sequential module: the flag register, the register section
 /// (vectors/regs.rs), the address section (vectors/addr.rs) and the
 /// instruction register (vectors/ir.rs).
 fn seq_modules() -> impl Iterator<Item = &'static SeqModule> {
-    SEQ_MODULES.iter().chain(regs::MODULES).chain(addr::MODULES).chain(ir::MODULES).chain(mem::MODULES)
+    SEQ_MODULES.iter().chain(regs::MODULES).chain(addr::MODULES).chain(ir::MODULES).chain(mem::MODULES).chain(mem_cpu::MODULES)
 }
 
 fn names() -> String {
