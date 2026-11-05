@@ -75,6 +75,25 @@ One table per module, so a module's parts can be read (and bought) on their own.
 
 The 74HCT377 was added on 2026-11-04 for this section. TI lists CD74HCT377E (PDIP) and CD74HCT377M96 (SOIC, tape and reel) as active in the datasheet's package addendum (SCHS184C); the tube SOIC CD74HCT377M is obsolete. Stock not checked yet (Gianni's Octopart survey predates it).
 
+### Instruction register
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT14 | hex Schmitt-trigger inverter | 7414 | SN74HCT14N | SN74HCT14D or 74HCT14D (Nexperia) | 1 |
+| 74HCT377 | octal D flip-flop, data enable | 74377 | CD74HCT377E | CD74HCT377M96 (TI) | 6 |
+
+### Memory
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT14 | hex Schmitt-trigger inverter | 7414 | SN74HCT14N | SN74HCT14D or 74HCT14D (Nexperia) | 1 |
+| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) | 1 |
+| 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 3 |
+| AS6C1008 | 128 K × 8 static RAM, 55 ns | as6c1008 (model) | AS6C1008-55PCN | AS6C1008-55SIN (Alliance) | 1 |
+| AT28C256 | 32 K × 8 parallel EEPROM, 150 ns | at28c256 (model) | AT28C256-15PU | AT28C256-15SU (Microchip) | 2 |
+
+The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). AS6C1008-55PCN: PDIP-32 600 mil, 0–70 °C, DigiKey "active"; the SOIC is the industrial -55SIN (not checked on Octopart). AT28C256-15PU: PDIP-28, Microchip, active at Arrow / findchips; AT28C256-15SU is the SOIC-28 (not checked). Both are programmed / socketed parts, not 74HCT: the 74HCT rule doesn't apply to memories. Levels: the AT28C256 guarantees VOH 2.4 V only, so it drives the RAM through a 74HCT541 (M4).
+
 ### Not in a circuit yet
 
 Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it. The 74HCT74 and 74HCT10 are the clock generator's (control-requirements.md C6); a second 74HCT74 and the 74HCT14 are the reset generator's (C17).
@@ -83,7 +102,6 @@ Listed for the modules to come or no longer used (74HCT02). Move a row to its mo
 |---|---|---|---|---|---|
 | 74HCT02 | quad 2-input NOR | 7402 | CD74HCT02E | SN74HCT02D or 74HCT02D (Nexperia) | 0 |
 | 74HCT10 | triple 3-input NAND | 7410 | CD74HCT10E | 74HCT10D (Nexperia) | 0 |
-| 74HCT14 | hex Schmitt-trigger inverter | 7414 | SN74HCT14N | SN74HCT14D or 74HCT14D (Nexperia) | 0 |
 | 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 0 |
 
 The 74HCT02 is no longer used by the ALU (its S gate went with cmp8), but it stays listed for later sections. All DIP references are TI and active. The 74HCT85 was added on 2026-11-04 for cmp8: TI lists the CD74HCT85 as active, with about 1,400 CD74HCT85E at Mouser and 6,300 at DigiKey (aggregator figures, check in the basket). For the 74HCT283 in SOIC, take the TI part: the Nexperia 74HCT283D is discontinued. The 74HCT27 is as easy to buy as the others (CD74HCT27E: about 1,300 at Mouser).
@@ -104,6 +122,7 @@ So Typ is a rough guide only.
 | 74HCT08 | A/B → Y | 15 | 24 | 30 | SN74HCT08, SCLS063G |
 | 74HCT10 | A/B/C → Y | 9 | 24 | 30 | CD74HCT10, SCHS404 (typ: 5 V, 15 pF) |
 | 74HCT11 | A/B/C → Y | 11 | 28 | 35 | CD74HCT11, SCHS405 |
+| 74HCT14 | A → Y | 20 | 32 | 40 | SN74HCT14, SCLS225G |
 | 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
 | 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
 | 74HCT74 | CLK → Q | 20 | 28 | 35 | SN74HCT74, SCLS122 (Q or /Q; fmax 20 MHz at 85 °C) |
@@ -145,6 +164,14 @@ So Typ is a rough guide only.
 | 74HCT670 | /RE → Q off | 14 | 35 | 44 | CD74HCT670, SCHS195C (output disable) |
 | 74HCT670 | setup D → /WE | 12 | 12 | 15 | CD74HCT670, SCHS195C (a minimum, to /WE rising) |
 | 74HCT670 | setup WA → /WE | 18 | 18 | 23 | CD74HCT670, SCHS195C (a minimum, to /WE falling) |
+| AS6C1008 | address → DQ (tAA) | 55 | 55 | 55 | AS6C1008 v1.0 (-55; one figure, 0–70 °C) |
+| AS6C1008 | CE#, CE2 → DQ (tACE) | 55 | 55 | 55 | AS6C1008 v1.0 |
+| AS6C1008 | OE# → DQ (tOE) | 30 | 30 | 30 | AS6C1008 v1.0 |
+| AS6C1008 | write pulse WE# (tWP) | 45 | 45 | 45 | AS6C1008 v1.0 (a minimum; tAS 0, tAW 50, tWR 0) |
+| AS6C1008 | setup DIN → WE# rising (tDW) | 25 | 25 | 25 | AS6C1008 v1.0 (a minimum; tDH 0) |
+| AT28C256 | address → I/O (tACC) | 150 | 150 | 150 | AT28C256 (Atmel 0006F, -15) |
+| AT28C256 | /CE → I/O (tCE) | 150 | 150 | 150 | AT28C256 (Atmel 0006F) |
+| AT28C256 | /OE → I/O (tOE) | 70 | 70 | 70 | AT28C256 (Atmel 0006F) |
 | 74HCT670 | hold D, WA after /WE | 5 | 5 | 5 | CD74HCT670, SCHS195C (a minimum) |
 | 74HCT670 | /WE pulse width | 20 | 20 | 25 | CD74HCT670, SCHS195C (a minimum) |
 | 74HCT139 | A/B → Y | 14 | 34 | 43 | SN74HCT139, SCLS066E (not used: registers-decisions.md D5) |
