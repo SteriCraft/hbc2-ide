@@ -111,6 +111,8 @@ All sections pass at 25 °C (alu, flags, regs, addr, mem). The paths over at 85 
 
 ## Need Gianni's review
 
+**Reviewed 2026-11-05:** answers and what was done in ir-mem-decisions.md section 10. Still open: re-check M4 once the current datasheets are in `circuits/chips/` (items 2, 3).
+
 1. **The models' simulation-only pins break the "datasheet pins only" rule.** I couldn't ask, so I took the only workable option.
    - **What:** `DQ0_in`–`DQ7_in` on the AS6C1008 (M2) and `HALF` on the AT28C256 (M3). They are drawn on the left edge of the DIP outline, without pin numbers.
    - **Why:** Logisim can't model a bidirectional subcircuit pin or per-instance ROM contents. The alternative was a bare #Memory RAM or ROM inside `mem`, which would need #Gates in a module, which is also against the rules.
@@ -147,4 +149,4 @@ All sections pass at 25 °C (alu, flags, regs, addr, mem). The paths over at 85 
 - **The pending port latch** (C13).
 - **The IOD**, against iod-requirements.md.
 - **`cpu.circ`**, instantiating all the sections.
-- **The assembler's boot ROM output.**
+- **Re-check M4** (the ROM buffer) and the memory delays against the current AS6C1008 and AT28C256 datasheets, once Gianni has put them in `circuits/chips/`.

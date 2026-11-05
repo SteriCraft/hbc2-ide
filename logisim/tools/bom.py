@@ -6,6 +6,8 @@ in circuits/chips/) and of the subcircuits it instantiates
 (each instance counts), then takes the orderable references from the
 "Parts in use" table of logisim/notes/chips.md. A chip missing from that
 table is an error, so the circuits can only use parts that were checked.
+Only chips are counted, never pins, so the chip models' simulation-only pins
+(netlist.SIM_ONLY, conventions.md) don't reach the BOM.
 
 CSV columns: part, function, qty, dip_ref, soic_ref, modules, spare
   spare    chips to buy on top of qty: 15 %, rounded up, at least 1

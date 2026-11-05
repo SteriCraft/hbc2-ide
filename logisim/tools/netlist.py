@@ -522,6 +522,37 @@ def make_ports(circ: Circuit, c: Comp):
             c.sub_pins.append(child.comps.index(pin))
 
 
+# Simulation-only pins of the chip models (conventions.md, ir-mem-decisions.md
+# M2, M3): they are not on the real chip and have no pin number. Logisim needs
+# them (a subcircuit pin is one-way; every instance of a model shares one ROM
+# contents). bom.py counts chips, not pins, so they never reach it; a PCB
+# netlist export must take a chip's pins from pcb_ports(), which drops them.
+# conventions.py checks that a model's unnumbered pins are exactly these.
+SIM_ONLY = {
+    "as6c1008": frozenset(f"DQ{k}_in" for k in range(8)),   # M2: read side of DQ0..DQ7
+    "at28c256": frozenset({"HALF"}),                        # M3: which half of the image
+}
+
+
+def sim_only(part: str, pin: str) -> bool:
+    """True when pin of the chip model part is simulation-only (SIM_ONLY)."""
+    return pin in SIM_ONLY.get(part, ())
+
+
+def pcb_ports(c: "Comp") -> list:
+    """The ports of a chip (#TTL part or chip-model instance) that exist on the
+    real chip, each with its pin number: what a PCB netlist export uses.
+    Simulation-only pins are dropped; any other port without a number is an error."""
+    part = chip_model(c.sub) if c.kind == "sub" and c.sub is not None else None
+    if c.kind != "ttl" and part is None:
+        raise ValueError(f"{c.name} at {c.loc} is not a chip")
+    ports = [q for q in c.ports if not (part and sim_only(part, q.name))]
+    missing = [q.name for q in ports if q.pin is None]
+    if missing:
+        raise ValueError(f"{c.name} at {c.loc}: no pin number for {', '.join(missing)}")
+    return ports
+
+
 def dip_numbers(iface) -> dict:
     """Pin numbers of a chip model's symbol, drawn like Logisim's TTL chips:
     pins 1..n/2 along the bottom from the left, then n/2+1..n along the top

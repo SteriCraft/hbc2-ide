@@ -317,4 +317,14 @@ Datasheets in circuits/chips/: `as6c1008.pdf` (Alliance v1.0, Feb 2007, distribu
 
 **M7 — the combined bench's program is straight-line.** A random program with jumps lands mid-instruction and stops within a few hundred ticks; random STR / INC / DEC / NOT on memory overwrite the code; POF loads random flags (H); ASP / SSP / WSP move the stack anywhere. They are left out of `mem_cpu`'s program (every other opcode, every listed mode, invalid opcodes as NOPs: about 4,000 ticks, 54 hardware interrupts). PC changes of jumps, CAL, RET and IRT are covered by `addr_cpu`; the bench sets PC from the CPU's next PC through bus A:B after each instruction. INT is out because the pending port latch (C13) isn't built.
 
-Phase 2 status: **done** (2026-11-05): M1–M7; tools, chip models, chips.md, `ir`, `addr_cout`, `mem`, `test_mem_cpu`, timing.py --section mem, control-requirements.md C6 / C18–C23, iod-requirements.md, B2; report: ir-mem-report.md. Waiting for Gianni's review.
+Phase 2 status: **done** (2026-11-05): M1–M7; tools, chip models, chips.md, `ir`, `addr_cout`, `mem`, `test_mem_cpu`, timing.py --section mem, control-requirements.md C6 / C18–C23, iod-requirements.md, B2; report: ir-mem-report.md. **Reviewed by Gianni** (section 10).
+
+## 10. Gianni's review of the phase 2 report (2026-11-05)
+
+Numbers are the items of ir-mem-report.md "Need Gianni's review".
+
+1. **Simulation-only pins: accepted**, marked as such in conventions.md, ignored by bom.py and by any PCB netlist export. Done: `netlist.SIM_ONLY` lists them, `netlist.pcb_ports()` drops them, conventions.py checks each model against the list.
+2. and 3. **Datasheets:** Gianni downloads the current AS6C1008 and AT28C256 datasheets into `circuits/chips/`. **Open:** when they are there, re-check M4 (the ROM buffer exists only for the AS6C1008 v1.0's VIH 0.7 × VCC; with VIH 2.2 V it goes, the ROMs drive the RAM directly) and the delays in chips.md, then rerun the tests and timing.py --section mem.
+4. and 5. **Accepted** (address setup before WE#, B2 measures it; `clk_mem_wr_n` global).
+6. **Boot ROM image:** `hbc2 asm` / `hbc2 cc` `--boot-rom`, and the IDE's Build menu "Export boot ROM…", write the 64 KiB RAM image as two 32 KiB files, `<name>_lo.bin` (0000-7FFF, the AT28C256 with HALF = 0) and `<name>_hi.bin` (8000-FFFF, HALF = 1), each from the chip's address 0 (hbc2-core `boot_rom`; Documentation/HBC-2 Assembly Language.md "Boot ROM for the hardware CPU").
+7.–12. No change asked.

@@ -192,6 +192,16 @@ def check_model(circ: nl.Circuit, add) -> list:
             add("error", c.loc, f"{c.name} ({c.lib}) is not known to netlist.py: add its ports to GENERIC")
     if circ.elem.find("appear") is None:
         add("error", (0, 0), f"chip model {circ.name} has no DIP symbol (circgen Circuit.dip_symbol)")
+    else:   # pins without a number: exactly the part's simulation-only pins (netlist.SIM_ONLY)
+        _, iface = circ.interface()
+        numbers = nl.dip_numbers(iface)
+        part = nl.chip_model(circ)
+        unnumbered = {pin.label for off, pin in iface if off not in numbers}
+        allowed = nl.SIM_ONLY.get(part, frozenset())
+        for lab in sorted(unnumbered - allowed):
+            add("error", (0, 0), f"pin {lab} has no pin number and is not listed as simulation-only (netlist.SIM_ONLY)")
+        for lab in sorted(allowed - unnumbered):
+            add("error", (0, 0), f"pin {lab} is listed as simulation-only (netlist.SIM_ONLY) but is not an unnumbered pin")
     wiring, _ = circcheck.check_circuit(circ)
     issues += [i for i in wiring if "floating" in i.text]
     return issues

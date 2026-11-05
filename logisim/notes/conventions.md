@@ -17,7 +17,8 @@ These rules come from the user and apply to every circuit I create or modify. If
   - behaviour exactly as the datasheet's function table (tri-state outputs, active-low pins, asynchronous set/clear, transparent latches);
   - inside: generic Logisim components (gates, flip-flops, registers, controlled buffers) are allowed in a model only;
   - tests: `test_<part>` in the same file, exhaustive for the combinational part, sequences for stored state;
-  - an instance of a model is a chip: `U<n>` label, counted by bom.py, a row in chips.md "Parts in use".
+  - an instance of a model is a chip: `U<n>` label, counted by bom.py, a row in chips.md "Parts in use";
+  - **simulation-only pins** (Gianni, 2026-11-05): when Logisim can't model the chip with its datasheet pins alone, a model may add pins that aren't on the real chip. They have no pin number, sit on the left edge of the DIP symbol (`dip_symbol(..., extra)`), and are listed in `netlist.SIM_ONLY` (conventions.py fails a model whose unnumbered pins differ from that list). Now: the AS6C1008's `DQ0_in`–`DQ7_in` (a subcircuit pin is one-way, ir-mem-decisions.md M2) and the AT28C256's `HALF` (one ROM contents per model, M3). They are not hardware: bom.py counts chips, not pins, and any PCB netlist export takes a chip's pins from `netlist.pcb_ports()`, which drops them.
 - Don't wire VCC and GND. Tie every unused input to Ground (or Power if the logic needs it). Leave unused outputs unconnected.
 
 ## Circuits
