@@ -26,7 +26,8 @@ These notes are short, one subject per file, so I only open the one I need.
 | [ir-mem-report.md](ir-mem-report.md) | Instruction register and memory: phase 2 report (chips, tests, timing, Need Gianni's review) |
 | [iod-requirements.md](iod-requirements.md) | What the CPU side requires from the IOD (synchronous contract, microcontroller IOD through latches / FIFO) |
 | [breadboard-checks.md](breadboard-checks.md) | What to measure on the breadboard with a scope (the paper analysis can't prove it) |
-| [control-requirements.md](control-requirements.md) | What the other sections need from the control unit (not designed yet) |
+| [control-requirements.md](control-requirements.md) | What the other sections need from the control unit |
+| [cu-decisions.md](cu-decisions.md) | Control unit: phase 1 paper design (microcode, sequencer, pipeline register, clock and reset, cycle counts, questions) |
 
 Modules done so far (all in circuits/alu/, each made by designs/<module>.py):
 
