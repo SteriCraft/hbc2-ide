@@ -14,10 +14,13 @@ used read-only as the boot ROM (ir-mem-decisions.md section 3):
                       writes (/CE L, /OE H, /WE L) are the programmer's job:
                       not modelled; /WE is tied high on the board.
 
-Each instance of a model shares the model's ROM, so the ROM holds 64 KiB and
-a simulation-only input HALF (no pin number, ir-mem-decisions.md M3) picks
-the half: image[HALF : A14..A0]. mem ties HALF low on the chip for
-0000-7FFF and high on the one for 8000-FFFF.
+Each instance of a model shares the model's ROM, so the ROM holds 16 images
+of 32 KiB and a simulation-only 4-bit input IMAGE (no pin number,
+ir-mem-decisions.md M3, cu-decisions.md Q10) picks one: rom[IMAGE : A14..A0].
+
+    IMAGE 0, 1    the boot ROM, 0000-7FFF and 8000-FFFF (mem ties IMAGE to 0 and 1)
+    IMAGE 2..8    the microcode, circuits/cu/microcode/ucode0.bin .. ucode6.bin (cu)
+    IMAGE 9..15   erased (FF)
 
     python at28c256.py                 # write (test pattern), check
     python at28c256.py --image F.bin   # ... with a 64 KiB boot image instead
@@ -36,7 +39,10 @@ PART = "at28c256"
 OUT = ROOT / "circuits" / "chips" / f"{PART}.circ"
 ORDER = (["A14", "A12", "A7", "A6", "A5", "A4", "A3", "A2", "A1", "A0", "I/O0", "I/O1", "I/O2", "GND"]
          + ["I/O3", "I/O4", "I/O5", "I/O6", "I/O7", "/CE", "A10", "/OE", "A11", "A9", "A8", "A13", "/WE", "VCC"])
-EXTRA = ["HALF"]
+EXTRA = ["IMAGE"]
+UCODE = ROOT / "circuits" / "cu" / "microcode"
+SLOTS = 16
+UC0 = 2                         # the first microcode image
 
 
 def pattern() -> bytes:
@@ -46,9 +52,22 @@ def pattern() -> bytes:
     return bytes(lo + [v ^ 0xFF for v in lo])
 
 
+def rom(boot: bytes) -> bytes:
+    """The 16 images: the 64 KiB boot image, the 7 microcode images, erased."""
+    assert len(boot) == 1 << 16
+    out = bytearray(boot)
+    for k in range(7):
+        f = UCODE / f"ucode{k}.bin"
+        uc = f.read_bytes() if f.exists() else bytes([0xFF]) * (1 << 15)
+        assert len(uc) == 1 << 15, f
+        out += uc
+    out += bytes([0xFF]) * ((SLOTS << 15) - len(out))
+    return bytes(out)
+
+
 def contents(image: bytes) -> str:
     """Logisim's ROM contents attribute: header, then hex values, runs as n*v."""
-    assert len(image) == 1 << 16
+    assert len(image) == SLOTS << 15
     out, i = [], 0
     while i < len(image):
         j = i
@@ -58,31 +77,33 @@ def contents(image: bytes) -> str:
         i = j
     words = " ".join(out).split(" ")
     lines = [" ".join(words[k:k + 16]) for k in range(0, len(words), 16)]
-    return "addr/data: 16 8\n" + "\n".join(lines) + "\n"
+    return "addr/data: 19 8\n" + "\n".join(lines) + "\n"
 
 
-IMAGE = pattern()
+BOOT_IMAGE = pattern()
 if "--image" in sys.argv:
-    IMAGE = Path(sys.argv[sys.argv.index("--image") + 1]).read_bytes()
+    BOOT_IMAGE = Path(sys.argv[sys.argv.index("--image") + 1]).read_bytes()
+IMAGE = rom(BOOT_IMAGE)
 
 p = Project()
 m = p.circuit("ttl" + PART)
 y = 100
-for name in [f"A{k}" for k in range(15)] + EXTRA + ["/CE", "/OE", "/WE", "VCC", "GND"]:
+for name in [f"A{k}" for k in range(15)] + ["/CE", "/OE", "/WE", "VCC", "GND"]:
     if name in ("VCC", "GND", "/WE"):
         m.input((100, y), name)                  # supply pins and /WE: on the symbol only
     else:
         bus_tunnels(m, (100, y), name, 1)
     y += 40
+bus_tunnels(m, (100, y), "IMAGE", 4)
 for k in range(8):
     bus_tunnels(m, (1300, 100 + 40 * k), f"I/O{k}", 1, output=True)
 
 RX, RY = 700, 500
-sa = m.splitter((RX - 60, RY + 10), 16, [[k] for k in range(16)], facing="west", appear="left", spacing=2)
-for k in range(16):
-    m.tunnel(sa[f"end{k}"], f"A{k}" if k < 15 else "HALF", facing="east")
+sa = m.splitter((RX - 60, RY + 10), 19, [[k] for k in range(19)], facing="west", appear="left", spacing=2)
+for k in range(19):
+    m.tunnel(sa[f"end{k}"], f"A{k}" if k < 15 else f"IMAGE_{k - 15}", facing="east")
 m.wire((RX - 60, RY + 10), (RX, RY + 10))
-m.add("#Memory", "ROM", (RX, RY), addrWidth=16, dataWidth=8, appearance="logisim_evolution",
+m.add("#Memory", "ROM", (RX, RY), addrWidth=19, dataWidth=8, appearance="logisim_evolution",
       contents=contents(IMAGE))
 BX = RX + 300
 m.wire((RX + 240, RY + 60), (BX - 20, RY + 60))
@@ -110,7 +131,7 @@ for dy, j, row, name in zip((-20, -10, 10, 20), (0, 1, 1, 0), (-60, -30, 30, 60)
         m.tunnel((x - 120, y0 + row), name, facing="east")
 m.wire((x, y0), (x + 20, y0))
 m.tunnel((x + 20, y0), "read", facing="west")
-m.text((RX + 100, RY - 40), "AT28C256 (Atmel 0006F) as a read-only boot ROM: 64 KiB image, HALF picks the chip's half")
+m.text((RX + 100, RY - 40), "AT28C256 (Atmel 0006F), read only: 16 images of 32 KiB, IMAGE picks one (0-1 boot ROM, 2-8 microcode, 9-15 erased)")
 m.dip_symbol("AT28C256", ORDER, EXTRA)
 
 # ---- test bench --------------------------------------------------------------------------------
@@ -120,32 +141,36 @@ names = {"/CE": "ce_n", "/OE": "oe_n", "/WE": "we_n"}
 names.update({f"A{k}": f"a_{k}" for k in range(15)})
 names.update({f"I/O{k}": f"q_{k}" for k in range(8)})
 pin_tunnels(t, u, names, levels=6, stagger=20)
-t.wire(u["HALF"], (u["HALF"][0] - 20, u["HALF"][1]))
-t.tunnel((u["HALF"][0] - 20, u["HALF"][1]), "half", facing="east")
-for i, name in enumerate(("ce_n", "oe_n", "we_n", "half")):
+t.wire(u["IMAGE"], (u["IMAGE"][0] - 20, u["IMAGE"][1]))
+t.tunnel((u["IMAGE"][0] - 20, u["IMAGE"][1]), "image", 4, facing="east")
+for i, name in enumerate(("ce_n", "oe_n", "we_n")):
     bus_tunnels(t, (100, 100 + 60 * i), name, 1)
+t.input((100, 280), "image", 4)
+t.wire((100, 280), (120, 280))
+t.tunnel((120, 280), "image", 4, facing="west")
 bus_tunnels(t, (100, 400), "a", 15)
 bus_tunnels(t, (1300, 100), "q", 8, output=True)
 
-INPUTS = {"ce_n": 1, "oe_n": 1, "we_n": 1, "half": 1, "a": 15}
+INPUTS = {"ce_n": 1, "oe_n": 1, "we_n": 1, "image": 4, "a": 15}
 OUTPUTS = {"q": 8}
 
 
 def sequences(image=None):
-    """Every address of both halves read, then every mode on random
-    addresses (/WE low included: no write, outputs as for /WE high)."""
+    """Every address of images 0-8 (boot ROM, microcode) read, then every
+    mode on random addresses of all 16 images (/WE low included: no write,
+    outputs as for /WE high)."""
     import logitest
     image = image or IMAGE
     rng = random.Random(28256)
     rows = []
-    for h in (0, 1):
+    for h in range(UC0 + 7):
         for a in range(1 << 15):
-            rows.append({"ce_n": 0, "oe_n": 0, "we_n": 1, "half": h, "a": a, "q": image[(h << 15) | a]})
-    for _ in range(4000):
+            rows.append({"ce_n": 0, "oe_n": 0, "we_n": 1, "image": h, "a": a, "q": image[(h << 15) | a]})
+    for _ in range(8000):
         r = {"ce_n": rng.randrange(2), "oe_n": rng.randrange(2), "we_n": rng.randrange(2),
-             "half": rng.randrange(2), "a": rng.randrange(1 << 15)}
+             "image": rng.randrange(SLOTS), "a": rng.randrange(1 << 15)}
         on = r["ce_n"] == 0 and r["oe_n"] == 0
-        r["q"] = image[(r["half"] << 15) | r["a"]] if on else logitest.FLOAT
+        r["q"] = image[(r["image"] << 15) | r["a"]] if on else logitest.FLOAT
         rows.append(r)
     return [rows]
 

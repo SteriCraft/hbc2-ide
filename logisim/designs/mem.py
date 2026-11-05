@@ -51,7 +51,9 @@ def extras(u, names):
         x, y = u[pin]
         end = (x - (20 if k % 2 == 0 else 100), y)
         c.wire((x, y), end)
-        if net in ("gnd", "vcc"):
+        if isinstance(net, tuple):                   # ("const", value, width)
+            c.constant(end, net[1], net[2], facing="east")
+        elif net in ("gnd", "vcc"):
             c.add("#Wiring", "Ground" if net == "gnd" else "Power", end, facing="west")
         else:
             c.tunnel(end, net, facing="east")
@@ -82,12 +84,12 @@ model(ram_lib, "as6c1008", (800, 500), pins, {f"DQ{k}_in": n("d", k) for k in ra
       "RAM 0000-FFFF (A16 = 0); DQ_in: the same pins, read side (M2)")
 
 # ---- boot ROM: two halves on mem_rom_d ----------------------------------------------------------
-for i, (ce, half, what) in enumerate(((n("addr", 15), "gnd", "0000-7FFF"), (n("a15_n"), "vcc", "8000-FFFF"))):
+for i, (ce, what) in enumerate(((n("addr", 15), "0000-7FFF"), (n("a15_n"), "8000-FFFF"))):
     pins = {f"A{k}": n("addr", k) for k in range(15)}
     pins.update({"/CE": ce, "/OE": "gnd", "/WE": "vcc"})
     pins.update({f"I/O{k}": n("rom_d", k) for k in range(8)})
-    model(rom_lib, "at28c256", (800 + 520 * i, 1000), pins, {"HALF": half},
-          f"boot ROM {what} (HALF = {'0' if half == 'gnd' else '1'}: its half of the image, M3)")
+    model(rom_lib, "at28c256", (800 + 520 * i, 1000), pins, {"IMAGE": ("const", i, 4)},
+          f"boot ROM {what} (IMAGE = {i}: its half of the boot image, M3)")
 
 # ---- glue: 3 x 74HCT541, 74HCT32, 74HCT14 -------------------------------------------------------
 X, Y = 800, 1400

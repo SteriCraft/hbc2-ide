@@ -530,7 +530,7 @@ def make_ports(circ: Circuit, c: Comp):
 # conventions.py checks that a model's unnumbered pins are exactly these.
 SIM_ONLY = {
     "as6c1008": frozenset(f"DQ{k}_in" for k in range(8)),   # M2: read side of DQ0..DQ7
-    "at28c256": frozenset({"HALF"}),                        # M3: which half of the image
+    "at28c256": frozenset({"IMAGE"}),                       # M3, Q10: which 32 KiB image (4 bits)
 }
 
 
