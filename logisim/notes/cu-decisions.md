@@ -619,8 +619,8 @@ The reference is the microcode as built, run by the datapath model (section 13.5
 
 | Run | Result |
 |---|---|
-| 10 sets from Logisim's power-up, each: the reset held 3–8 steps (`rst_rc` high for all but the last 2), the whole boot, a random program with hardware interrupts from the IOD stub and halts woken by an interrupt; when the CPU stops for good (an invalid mode, HLT with I = 0), the button and a new boot, up to 3 per set. Half of the power-ups have the IR's opcode bits 2..0 = 111 (jc = 1 during the reset) | **4,217,896 / 4,217,896** rows (2.1 million steps, 30 boots, about 141,000 program steps, 279 of the 1,024 opcode × mode rows), **no bus contention** on `cu_bus_addr_lo` |
-| 9 deliberate wiring bugs (153 selects swapped; mode 1..0 bypass on byte 0's load; P kept by the load; 151 C / F swapped; `x_n` without `rst_early`; `cu_cond_sel` pulled to 00, to 01; the 574 /OE tied low, i.e. no C24) | **all 9 caught** (2-set runs). A pull to 10 is not caught, and is harmless: it selects `hw_q`, which the reset clears |
+| 10 sets from Logisim's power-up, each: the reset held 3–8 steps (`rst_rc` high for all but the last 2), the whole boot, a random program with hardware interrupts from the IOD stub and halts woken by an interrupt; when the CPU stops for good (an invalid mode, HLT with I = 0), the button and a new boot, up to 3 per set. Half of the power-ups have the IR's opcode bits 2..0 = 111 (jc = 1 during the reset) | **4,217,898 / 4,217,898** rows on the final circuit (2026-11-10: 2.1 million steps, 30 boots, about 141,000 program steps, 279 of the 1,024 opcode × mode rows), **no bus contention** on `cu_bus_addr_lo` |
+| 9 deliberate wiring bugs on the final gate map (153 selects swapped; mode 1..0 bypass on byte 0's load; P kept by the load; the 151's F input wired to C; `x_n` without `rst_early`; `cu_cond_sel` pulled to 00, to 01; the 574 /OE tied low, i.e. no C24; the B latch enable without the constant) | **all 9 caught** (2-set runs, 2 to 19,910 failing rows each). A pull to 10 is not caught, and is harmless: it selects `hw_q`, which the reset clears |
 
 Coverage: the program runs are short (random stores overwrite the program), so 279 rows ran. The ROM contents of every row are checked elsewhere: the `at28c256` test reads images 2–8 in full, and the model runs every opcode × mode against the emulator (section 13.5). This test checks what only the circuit can get wrong: the address (every opcode, mode, step and condition bit through the bypass and the IR), the decode, the pipeline, the sequencing, P, the pending port and the reset with C24.
 
@@ -674,9 +674,6 @@ At 85 °C (information only): the bypass is 2 ns over, the boundary has 0, the /
 - `hbc2 compare`: the whole CPU against the emulator; the internal buses as output pins (conventions.md).
 - The IOD stub's clock is branch 5; INT must come from a `clk` flip-flop by 150 ns (I5): the boundary path has 0 ns left at 85 °C.
 
-### 14.7 Status when work stopped (2026-11-05, out of tokens)
+### 14.7 Status (2026-11-10)
 
-- Done and committed: the 74HCT10 revert, C24, the IMAGE pin, `clkgen`, `cu`, `hbc2 vectors cu`, `timing.py --section cu --duty`, the notes above.
-- The last full `cu` test (4.2 M rows) passed **before** U8 (gate remap) and U9 (2-bit `clk`); a rerun on the current circuit was running when work stopped: rerun `python designs/cu.py --test` and fill in the row count in 14.3.
-- To rerun on the current gate map: the 9 wiring mutants of 14.3 (a scratch script, not committed: rebuild from the list in 14.3, `HBC2_CU_SETS=2`).
-- Then the short phase 3 report to Gianni, and stop before phase 4.
+Phase 3 is complete: the full test and the 9 wiring bugs ran on the final circuit (14.3). Phase 4 (`cpu.circ`) waits for Gianni's go-ahead.
