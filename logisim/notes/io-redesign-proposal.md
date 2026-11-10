@@ -1,6 +1,6 @@
 # I/O redesign: replace the IOD with standard chips (proposal)
 
-Status: **proposal for Gianni's review, 2026-11-10. Nothing is changed in the code.** The CPU does not change: IN / OUT, IE / RW, INT / INR and the vector table at `0xFE00` stay as they are (iod-requirements.md I1–I9).
+Status: **2026-11-10: the VIA / UART design (sections 2–5) failed its timing check (section 8). Gianni chose option C: a mailbox and an ESP32 I/O processor, proposed in section 9, waiting for review.** Nothing is changed in the code. Original status: **proposal for Gianni's review, 2026-11-10. Nothing is changed in the code.** The CPU does not change: IN / OUT, IE / RW, INT / INR and the vector table at `0xFE00` stay as they are (iod-requirements.md I1–I9).
 
 Sources checked: `hbc2-core` (`cpu.rs`, `board.rs`, `iod.rs`, `machine.rs`, `peripherals/*.rs`), the microcode (`hbc2.uc`, interrupt entry IE1h–IE8), cu-decisions.md, addr-decisions.md, control-requirements.md C12 / C19 / C21 / C22, iod-requirements.md, the templates, the C library and runtime, the IDE and runner, and `Documentation/` (including the new `HBC-2_Input_Output.pdf` sketch).
 
@@ -273,3 +273,289 @@ The I/O step is one 500 ns step with no WAIT. The port appears at 72 ns, the reg
 - **What 82C55 + 82C54 changes for the later hardware:** PS/2, I²C and SPI become bit-banged on 82C55 port pins. The PS/2 clock interrupt then uses the mode-1 strobe (PC4 /STBA → INTRA), because the 82C55 has no CA1 or shift register.
 
 **Stopped here (step 1), as asked.** Steps 2–4 wait for the choice.
+
+## 9. Option C: a mailbox and an ESP32 I/O processor (proposal, 2026-11-10)
+
+Gianni chose option C on 2026-11-10. The CPU and its microcode don't change, and the peripherals live in a microcontroller behind a **mailbox** made only of latches and flip-flops. Sections 2–5 describe the VIA / UART design and are **superseded** wherever this section differs. Section 9.5 says what stays from them. Nothing is built yet: no Logisim, firmware or emulator change.
+
+The design has one key choice:
+
+**The ESP32 runs today's IOD model as its protocol.** The ESP32 firmware keeps:
+- the 256 port latches;
+- the peripherals with the same device IDs, ports and commands;
+- the port-0 plug-in interrupts;
+- the interrupt queue of (port, data).
+
+The CPU reaches all of it through the mailbox:
+- **OUT p, v** becomes a 3-byte command.
+- **IN p** becomes a 2-byte command plus a 1-byte reply.
+- **Interrupts reach the CPU exactly as today:** in the vector step the mailbox puts `00:p` on `bus_addr` and the data on `bus_data`, which loads register I.
+
+The emulator then keeps `iod.rs` and the peripherals almost as they are. The C API (`in()`, `out()`, `set_vector()`, `monitor_port`…), `interruptHandler.has` and `devices.has` keep working. Only the lowest layer (the IN / OUT instructions in the library) changes. Native commands (strings, graphics primitives, SD blocks) come on top, for speed.
+
+### 9.1 Mailbox hardware
+
+#### Ports
+
+There is one decoder. The mailbox sits at `0x00–0x0F`, with A1–A3 ignored (mirrors). `0x10–0x1F` is a second select, free for a second I/O processor (Q-C9). `0x20–0xFF` are empty.
+
+| Port | IN | OUT |
+|---|---|---|
+| `0x00` | **RX**: the byte the MCU left for the CPU (reply channel). Reading it empties RX, but only if RX was full: a read of an empty RX gives a stale byte and changes nothing. | **TX**: a byte for the MCU. Ignored if TX is still full (like a UART overrun). |
+| `0x01` | **STATUS**: bit 0 `RX_AVAIL` (1 = a byte waits in RX), bit 1 `TX_FREE` (1 = TX can take a byte), bit 2 `EVT_PEND` (an event is waiting to interrupt), bit 3 `READY` (the MCU has started since the last CPU reset), bits 4–7 = 0 | (free) |
+| vector step | `bus_addr` = `00:p`, `bus_data` = d → register I, from the **event latches** | — |
+
+The bits are set to 1 when the CPU can go ahead, so a polling loop is `in` / `and` / `jmz` (the ISA only has jumps on a set flag).
+
+#### Three one-way channels
+
+| Channel | Latch | Written by | Read by | Flag | Flag set | Flag cleared |
+|---|---|---|---|---|---|---|
+| TX (CPU → MCU) | 74HCT165 | the CPU (OUT `0x00` loads it in parallel from `bus_data`) | the MCU, shifted out over SPI | `tx_full` | CPU write | MCU ack |
+| RX (MCU → CPU) | 74AHCT595 | the MCU (shifted in, latched by RCLK) | the CPU (IN `0x00`, through its /OE) | `rx_full` | MCU write | CPU read, at the end of the IN step |
+| EVT (MCU → CPU, interrupt) | 2 × 74AHCT595 (port p, data d) | the MCU | the CPU, in the vector step | `evt_pend` | MCU write | the end of the vector step |
+
+**Each flag is the XOR of two toggle flip-flops, one per side.** Each flip-flop is clocked by only one side, so no edge from one side can race a set or clear from the other. A side writes only when the flag says the latch is its turn:
+- The MCU writes RX or EVT only when its flag is 0.
+- The CPU writes TX only when `TX_FREE` is 1, and reads RX when `RX_AVAIL` is 1.
+
+**A latch is never written while it is being read.** The CPU's toggles move at the end of its step (`clk`), after the register write at ≤ 428 ns, so the data is held for the whole read.
+
+#### Logic
+
+| Signal | How |
+|---|---|
+| Decode | 74HCT138: G1 = IE, /G2A = A7, /G2B = A5 OR A6, inputs A = A0, B = RW, C = A4. Y0 = OUT TX, Y2 = IN RX, Y3 = IN STATUS. Y4–Y7 = the second select (`0x10–0x1F`). |
+| TX strobe `tx_wr_n` | OR(/Y0, `tx_full_s`, `clk_wr_n`) (2 × 74HCT32 gates, `clk_wr_n` last): low about 250–375 ns, only in an OUT `0x00` step with TX empty. Its falling edge loads the 165 (/PL), its rising edge toggles `cpu_tx` (74HCT74, D = /Q). |
+| CPU toggles on `clk` (74HCT175 A, cleared by `rst_n`) | `cpu_rx` D = Q XOR (IN RX AND `rx_full_s`), with NOR(/Y2, /`rx_full_s`) on a 74HCT02. `cpu_evt` D = Q XOR VEC. **VEC** D = INR (I6: high in the vector step only). |
+| MCU toggles (74HCT74, clocked on RCLK's fall) | `mcu_rx`, `mcu_evt`, `mcu_tx` (the ack): D = Q XOR the matching request bit of the CTRL 595. `ready`: D = Q OR READY_REQ, cleared by `rst_n`. |
+| Flags | `rx_full` = `mcu_rx` XOR `cpu_rx`, `tx_full` = `cpu_tx` XOR `mcu_tx`, `evt_pend` = `mcu_evt` XOR `cpu_evt` (74HCT86). |
+| Synchroniser (74HCT175 B, `clk`) | `rx_full_s`, `tx_full_s`, `evt_pend_s`, `ready_s`: the MCU-side flags change at any time. The CPU sees them through one `clk` stage, so they are stable for the whole step (STATUS, the TX gate, the RX toggle, INT). |
+| **INT** | NOR(/`evt_pend_s`, VEC) (74HCT02): from a flip-flop on `clk` (I5), low in the vector step (I6, F5). The flag clears at the end of the vector step, so the next event can rise INT from step n + 2 at the earliest (I6). |
+| Vector step | /VEC (175 /Q) enables: the EVT port 595 onto `bus_addr` A0–A7, a 74HCT541 with inputs tied low onto A8–A15 (F2), and the EVT data 595 onto `bus_data` (→ I, F3). The CPU's latch outputs are off then (C12). |
+| IN RX / STATUS | /Y2 → the RX 595's /OE. /Y3 → the 74HCT244's /OE (inputs = the four `_s` flags, set to 1 when ready, bits 4–7 tied low). |
+| Reset | `rst_n` clears every toggle, so every flag = 0: RX empty, TX free, no event, READY = 0. The MCU sees `rst_n` (level-shifted, below), resets its protocol state, sends the plug-in events again, then sets READY. |
+
+#### Chip list (CPU side, one card)
+
+| Chip | Qty | Job |
+|---|---|---|
+| 74HCT138 | 1 | decode |
+| 74HCT32 | 1 | A5 OR A6, TX strobe (2 gates), `ready` D (1) |
+| 74HCT02 | 1 | RX toggle condition, INT (2 spare) |
+| 74HCT86 | 3 | 2 CPU toggles, 3 MCU toggles, 3 flags, 1 RCLK inverter (3 spare) |
+| 74HCT175 | 2 | CPU toggles + VEC; synchroniser |
+| 74HCT74 | 3 | `cpu_tx`; `mcu_rx`, `mcu_tx`, `mcu_evt`, `ready` (1 spare) |
+| SN74AHCT595N | 4 | RX data, EVT port, EVT data, CTRL (MCU requests, MISO enable). **TI makes no 74HCT595 in DIP** (test-rig.md). The AHCT part is pin-compatible with TTL-level inputs, and is already the rig's part. |
+| CD74HCT165E | 1 | TX data |
+| 74HCT244 | 1 | STATUS |
+| 74HCT541 | 1 | vector step: A8–A15 = 00 |
+| SN74LVC244AN (at 3.3 V) | 1 | 5 V → 3.3 V for the ESP32: MISO (its own /OE from CTRL, because the SD card shares MISO), `tx_full`, `rx_full`, `evt_pend`, `rst_n` |
+| **Total** | **19** | about the size of the address section's largest cards |
+
+The ESP32's 3.3 V outputs (SCK, MOSI, RCLK) drive HCT / AHCT inputs directly (VIH 2.0 V).
+
+Simplification if pins allow (Q-C3): give each request its own GPIO pulse instead of the CTRL 595 and its toggle logic. That saves 1 × 595 and 1 × 86, but costs the ESP32 4 more outputs.
+
+#### Timing against the CPU step
+
+Figures are max 25 °C, the pass criterion. They use `timing.py`'s figures and the datasheet figures below. Deadlines are at 45 % duty (I3: 322 ns).
+- **Bus loads:** a temporary copy of `timing.py` was run with the mailbox's loads: `bus_data` 1 in, 3 out, so 454 pF instead of 410; `bus_addr` 2 in, 2 out. **Every section still passes at 25 °C at 45 % duty.** The extra load costs +5 ns on `bus_data` drivers.
+- **HCT figures are used for the 595.** SN74HCT595: RCLK → Q 40, OE → Q 35, disable 30, 6 mA. The AHCT part is faster.
+- **165** (CD74HCT165): /PL pulse ≥ 20, A–H setup to /PL↑ 20.
+- **244** (CD74HCT244): OE 30.
+
+| Path | Max 25 °C | Limit | Margin |
+|---|---|---|---|
+| IN RX: A5 / A6 (72) → 32 (24) → 138 G → Y (33) → 595 OE → Q (35 + 41 load) | 205 | ≤ 322 (I3) | 117 |
+| IN STATUS: the same → 244 OE (30 + 41) | 200 | ≤ 322 | 122 |
+| STATUS data: 175 CLK → Q (33) → 244 A → Y (25 + 41) | 99 | ≤ 322 | 223 |
+| TX strobe glitch-free: decode settled (72 + 24 + 33) before `clk_wr_n` can fall (≥ 222) | 129 | < 222 | 93 |
+| OUT TX: `bus_data` valid (242 + 5 load) + 165 setup (20) before the earliest /PL rise (347) | 267 | ≤ 347 | 80 |
+| OUT TX: latest /PL rise: `clk_wr_n` (375 + 24) → 32 (24) | 423 | ≤ 500 − 165 hold (not given by TI; typ. a few ns) | about 75 |
+| TX strobe pulse, shortest (as the /WE pulse) | 36.5 at 45 % | ≥ 20 (/PL) | 16.5 |
+| RX toggle: /Y2 (129) → 02 (21) → 86 (32) → 175 setup (20) | 202 | ≤ 500 | 298 |
+| INT: 175 CLK → Q (33) → 02 (21) | 54 | ≤ 150 (I5) | 96 |
+| Vector step, `bus_addr`: /VEC (33) → 595 OE (35 + 13 load) | 81 | ≤ 237 (I6, C12) | 156 |
+| Vector step, A8–A15: /VEC (33) → 541 OE (30 + 13) | 76 | ≤ 237 | 161 |
+| Vector step, `bus_data`: /VEC (33) → 595 OE (35 + 41) | 109 | ≤ 335 (I6) | 226 |
+| **Drivers off after the edge**: IN = IE (33) → 138 G (33) → 595 / 244 disable (30); vector = 175 (33) → disable (30) | **96 / 63** | 50 (I3, I6) | **−46 / −13** |
+| MCU write: data stable (RCLK↑ + 40) before the toggle (RCLK↓) | — | RCLK high ≥ 60 ns (firmware rule) | — |
+
+All the strobes are clean:
+- The only write strobe (TX) is gated by `clk_wr_n` after the decode has settled.
+- The RX read has no side effect while the address settles. The flag toggle is sampled at the end of the step.
+- Nothing needs a hold time from the CPU after the edge, except the 175s' D inputs. Those are the same class as every CPU flip-flop (B1).
+
+**The only miss is "off by 50 ns after the edge" (I3, I6).** The mailbox's outputs turn off in up to 96 ns (IN) and 63 ns (vector step). But the CPU's own `bus_data` drivers don't meet 50 either: 670 output 33 + 35 = 68, RAM read buffer 33 + 30 = 63. The 50 ns figure looks like a stub assumption from ir-mem section 4, not a derived limit. Q-C1 proposes making I3 / I6 say "within the CPU's own driver turn-off, short overlaps accepted as C5 / registers-decisions D-notes", plus a breadboard check like B4. The IN path could get to 63 by moving IE off the 138's slowest input, but that costs a gate on the address path and doesn't remove the overlap.
+
+#### MCU side
+
+- **Write RX or EVT:**
+  1. Shift 32 bits over SPI (SCK, MOSI) through the chain CTRL → EVT port → EVT data → RX. Shifting doesn't disturb the outputs.
+  2. Pulse RCLK, high ≥ 60 ns.
+  3. Every storage register takes the new contents at once: the MCU re-sends the current value of the latches it isn't changing.
+  4. The CTRL bit `REQ_RX` / `REQ_EVT` toggles the MCU's flip-flop on RCLK's fall.
+- **Read TX:**
+  1. Set MISO_EN (CTRL) to enable the 165's clock and its MISO buffer.
+  2. Shift 8 bits in.
+  3. Write CTRL with `REQ_ACK` (clears `tx_full`) and MISO off.
+  4. The SD card shares SCK / MOSI / MISO. MISO_EN off keeps the mailbox off the bus during SD transfers.
+- **Flags:** `tx_full`, `rx_full`, `evt_pend` and `rst_n` reach four ESP32 inputs directly through the LVC244. Reading them is one GPIO register read, about 0.1 µs.
+- **Polling vs GPIO interrupt: polling** in a task pinned to one core (FabGL's VGA uses I2S DMA and needs little CPU). An ESP32 GPIO interrupt costs about 2–3 µs of latency plus jitter (typical figures, to be measured). A polling loop on `tx_full` reacts in well under 1 µs and keeps the order of events simple.
+- **Time per byte:** a bit-banged shift of 8 or 32 bits with direct register writes takes about 1–2 µs, or about the same with the SPI peripheral (to be measured). **About 2–4 µs per byte, against the CPU's 16–36 cycles (8–18 µs) per byte (9.2):** the CPU is the bottleneck.
+
+### 9.2 Throughput and latency
+
+The CPU runs at 2 MHz (`HARDWARE_CLOCK_HZ`), and the cycles come from isa.rs. IN and OUT take 4 cycles; `and` r, imm8 5; `jmz` Reg16 3; `lod` / `str` (RamReg) 6; `inc` / `dec` Reg 4; `cmp` Reg 3.
+
+| Loop | Cycles per byte | Time | Rate |
+|---|---|---|---|
+| Send, MCU always ready: `in` STATUS, `and`, `jmz` (not taken), `out` TX | 16 | 8 µs | 125 kB/s ceiling |
+| Send from a buffer: + `lod`, `inc` pointer, `dec` count, `jmz` end, `jmp` loop | about 36 | 18 µs | about 55 kB/s |
+| Receive into a buffer: `in`, `and`, `jmz`, `in` RX, `str`, `inc`, `dec`, `jmz`, `jmp` | about 37 | 18.5 µs | about 54 kB/s |
+| Event: entry (9) + a short handler (about 20) + `irt` (6) | about 35 | 17.5 µs | about 57 k events/s |
+
+The ESP32 serves a byte in about 2–4 µs (9.1), so the CPU sets the pace. Every OUT or IN that goes through the protocol also masks interrupts (`psf`, `cli` … `pof`: about 7 cycles), so a handler's own commands can't split a command in the middle (9.3).
+
+| Job | Compat commands (today's ports) | Native commands |
+|---|---|---|
+| One character on the monitor (WRITE: DATA_0, DATA_1, POS_X, POS_Y, CMD = 5 OUTs) | 5 × 3 bytes, about 15 × 18 = 270 µs, about 3,700 chars/s; a 42 × 24 screen in 0.27 s | `PUTS`: 1 byte per char, about 55,000 chars/s; an 80 × 25 screen in 37 ms |
+| One pixel (same 5 OUTs) | about 270 µs, a 256 × 192 frame in 13 s (today's emulator: about 15 µs per pixel, 0.7 s) | `PIXEL` x, y, c: 4–5 bytes, about 80 µs. **Primitives** (`LINE`, `RECT`, `FILL`, `SPRITE`) cost a few bytes each, and the ESP32 draws them. `BLIT` of a 4-bit row: 2 pixels per byte, a full 256 × 192 frame (24 KiB) in about 0.45 s. |
+| Key press → handler | PS/2 decode (FabGL) + an event: a few µs to the INT flip-flop, then the next instruction boundary + 9 cycles | same |
+| `GET_TIME` round trip | 7 OUT / IN commands, about 0.3 ms | 1 + 6 bytes, about 0.15 ms |
+| SD block (512 B) read | — | ESP32 SD read (about 1–2 ms) + 512 × 18.5 µs = about 11 ms, about 45 KiB/s |
+
+**VGA text is fast enough. Per-pixel drawing through the old monitor ports is slow** (5 OUTs per pixel become 15 bytes). Graphics programs should use the native primitives. Keeping the monitor's port protocol is for compatibility, not speed.
+
+### 9.3 Command protocol (first version)
+
+A single byte stream runs CPU → MCU on TX. Replies come back on RX in order, and events come on EVT. A command is atomic: the library sends it with interrupts masked, so a handler's commands never interleave with the main program's. After a CPU reset (`rst_n`) the MCU drops any partial command.
+
+**Compat commands, today's IOD exactly:**
+
+| Byte | Command | Reply | What the MCU does (= `hbc2-core` today) |
+|---|---|---|---|
+| `0x01` p v | OUT | — | `Iod::cpu_write(p, v)`, then `Peripherals::port_written(p)` (monitor CMD, RTC CMD, EEPROM CMD…) |
+| `0x02` p | IN | 1 byte | `Iod::port(p)` |
+
+**Events.** Every `Iod::trigger_interrupt(p)` becomes an event (p, d) in the MCU's queue (256 entries, dropped when full, as now). The events are:
+- the two port-0 plug-in interrupts (first port, then ID), sent after start-up and after each CPU reset;
+- the RTC's one-second interrupt on its first port;
+- the keyboard's pressed and released scan codes, on its two ports. The ESP32 maps PS/2 to the HBC-2 scan codes of `keymap.rs` (AZERTY, ASCII-like).
+
+Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, keyboard 13–14, EEPROM 15–19). `devices.has` and `interruptHandler.has` work unchanged.
+
+**Native commands (v1, added next to compat):**
+
+| Byte | Command | Arguments | Reply |
+|---|---|---|---|
+| `0x00` | NOP | — | — |
+| `0x03` | INFO | — | protocol version, firmware version, devices bitmap (3 bytes) |
+| `0x10` | PUTS | n, n bytes (n = 0 → 256) | — (ANSI / VT100 subset on a FabGL text terminal; or into the monitor's text mode while it is shown, Q-C5) |
+| `0x11` | CURSOR | x, y | — |
+| `0x12` | COLORS | fg / bg (nibbles) | — |
+| `0x13` | CLEAR | — | — |
+| `0x20` | PIXEL | x lo, x hi, y, c | — |
+| `0x21` | LINE / `0x22` RECT / `0x23` FILL | x0, x0 hi, y0, x1, x1 hi, y1, c | — |
+| `0x24` | BLIT | x, x hi, y, n, n / 2 bytes (2 pixels per byte) | — |
+| `0x25` | MODE | 0 = monitor 256 × 192 (today's), 1 = text 80 × 25, 2 = 320 × 200 × 16 | — |
+| `0x30` | GET_TIME | — | 6 bytes: year − 1900, month, day, hour, minute, second (the RTC's port layout) |
+| `0x31` | SET_TIME | 6 bytes | 1 (ok) / 0 (invalid), as the RTC's SET_TIME |
+| `0x40` | SD_READ | 4-byte block number | status, then 512 bytes if status = 0 |
+| `0x41` | SD_WRITE | 4-byte block number, 512 bytes | status |
+| `0x50` | SOUND | frequency (2 bytes), duration (×10 ms), volume | — |
+
+**Storage:** the EEPROM device (1 MiB, ID `0xE1`, same ports) stays as a compat device backed by a file `eeprom.bin` on the SD card. **Its power-on copy into RAM goes** (F9): the ESP32 can't write the CPU's RAM, and the boot ROM loads programs. SD_READ / SD_WRITE give raw blocks, and a FAT library on the CPU side can come later.
+
+### 9.4 ESP32 board and pins
+
+**Candidate: LilyGO TTGO VGA32 v1.4** (ESP32-WROVER with PSRAM, VGA 6-bit RGB resistor DAC, two PS/2 ports, micro-SD, audio). It's FabGL's reference board. The pin use below is from FabGL's configuration for this board and **must be checked against the board's schematic (vga32_v1.4.pdf) before any wiring**:
+
+| Use | GPIO |
+|---|---|
+| VGA R1 R0, G1 G0, B1 B0, HSYNC, VSYNC | 21 22, 18 19, 4 5, 23, 15 |
+| PS/2 keyboard (CLK, DAT) | 33, 32 |
+| PS/2 mouse (CLK, DAT) | 26, 27 |
+| SD (SPI: MISO, MOSI, SCK, CS) | 2, 12, 14, 13 |
+| Audio | 25 |
+| PSRAM (WROVER) | 16, 17 |
+| Strapping / USB serial | 0, 1, 3 (and 2, 12, 15 are strapping too) |
+
+**The mailbox needs, with the CTRL 595 design:**
+- SCK, MOSI and MISO, shared with the SD card (14, 12, 2);
+- **1 output**, RCLK;
+- **4 inputs**: `tx_full`, `rx_full`, `evt_pend`, `rst_n`. The input-only GPIOs 34, 35, 36 and 39 are the natural place. One source says IO36 is a button on this board, to confirm.
+
+RCLK could take 26 or 27, giving up the mouse port, or GPIO 0, which is fine once booted if nothing pulls it low at reset. So **it fits on one TTGO VGA32 without the mouse**, if 34 / 35 / 39 and one more input are free on the schematic.
+
+**Fallback if the pins don't fit:** a bare ESP32-WROVER DevKit on the I/O card, with the TTGO's VGA resistor DAC, a PS/2 socket and a micro-SD socket copied from its schematic. That has enough free GPIOs, even for the 4-pulse variant without the CTRL 595.
+
+**Not recommended for now:** a second MCU (an Arduino Nano on `0x10–0x1F`). One ESP32 covers VGA, PS/2, SD, Wi-Fi and sound. The decode leaves the select free for later (Q-C9).
+
+**Wi-Fi:** NTP is possible, but Wi-Fi with FabGL's VGA uses a lot of RAM and can disturb the display. Recommendation: NTP once at start-up, then Wi-Fi off. A DS3231 on I²C (two free GPIOs, or the mouse port's) keeps the time without Wi-Fi (Q-C6).
+
+### 9.5 Emulator, IDE and shipped code (replaces sections 3–5 for option C)
+
+**Most of the current model stays.**
+
+| Part | Option C |
+|---|---|
+| `iod.rs` (`Iod`: latches, owners, queue, port-0 plug-in) | **Kept as is.** It becomes the ESP32 firmware model's state. It is still the bench IOD for emutrace, `hbc2-ucode` check and the CPU / cycle tests (no rename needed). |
+| `peripherals/` (Monitor, Keyboard, Rtc, Eeprom) | **Kept**, same IDs, ports and commands. Eeprom loses its power-on copy (F9). The Monitor gets the native drawing commands and the extra modes (9.3). |
+| **New** `mailbox.rs` | The CPU-side card exactly as built in Logisim: RX, TX, EVT latches, the six toggles, VEC, the synchroniser, STATUS, the decode and its mirrors (`0x00–0x0F`), and `0xFF` from empty ports. IN `0x00` and the vector step take their data from it. |
+| **New** `iop.rs` (I/O processor model) | Takes TX bytes, runs the protocol against `Iod` + `Peripherals`, writes RX replies and moves events from `Iod`'s queue into EVT. The service time per byte is in CPU cycles (Q-C4), and so is the start-up delay before READY. |
+| `board.rs`, `machine.rs` | IN / OUT go to the mailbox instead of the IOD's latches. The hardware interrupt's (port, data) comes from the EVT latches instead of `Iod::pop_interrupt`, with the same handshake (INT low in the vector step). **`cpu.rs` doesn't change.** |
+| IDE | The monitor window, the keyboard (`keymap.rs`), the RTC sync and the EEPROM view stay. The I/O view gets a mailbox panel (flags, latches, the TX / RX / EVT byte log) next to the port and queue view, which now shows the I/O processor's latches. The EEPROM boot option goes. |
+| Runner | Unchanged, apart from the machine config. |
+
+**Shipped code** (the counts are IN / OUT instructions found in the repo):
+
+| File | Change |
+|---|---|
+| `compiler/lib/asm/hbc2.has` (30), `screen.has` (46), `terminal.has` (11), `time.has` (7), `math/misc/random.has` (5) | Each `in` / `out` becomes a call to `mbx_in` / `mbx_out` (or a macro): about 100 sites, mechanical. `in()` / `out()` in C keep their signatures. `screen.has` and `terminal.has` can later move to PUTS / primitives for speed. |
+| `compiler/runtime/devices.has`, `hbc2/templates/interruptHandler.has` | **Unchanged** (port-0 plug-in, IDs and per-port vectors kept). |
+| `compiler/runtime/crt0.has`, `init.has` | Wait for READY before `main`, because the ESP32 starts after the CPU (Q-C7). The device wait already in `init.has` stays. |
+| `compiler/runtime/boot.has` + the EEPROM build target (`hbc2-asm`, `hbc2-cc`, `hbc2-cli`, IDE) | **Removed**: no power-on copy (F9). |
+| `hbc2/templates/main.has`, `main.c` | Unchanged, or one line on READY. |
+| `compiler/tests` | Pass unchanged once the emulator routes through the mailbox. New tests: the native commands, a handler sending commands while `main` waits on a reply. |
+| `logisim/tests/cpu/*.has`, the bench stub | No change (the CPU bench keeps its stub). |
+| Docs | The Instruction Manual's IOD chapter and `Documentation/Peripherals/README.md`: the mailbox (ports 0x00 / 0x01, STATUS, events) and the protocol. The per-device pages stay. `HBC-2_Input_Output.pdf`: redrawn for the mailbox. ABI.md §8: READY and no EEPROM boot. |
+
+Section 5b (clean break) is mostly moot: old programs keep working once rebuilt with the new library. Only programs using the EEPROM boot, or their own direct `in` / `out` instructions, need changes.
+
+### 9.6 Open questions (with recommendations)
+
+| # | Question | Recommendation |
+|---|---|---|
+| Q-C1 | I3 / I6 "off by 50 ns after the edge": the mailbox needs 96 / 63, and the CPU's own drivers already need 63–68. | Change I3 / I6 to match the CPU's own drivers (short overlap accepted, as for the ROMs' tDF in ir-mem 11.4), and measure the overlap on the breadboard (a B-check like B4). |
+| Q-C2 | Two MCU → CPU channels (RX polled + EVT interrupt), or one? | **Two.** EVT keeps today's per-port interrupts and the data in I, so the handlers and `devices.has` stay. RX lets replies be read with interrupts off. One channel would save 2 × 595 and 2 flip-flops but would break every interrupt user. |
+| Q-C3 | CTRL 595 (1 GPIO) or one GPIO per request (4 more GPIOs, −2 chips)? | CTRL 595 on the TTGO VGA32. Separate pulses on a bare DevKit. |
+| Q-C4 | Emulated ESP32 speed. | A configurable service time, default 4 µs per byte (8 cycles), and READY after a configurable start-up delay (default 0 in the IDE, "realistic" 500 ms as an option). Measure the real figures in step C3 and set the defaults from them. |
+| Q-C5 | VGA mode for the old monitor. | 640 × 480 × 16 colours (FabGL VGA16Controller), the 256 × 192 monitor drawn ×2 (512 × 384, centred). Its 42 × 24 text mode is drawn with the 6 × 8 font. A native 80 × 25 terminal as mode 1. |
+| Q-C6 | Time source. | NTP once at start-up, then Wi-Fi off. A DS3231 on I²C later. The RTC device keeps its ports and the one-second interrupt either way. |
+| Q-C7 | The ESP32 starts later than the CPU (CPU boot copy about 33 ms; ESP32 + FabGL a few hundred ms). | crt0 waits for READY. The MCU sets READY only once its plug-in events are queued, so the existing device wait then finds the devices. |
+| Q-C8 | `rst_n` to the MCU. | Yes, as an input. The MCU resets its protocol state and sends the plug-in events again, as the emulator does at power-on. |
+| Q-C9 | Second I/O processor (Arduino Nano). | Not now. `0x10–0x1F` stays decoded and free. |
+| Q-C10 | Metastability of the asynchronous flags. | One `clk` stage (500 ns to settle) is enough at 2 MHz. Note it in iod-requirements, no second stage. |
+| Q-C11 | 74AHCT595 in a 74HCT design. | Accept it as the rig already does (no DIP 74HCT595 from TI). Add its figures to chips.md in step C1. |
+| Q-C12 | Native protocol details (sprites, sound, files). | Freeze only compat + the v1 table now. Add commands as the firmware grows, with INFO's version byte. |
+
+### 9.7 Step order
+
+1. **C1. Logisim `mbx` module** (conventions.md, real 74HCT chips, the 595 / 165 as their #TTL or chip models):
+   - **What it does:** decode, latches, toggles, synchroniser, INT, the vector-step drivers.
+   - **Tested against the real CPU** (cputest), with a test-bench model of the MCU side driving RCLK, SCK and MOSI:
+     - IN / OUT on every port and mirror, and empty ports;
+     - TX full (OUT ignored) and RX empty (IN ignored);
+     - events: two in a row, an event arriving during a handler, an event while `main` waits on RX;
+     - reset in the middle of a transfer;
+     - contention checked.
+   - **Wrap-up:** add the paths to `timing.py`, the final chip list and the behaviour the emulator must match to iod-requirements.md (I10+), Q-C1's change to I3 / I6, and the 595 figures to chips.md. **Stop for review.**
+2. **C2. Emulator:** `mailbox.rs` exactly as C1, `iop.rs` with the compat protocol over the kept `Iod` + peripherals, routing in `board.rs` / `machine.rs`. The Logisim sequences of C1 become emulator tests, so both agree.
+3. **C3. ESP32 firmware:**
+   - **Start:** the protocol core in portable C++, shared with a host test build that replays C1's sequences.
+   - **First on the rig:** the Arduino Mega rig (5 V, already 595 / 165 chains) stands in for the CPU and drives the mailbox card, to test the ESP32 side on real chips.
+   - **Then:** VGA (FabGL), PS/2, SD, time and sound on the TTGO VGA32.
+   - **Measure** the per-byte time and the start-up delay (Q-C4).
+4. **C4. Library, templates and docs:** `mbx_in` / `mbx_out`, READY in crt0, removing the EEPROM boot target, then the native PUTS / primitives in `terminal.has` / `screen.has`. Docs as in 9.5.

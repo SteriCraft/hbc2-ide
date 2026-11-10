@@ -18,6 +18,8 @@ The test benches use a simplified IOD stub (ir-mem-decisions.md M5): its queue a
 
 ## Target design for the `iod` module (proposed, 2026-11-10, waiting for Gianni's review)
 
+**Withdrawn the same day:** the W65C22 and 16C550 can't meet the one-step I/O timing (io-redesign-proposal.md section 8). Gianni chose option C, a mailbox of latches in front of an ESP32 I/O processor (section 9 there). The table below is kept for the record. The mailbox's chip list replaces it once it has been reviewed and built.
+
 The made-up IOD (port latches, 256-entry queue, port-0 detection) is to be replaced by standard THT chips: io-redesign-proposal.md has the design, the open questions and the order. Nothing is built in Logisim yet. I1–I9 stay the contract: I9 (rail-to-rail outputs) is met by the HCT drivers below, and I5 / I6 are why the snapshot and VEC flip-flops are there.
 
 | Chip | Job |
