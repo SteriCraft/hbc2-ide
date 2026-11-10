@@ -154,7 +154,7 @@ Added 2026-11-05 (cu-decisions.md section 14). New parts: **74HCT00 = CD74HCT00E
 | 74HCT670 | 4 × 4 register file, tri-state | CD74HCT670E | 8 | regs | 2 |
 | resistor network | 10 kΩ × 8, bussed, SIP-9 (pull resistors, C24): 36 up, 24 down | 4609X-101-103LF (Bourns) | 8 | cu | 1 |
 
-Final count (2026-11-10, phase 4): **146 chips in 22 part numbers** (counted by `bom.py` on `main`, every section instance included; spares as `bom.py` suggests them, except the 74HCT10: at least 3, NRND), plus **8 resistor networks** (C24's 60 pull resistors: 36 up, 24 down). Off the logic: the 4.000 MHz oscillator module, the reset RC (resistor, capacitor, push button, diode), decoupling capacitors (one 100 nF per chip), sockets. `python designs/cpu.py` rewrites bom-cpu.csv; `bom.py cpu.circ --check notes/bom-cpu.csv` checks it.
+Final count (2026-11-10, phase 4): **146 chips in 22 part numbers** (counted by `bom.py` on `main`, every section instance included; spares as `bom.py` suggests them, except the 74HCT10: at least 3, NRND), plus **8 resistor networks** (C24's 60 pull resistors: 36 up, 24 down). Off the logic: the 4.000 MHz oscillator module, the reset RC (resistor, capacitor, push button, diode), decoupling capacitors (one 100 nF per chip), sockets. `python designs/cpu.py` rewrites bom-cpu.csv; `bom.py cpu.circ --check notes/bom-cpu.csv` checks it. The shopping list for the breadboard build, with spares and everything off the logic: [breadboard-order.md](breadboard-order.md).
 
 ### Not in a circuit yet
 
