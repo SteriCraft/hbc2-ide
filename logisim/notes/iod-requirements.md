@@ -15,3 +15,22 @@ The IOD (I/O device: port latches, interrupt queue, peripherals) is out of scope
 | I9 | datasheet re-check (2026-11-10, ir-mem-decisions.md section 11) | **Levels (recommended)**: rail-to-rail outputs (74HCT or CMOS) on `bus_addr` and `bus_data`; inputs TTL-compatible (VIH 2.0 V) are fine, the CPU drives with HCT. | `bus_addr` reaches the AS6C1008's address pins directly, and the RAM needs VIH 0.7 × VCC = 3.5 V; the IOD only drives `bus_addr` in the vector step, when the RAM isn't accessed, so TTL-level outputs would still work. |
 
 The test benches use a simplified IOD stub (ir-mem-decisions.md M5): its queue and port latches are in the test vector generator, and its bus drivers are tri-state buffers in the bench, checked for contention like any other driver. The whole-CPU trace bench (circuits/cpu/test_cpu.circ, cu-decisions.md section 15, U16) has its own stub: port latches in a 256-byte RAM and one interrupt source armed by the program (OUT to a port F0–FF).
+
+## Target design for the `iod` module (proposed, 2026-11-10, waiting for Gianni's review)
+
+The made-up IOD (port latches, 256-entry queue, port-0 detection) is to be replaced by standard THT chips: io-redesign-proposal.md has the design, the open questions and the order. Nothing is built in Logisim yet. I1–I9 stay the contract: I9 (rail-to-rail outputs) is met by the HCT drivers below, and I5 / I6 are why the snapshot and VEC flip-flops are there.
+
+| Chip | Job |
+|---|---|
+| 74HCT138 | port decode: G1 = IE, /G2A = A7, A4–A6 → /CS0–/CS7 (16 ports each) |
+| 74HCT00 | /RD and /WR for the 16C550 from RW, IE and a clock phase (/WR low 250–375, like I4; the /RD window is open) |
+| 74HCT04 (+ spare gates or a second inverter chip) | UART INTR, the 148's /GS and A0–A2, UART MR, VIA PHI2 = NOT `clk` |
+| 74HCT574 | IRQ snapshot: the 8 IRQ lines sampled on `clk` (I5: INT from a flip-flop) |
+| 74HCT74 | VEC = INR delayed one step (I6: drive only in the vector step, not while INR is high) |
+| 74HCT148 | priority encoder on the snapshot (line 7 highest); INT = GS AND NOT VEC |
+| 74HCT244 | vector step: `bus_addr` A0–A7 = `0xF0 + n` |
+| 74HCT541 | vector step: `bus_addr` A8–A15 = `00` |
+| 74HCT540 | vector step: `bus_data` = active-line bitmap → register I (or `0x00`, open question) |
+| W65C22N | VIA at ports `0x00–0x0F` (PHI2, R/W, CS2B = /CS0; open-drain /IRQ with a pull-up), IRQ line 6 |
+| 16C550 (6850 fallback) | UART at `0x10–0x17` (/CS1), 1.8432 MHz crystal, INTR on IRQ line 7 |
+| 74HCT574 (optional) | interrupt mask register on a free /CS (not needed for now) |
