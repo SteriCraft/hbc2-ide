@@ -625,8 +625,6 @@ def cycles(dirs):
                 # runs written before the halt flag was recorded: the last line of a run ended by a halt
                 halt = entry[5] if len(entry) > 5 else ended and k == len(r["cycles"]) - 1
                 row, col, mode = classify(b0, b1, size)
-                if halt and row in ("POF", "IRT"):
-                    steps += 1     # H is loaded before their boundary step: it shows one step before W1
                 if row == "invalid":
                     want, key = table["invalid"], ("invalid opcode", "any")
                 else:
@@ -634,6 +632,8 @@ def cycles(dirs):
                     listed = mode is not None and mode < 9 and cells[mode]
                     want = cells[mode] if listed else cells[9]
                     key = (row, col if listed else "stop")
+                if halt and row in ("POF", "IRT") and key[1] != "stop":
+                    steps += 1     # H is loaded before their boundary step: it shows one step before W1
                 seen[key] += 1
                 if steps not in want:
                     bad[key] += 1

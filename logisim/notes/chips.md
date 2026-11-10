@@ -125,6 +125,37 @@ Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74
 
 Added 2026-11-05 (cu-decisions.md section 14). New parts: **74HCT00 = CD74HCT00E** (TI SCHS398, active; the SN74HCT00N is NRND, so not that one) and **74HCT151 = CD74HCT151E** (TI SCHS150D, active). Off the logic: the pull resistors of C24, **bussed resistor networks, 10 kΩ, SIP-9** (8 resistors and a common pin; e.g. Bourns 4609X-101-103LF, to check before buying), one network per group of up to 8 lines pulled the same way: `bom.py` counts them from the Pull Resistors.
 
+### Whole CPU (cpu.circ `main`, notes/bom-cpu.csv)
+
+| Part | Function | DIP | Qty | Sections | Spares to buy |
+|---|---|---|---|---|---|
+| 74HCT00 | quad 2-input NAND | CD74HCT00E | 1 | cu | 1 |
+| 74HCT08 | quad 2-input AND | SN74HCT08N | 7 | add_sub8 addr cu logic8 | 2 |
+| 74HCT10 | triple 3-input NAND | CD74HCT10E | 1 | clkgen | 1 |
+| 74HCT11 | triple 3-input AND | CD74HCT11E | 5 | flags flags8 rmux8 | 1 |
+| 74HCT14 | hex Schmitt-trigger inverter | SN74HCT14N | 4 | clkgen cu ir mem | 1 |
+| 74HCT27 | triple 3-input NOR | CD74HCT27E | 2 | cu flags8 | 1 |
+| 74HCT32 | quad 2-input OR | SN74HCT32N | 4 | logic8 mem regs | 1 |
+| 74HCT74 | dual D flip-flop, set / reset | SN74HCT74N | 2 | clkgen | 1 |
+| 74HCT85 | 4-bit magnitude comparator | CD74HCT85E | 2 | cmp8 | 1 |
+| 74HCT86 | quad 2-input XOR | CD74HCT86E | 10 | add_sub8 addr flags logic8 | 2 |
+| AT28C256 | 32 K × 8 parallel EEPROM, 150 ns | AT28C256-15PU | 9 | cu mem | 2 |
+| AS6C1008 | 128 K × 8 static RAM, 55 ns | AS6C1008-55PCN | 1 | mem | 1 |
+| 74HCT138 | 3-to-8 decoder | SN74HCT138N | 4 | cu flags rmux8 | 1 |
+| 74HCT151 | 8-to-1 multiplexer | CD74HCT151E | 1 | cu | 1 |
+| 74HCT153 | dual 4-to-1 multiplexer | CD74HCT153E | 18 | addr cu flags regs shift8 | 3 |
+| 74HCT157 | quad 2-to-1 multiplexer | CD74HCT157E | 11 | add_sub8 addr cu flags | 2 |
+| 74HCT175 | quad D flip-flop with clear | CD74HCT175E | 4 | cu flags | 1 |
+| 74HCT240 | octal inverting buffer, tri-state | CD74HCT240E | 1 | rmux8 | 1 |
+| 74HCT283 | 4-bit binary adder | CD74HCT283E | 7 | add_sub8 addr | 2 |
+| 74HCT377 | octal D flip-flop, data enable | CD74HCT377E | 13 | addr cu ir | 2 |
+| 74HCT541 | octal buffer, tri-state | SN74HCT541N | 20 | addr clkgen cu flags mem regs rmux8 | 3 |
+| 74HCT574 | octal D flip-flop, tri-state | CD74HCT574E | 11 | cu regs | 2 |
+| 74HCT670 | 4 × 4 register file, tri-state | CD74HCT670E | 8 | regs | 2 |
+| resistor network | 10 kΩ × 8, bussed, SIP-9 (pull resistors, C24): 36 up, 24 down | 4609X-101-103LF (Bourns) | 8 | cu | 1 |
+
+Final count (2026-11-10, phase 4): **146 chips in 22 part numbers** (counted by `bom.py` on `main`, every section instance included; spares as `bom.py` suggests them, except the 74HCT10: at least 3, NRND), plus **8 resistor networks** (C24's 60 pull resistors: 36 up, 24 down). Off the logic: the 4.000 MHz oscillator module, the reset RC (resistor, capacitor, push button, diode), decoupling capacitors (one 100 nF per chip), sockets. `python designs/cpu.py` rewrites bom-cpu.csv; `bom.py cpu.circ --check notes/bom-cpu.csv` checks it.
+
 ### Not in a circuit yet
 
 Listed for the modules to come or no longer used (74HCT02). Move a row to its module's table when a circuit uses it.

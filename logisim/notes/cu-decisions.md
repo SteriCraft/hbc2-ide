@@ -1,6 +1,6 @@
 # Control unit: decisions
 
-**Phase 1 (paper design, 2026-11-05): accepted.** Gianni's answers (all 10 recommendations accepted, plus the 74HCT10 replacement and the INT requirement) are in section 12. **Phase 2 (microcode) is in section 13. Phase 3 (circuits `cu` and `clk`) is in section 14**: there the 74HCT10 came back (section 12's replacement was reverted by Gianni).
+**Phase 1 (paper design, 2026-11-05): accepted.** Gianni's answers (all 10 recommendations accepted, plus the 74HCT10 replacement and the INT requirement) are in section 12. **Phase 2 (microcode) is in section 13. Phase 3 (circuits `cu` and `clk`) is in section 14**: there the 74HCT10 came back (section 12's replacement was reverted by Gianni). **Phase 4 (the whole CPU, cpu.circ, against the emulator) is in section 15.**
 
 Source of truth: `hbc2-core/src/cpu.rs`, `isa.rs` (`DECODE`, `INSTRUCTION_TABLE`). Requirements: control-requirements.md C1–C23, pc-sp-requirements.md P1–P4, registers-requirements.md, iod-requirements.md I1–I8. Interfaces: registers-, flags-, addr-, ir-mem-decisions.md, alu-report.md. Times are in ns from the rising `clk` edge that starts the step (500 ns), **max 25 °C (pass) / max 85 °C (information)**, bus loading included.
 
@@ -676,4 +676,90 @@ At 85 °C (information only): the bypass is 2 ns over, the boundary has 0, the /
 
 ### 14.7 Status (2026-11-10)
 
-Phase 3 is complete: the full test and the 9 wiring bugs ran on the final circuit (14.3). Phase 4 (`cpu.circ`) waits for Gianni's go-ahead.
+Phase 3 is complete: the full test and the 9 wiring bugs ran on the final circuit (14.3). Phase 4 (`cpu.circ`): section 15.
+
+## 15. Phase 4: the whole CPU (2026-11-10)
+
+Gianni's go-ahead (2026-11-10): `cpu.circ` `main` from every section, `cu_<receiver>` wired to the receivers (U12); **the Rust crates are not edited** (an emulator branch waits to be merged: an emulator bug is reported, not fixed); the IOD stays a stub; validation: no contention anywhere, a full power-up, `hbc2 compare` against `hbc2 trace` (test programs, interrupts, halt, random programs), cycle counts against cu-cycles.md, wiring bugs between sections, timing across sections, the final part list.
+
+### 15.1 `main` (logisim/cpu.circ, designs/cpu.py)
+
+| Item | As built |
+|---|---|
+| Instances | `clkgen`, `cu`, `alu`, `flags`, `regs`, `addr`, `ir`, `mem`: every port to a tunnel named after its net (`main` holds no logic; conventions.py: 0 errors, 0 warnings) |
+| Nets | `cu_<x>` → `<x>` (U12); `bus_data` = every `*_bus_in` and `*_bus_out` (`flags`, `regs`, `addr`, `mem`) plus the IOD; `bus_addr` = `bus_addr_hi` : `bus_addr_lo` (`addr`'s drivers, `cu`'s pending port, the IOD's port in the vector step); bus A / bus B = `regs_a` / `regs_b` → `alu_a` / `alu_b`, `addr_bus_a` / `addr_bus_b`; `alu_cin` = `flag_c`; the ALU's flags → `flags_alu_*`; `alu_r` → `regs_alu_r`; IR fields → `regs_r*`, `addr_v1` / `addr_v2`, `cu_ir_op` / `cu_ir_mode`; the flags → `cu_flag_*`; `addr_cout` → `cu_addr_cout` |
+| Clocks (14.1) | `clk_0` ir, `clk_1` addr, `clk_2` + `clk_3` cu, `clk_4` regs + flags, `clk_5` the reset flip-flops (inside clkgen) and the IOD; `clk_wr_n` regs, `clk_mem_wr_n` mem |
+| Pins (U14) | in: `osc`, `rc` (the RC node), the IOD connector: `int`, `iod_bus_data`, `iod_bus_addr_lo`. out: the connector (`bus_data`, `bus_addr`, `rw`, `ie`, `inr`, `clk`, `clk_wr_n`, `rst_n`), the internal buses (`bus_a`, `bus_b`, `mem_d`), and test points: every control line, the IR fields, `alu_r`, `flags` (8, bit 0 = C … 7 = H), `addr_cout`, `rst_early`, `rst_rc`, `clk_mem_wr_n` |
+| Chips | **146** in 22 part numbers + 8 resistor networks (notes/bom-cpu.csv, chips.md "Whole CPU"): alu 29, flags 15, regs 18, addr 34, ir 7, mem 8 (the boot ROM's 2 AT28C256 included), clkgen 5, cu 30 (the 7 microcode AT28C256 included) |
+
+### 15.2 The trace bench (circuits/cpu/test_cpu.circ, designs/test_cpu.py) and tools/cputest.py
+
+| Part | What it does |
+|---|---|
+| Clock | a Logisim Clock on `osc`: one tick = one oscillator half period (4 rows per 500 ns step) |
+| Reset | `rc` low from Logisim's power-up, high after 15 oscillator periods (a 74161 and a 7474: the bench's RC) |
+| IOD stub (U16) | port latches: a 256-byte RAM, 00 at power-up (the emulator's IOD without peripherals); OUT writes it while `clk_wr_n` is low (captured at its rise, I4), IN reads it (I3). Interrupt source: OUT to a port F0–FF with v > 0 raises INT v steps later for port p = the low 4 bits, from a flip-flop on `clk_5` (I5), cleared when INR is seen; the vector step drives 00:p (low byte) and the port latch of p (I6). |
+| Logisim run | `logisim-evolution -tty table` on a copy of logisim/ whose boot ROM (the at28c256 model's images 0–1) holds the program; every run starts at Logisim's power-up: reset, register sweep, the 64 KiB boot copy, then the program. About 650 steps a second alone, 2 to 3 minutes per run (the boot is 65,548 steps) |
+| Checks on every row | no E on any output pin (all buses: `bus_data`, `bus_addr`, bus A, bus B, `mem_d`, and every control line); while `rst_rc` is high, every control line at its pulled level (C24); every boot copy write (RAM write with the ROM strobes) carries the image's byte for its address |
+| Trace (U15) | from the pins: `pc` and the instruction bytes at F0–F3 (consecutive fetch steps at PC, PC + 1 …), `mem_w` from the RAM writes (address, `mem_d` while the strobe is low), `io_w` from the OUT steps, `flags` from the flag pins, an `INT` line at each vector step (the step that loads PC from the IVT: `addr_base_sel` = 11 with `addr_pc_ld_n` = 0), `pc` of an INT line from its pushes. The registers and SP can't be read from Logisim (74670 / 74377 contents): cputest keeps them from their write events on the section ports (the register write index from `regs_a_sel` and its sources, `bus_data` at `clk_wr_n`'s rise; the address section's sum from its ports, loaded at the edge) and **checks them against the hardware every time it shows them**: every port A / port B read on bus A / bus B, the address latch on `bus_addr`, PC / SP on `bus_data`, and `addr_cout` against the computed carry. Any mismatch fails the run. |
+| Reference | `hbc2 trace` on the same RAM image; when the stub raised hardware interrupts, `emutrace` (logisim/tools/emutrace: a standalone package using hbc2-core as a library, nothing in the crates changed): the same trace with each interrupt queued in the emulator's IOD just before the line during which INT rose in Logisim, with the port and data the stub put on the buses. Without interrupts emutrace and `hbc2 trace` give identical files. Then `hbc2 compare`. |
+| End of a run | H set with I clear for 20 steps (an entry from the halt loop clears I one step before H, so the bench's halt pin is tied low: U18), halted 300 steps with INT low, or a step limit |
+
+### 15.3 Results
+
+| Run | Result |
+|---|---|
+| Test programs (logisim/tests/cpu): `loop` 25 lines, `allops` 202, `swint` 33 (3 software interrupts, POF setting H), `hwint` 903 (45 hardware interrupts: INT's rise on every step of a block, while I = 0, right after STI, inside a handler, in the halt loop, against a software interrupt; 1 software), `invalid` 8 (invalid opcodes, then an invalid mode) | **5 / 5 identical** to the emulator (`hbc2 trace`; `emutrace` for hwint) |
+| Random programs (`emutrace random 0..49`, the phase 2 generator) | **50 / 50 identical** (60 counting a first batch of seeds 0–9); 21 of them took hardware interrupts (random OUTs to ports F0–FF), most ended on an invalid mode or CLI + HLT |
+| Every run (55) | a **full power-up**: reset, register sweep, **65,537 boot copy writes all equal to the image**, first fetch **65,548 steps** after the reset's release (cu-cycles.md); 3.85 million steps, 15.4 million rows; **no E in any row** (reset, sweep and copy included), **no C24 error**, **no cross-check error** (registers, latch, PC / SP, `addr_cout`). 56,997 trace lines, 86 hardware and 1,786 software interrupt entries |
+| Cycle counts (`cputest.py cycles`, 62,240 instructions of the matching runs) | **all equal to cu-cycles.md**; **106 / 106** instruction × mode cells reached; the stop column (valid opcode, invalid mode) 29 / 54 opcodes (each stop ends a run: only a reset restarts the CPU, so a dedicated program per opcode would cost a boot each); invalid opcodes 23 |
+| Wiring bugs between sections (`cputest.py mutants`, `allops` on each) | **10 / 10 caught**: ALU carry in from Z; R1 / R2 swapped into regs (also E on bus A); V1 / V2 swapped into addr (also the latch check); ALU N / S swapped into flags; cu's Z condition from C; the pending port not on `bus_addr`; the IVT port read from `bus_data` (also the latch check); bus A into the ALU's B input (also E on `alu_r`); the flags' bus input from `alu_r`; INT not wired to cu (the CPU hangs after its first fetch: no line). `python designs/cpu.py` then rewrites cpu.circ identical to the committed one |
+| Emulator bugs found | none |
+
+**Timing** (`timing.py --section all` and `--section cpu`, 45 / 50 / 55 % duty): **every section passes at max 25 °C** at the three duties. The new paths across sections (`--section cpu`, 50 %), max 25 °C, margin 25 / 85 °C:
+
+| Path | Max 25 °C | Margin 25 / 85 °C |
+|---|---|---|
+| edge → control → bus A / bus B valid | 158 | 342 / 298 |
+| edge → regs → ALU → flags (alu_z) → 175 setup | 417 | 83 / **−27** |
+| edge → regs → ALU (alu_r) → result latch setup | 324 | 176 / 90 |
+| edge → alu_op → ALU → flags setup | 292 | 208 / 134 |
+| edge → regs → address adder → PC / SP / latch setup | 421 | 79 / **−32** |
+| edge → regs → bus_data → write buffer → RAM data (by 322) | 244 | 78 / 3 |
+| edge → regs → bus_data: OUT data for the IOD (by 242, I4) | 217 | **25** / **−36** |
+| edge → latch → RAM → bus_data → IR setup | 230 | 270 / 222 |
+| edge → latch → RAM → bus_data (register write data, by 335) | 186 | 149 / 102 |
+| edge → RAM → bus_data → cu bypass → 574 setup | 439 | 61 / **−2** |
+| edge → flags → jump condition → EEPROM → 574 setup | 333 | 167 / 120 |
+| IOD port → IVT → adder → PC setup | 263 | 237 / 170 |
+| IOD INT (by 150) → boundary → 574 setup | 459 | 41 / 0 |
+| edge → PC → carry out → `cout_q` (boot loop) | 278 | 222 / 150 |
+
+Worst at 25 °C over all sections: 12.5 ns at 45 % duty (the address before the RAM's WE# falls, section mem), then 16.5 (the /WE pulse at 45 %) and 25 (OUT data, above). At 85 °C (information): the five paths in bold above, the /WE pulse (−7.5 at 45 %) and the memory write timing at 45 % (−14.5 address before WE#, −9.5 / −13.5 write data), as in sections 14.4 and the mem / regs reports.
+
+### 15.4 Pull resistors while `rst_rc` holds the pipeline off (C24)
+
+Checked on every row with `rst_rc` high (29 rows per power-up): **no line off its pulled level**, no E. The levels are the idle word's (cu.py `PIPE`), so each bus keeps exactly one driver during the reset: the address latch drives `bus_addr`, the operand latches drive bus A and bus B, nothing drives `bus_data`.
+
+| Pulled | Lines |
+|---|---|
+| **up (36)** | `flags_oe_n`, `regs_we_n`, `regs_a_sel` (2: port A off with `regs_cu_bank_n` 11), `regs_cu_bank_n` (2), `regs_b_sel` (2: port B off), `regs_const_oe_n`, `regs_const_0` (don't care while the constant is off), `regs_a_bus_oe_n`, `regs_res_oe_n`, `addr_base_oe_n` (2), `addr_off_oe_n` (2), `addr_lat_ld_n`, `addr_pc_ld_n`, `addr_sp_ld_n`, `addr_pc_oe_n` (2), `addr_sp_oe_n` (2), `ir_b0_ld_n`, `ir_b1_ld_n`, `ir_v1_ld_n`, `ir_v2_ld_n`, `mem_oe_n`, `mem_we_n`, `mem_wbuf_oe_n`, `mem_rom_oe_n`, `rw` (read: the IOD writes nothing), inside `cu`: `swi_ld_n`, `swi_oe_n`, `cond_sel` (2: 11, `x_n`) |
+| **down (24)** | `alu_op` (4), `flags_op` (4: hold), `flags_bit_val`, `regs_cu_idx` (2), `regs_a_lat_oe_n` and `regs_b_lat_oe_n` (**on**: the operand latches hold bus A / bus B), `addr_base_sel` (2), `addr_off_sel`, `addr_inv`, `addr_cin`, `addr_lat_oe_n` (2, **on**: the address latch holds `bus_addr`), `mem_re`, `ie`, `inr`, inside `cu`: `force` |
+
+Every strobe and load is inactive (no register, flag, PC / SP / latch, IR, RAM or IOD write; no driver onto `bus_data`). The three lines pulled to an enable keep the buses that the idle word drives driven, so no input floats; their latches hold whatever Logisim (or the board) powers up with, which nothing loads during the reset.
+
+### 15.5 Decisions taken in phase 4
+
+| # | Decision | Why |
+|---|---|---|
+| U14 | `main`'s pins: the IOD connector, with the bidirectional lines split into an input joined to the bus net (`iod_bus_data`, `iod_bus_addr_lo`) and the bus as an output; plus test points (every control line, the IR fields, the flags, the internal buses) | a Logisim subcircuit pin is one-way (as the RAM model's DQ pins, M2); the trace bench can only see `main`'s pins, and conventions.md asks for the internal buses as outputs |
+| U15 | The trace's registers and SP are kept by cputest from the write events on the section ports, and checked against every read the hardware shows (bus A / B, the latch, PC / SP on `bus_data`, `addr_cout`) | Logisim gives no access to the 74670s' and 377s' contents; a module port for it would be a simulation-only port on a module. A wrong write shows at the next read of that register, and in the trace |
+| U16 | The IOD stub in the bench: port latches (a 256-byte RAM, 00 at power-up, as the emulator's IOD without peripherals) and an interrupt source armed by the program (OUT F0–FF, v); hardware interrupts reach the emulator through `emutrace`, queued just before the line during which INT rose in Logisim | `hbc2 trace` has no way to raise a hardware interrupt without peripherals; the stub is not the real IOD (out of scope, iod-requirements.md) |
+| U17 | Test programs in logisim/tests/cpu: `loop` (hbc2-asm's trace test), `allops` (every instruction in every mode, every jump condition both ways), `swint`, `hwint`, `invalid`; random programs from `check::random_program` with the cu vectors' settings (`emutrace random k`) | the existing trace tests, plus coverage of every row of cu-cycles.md that a run can reach |
+| U18 | The bench's `halt` pin is tied low; cputest ends a run (H set with I clear for 20 steps, halted 300 steps with no INT, or limits) and kills Logisim | an entry from the halt loop shows H = 1, I = 0 for one step (IE1 clears I, IE2 clears H) |
+| U19 | Cycle counts: F0 to the next F0, or to W1 when an interrupt entry follows; for a halt, to the step where H shows, + 1 for POF and IRT | H is loaded by POF / IRT one step before their boundary step, by HLT and the stop sequence in their last step |
+| U20 | timing.py `--section cpu`: the paths across sections from the clock edge (the later of the IR's 377s and the pipeline's 574s), and `--section all` | the sections' own paths start from "control valid" and stop at their ports |
+
+### 15.6 Status (2026-11-10)
+
+Phase 4 is complete: the whole CPU runs from power-up through the boot and matches the emulator on every program tried (5 test programs, 60 random programs), with no contention, the pulls of C24 holding, every cycle count as cu-cycles.md, and every wiring bug tried caught. Open: the stop column covered for 29 of 54 opcodes; the 85 °C margins above (information); the IOD and its peripherals (a stub here); M4's re-check on the new datasheets; INT's 0 ns at 85 °C (I5).
