@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """AS6C1008 model -> circuits/chips/as6c1008.circ (circuits ttlas6c1008 and test_as6c1008)
 
-128 K x 8 static RAM, Alliance Memory (as6c1008.pdf next to the models, v1.0):
+128 K x 8 static RAM, Alliance Memory (as6c1008.pdf next to the models, v1.2,
+Mar 2023):
 
     pinout (P-DIP 32)  1 NC, 2 A16, 3 A14, 4 A12, 5 A7, 6 A6, 7 A5, 8 A4, 9 A3,
                        10 A2, 11 A1, 12 A0, 13-15 DQ0-DQ2, 16 Vss, 17-21 DQ3-DQ7,
@@ -116,7 +117,7 @@ def and4(loc, ins, out):
 
 and4((800, 1100), ["ce", "CE2", "we", "vcc"], "write")     # CE# L, CE2 H, WE# L
 and4((800, 1300), ["ce", "CE2", "oe", "WE#"], "read")      # CE# L, CE2 H, OE# L, WE# H
-m.text((RX + 100, RY - 40), "AS6C1008 (Alliance v1.0): 128 K x 8 SRAM, level write, outputs off while writing")
+m.text((RX + 100, RY - 40), "AS6C1008 (Alliance v1.2): 128 K x 8 SRAM, level write, outputs off while writing")
 m.dip_symbol("AS6C1008", ORDER, EXTRA)
 
 # ---- test bench --------------------------------------------------------------------------------

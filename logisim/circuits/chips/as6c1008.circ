@@ -846,7 +846,7 @@
       <a name="label" val="read"/>
     </comp>
     <comp lib="9" loc="(800,460)" name="Text">
-      <a name="text" val="AS6C1008 (Alliance v1.0): 128 K x 8 SRAM, level write, outputs off while writing"/>
+      <a name="text" val="AS6C1008 (Alliance v1.2): 128 K x 8 SRAM, level write, outputs off while writing"/>
     </comp>
     <wire from="(100,100)" to="(120,100)"/>
     <wire from="(100,140)" to="(120,140)"/>

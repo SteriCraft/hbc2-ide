@@ -221,7 +221,7 @@ EEPROM D  |XXXXXXXXXXXXXXXXXXXXXXXXXXX|== W(k+1) 364 / 408|
 574 D     |XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX|== 400 / 453 ==| setup 12 / 15
 ```
 
-The EEPROMs (AT28C256-15: tACC 150 ns, /CE and /OE tied low, /WE high) read the next word during the current step. The worst case is the bypass, a byte being fetched:
+The EEPROMs (AT28C256-15: tACC 150 ns, Microchip DS20006386B p. 11, re-checked 2026-11-10; /CE and /OE tied low, /WE high) read the next word during the current step. The worst case is the bypass, a byte being fetched:
 
 | Address input | Path | Word at the 574 (25 / 85 °C) | Margin |
 |---|---|---|---|

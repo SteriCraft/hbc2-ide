@@ -92,7 +92,7 @@ The 74HCT377 was added on 2026-11-04 for this section. TI lists CD74HCT377E (PDI
 | AS6C1008 | 128 K × 8 static RAM, 55 ns | as6c1008 (model) | AS6C1008-55PCN | AS6C1008-55SIN (Alliance) | 1 |
 | AT28C256 | 32 K × 8 parallel EEPROM, 150 ns | at28c256 (model) | AT28C256-15PU | AT28C256-15SU (Microchip) | 2 |
 
-The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). AS6C1008-55PCN: PDIP-32 600 mil, 0–70 °C, DigiKey "active"; the SOIC is the industrial -55SIN (not checked on Octopart). AT28C256-15PU: PDIP-28, Microchip, active at Arrow / findchips; AT28C256-15SU is the SOIC-28 (not checked). Both are programmed / socketed parts, not 74HCT: the 74HCT rule doesn't apply to memories. Levels: the AT28C256 guarantees VOH 2.4 V only, so it drives the RAM through a 74HCT541 (M4).
+The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). AS6C1008-55PCN: PDIP-32 600 mil, 0–70 °C, DigiKey "active"; the SOIC is the industrial -55SIN (not checked on Octopart). AT28C256-15PU: PDIP-28, Microchip, active at Arrow / findchips; AT28C256-15SU is the SOIC-28 (not checked). Both are programmed / socketed parts, not 74HCT: the 74HCT rule doesn't apply to memories. Levels: the AT28C256 guarantees VOH 2.4 V only (DS20006386B p. 7) and the AS6C1008 needs VIH 0.7 × VCC = 3.5 V (v1.2 p. 4), so the ROMs drive the RAM through a 74HCT541 (M4, re-checked against these revisions on 2026-11-10, ir-mem-decisions.md section 11). Datasheets: `circuits/chips/as6c1008.pdf` (Alliance v1.2, March 2023) and `at28c256.pdf` (Microchip DS20006386B, September 2022).
 
 ### Clock and reset (clkgen)
 
@@ -231,14 +231,14 @@ So Typ is a rough guide only.
 | 74HCT670 | /RE → Q off | 14 | 35 | 44 | CD74HCT670, SCHS195C (output disable) |
 | 74HCT670 | setup D → /WE | 12 | 12 | 15 | CD74HCT670, SCHS195C (a minimum, to /WE rising) |
 | 74HCT670 | setup WA → /WE | 18 | 18 | 23 | CD74HCT670, SCHS195C (a minimum, to /WE falling) |
-| AS6C1008 | address → DQ (tAA) | 55 | 55 | 55 | AS6C1008 v1.0 (-55; one figure, 0–70 °C) |
-| AS6C1008 | CE#, CE2 → DQ (tACE) | 55 | 55 | 55 | AS6C1008 v1.0 |
-| AS6C1008 | OE# → DQ (tOE) | 30 | 30 | 30 | AS6C1008 v1.0 |
-| AS6C1008 | write pulse WE# (tWP) | 45 | 45 | 45 | AS6C1008 v1.0 (a minimum; tAS 0, tAW 50, tWR 0) |
-| AS6C1008 | setup DIN → WE# rising (tDW) | 25 | 25 | 25 | AS6C1008 v1.0 (a minimum; tDH 0) |
-| AT28C256 | address → I/O (tACC) | 150 | 150 | 150 | AT28C256 (Atmel 0006F, -15) |
-| AT28C256 | /CE → I/O (tCE) | 150 | 150 | 150 | AT28C256 (Atmel 0006F) |
-| AT28C256 | /OE → I/O (tOE) | 70 | 70 | 70 | AT28C256 (Atmel 0006F) |
+| AS6C1008 | address → DQ (tAA) | 55 | 55 | 55 | AS6C1008 v1.2, p. 5 (-55; one figure, 0–70 °C) |
+| AS6C1008 | CE#, CE2 → DQ (tACE) | 55 | 55 | 55 | AS6C1008 v1.2, p. 5 |
+| AS6C1008 | OE# → DQ (tOE) | 30 | 30 | 30 | AS6C1008 v1.2, p. 5 |
+| AS6C1008 | write pulse WE# (tWP) | 45 | 45 | 45 | AS6C1008 v1.2, p. 5 (a minimum; tAS 0, tAW 50, tWR 0) |
+| AS6C1008 | setup DIN → WE# rising (tDW) | 25 | 25 | 25 | AS6C1008 v1.2, p. 5 (a minimum; tDH 0) |
+| AT28C256 | address → I/O (tACC) | 150 | 150 | 150 | AT28C256, Microchip DS20006386B, p. 11 (-15, −40–85 °C) |
+| AT28C256 | /CE → I/O (tCE) | 150 | 150 | 150 | AT28C256, DS20006386B, p. 11 |
+| AT28C256 | /OE → I/O (tOE) | 70 | 70 | 70 | AT28C256, DS20006386B, p. 11 |
 | 74HCT670 | hold D, WA after /WE | 5 | 5 | 5 | CD74HCT670, SCHS195C (a minimum) |
 | 74HCT670 | /WE pulse width | 20 | 20 | 25 | CD74HCT670, SCHS195C (a minimum) |
 | 74HCT139 | A/B → Y | 14 | 34 | 43 | SN74HCT139, SCLS066E (not used: registers-decisions.md D5) |

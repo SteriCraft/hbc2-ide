@@ -707,6 +707,11 @@ LIMITS = {
 }
 
 
+def short(part: str) -> str:
+    """A part name as printed: 74HCT541 -> 541; memories (AS6C1008, AT28C256) whole."""
+    return part.removeprefix("74HCT")
+
+
 def compute(table):
     done: dict[str, tuple[int, int, int]] = {}
     via: dict[str, str] = {}
@@ -724,16 +729,16 @@ def compute(table):
             elif part == "-":                        # a delay that makes an edge early
                 part, p = p, rest[0]
                 d = tuple(-x for x in table[(part, p)])
-                names.append(f"− {part[5:]} {p} ({-d[1]} / {-d[2]})")
+                names.append(f"− {short(part)} {p} ({-d[1]} / {-d[2]})")
             else:
                 d = table[(part, p)]
                 nets = rest[1:]
                 if nets:                             # driving a loaded bus
                     extra = derate(part, nets[0])
-                    names.append(f"{part[5:]} {p} ({d[1]} + {extra[1]} / {d[2]} + {extra[2]} load)")
+                    names.append(f"{short(part)} {p} ({d[1]} + {extra[1]} / {d[2]} + {extra[2]} load)")
                     d = tuple(a + b for a, b in zip(d, extra))
                 else:
-                    names.append(f"{part[5:]} {p} ({d[1]} / {d[2]})")
+                    names.append(f"{short(part)} {p} ({d[1]} / {d[2]})")
             t = tuple(a + b for a, b in zip(t, d))
         return t, names
 
@@ -763,7 +768,7 @@ def margins(name, done, table):
     if isinstance(b, int):
         lim, what = (b, b, b), None
     elif isinstance(b, tuple):
-        lim, what = table[b], f"{b[0][5:]} {b[1]}"
+        lim, what = table[b], f"{short(b[0])} {b[1]}"
     else:
         lim, what = done[b], PATHS[b][1].replace("*", "").split(" (")[0]
     m = tuple((l - v) if op == "<=" else (v - l) for v, l in zip(done[name], lim))

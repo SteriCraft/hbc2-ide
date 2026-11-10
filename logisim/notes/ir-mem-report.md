@@ -111,7 +111,7 @@ All sections pass at 25 °C (alu, flags, regs, addr, mem). The paths over at 85 
 
 ## Need Gianni's review
 
-**Reviewed 2026-11-05:** answers and what was done in ir-mem-decisions.md section 10. Still open: re-check M4 once the current datasheets are in `circuits/chips/` (items 2, 3).
+**Reviewed 2026-11-05:** answers and what was done in ir-mem-decisions.md section 10. Items 2 and 3 closed 2026-11-10: the current datasheets keep VIH 0.7 × VCC, so M4 stays, and no delay changed (ir-mem-decisions.md section 11).
 
 1. **The models' simulation-only pins break the "datasheet pins only" rule.** I couldn't ask, so I took the only workable option.
    - **What:** `DQ0_in`–`DQ7_in` on the AS6C1008 (M2) and `HALF` on the AT28C256 (M3). They are drawn on the left edge of the DIP outline, without pin numbers.
@@ -149,4 +149,4 @@ All sections pass at 25 °C (alu, flags, regs, addr, mem). The paths over at 85 
 - **The pending port latch** (C13).
 - **The IOD**, against iod-requirements.md.
 - **`cpu.circ`**, instantiating all the sections.
-- **Re-check M4** (the ROM buffer) and the memory delays against the current AS6C1008 and AT28C256 datasheets, once Gianni has put them in `circuits/chips/`.
+- ~~Re-check M4 against the current datasheets~~: done 2026-11-10, M4 kept (ir-mem-decisions.md section 11).

@@ -1,6 +1,6 @@
 # Instruction register and memory / bus interface: decisions
 
-**Phase 1 (paper design, 2026-11-05)**, then **phase 2 (built and tested the same night)**: Gianni's answers and the phase 2 decisions M1–M7 are in section 9, the result in [ir-mem-report.md](ir-mem-report.md). Sections 2–5 are the phase 1 design; where M1 (RAM WE# from `clk_mem_wr_n`, not `clk_wr_n`) and M4 (a third 74HCT541 for the ROMs, 8 chips in `mem`) changed it, section 9 wins.
+**Phase 1 (paper design, 2026-11-05)**, then **phase 2 (built and tested the same night)**: Gianni's answers and the phase 2 decisions M1–M7 are in section 9, the result in [ir-mem-report.md](ir-mem-report.md). Sections 2–5 are the phase 1 design; where M1 (RAM WE# from `clk_mem_wr_n`, not `clk_wr_n`) and M4 (a third 74HCT541 for the ROMs, 8 chips in `mem`) changed it, section 9 wins. Section 11 re-checks the memories against the current datasheets (2026-11-10).
 
 Source of truth: `hbc2-core/src/isa.rs` (instruction format, `DECODE`, `Instruction::fetched`), `cpu.rs`, `board.rs`, `machine.rs`, `peripherals/eeprom.rs`, and the manual (`Documentation/HBC-2_Instruction_Manual.pdf`: "Instruction format", "RAM and I/O interfaces", "Hardware interrupts"). Requirements collected from control-requirements.md (C5, C8, C9, C10, C12–C17), registers-requirements.md and pc-sp-requirements.md (P1). Out of scope: the control unit (what it must do is in section 5), the real IOD and the peripherals.
 
@@ -307,9 +307,9 @@ The new tight point is the address setup before /WE falls (26 ns at 25 °C, 0 at
 
 **M3 — the ROM model's contents.** A #Memory ROM keeps its contents as an attribute of the component inside the model circuit, so every instance of `at28c256` would hold the same data. The model therefore holds a **64 KiB ROM** and has one **extra, simulation-only input `HALF`** (no pin number): `mem` ties it to GND on the low chip and VCC on the high one, and the model reads image[HALF : A14..A0]. On the board, HALF is "which half was programmed into this chip". **Changed 2026-11-05 (cu-decisions.md Q10, section 14):** `HALF` became a 4-bit `IMAGE` input, the model holding 16 images of 32 KiB (0–1 the boot ROM, 2–8 the microcode EEPROMs, 9–15 erased); `mem` ties it to 0 and 1. `designs/at28c256.py --image file.bin` writes the image (default: a test pattern, every byte different between the halves); the boot test writes the image of the program under test, then restores the pattern. The model has no write path (/WE is tied high in `mem`; programming is the TL866's job); the datasheet's write modes are documented, not modelled, and the model's tests check that /WE low does nothing harmful (outputs as for /WE high, contents unchanged).
 
-**M4 — a buffer between the ROMs and the RAM** (+1 74HCT541, mem 8 chips, 15 in all). The AT28C256 (Atmel 0006F, the copy in circuits/chips/) guarantees **VOH 2.4 V** (IOH −400 µA), and the AS6C1008 v1.0 asks **VIH 0.7 × VCC = 3.5 V**: the boot copy can't be shown correct with the ROM driving the RAM. The ROMs get their own net (`mem_rom_d`), always driven by exactly one of them (/CE = A15 / NOT A15, /OE tied low), and a third 74HCT541 (HCT input VIH 2.0 V, rail-to-rail output) drives it onto `mem_d` when `mem_rom_oe_n` = 0. Boot copy timing: clk → bus_addr 71 → 14 (32) → ROM tCE 150 → 541 (23) = **276 ns at 25 °C** vs 322 (margin 46); 85 °C: 309 vs 315 (6). The ROM's tOE no longer counts (always on).
+**M4 — a buffer between the ROMs and the RAM** (+1 74HCT541, mem 8 chips, 15 in all). The AT28C256 (Atmel 0006F, the copy in circuits/chips/) guarantees **VOH 2.4 V** (IOH −400 µA), and the AS6C1008 v1.0 asks **VIH 0.7 × VCC = 3.5 V**: the boot copy can't be shown correct with the ROM driving the RAM. The ROMs get their own net (`mem_rom_d`), always driven by exactly one of them (/CE = A15 / NOT A15, /OE tied low), and a third 74HCT541 (HCT input VIH 2.0 V, rail-to-rail output) drives it onto `mem_d` when `mem_rom_oe_n` = 0. Boot copy timing: clk → bus_addr 71 → 14 (32) → ROM tCE 150 → 541 (23) = **276 ns at 25 °C** vs 322 (margin 46); 85 °C: 309 vs 315 (6). The ROM's tOE no longer counts (always on). **Re-checked 2026-11-10 against AS6C1008 v1.2 and AT28C256 DS20006386B: kept** (section 11.3).
 
-Datasheets in circuits/chips/: `as6c1008.pdf` (Alliance v1.0, Feb 2007, distributor copy: the current revision wasn't reachable from alliancememory.com tonight), `at28c256.pdf` (Atmel 0006F; Microchip's current DS20006386B wasn't downloadable: Mouser returned HTML). To replace with the current revisions (review list).
+Datasheets in circuits/chips/: `as6c1008.pdf` (Alliance v1.0, Feb 2007, distributor copy: the current revision wasn't reachable from alliancememory.com tonight), `at28c256.pdf` (Atmel 0006F; Microchip's current DS20006386B wasn't downloadable: Mouser returned HTML). To replace with the current revisions (review list). **Replaced 2026-11-10** by v1.2 (March 2023) and DS20006386B (September 2022), section 11.
 
 **M5 — the IOD stub is two tri-state buffers.** The bench's IOD stub (section 4) drives `bus_addr` low (the port) and `bus_data` (the data) through two 8-bit Controlled Buffers, enabled by bench pins; its interrupt queue, port values and timing live in the vector generator (`hbc2 vectors mem_cpu`), which takes them from the emulator's own IOD (`Iod::trigger_interrupt`, `Board::tick_iod`). A circuit FIFO would have checked Logisim's counters, not the CPU side; the stub's outputs go through the contention checks like any other driver. The register section is a stand-in too (`cpu_data` onto `bus_data`, `addr_bus_a` / `addr_bus_b` pins for R1:R2).
 
@@ -324,7 +324,119 @@ Phase 2 status: **done** (2026-11-05): M1–M7; tools, chip models, chips.md, `i
 Numbers are the items of ir-mem-report.md "Need Gianni's review".
 
 1. **Simulation-only pins: accepted**, marked as such in conventions.md, ignored by bom.py and by any PCB netlist export. Done: `netlist.SIM_ONLY` lists them, `netlist.pcb_ports()` drops them, conventions.py checks each model against the list.
-2. and 3. **Datasheets:** Gianni downloads the current AS6C1008 and AT28C256 datasheets into `circuits/chips/`. **Open:** when they are there, re-check M4 (the ROM buffer exists only for the AS6C1008 v1.0's VIH 0.7 × VCC; with VIH 2.2 V it goes, the ROMs drive the RAM directly) and the delays in chips.md, then rerun the tests and timing.py --section mem.
+2. and 3. **Datasheets:** Gianni downloads the current AS6C1008 and AT28C256 datasheets into `circuits/chips/`. **Open:** when they are there, re-check M4 (the ROM buffer exists only for the AS6C1008 v1.0's VIH 0.7 × VCC; with VIH 2.2 V it goes, the ROMs drive the RAM directly) and the delays in chips.md, then rerun the tests and timing.py --section mem. **Done 2026-11-10** (section 11): VIH is still 0.7 × VCC, M4 stays, no delay changed.
 4. and 5. **Accepted** (address setup before WE#, B2 measures it; `clk_mem_wr_n` global).
 6. **Boot ROM image:** `hbc2 asm` / `hbc2 cc` `--boot-rom`, and the IDE's Build menu "Export boot ROM…", write the 64 KiB RAM image as two 32 KiB files, `<name>_lo.bin` (0000-7FFF, the AT28C256 with HALF = 0) and `<name>_hi.bin` (8000-FFFF, HALF = 1), each from the chip's address 0 (hbc2-core `boot_rom`; Documentation/HBC-2 Assembly Language.md "Boot ROM for the hardware CPU").
 7.–12. No change asked.
+
+## 11. Datasheet re-check (2026-11-10)
+
+Gianni put the current datasheets in `circuits/chips/`. They replace the old copies under the same names (the folder's lowercase part-number naming):
+
+| File | Was | Now |
+|---|---|---|
+| `as6c1008.pdf` | Alliance v1.0, February 2007 (distributor copy, 14 pages) | **Alliance v1.2, 13 March 2023** (15 pages). v1.1 (July 2021): "revise DC electrical characteristics"; v1.2: "revise P-DIP package outline dimension" |
+| `at28c256.pdf` | Atmel 0006F | **Microchip DS20006386B, September 2022** (rev. A 2020: Microchip template; rev. B: ECC wording and TSOP removed). Its history also lists Atmel 0006 rev. M (2009), "updated AC characteristics and ordering information" |
+
+### 11.1 What changed between the revisions
+
+**AS6C1008** (v1.2 page numbers):
+
+| Item | v1.0 | v1.2 | Matters to us? |
+|---|---|---|---|
+| VIH (p. 4) | 0.7 × VCC min, VCC + 0.3 max | same | **yes: 3.5 V at 5 V, M4 stays** |
+| VIL (p. 4) | −0.2 to 0.6 V | same | no: HCT VOL is well under 0.6 V |
+| VOH (p. 4) | 2.2 V min at −1 mA (typ 2.7) | **2.4 V** min at −1 mA | slightly better into the read buffer's HCT input (VIH 2.0) |
+| VOL (p. 4) | 0.4 V at 2 mA | same | no |
+| ISB1 C / I (p. 4) | 20 / 50 µA | 15 / 30 µA | no |
+| ICC, ICC1 | 60 / 10 mA max | same | no |
+| CIN, CI/O (p. 5) | 6, 8 pF max | same | no (timing.py counts 10 / 20) |
+| AC test load (p. 5) | CL = 30 pF + 1 TTL | **CL = 50 pF + 1 TTL** | the same times now hold at a heavier load (section 4's "30 pF" reasoning is conservative) |
+| Read (p. 5) | tRC 55, tAA 55, tACE 55, tOE 30, tCLZ 10, tOLZ 5, tCHZ 20, tOHZ 20, tOH 10 | same | — |
+| Write (p. 5) | tWC 55, tAW 50, tCW 50, tAS 0, tWP 45, tWR 0, tDW 25, tDH 0, tOW 5, tWHZ 20 | same | — |
+| Absolute max (p. 4) | VTERM −0.5 to 7.0 V | VCC −0.5 to 6.5 V, other pins −0.5 to VCC + 0.5 V | no (one 5 V supply) |
+| Packages, pinout (p. 3) | SOP, P-DIP 600 mil, TSOP-I, sTSOP, TFBGA | same pinout; the P-DIP outline drawing is revised, its dimension table (0.600" rows, 0.100" pitch) reads the same | no |
+| Ordering (p. 14) | no ordering table in the copy | -55PCN (PDIP, 0–70 °C), -55PIN, -55SIN, -55TIN, -55STIN, -55BIN | our **-55PCN** and the SOIC **-55SIN** are listed |
+| NRND / obsolescence | none | none | — |
+
+**AT28C256** (DS20006386B page numbers):
+
+| Item | Atmel 0006F | DS20006386B | Matters to us? |
+|---|---|---|---|
+| VIH / VIL (p. 7) | 2.0 / 0.8 V | same | no: driven by HCT |
+| VOH (p. 7) | 2.4 V min at −400 µA, no CMOS VOH row | same (`VOH1`, still no CMOS row) | **yes: confirms M4** |
+| VOL (p. 7) | 0.45 V at 2.1 mA | same | no: into HCT inputs (VIL 0.8) |
+| ILI, ILO, ISB1, ISB2, ICC | 10 µA, 10 µA, 200 µA (Mil 300), 3 mA, 50 mA | same, the military figure dropped | no |
+| CIN, COUT (p. 8) | 4 / 6, 8 / 12 pF typ / max | same | no |
+| Read, -15 (p. 11) | tACC 150, tCE 150, tOE 0–70, tDF 0–50, tOH 0 | same | — |
+| Test load (p. 12) | 1.8 kΩ / 1.3 kΩ, 100 pF, inputs 0–3 V, 1.5 V reference | same | — |
+| Write (p. 13) and page mode (p. 14) | tAS 0, tAH 50, tCS 0, tCH 0, tWP 100, tDS 50, tDH 0; tWC 10 ms (F: 3 ms), tBLC 150 µs max, tWPH 50 | same | no (the TL866 programs it) |
+| Speeds, grades | -15 / -20 / -25 / -35; commercial, industrial, military | **-15 only, industrial only** (−40–85 °C, U = matte Sn) | our -15PU is industrial: the 85 °C column applies to the ROMs too |
+| Packages (p. 4) | PDIP, SOIC, PLCC, TSOP, LCC, flatpack, CerDIP, PGA, die | **PLCC-32, PDIP-28, SOIC-28** | no: PDIP-28 pinout unchanged |
+| Ordering (p. 29) | -15PC / -15PI … | AT28C256-15PU (28P6), -15SU, -15JU; the E and F options in JU / SU only | our **-15PU** and **-15SU** are listed |
+| NRND / obsolescence | none | none | — |
+
+### 11.2 Every value we use, against the new datasheets
+
+| Value | Where | Assumed | Datasheet | |
+|---|---|---|---|---|
+| RAM tAA 55 | chips.md; timing.py m_read → m_fetch, c_bypass, c_next, x_mem_reg, x_fetch, x_bypass | 55 | 55 (p. 5) | ✓ |
+| RAM tACE 55 | chips.md; m_read_ce | 55 | 55 | ✓ |
+| RAM tOE 30 | chips.md (in no path: the read buffer's /OE is later) | 30 | 30 | ✓ |
+| RAM tWP 45 | chips.md; m_pulse limit; B2 | 45 | 45 | ✓ |
+| RAM tDW 25 | chips.md; m_wdl (limit of m_wdata, m_boot, x_wdata) | 25 | 25 | ✓ |
+| RAM tAS 0 | m_addr (limit: WE# falls, earliest); M1; B2 | 0 | 0 | ✓ |
+| RAM tWR 0, tDH 0 | m_rise | 0 | 0 | ✓ |
+| RAM tAW 50 | chips.md note (address valid by 72, WE# rises from 347 at 25 °C: 275 ns) | 50 | 50 | ✓ |
+| RAM tWHZ 20, tOHZ 20 | section 5 list; the model turns DQ off while WE# is low | 20 | 20 | ✓ |
+| RAM VIH | M4; section 5 "Levels" | 0.7 × VCC = 3.5 V | 0.7 × VCC (p. 4) | ✓ |
+| RAM VOL 0.4 V at 2 mA, test load 30 pF | section 4 (why the read buffer) and section 5 (`mem_d`) | 30 pF | **50 pF** (p. 5) | better; the read buffer is still needed (`bus_data` is about 386 pF) |
+| RAM CIN 6, CI/O 8 pF | timing.py PIN_PF (10 per input, 20 per 3-state output, every chip) | ≤ 10 / ≤ 20 | 6 / 8 (p. 5) | ✓ conservative |
+| AS6C1008-55PCN, -55SIN | chips.md, bom-mem.csv, bom-cpu.csv | listed | p. 14 | ✓ |
+| RAM PDIP-32 pinout | `as6c1008` model | — | p. 3 | ✓ unchanged |
+| ROM tACC 150 | chips.md; c_step, c_ir, c_bypass, c_next, c_force, c_jc, c_int, c_state, c_sel, x_flag_jc; cu-decisions.md section 6 | 150 | 150 (p. 11) | ✓ |
+| ROM tCE 150 | chips.md; m_boot; M4 | 150 | 150 | ✓ |
+| ROM tOE 70 | chips.md (in no path: /OE tied low since M4) | 70 | 70 | ✓ |
+| ROM tOH 0 | cu-decisions.md section 6 (hold times) | 0 | 0 | ✓ |
+| ROM tDF 50 | not used | — | 50 max (p. 11) | see 11.4 |
+| ROM VOH | M4 | 2.4 V at −400 µA | 2.4 V (p. 7) | ✓ |
+| ROM VOL, VIH, VIL | microcode outputs into HCT; ROM inputs from HCT | 0.45 / 2.0 / 0.8 | same | ✓ |
+| ROM CIN 6, COUT 12 pF | PIN_PF on `cu_a`, `bus_addr`, `mem_rom_d` | ≤ 10 / ≤ 20 | 6 / 12 (p. 8) | ✓ |
+| ROM test load 100 pF | section 5 (`mem_d`) | 100 | 100 (p. 12) | ✓ |
+| AT28C256-15PU, -15SU | chips.md, bom-mem.csv, bom-cpu.csv, cu-decisions.md | listed | p. 29 | ✓ |
+| ROM PDIP-28 pinout | `at28c256` model | — | p. 4 | ✓ unchanged |
+
+No figure changed: chips.md's Delays keep their values (only the source column now names the new revisions), and timing.py computes exactly what it did.
+
+### 11.3 M4: kept
+
+The AS6C1008 v1.2 still asks **VIH ≥ 0.7 × VCC = 3.5 V** (page 4, DC Electrical Characteristics, unchanged since v1.0), and the AT28C256 DS20006386B still guarantees only **VOH ≥ 2.4 V at −400 µA** (page 7, Table 4-2; no CMOS VOH figure). The ROMs can't drive the RAM on paper, so the ROM buffer (third 74HCT541, `mem_rom_d` → `mem_d`) stays and the circuit doesn't change. The "VIH 2.2 V" of phase 2 doesn't exist in either revision; the 2.2 V figure in v1.0 is VOH, which v1.1 raised to 2.4 V.
+
+For the record, what removing it would have bought: the boot copy loses the 541 (23 / 29 ns), 41 → 64 ns of margin at 25 °C (50 % duty). The tightest memory path, the address on `bus_addr` before WE# falls (25 ns at 25 °C, 12.5 at 45 % duty), doesn't go through the ROM buffer: M4 has no bearing on it.
+
+### 11.4 Other observations
+
+- **Two ROM outputs on `mem_rom_d` at each A15 change (not modelled, not yet decided).** Both ROMs have /OE tied low and /CE = A15 / NOT A15, so the one being deselected floats only within tDF ≤ 50 ns while the other may turn on sooner (no minimum is given for /CE → output on). Every A15 change on `bus_addr` can give up to about 50 ns of overlap, in normal running too, not just in the boot. The data isn't used then (the ROM buffer is off outside the boot, and the boot copy samples 150 ns later), so it is current between two weak outputs, not a logic error. Logisim switches /CE instantly, so cputest's contention check can't see it. A possible fix, for Gianni: drive both ROMs' /OE from `mem_rom_oe_n`, which turns them off outside the boot (tOE 70 then counts again, but 33 + 70 is well under the tCE path); the overlap would remain only at the boot's 7FFF → 8000 step.
+- **The IOD's levels.** `bus_addr` reaches the RAM's address pins directly. In the vector step the RAM isn't accessed, so an IOD with TTL-level outputs would work, but iod-requirements.md I9 now recommends rail-to-rail (HCT or CMOS) outputs on both buses.
+- **RAM grade.** The -55PCN (0–70 °C) is still what we use; the ROMs are now industrial only (-15PU), and the RAM's industrial -55PIN is listed on page 14.
+
+### 11.5 What was done
+
+- `circuits/chips/as6c1008.pdf` and `at28c256.pdf` are the new revisions; the old copies are deleted.
+- chips.md: the Delays table's source column (with page numbers) and the memories paragraph name the new revisions.
+- `designs/as6c1008.py`, `designs/at28c256.py`: docstrings and the label on the model now name v1.2 and DS20006386B; the models regenerate otherwise byte-identical; `--test` passes (3,260 and 302,912 rows).
+- timing.py: memory part names were cut to "008" / "256" in the printed paths (`part[5:]` assumed 74HCT); they print whole now. Every number is unchanged.
+- No circuit changed, so the phase 4 CPU comparisons were not rerun.
+
+timing.py, every section, worst margins (ns, max 25 °C pass / max 85 °C information):
+
+| Section | 45 % duty | 50 % duty | 55 % duty |
+|---|---|---|---|
+| flags | 208 / 134 | 208 / 134 | 208 / 134 |
+| regs | 16.5 / −27 | 29 / −27 | 41.5 / −27 |
+| addr | 79 / −32 | 79 / −32 | 79 / −32 |
+| mem | 12.5 / −14.5 | 25 / −2 | 36.5 / 10.5 |
+| cu | 12.5 / −14.5 | 25 / −2 | 36.5 / −2 |
+| cpu | 25 / −36 | 25 / −36 | 25 / −36 |
+
+All limits are met at 25 °C at every duty. The memory paths (25 / 85 °C margins at 45 / 50 / 55 %): address before WE# falls 12.5 / −14.5, 25 / −2, 37.5 / 10.5; RAM write data 65.5 / −9.5, 78 / 3, 90.5 / 15.5; boot copy (with the ROM buffer) 28.5 / −13.5, 41 / −1, 53.5 / 11.5; RAM read → `bus_data` 136.5 / 89.5, 149 / 102, 161.5 / 114.5; WE# pulse 129 / 110 at every duty. The EEPROM paths don't depend on the duty: the bypass 61 / −2, the INT boundary 41 / 0, the step register 239 / 211.

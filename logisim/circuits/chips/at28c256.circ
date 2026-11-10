@@ -7449,7 +7449,7 @@ e2 29*d1 f0 f0 e2 29*d1 f0 f0 e2 29*d1 f0 f0 e2 29*d1 229376*ff
       <a name="label" val="read"/>
     </comp>
     <comp lib="9" loc="(800,460)" name="Text">
-      <a name="text" val="AT28C256 (Atmel 0006F), read only: 16 images of 32 KiB, IMAGE picks one (0-1 boot ROM, 2-8 microcode, 9-15 erased)"/>
+      <a name="text" val="AT28C256 (Microchip DS20006386B), read only: 16 images of 32 KiB, IMAGE picks one (0-1 boot ROM, 2-8 microcode, 9-15 erased)"/>
     </comp>
     <wire from="(100,100)" to="(120,100)"/>
     <wire from="(100,140)" to="(120,140)"/>

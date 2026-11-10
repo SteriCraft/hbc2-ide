@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """AT28C256 model -> circuits/chips/at28c256.circ (circuits ttlat28c256 and test_at28c256)
 
-32 K x 8 parallel EEPROM (at28c256.pdf next to the models, Atmel 0006F),
-used read-only as the boot ROM (ir-mem-decisions.md section 3):
+32 K x 8 parallel EEPROM (at28c256.pdf next to the models, Microchip
+DS20006386B), used read-only as the boot ROM (ir-mem-decisions.md section 3):
 
     pinout (PDIP 28)  1 A14, 2 A12, 3 A7, 4 A6, 5 A5, 6 A4, 7 A3, 8 A2, 9 A1,
                       10 A0, 11-13 I/O0-I/O2, 14 GND, 15-19 I/O3-I/O7, 20 /CE,
@@ -131,7 +131,7 @@ for dy, j, row, name in zip((-20, -10, 10, 20), (0, 1, 1, 0), (-60, -30, 30, 60)
         m.tunnel((x - 120, y0 + row), name, facing="east")
 m.wire((x, y0), (x + 20, y0))
 m.tunnel((x + 20, y0), "read", facing="west")
-m.text((RX + 100, RY - 40), "AT28C256 (Atmel 0006F), read only: 16 images of 32 KiB, IMAGE picks one (0-1 boot ROM, 2-8 microcode, 9-15 erased)")
+m.text((RX + 100, RY - 40), "AT28C256 (Microchip DS20006386B), read only: 16 images of 32 KiB, IMAGE picks one (0-1 boot ROM, 2-8 microcode, 9-15 erased)")
 m.dip_symbol("AT28C256", ORDER, EXTRA)
 
 # ---- test bench --------------------------------------------------------------------------------
