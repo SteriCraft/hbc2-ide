@@ -4,11 +4,8 @@
 use hbc2_ucode::{SOURCE, check, generate};
 
 fn caught(what: &str, find: &str, replace: &str) -> String {
-    let source = SOURCE.replace(
-        "
-", "
-",
-    );
+    // Escapes, not literal line breaks: Git's CRLF conversion rewrites those.
+    let source = SOURCE.replace("\r\n", "\n");
     assert!(source.contains(find), "{what}: `{find}` not in the source");
     let text = source.replacen(find, replace, 1);
     let mc = match generate::build(&text) {

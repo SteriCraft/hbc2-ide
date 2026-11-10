@@ -202,6 +202,7 @@ _start:
     hlt
 ");
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(100);
     assert_eq!(m.board.ram.read(0x1305), 0x5A);
 
@@ -266,6 +267,7 @@ sum3:
     ret
 ");
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(100);
     assert!(m.cpu.is_halted());
     assert_eq!(m.cpu.reg(A), 60);
@@ -289,6 +291,7 @@ _start:
         Some(hbc2_core::AddrMode::RamRegImmReg)
     );
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(100);
     assert_eq!(m.board.ram.read(0x9000), 0xFF);
 }
@@ -568,6 +571,7 @@ fn templates_assemble_and_detect_peripherals() {
     );
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(10_000);
     let ram = |name: &str| m.board.ram.read(addr(&p, name) as u16);
     assert_eq!(ram("monitorPort"), 1);
@@ -601,6 +605,7 @@ loop:
     let p = build(files, Target::Ram).unwrap_or_else(|e| panic!("{}", e.join("\n")));
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(10_000);
     assert_eq!(
         m.board.iod.queue().len(),
@@ -642,6 +647,7 @@ fn language_documentation_example_prints_hi() {
     let p = asm(example);
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(1_000);
     let screen = m.peripherals.monitor.as_ref().unwrap().text_buffer();
     assert_eq!(
@@ -681,7 +687,8 @@ done:
     );
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
-    m.run(20);
+    m.finish_boot();
+    m.run(200);
     assert_eq!((m.cpu.reg(A), m.cpu.reg(I), m.cpu.reg(Y)), (1, 2, 3));
     assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
 
@@ -758,7 +765,8 @@ done:
     let used = p.bytes_used;
 
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
-    m.run(10_000);
+    m.finish_boot();
+    m.run(100_000);
     let ram = |a: u32| m.board.ram.read(a as u16);
     assert!((start..end).all(|a| ram(a) == 0xAA));
     assert_eq!(ram(end), 0, "nothing after the area");
@@ -811,6 +819,7 @@ late: $0x8000                ; fixed: not counted
     assert_eq!(addr(&p, "table"), 7, "after the code (3 + 3 + 1 bytes)");
     assert_eq!(addr(&p, "__program_end"), 10);
     let mut m = Machine::new(bare(), Some(&p.image)).unwrap();
+    m.finish_boot();
     m.run(100);
     assert_eq!((m.cpu.reg(Register::A), m.cpu.reg(Register::B)), (0x00, 10));
 

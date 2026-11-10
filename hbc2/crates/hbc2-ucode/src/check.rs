@@ -179,6 +179,7 @@ pub fn every_instruction_and_mode(mc: &Microcode, cases: u32) -> Result<String, 
                 cpu.sp = sp;
                 let mut rec = Rec::default();
                 cpu.tick_with(&mut board, &mut rec);
+                let emulator_cycles = cpu.cycles;
                 let mut entered = false;
                 if cpu.flag(Flag::Interrupt)
                     && !cpu.interrupt_delayed()
@@ -259,6 +260,11 @@ pub fn every_instruction_and_mode(mc: &Microcode, cases: u32) -> Result<String, 
                     };
                     if !entered && measured != lo as u64 && measured != hi as u64 {
                         return Err(format!("{measured} steps, the table says {lo} / {hi}"));
+                    }
+                    if !entered && measured != emulator_cycles as u64 {
+                        return Err(format!(
+                            "{measured} steps, the emulator counts {emulator_cycles} cycles"
+                        ));
                     }
                     Ok(())
                 })();

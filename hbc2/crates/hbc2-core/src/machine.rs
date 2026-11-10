@@ -1,8 +1,15 @@
 //! A complete HBC-2: CPU, board and peripherals, driven one clock cycle at a time.
+//!
+//! Instructions take as many clock cycles as on the hardware (see
+//! [`Instruction::cycles`](crate::isa::Instruction::cycles)). An instruction
+//! does all its work in its first cycle; its other cycles only wait, and the
+//! machine reaches the next instruction boundary at its last one. Interrupts
+//! are taken at boundaries only. After a power-on, the first instruction
+//! starts after the hardware's boot time ([`HARDWARE_BOOT_CYCLES`]).
 
 use crate::board::Board;
 use crate::cpu::{Cpu, CpuState};
-use crate::isa::{Flag, RAM_SIZE};
+use crate::isa::{Flag, HARDWARE_BOOT_CYCLES, RAM_SIZE};
 use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
 use crate::trace::{NoProbe, Probe};
@@ -110,6 +117,11 @@ pub struct Machine {
     /// RAM content loaded at each power-on (when there is no EEPROM).
     ram_image: Option<Box<[u8]>>,
     ticks: u64,
+    /// Cycles left in the instruction (or interrupt entry, or halt loop turn)
+    /// now running, its first cycle excluded; or in the boot.
+    busy: u32,
+    /// The work now running ends on an instruction boundary.
+    boundary: bool,
 }
 
 impl Machine {
@@ -134,6 +146,8 @@ impl Machine {
             breakpoints: Breakpoints::default(),
             ram_image: ram_image.map(Box::from),
             ticks: 0,
+            busy: 0,
+            boundary: false,
         };
         machine.power_on();
         Ok(machine)
@@ -143,6 +157,10 @@ impl Machine {
     /// state. EEPROM content and breakpoints are kept.
     pub fn power_on(&mut self) {
         self.ticks = 0;
+        // The boot ROM copy. Its end is not a boundary: like a run from a
+        // breakpoint, the first instruction runs before any breakpoint stops.
+        self.busy = HARDWARE_BOOT_CYCLES as u32;
+        self.boundary = false;
         self.cpu.reset();
         self.board.reset();
         match (&self.ram_image, self.peripherals.eeprom.is_some()) {
@@ -157,7 +175,32 @@ impl Machine {
         self.ticks
     }
 
-    /// One clock cycle. Returns true when the PC moved to a new instruction.
+    /// True between the first and the last cycle of an instruction (or of
+    /// an interrupt entry, or of a halt loop turn): the CPU state already
+    /// shows the instruction's result. Also true during the boot.
+    pub fn mid_instruction(&self) -> bool {
+        self.busy > 0
+    }
+
+    /// True during the boot: from power-on until the first instruction.
+    pub fn booting(&self) -> bool {
+        self.ticks < HARDWARE_BOOT_CYCLES && self.busy > 0
+    }
+
+    /// Spends the rest of the boot at once (nothing happens during it).
+    /// Returns the number of cycles spent.
+    pub fn finish_boot(&mut self) -> u64 {
+        if !self.booting() {
+            return 0;
+        }
+        let cycles = self.busy;
+        self.wait(cycles);
+        cycles as u64
+    }
+
+    /// One clock cycle. Returns true when the machine reached a new
+    /// instruction boundary: the last cycle of an instruction, or of the jump
+    /// into an interrupt handler.
     #[inline(always)]
     pub fn tick(&mut self) -> bool {
         self.tick_with(&mut NoProbe)
@@ -166,31 +209,61 @@ impl Machine {
     /// [`Machine::tick`], reporting what the CPU does to `probe`.
     #[inline(always)]
     pub fn tick_with<P: Probe>(&mut self, probe: &mut P) -> bool {
+        if self.busy > 0 {
+            return self.wait(1);
+        }
         let advanced = self.cpu.tick_with(&mut self.board, probe);
         if let Some(port) = self.board.iod.take_pending_write() {
             self.peripherals.port_written(port, &mut self.board);
         }
         self.board.tick_iod();
         self.ticks += 1;
+        let busy = self.cpu.cycles as u32 - 1;
+        if busy > 0 {
+            self.busy = busy;
+            self.boundary = advanced;
+            return false;
+        }
         advanced
     }
 
-    /// Runs until the next instruction boundary: one instruction, or the
-    /// jump into an interrupt handler. When halted with nothing pending,
-    /// runs a single cycle. Returns the number of cycles run.
+    /// Spends `cycles` (at most the cycles left) of the work now running.
+    /// Returns true if that reached its end and the end is a boundary.
+    #[inline(always)]
+    fn wait(&mut self, cycles: u32) -> bool {
+        self.busy -= cycles;
+        self.ticks += cycles as u64;
+        // The CPU drives nothing while it waits: the IOD only follows its queue.
+        self.board.tick_iod();
+        self.busy == 0 && std::mem::take(&mut self.boundary)
+    }
+
+    /// Runs until the next instruction boundary: the end of one instruction,
+    /// or of the jump into an interrupt handler. When halted with nothing
+    /// pending, runs one turn of the halt loop. Right after a power-on, the
+    /// boot and the first instruction. Returns the number of cycles run.
     pub fn step(&mut self) -> u64 {
         self.step_with(&mut NoProbe)
     }
 
     /// [`Machine::step`], reporting what the CPU does to `probe`.
     pub fn step_with<P: Probe>(&mut self, probe: &mut P) -> u64 {
-        // The longest path is a hardware interrupt handshake (2 cycles).
-        for n in 1..=4 {
-            if self.tick_with(probe) || self.cpu.is_halted() {
-                return n;
+        let start = self.ticks;
+        // The longest path is a hardware interrupt entry after the handshake.
+        for _ in 0..64 {
+            let advanced = if self.busy > 0 {
+                self.wait(self.busy)
+            } else {
+                self.tick_with(probe)
+            };
+            if advanced {
+                break;
+            }
+            if self.busy == 0 && self.cpu.is_halted() && self.cpu.state == CpuState::Executing {
+                break;
             }
         }
-        4
+        self.ticks - start
     }
 
     /// Runs at most `max_ticks` cycles, stopping early when the PC lands on
@@ -206,8 +279,18 @@ impl Machine {
 
     /// [`Machine::run`], reporting what the CPU does to `probe`.
     pub fn run_with<P: Probe>(&mut self, max_ticks: u64, probe: &mut P) -> RunResult {
-        for n in 1..=max_ticks {
-            if self.tick_with(probe) {
+        let mut n = 0;
+        while n < max_ticks {
+            // Wait cycles change nothing: spend them all at once.
+            let advanced = if self.busy > 0 {
+                let cycles = (self.busy as u64).min(max_ticks - n) as u32;
+                n += cycles as u64;
+                self.wait(cycles)
+            } else {
+                n += 1;
+                self.tick_with(probe)
+            };
+            if advanced {
                 if self.breakpoints.contains(self.cpu.pc) {
                     return RunResult {
                         ticks: n,
@@ -231,7 +314,7 @@ impl Machine {
     pub fn is_idle(&self) -> bool {
         let cpu = &self.cpu;
         let board = &self.board;
-        if !cpu.is_halted() || cpu.state != CpuState::Executing || board.inr {
+        if self.busy > 0 || !cpu.is_halted() || cpu.state != CpuState::Executing || board.inr {
             return false;
         }
         if cpu.is_stopped() {

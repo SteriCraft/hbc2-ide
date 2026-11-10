@@ -286,6 +286,109 @@ impl Opcode {
     }
 }
 
+/// Clock frequency of the hardware CPU: one control-unit step every 500 ns.
+pub const HARDWARE_CLOCK_HZ: u64 = 2_000_000;
+
+/// Clock cycles of a hardware interrupt entry, from the end of the
+/// instruction before it to the handler's first fetch (W1, IE1-IE8 in
+/// `logisim/notes/cu-cycles.md`).
+pub const HARDWARE_INTERRUPT_CYCLES: u8 = 9;
+
+/// Clock cycles of a software interrupt entry, from the end of `INT` (or of
+/// the instruction that set I) to the handler's first fetch (W1, W2, IE1-IE8).
+pub const SOFTWARE_INTERRUPT_CYCLES: u8 = 10;
+
+/// Clock cycles of one turn of the halt loop (W1, W2): a halted CPU looks
+/// for an interrupt once per turn.
+pub const HALT_LOOP_CYCLES: u8 = 2;
+
+/// Clock cycles from the reset release to the first fetch: the boot ROM
+/// copies 64 KiB into RAM. The emulator fills RAM at once at power-on, then
+/// waits this long before the first instruction.
+pub const HARDWARE_BOOT_CYCLES: u64 = 65_548;
+
+/// Clock cycles of each instruction, by opcode bits and addressing mode bits,
+/// from the fetch of its first byte to the next instruction's: the hardware
+/// control unit's counts (`logisim/notes/cu-cycles.md`, generated from the
+/// microcode; `cargo test -p hbc2-ucode` checks this table against it).
+/// A conditional jump takes as long taken or not. For an instruction that
+/// [stops](Instruction::stops), the cycles before the halt loop.
+static CYCLES: [[u8; 16]; 64] = cycle_table();
+
+const fn cycle_table() -> [[u8; 16]; 64] {
+    let mut table = [[1u8; 16]; 64]; // invalid opcodes: 1-cycle NOP
+    let mut op = 0;
+    while op < OPCODE_COUNT {
+        let opcode = INSTRUCTION_TABLE[op].opcode;
+        let mut mode = 0;
+        while mode < 16 {
+            let stops = DECODE[op][mode] & STOPS != 0;
+            table[op][mode] = match (stops, AddrMode::from_bits(mode as u8)) {
+                (false, Some(m)) if opcode.takes_operands() => cycles(opcode, m),
+                (false, _) => cycles(opcode, AddrMode::None),
+                (true, _) if opcode.takes_operands() => 4,
+                (true, _) => 3,
+            };
+            mode += 1;
+        }
+        op += 1;
+    }
+    table
+}
+
+/// Cycles of an opcode in one of its addressing modes.
+const fn cycles(opcode: Opcode, mode: AddrMode) -> u8 {
+    use AddrMode as M;
+    use Opcode as O;
+    match opcode {
+        O::Nop => 1,
+        O::Adc | O::Add | O::And | O::Or | O::Sub | O::Sbb | O::Xor => match mode {
+            M::Reg => 4,
+            M::RegImm8 => 5,
+            M::StackOffset => 7,
+            _ => 8, // Reg / Ram, RamReg / ImmReg / Offset
+        },
+        O::Cmp => match mode {
+            M::Reg => 3,
+            M::RegImm8 => 4,
+            M::StackOffset => 6,
+            _ => 7, // RamReg / ImmReg / Offset
+        },
+        O::Cal => match mode {
+            M::Reg16 => 5,
+            _ => 7, // Imm16
+        },
+        O::Jmc | O::Jme | O::Jmn | O::Jmp | O::Jms | O::Jmz | O::Jmf | O::Wsp => match mode {
+            M::Reg16 => 3,
+            _ => 5, // Imm16
+        },
+        O::Inc | O::Dec | O::Not => match mode {
+            M::Reg => 4,
+            _ => 8, // Imm16, RamReg / ImmReg / Offset
+        },
+        O::Str | O::Lod => match mode {
+            M::StackOffset => 5,
+            _ => 6, // Reg / Ram, RamReg / ImmReg / Offset
+        },
+        O::Mov => match mode {
+            M::RegImm8 => 3,
+            _ => 4, // Reg
+        },
+        O::Asp | O::Ssp => match mode {
+            M::Imm8 => 4,
+            _ => 5, // Imm16
+        },
+        O::In | O::Out | O::Int | O::Psh | O::Shl | O::Asr | O::Shr | O::Rsp => 4,
+        O::Pop | O::Ret => 5,
+        O::Irt => 6,
+        O::Psf => 3,
+        O::Pof => 4,
+        O::Clc | O::Cle | O::Cli | O::Cln | O::Cls | O::Clz | O::Clf => 2,
+        O::Stc | O::Ste | O::Sti | O::Stn | O::Sts | O::Stz | O::Stf => 2,
+        O::Hlt => 2,
+    }
+}
+
 /// How the CPU reads an instruction, by opcode bits and addressing mode bits:
 /// its size in bytes, plus [`STOPS`] when the CPU stops on it.
 static DECODE: [[u8; 16]; 64] = decode_table();
@@ -510,6 +613,12 @@ impl Instruction {
     pub fn fetched(word: u32) -> Instruction {
         const MASK: [u32; 5] = [0, 0xFF00_0000, 0xFFFF_0000, 0xFFFF_FF00, 0xFFFF_FFFF];
         Instruction(word & MASK[Instruction(word).size() as usize])
+    }
+
+    /// Clock cycles this instruction takes on the hardware (see [`CYCLES`]).
+    #[inline(always)]
+    pub fn cycles(self) -> u8 {
+        CYCLES[self.opcode_bits() as usize][self.mode_bits() as usize]
     }
 
     #[inline(always)]

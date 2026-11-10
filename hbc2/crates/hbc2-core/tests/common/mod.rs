@@ -52,7 +52,9 @@ impl Image {
     }
 
     pub fn build(self, config: MachineConfig) -> Machine {
-        Machine::new(config, Some(&self.0)).expect("valid image")
+        let mut m = Machine::new(config, Some(&self.0)).expect("valid image");
+        m.finish_boot();
+        m
     }
 }
 

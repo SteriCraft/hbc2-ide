@@ -1,8 +1,9 @@
 //! The HBC-2 CPU.
 //!
-//! One [`Cpu::tick`] is one clock cycle. A cycle either executes one whole
-//! instruction, or performs one step of the interrupt handshake, or does
-//! nothing (halted).
+//! One [`Cpu::tick`] either executes one whole instruction, or performs one
+//! step of the interrupt handshake, or does nothing (halted). Each tick then
+//! sets [`Cpu::cycles`] to the clock cycles that work takes on the hardware;
+//! [`Machine`](crate::Machine) spends them before the next tick.
 //!
 //! Instructions are 1 to 4 bytes long (see [`Instruction::size`]).
 //! Unimplemented opcodes are 1-byte NOPs. A valid opcode with an addressing
@@ -17,7 +18,8 @@
 use crate::alu;
 use crate::board::Board;
 use crate::isa::{
-    AddrMode, Flag, IVT_START, Instruction, Opcode, PROGRAM_START, Register, STACK_RESET,
+    AddrMode, Flag, HALT_LOOP_CYCLES, HARDWARE_INTERRUPT_CYCLES, IVT_START, Instruction, Opcode,
+    PROGRAM_START, Register, SOFTWARE_INTERRUPT_CYCLES, STACK_RESET,
 };
 use crate::trace::{NoProbe, Probe};
 
@@ -72,8 +74,12 @@ pub struct Cpu {
     /// flag. Only the port is kept: the data is register I when the interrupt
     /// is taken (as the hardware's port latch does).
     pending_software_interrupt: Option<u8>,
-    /// Set by STI: no interrupt is taken before the next instruction has run.
+    /// Set by STI and by the reset: no interrupt is taken before the next
+    /// instruction has run (the hardware's first fetch after the boot has no
+    /// interrupt check).
     interrupt_delay: bool,
+    /// Clock cycles the last tick takes on the hardware (at least 1).
+    pub cycles: u8,
 }
 
 impl Default for Cpu {
@@ -95,6 +101,7 @@ impl Cpu {
             state: CpuState::Executing,
             pending_software_interrupt: None,
             interrupt_delay: false,
+            cycles: 1,
         };
         cpu.reset();
         cpu
@@ -112,7 +119,8 @@ impl Cpu {
         self.call_depth = 0;
         self.state = CpuState::Executing;
         self.pending_software_interrupt = None;
-        self.interrupt_delay = false;
+        self.interrupt_delay = true;
+        self.cycles = 1;
     }
 
     #[inline(always)]
@@ -149,13 +157,14 @@ impl Cpu {
         self.pending_software_interrupt
     }
 
-    /// True right after STI: interrupts wait for the next instruction.
+    /// True right after STI or a reset: interrupts wait for the next instruction.
     pub fn interrupt_delayed(&self) -> bool {
         self.interrupt_delay
     }
 
-    /// One clock cycle. Returns true when the PC moved to a new instruction
-    /// (an instruction was executed, or an interrupt jumped to its handler).
+    /// One step of work, [`Cpu::cycles`] clock cycles long. Returns true when
+    /// the PC moved to a new instruction (an instruction was executed, or an
+    /// interrupt jumped to its handler).
     #[inline(always)]
     pub fn tick(&mut self, board: &mut Board) -> bool {
         self.tick_with(board, &mut NoProbe)
@@ -168,6 +177,7 @@ impl Cpu {
         match self.state {
             CpuState::InterruptAcknowledge => {
                 // Step 4: the IOD lowered INT and put port + data on the buses.
+                self.cycles = 1;
                 if board.int {
                     return false;
                 }
@@ -175,6 +185,8 @@ impl Cpu {
                 let port = board.address_bus as u8;
                 let data = board.data_bus;
                 self.enter_interrupt(board, probe, port, data);
+                // The step that raised INR was the entry's first (W1).
+                self.cycles = HARDWARE_INTERRUPT_CYCLES - 1;
                 true
             }
             CpuState::Executing => {
@@ -183,6 +195,7 @@ impl Cpu {
                         // Step 2: hardware interrupt pending, signal we are ready.
                         board.inr = true;
                         self.state = CpuState::InterruptAcknowledge;
+                        self.cycles = 1;
                         return false;
                     }
                     // Software interrupts have no priority over hardware ones.
@@ -191,10 +204,12 @@ impl Cpu {
                         board.address_bus = port as u16;
                         board.data_bus = data;
                         self.enter_interrupt(board, probe, port, data);
+                        self.cycles = SOFTWARE_INTERRUPT_CYCLES;
                         return true;
                     }
                 }
                 if self.flags.get(Flag::Halt) {
+                    self.cycles = HALT_LOOP_CYCLES;
                     return false;
                 }
                 self.execute_next(board, probe)
@@ -328,6 +343,7 @@ impl Cpu {
         let address = self.pc;
         let i = Instruction::fetched(board.ram.read_u32(address));
         self.ir = i;
+        self.cycles = i.cycles();
         self.last_pc = address;
         self.interrupt_delay = false;
         if i.stops() {

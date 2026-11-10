@@ -6,7 +6,7 @@ use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
 use hbc2_asm::{MemoryFiles, Program, Target, assemble};
-use hbc2_core::isa::PROGRAM_START;
+use hbc2_core::isa::{HARDWARE_BOOT_CYCLES, PROGRAM_START};
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
 use hbc2_runner::{RunState, Runner, Snapshot, Speed};
 
@@ -53,7 +53,9 @@ fn no_peripherals() -> MachineConfig {
 }
 
 fn machine(source: &str, config: MachineConfig) -> Machine {
-    Machine::new(config, Some(&program(source).image)).unwrap()
+    let mut m = Machine::new(config, Some(&program(source).image)).unwrap();
+    m.finish_boot();
+    m
 }
 
 fn counter() -> Runner {
@@ -82,7 +84,7 @@ fn starts_paused_at_the_program_start() {
     let s = runner.snapshot();
     assert_eq!(s.state, RunState::Paused);
     assert_eq!(s.cpu.pc, PROGRAM_START);
-    assert_eq!(s.ticks, 0);
+    assert_eq!(s.ticks, HARDWARE_BOOT_CYCLES, "booted");
 }
 
 #[test]
@@ -97,7 +99,11 @@ fn step_runs_instructions_then_stays_paused() {
         PROGRAM_START + 1,
         "back to loop, after cli (1 byte)"
     );
-    assert_eq!(s.ticks, 3);
+    assert_eq!(
+        s.ticks,
+        HARDWARE_BOOT_CYCLES + 2 + 5 + 5,
+        "cli, add Reg / Imm8, jmp Imm16"
+    );
 }
 
 #[test]
@@ -129,7 +135,7 @@ fn keeps_the_chosen_clock_speed() {
     runner.pause();
     let s = runner.sync();
     let expected = 20_000.0 * start.elapsed().as_secs_f64();
-    let ratio = s.ticks as f64 / expected;
+    let ratio = (s.ticks - HARDWARE_BOOT_CYCLES) as f64 / expected;
     assert!(
         (0.7..1.1).contains(&ratio),
         "{} cycles, expected about {expected}",
@@ -205,7 +211,7 @@ fn load_exec_and_power_cycle() {
 
     runner.load(machine(KEYBOARD, no_peripherals()));
     let s = runner.sync();
-    assert_eq!(s.ticks, 0);
+    assert_eq!(s.ticks, HARDWARE_BOOT_CYCLES);
     assert_eq!(s.cpu.pc, PROGRAM_START);
 
     runner.exec(|m| m.board.ram.write(0x8000, 0x42));
