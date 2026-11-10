@@ -8,8 +8,9 @@ notes/ir-mem-decisions.md sections 3-4 and M1-M4.
     RAM   AS6C1008 (128 K x 8, A16 = 0): CE# = 0, CE2 = mem_re, OE# = mem_oe_n,
           WE# = clk_mem_wr_n OR mem_we_n (74HCT32): low about 125-375 ns (M1)
     ROM   2 x AT28C256 on their own net mem_rom_d: /CE = A15 (low chip) or
-          NOT A15 (74HCT14, high chip), /OE = 0, /WE = 1; a 74HCT541 drives
-          mem_rom_d onto mem_d when mem_rom_oe_n = 0 (levels, M4)
+          NOT A15 (74HCT14, high chip), /OE = mem_rom_oe_n (off outside the
+          boot copy, M8), /WE = 1; a 74HCT541 drives mem_rom_d onto mem_d
+          when mem_rom_oe_n = 0 (levels, M4)
     read  74HCT541 mem_d -> bus_data (mem_bus_out), /OE = mem_oe_n
     write 74HCT541 bus_data (mem_bus_in) -> mem_d, /OE = mem_wbuf_oe_n
 
@@ -86,7 +87,7 @@ model(ram_lib, "as6c1008", (800, 500), pins, {f"DQ{k}_in": n("d", k) for k in ra
 # ---- boot ROM: two halves on mem_rom_d ----------------------------------------------------------
 for i, (ce, what) in enumerate(((n("addr", 15), "0000-7FFF"), (n("a15_n"), "8000-FFFF"))):
     pins = {f"A{k}": n("addr", k) for k in range(15)}
-    pins.update({"/CE": ce, "/OE": "gnd", "/WE": "vcc"})
+    pins.update({"/CE": ce, "/OE": n("rom_oe_n"), "/WE": "vcc"})   # M8
     pins.update({f"I/O{k}": n("rom_d", k) for k in range(8)})
     model(rom_lib, "at28c256", (800 + 520 * i, 1000), pins, {"IMAGE": ("const", i, 4)},
           f"boot ROM {what} (IMAGE = {i}: its half of the boot image, M3)")

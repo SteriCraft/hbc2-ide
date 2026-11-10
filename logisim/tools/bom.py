@@ -59,7 +59,7 @@ def parts_table(path: Path = CHIPS_MD) -> dict[str, dict]:
         cells = [c.strip() for c in line.strip().strip("|").split("|")]
         if head is None:
             head = cells
-        elif not cells[0].startswith("---"):
+        elif not cells[0].startswith("---") and "Logisim" in head:   # the whole-CPU summary has no Logisim column
             row = dict(zip(head, cells))
             parts.setdefault(row["Logisim"].replace(" (model)", ""), row)  # "74574 (model)" = circuits/chips/74574
     return parts

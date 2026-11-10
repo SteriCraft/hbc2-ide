@@ -310,8 +310,9 @@
       <a name="facing" val="south"/>
       <a name="label" val="mem_addr_11"/>
     </comp>
-    <comp lib="0" loc="(920,780)" name="Ground">
-      <a name="facing" val="north"/>
+    <comp lib="0" loc="(920,780)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="mem_rom_oe_n"/>
     </comp>
     <comp lib="0" loc="(940,880)" name="Tunnel">
       <a name="facing" val="south"/>
@@ -423,8 +424,9 @@
       <a name="facing" val="south"/>
       <a name="label" val="mem_addr_11"/>
     </comp>
-    <comp lib="0" loc="(1440,780)" name="Ground">
-      <a name="facing" val="north"/>
+    <comp lib="0" loc="(1440,780)" name="Tunnel">
+      <a name="facing" val="south"/>
+      <a name="label" val="mem_rom_oe_n"/>
     </comp>
     <comp lib="0" loc="(1460,880)" name="Tunnel">
       <a name="facing" val="south"/>

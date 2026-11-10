@@ -503,6 +503,12 @@ MEM = {
         ("AT28C256", "/CE → I/O (tCE)", "ROM"),
         ("74HCT541", "A → Y", "ROM buffer", ("mem_d",)),
     ]),
+    # M8: the ROMs' /OE is mem_rom_oe_n, so the first copy step waits for tOE too
+    "m_boot_oe": (True, "boot copy: control → ROM /OE (tOE) → ROM buffer → RAM data", [], [
+        ("74HCT574", "CP → Q", "control register: mem_rom_oe_n"),
+        ("AT28C256", "/OE → I/O (tOE)", "ROM"),
+        ("74HCT541", "A → Y", "ROM buffer", ("mem_d",)),
+    ]),
 }
 # Control unit (designs/cu.py, notes/cu-decisions.md sections 6 and 14): the
 # next microcode word must be at the pipeline 574s' D (setup) by the next
@@ -691,7 +697,7 @@ LIMITS = {
     "m_read": ("<=", "w_data"), "m_read_ce": ("<=", "w_data"), "m_read_oe": ("<=", "w_data"),
     "m_fetch": ("<=", STEP),
     "m_addr": ("<=", "m_fall_min"),
-    "m_wdata": ("<=", "m_wdl"), "m_boot": ("<=", "m_wdl"),
+    "m_wdata": ("<=", "m_wdl"), "m_boot": ("<=", "m_wdl"), "m_boot_oe": ("<=", "m_wdl"),
     "m_pulse": (">=", ("AS6C1008", "write pulse WE# (tWP)")),
     "m_rise": ("<=", STEP),                  # the address and data change at the next edge
     # control unit: the next word at the 574s (and the step register) by the edge
