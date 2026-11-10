@@ -144,6 +144,29 @@ fn keeps_the_chosen_clock_speed() {
 }
 
 #[test]
+fn the_boot_runs_at_hardware_speed_at_least() {
+    let booting = Machine::new(no_peripherals(), Some(&program(COUNTER).image)).unwrap();
+    assert!(booting.booting());
+    let runner = Runner::new(booting);
+    runner.set_speed(Speed::Hz(1_000)); // the boot would last 66 s
+    let start = Instant::now();
+    runner.run();
+    wait_until(&runner, |s| s.ticks > HARDWARE_BOOT_CYCLES);
+    let boot = start.elapsed();
+    assert!(boot < Duration::from_millis(500), "boot took {boot:?}");
+
+    // The program itself runs at the selected speed.
+    std::thread::sleep(Duration::from_millis(300));
+    runner.pause();
+    let after = runner.sync().ticks - HARDWARE_BOOT_CYCLES;
+    let expected = 1_000.0 * (start.elapsed() - boot).as_secs_f64();
+    assert!(
+        (after as f64) < expected * 1.5 + 20.0,
+        "{after} cycles after the boot, expected about {expected}"
+    );
+}
+
+#[test]
 fn breakpoint_pauses_before_the_instruction() {
     let address = program(COUNTER).symbol("loop").unwrap().address as u16;
     let runner = counter();

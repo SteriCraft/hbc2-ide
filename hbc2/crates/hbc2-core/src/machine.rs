@@ -187,6 +187,11 @@ impl Machine {
         self.ticks < HARDWARE_BOOT_CYCLES && self.busy > 0
     }
 
+    /// Cycles left before the first instruction (0 once booted).
+    pub fn boot_cycles_left(&self) -> u64 {
+        if self.booting() { self.busy as u64 } else { 0 }
+    }
+
     /// Spends the rest of the boot at once (nothing happens during it).
     /// Returns the number of cycles spent.
     pub fn finish_boot(&mut self) -> u64 {

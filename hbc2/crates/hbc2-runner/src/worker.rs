@@ -8,6 +8,7 @@ use std::sync::mpsc::{Receiver, RecvTimeoutError, TryRecvError};
 use std::time::{Duration, Instant};
 
 use chrono::{Datelike, Timelike};
+use hbc2_core::isa::HARDWARE_CLOCK_HZ;
 use hbc2_core::peripherals::rtc::DateTime;
 use hbc2_core::peripherals::{Eeprom, Monitor};
 use hbc2_core::{Machine, NoProbe, Probe, RunResult, StopReason, TraceWriter};
@@ -45,6 +46,9 @@ pub(crate) struct Worker {
     /// Pace keeping: cycles run since `epoch`.
     epoch: Instant,
     paced_ticks: u64,
+    /// Frequency the pace is kept at (the selected one, or the hardware's
+    /// during the boot).
+    pacing_hz: u64,
     /// Last time the RTC was synced with the host clock.
     rtc_synced: Instant,
 
@@ -91,6 +95,7 @@ impl Worker {
             goal: None,
             epoch: now,
             paced_ticks: 0,
+            pacing_hz: 0,
             rtc_synced: now,
             meter_start: now,
             meter_ticks: 0,
@@ -355,7 +360,19 @@ impl Worker {
                 }
                 SLICE
             }
-            Speed::Hz(hz) => {
+            Speed::Hz(selected) => {
+                // The boot (RAM filled from the EEPROM) never runs slower than
+                // the hardware: at low speeds it would last minutes or hours.
+                let boot_left = self.machine.boot_cycles_left();
+                let hz = if boot_left > 0 {
+                    selected.max(HARDWARE_CLOCK_HZ)
+                } else {
+                    selected
+                };
+                if hz != self.pacing_hz {
+                    self.pacing_hz = hz;
+                    self.restart_pacing();
+                }
                 let elapsed = self.epoch.elapsed();
                 let due = (elapsed.as_nanos() * hz as u128 / 1_000_000_000) as u64;
                 if due <= self.paced_ticks {
@@ -375,7 +392,11 @@ impl Worker {
                     self.epoch = Instant::now();
                     self.paced_ticks = 0;
                 }
-                late.min(SLICE)
+                // The program itself starts at the selected speed.
+                match boot_left {
+                    0 => late.min(SLICE),
+                    left => late.min(SLICE).min(left),
+                }
             }
         };
 
