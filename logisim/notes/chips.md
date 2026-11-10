@@ -133,8 +133,8 @@ Added 2026-11-05 (cu-decisions.md section 14). New parts: **74HCT00 = CD74HCT00E
 | 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 4 |
 | 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) | 1 |
 | 74HCT165 | 8-bit parallel-in / serial-out shift register | 74165 | CD74HCT165E | CD74HCT165M96 (TI) | 1 |
-| 74HCT244 | octal buffer, tri-state, two 4-bit halves | 74244 | CD74HCT244E (STATUS); **SN74LVC244AN** at 3.3 V (the ESP32 side) | 74HCT244D (Nexperia); SN74LVC244ADWR (TI) | 2 |
-| 74HCT595 | 8-bit shift register + storage register, tri-state | 74595 (model) | **SN74AHCT595N** | SN74AHCT595D (TI) | 3 |
+| 74HCT244 | octal buffer, tri-state, two 4-bit halves | 74244 | CD74HCT244E (STATUS); SN74LVC244AN at 3.3 V (the ESP32 side) | 74HCT244D (Nexperia); SN74LVC244ADWR (TI) | 2 |
+| 74HCT595 | 8-bit shift register + storage register, tri-state | 74595 (model) | SN74AHCT595N | SN74AHCT595D (TI) | 3 |
 
 Added 2026-11-11 (iod-requirements.md, target design). Two exceptions to the 74HCT rule, both decided with the mailbox (io-redesign-proposal.md 9.8, Q-C11):
 - **SN74AHCT595N:** TI makes no 74HCT595 in DIP (test-rig.md). The AHCT part has the same pinout and TTL-level inputs, and is faster (OE → Q 10.6 ns).
@@ -204,7 +204,9 @@ So Typ is a rough guide only.
 | 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
 | 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
 | 74HCT74 | CLK → Q | 20 | 28 | 35 | SN74HCT74, SCLS122 (Q or /Q; fmax 20 MHz at 85 °C) |
-| 74HCT74 | PRE or CLR → Q | 21 | 35 | 44 | SN74HCT74, SCLS169G (setup D → CLK 12 / 15, hold 0) |
+| 74HCT74 | PRE or CLR → Q | 21 | 35 | 44 | SN74HCT74, SCLS169G |
+| 74HCT74 | setup D → CLK | 12 | 12 | 15 | SN74HCT74, SCLS169G (hold 0) |
+| 74HCT165 | setup A–H → SH/LD | 20 | 20 | 25 | CD74HCT165 (a minimum; hold not given) |
 | 74HCT165 | CLK → QH | 17 | 40 | 50 | CD74HCT165 (setup A–H → SH/LD 20 / 25; typ: 5 V, 15 pF) |
 | 74HCT244 | A → Y | 13 | 25 | 31 | CD74HCT244 (typ: 5 V, 15 pF) |
 | 74HCT244 | OE → Y | 15 | 30 | 38 | CD74HCT244, enable and disable |

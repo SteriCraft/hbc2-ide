@@ -689,7 +689,7 @@ C-min's chips:
    - **CPU-level bench:** circuits/iod/test_iod_cpu.circ (main + iod + a test MCU that follows the firmware rule, or breaks it on purpose), run by cputest.
    - **Tests:** OUT / IN on the data and status ports, the mirrors and empty ports, both handshake directions, the 1 µs rule and the race it prevents, the vectored interrupt step, reset, no contention.
    - **Timing:** the paths go into `timing.py --section iod`.
-   - **Then stop for review.**
+   - **Then stop for review.** Done 2026-11-11: iod-decisions.md has the results.
 3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests.
 4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. **Check GPIO 36 on the board's schematic before wiring.**
 5. **C5. Library, templates and docs** (9.5).

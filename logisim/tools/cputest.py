@@ -30,8 +30,16 @@ reads them as they come and:
 Then it runs `hbc2 trace` (or emutrace when hardware interrupts were taken)
 on the same RAM image and `hbc2 compare`.
 
-    python cputest.py run PROG.bin|PROG.has [--max-lines N] [--max-steps N] [--out DIR] [--rc-mutant]
-    python cputest.py suite [--random N] [--jobs J] [--max-steps N]   # the test programs + N random ones
+    python cputest.py run PROG.bin|PROG.has [--bench B] [--max-lines N] [--max-steps N] [--out DIR] [--rc-mutant]
+    python cputest.py suite [--bench B] [--random N] [--jobs J] [--max-steps N]   # the test programs + N random ones
+
+--bench (default cpu): cpu = circuits/cpu/test_cpu.circ (the IOD stub), programs in
+tests/cpu; iod = circuits/iod/test_iod_cpu.circ (the mailbox card and a test MCU that
+follows the firmware rule), iod_eager = test_iod_cpu_eager.circ (the same MCU breaking
+it), programs in tests/iod. On the iod benches the IN data comes from the mailbox, not
+from an IOD the emulator has: every IN step's bus_data is recorded and given to emutrace
+(--in LINE:VALUE), and a program checks itself: its `; expect[BENCH] r=v ...` lines
+(registers a b c d i j x y, hex) must hold on the last trace line.
     python cputest.py mutants [PROG]        # deliberate wiring bugs in main: each must fail
     python cputest.py cycles DIR...       # steps per instruction x mode against notes/cu-cycles.md and the emulator's table
 """
@@ -55,6 +63,10 @@ LOGISIM = r"C:\Program Files\logisim-evolution\logisim-evolution.exe"
 HBC2 = REPO / "hbc2" / "target" / "release" / "hbc2.exe"
 EMUTRACE = ROOT / "tools" / "emutrace" / "target" / "release" / "emutrace.exe"
 PROGRAMS = ROOT / "tests" / "cpu"
+# bench name -> (circuit file under logisim/, design module with OBS, test programs)
+BENCHES = {"cpu": ("circuits/cpu/test_cpu.circ", "test_cpu", ROOT / "tests" / "cpu"),
+           "iod": ("circuits/iod/test_iod_cpu.circ", "test_iod_cpu", ROOT / "tests" / "iod"),
+           "iod_eager": ("circuits/iod/test_iod_cpu_eager.circ", "test_iod_cpu", ROOT / "tests" / "iod")}
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "designs"))
 
@@ -151,6 +163,7 @@ class Observer:
         self.rises: deque = deque()
         self.inject: list[tuple] = []      # (line, port, data)
         self.inject_cycle: list[tuple] = []  # (cycle from the reset release, port, data): INT's rise
+        self.ins: list[tuple] = []         # (line, value): what each IN step read from bus_data
         self.hw = self.sw = 0
         self.prev_e = None
         self.halt_since = None
@@ -193,7 +206,7 @@ class Observer:
             return
         r0, E = rows[0], rows[-1]
         W = next((r for r in reversed(rows) if r["clk_wr_n"] == 0), E)
-        flags = r0["flags"]
+        flags = r0["flag_reg"]
         self.snap.append((s, list(self.regs), self.sp, flags))
         if E["rst_n"] == 1 and self.rst_release is None:
             self.rst_release = s
@@ -221,6 +234,8 @@ class Observer:
             self.rises.append(s)
         self.int_prev = r0["int"]
 
+        if self.started and E["ie"] == 1 and E["rw"] == 1:
+            self.ins.append((len(self.lines), E["bus_data"]))
         f0 = E["ir_b0_ld_n"] == 0 and E["mem_re"] == 1
         vector = E["addr_base_sel"] == 3 and E["addr_pc_ld_n"] == 0
         if f0:
@@ -442,7 +457,7 @@ class Observer:
 
 
 # ---- running Logisim ---------------------------------------------------------------------------
-def tree_with_rom(image: bytes, workdir: Path, cpu: Path | None = None) -> Path:
+def tree_with_rom(image: bytes, workdir: Path, cpu: Path | None = None, bench: str = "cpu") -> Path:
     """A copy of logisim/ (cpu.circ, circuits/) whose boot ROM holds `image`;
     `cpu` replaces cpu.circ (a mutant)."""
     shutil.copy(cpu or ROOT / "cpu.circ", workdir / "cpu.circ")
@@ -453,16 +468,17 @@ def tree_with_rom(image: bytes, workdir: Path, cpu: Path | None = None) -> Path:
     end = text.index("</a>", start)
     text = text[:start] + rom_design.contents(rom_design.rom(image)) + text[end:]
     (workdir / "circuits" / "chips" / "at28c256.circ").write_text(text, encoding="utf-8")
-    return workdir / "circuits" / "cpu" / "test_cpu.circ"
+    return workdir / BENCHES[bench][0]
 
 
-def bench_columns():
-    import test_cpu
-    return [n for n, _ in test_cpu.OBS], [w for _, w in test_cpu.OBS]
+def bench_columns(bench: str = "cpu"):
+    import importlib
+    obs = importlib.import_module(BENCHES[bench][1]).OBS
+    return [n for n, _ in obs], [w for _, w in obs]
 
 
-def run_logisim(bench: Path, obs: Observer, log=None):
-    names, widths = bench_columns()
+def run_logisim(bench: Path, obs: Observer, log=None, kind: str = "cpu"):
+    names, widths = bench_columns(kind)
     rows = Rows(names, widths)
     proc = subprocess.Popen([LOGISIM, "-t", "table", str(bench)], stdout=subprocess.PIPE,
                             stderr=subprocess.STDOUT, text=True, bufsize=1 << 16)
@@ -486,7 +502,33 @@ def assemble(src: Path, out: Path):
     subprocess.run([str(HBC2), "asm", str(src), "-o", str(out)], check=True, capture_output=True)
 
 
-def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None) -> dict:
+def expectations(prog: Path, bench: str) -> dict:
+    """`; expect[BENCH] r=v ...` (or `; expect r=v`, any bench) in a .has file: register -> value (hex)."""
+    want = {}
+    if prog.suffix != ".has":
+        return want
+    for line in prog.read_text(encoding="utf-8").splitlines():
+        m = re.match(r"\s*;\s*expect(?:\[(\w+)\])?\s+(.*)$", line)
+        if m and (m.group(1) is None or m.group(1) == bench):
+            for kv in m.group(2).split():
+                k, v = kv.split("=")
+                want[k] = int(v, 16)
+    return want
+
+
+def check_expect(lines: list, want: dict) -> list:
+    """The expected registers against the last line of the Logisim trace."""
+    if not want:
+        return []
+    if len(lines) < 2:
+        return ["no trace line"]
+    cols = "n,pc,ir,a,b,c,d,i,j,x,y,sp,flags,mem_w,io_w".split(",")
+    last = dict(zip(cols, lines[-1].split(",")))
+    return [f"{k} = {last.get(k) or '?'}, expected {v:02X}" for k, v in want.items()
+            if (last.get(k) or "").upper() != f"{v:02X}"]
+
+
+def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None, bench="cpu") -> dict:
     name = name or prog.stem
     outdir.mkdir(parents=True, exist_ok=True)
     if prog.suffix == ".has":
@@ -498,19 +540,23 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
     t0 = time.time()
     obs = Observer(image, pulled_levels(), max_lines, max_steps)
     with tempfile.TemporaryDirectory(prefix="hbc2cpu_") as tmp:
-        bench = tree_with_rom(image, Path(tmp), cpu)
-        run_logisim(bench, obs)
+        circ = tree_with_rom(image, Path(tmp), cpu, bench)
+        run_logisim(circ, obs, kind=bench)
     secs = time.time() - t0
     lg = outdir / f"{name}.logisim.csv"
     header = "n,pc,ir,a,b,c,d,i,j,x,y,sp,flags,mem_w,io_w"
     lg.write_text("\n".join([header] + obs.lines) + "\n", encoding="ascii", newline="\n")
     nlines = len(obs.lines) - 1
     em = outdir / f"{name}.emu.csv"
-    if obs.inject:
+    ins = [] if bench == "cpu" else [f"{line}:{v:02X}" for line, v in obs.ins if v is not None]
+    if obs.inject or ins:
         cmd = [str(EMUTRACE), "trace", str(binf), "--max", str(nlines), "-o", str(em)]
         for line, port, data in obs.inject:
             cmd += ["--int", f"{line}:{port:02X}:{data:02X}"]
-        ref = "emutrace (hardware interrupts injected)"
+        for a in ins:
+            cmd += ["--in", a]
+        what = [x for x, y in (("hardware interrupts", obs.inject), ("IN data", ins)) if y]
+        ref = "emutrace (" + " and ".join(what) + " injected)"
     else:
         cmd = [str(HBC2), "trace", str(binf), "--max", str(nlines), "-o", str(em)]
         ref = "hbc2 trace"
@@ -524,6 +570,8 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
         cmd = [str(EMUTRACE), "trace", str(binf), "--max", str(nlines), "-o", str(emc)]
         for c, port, data in obs.inject_cycle:
             cmd += ["--int-cycle", f"{c}:{port:02X}:{data:02X}"]
+        for a in ins:
+            cmd += ["--in", a]
         subprocess.run(cmd, check=True, capture_output=True)
         cmp_cycle = subprocess.run([str(HBC2), "compare", str(lg), str(emc)], capture_output=True, text=True)
     result = {
@@ -531,7 +579,9 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
         "reset_release_step": obs.rst_release, "first_fetch_step": obs.first_f0,
         "boot_steps": None if obs.first_f0 is None or obs.rst_release is None else obs.first_f0 - obs.rst_release,
         "boot_copies": obs.copies, "lines": nlines, "hw_int": obs.hw, "sw_int": obs.sw,
-        "pull_rows": obs.pull_rows, "contention_rows": obs.contention, "errors": obs.errors,
+        "pull_rows": obs.pull_rows, "contention_rows": obs.contention,
+        "errors": obs.errors + [f"expect: {b}" for b in check_expect(obs.lines, expectations(prog, bench))],
+        "bench": bench, "in_steps": len(obs.ins),
         "error_counts": dict(obs.err_count), "reference": ref, "compare_exit": cmp.returncode,
         "compare": cmp.stdout.strip()[-1500:],
         "compare_cycle_exit": None if cmp_cycle is None else cmp_cycle.returncode,
@@ -543,7 +593,7 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
 
 def summary(r: dict) -> str:
     ok = r["compare_exit"] == 0 and not r["errors"] and r["contention_rows"] == 0 and r["lines"] > 0
-    return (f"{'PASS' if ok else 'FAIL'} {r['name']}: {r['lines']} lines, {r['steps']} steps "
+    return (f"{'PASS' if ok else 'FAIL'} {r['name']} [{r.get('bench', 'cpu')}]: {r['lines']} lines, {r['steps']} steps "
             f"({r['seconds']} s), boot {r['boot_steps']} steps, {r['boot_copies']} copy writes, "
             f"hw {r['hw_int']} / sw {r['sw_int']} interrupts, end: {r['end']}; ref {r['reference']}: "
             f"{r['compare'].splitlines()[0] if r['compare'] else '?'}"
@@ -703,6 +753,7 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
     a = sub.add_parser("run")
     a.add_argument("prog")
+    a.add_argument("--bench", choices=sorted(BENCHES), default="cpu")
     a.add_argument("--max-lines", type=int, default=0)
     a.add_argument("--max-steps", type=int, default=0)
     a.add_argument("--out", default=str(Path(tempfile.gettempdir()) / "hbc2_cputest"))
@@ -712,6 +763,7 @@ def main(argv=None):
     b.add_argument("--max-steps", type=int, default=BOOT_STEPS + 40000)
     b.add_argument("--out", default=str(Path(tempfile.gettempdir()) / "hbc2_cputest"))
     b.add_argument("--only", default="")
+    b.add_argument("--bench", choices=sorted(BENCHES), default="cpu")
     m = sub.add_parser("mutants")
     m.add_argument("prog", nargs="?", default=str(PROGRAMS / "allops.has"))
     m.add_argument("--jobs", type=int, default=10)
@@ -725,11 +777,11 @@ def main(argv=None):
         return mutants(Path(args.prog), Path(args.out), args.jobs)
     out = Path(args.out)
     if args.cmd == "run":
-        r = run(Path(args.prog), out, args.max_lines, args.max_steps)
+        r = run(Path(args.prog), out, args.max_lines, args.max_steps, bench=args.bench)
         print(summary(r))
         return 0 if r["compare_exit"] == 0 and not r["errors"] else 1
     jobs = []
-    for src in sorted(PROGRAMS.glob("*.has")):
+    for src in sorted(BENCHES[args.bench][2].glob("*.has")):
         if not args.only or re.search(args.only, src.stem):
             jobs.append((src, src.stem))
     for k in range(args.random):
@@ -740,7 +792,7 @@ def main(argv=None):
     results = []
     # one process per run: the observers parse thousands of rows a second each (threads would share the GIL)
     with ProcessPoolExecutor(args.jobs) as ex:
-        futs = [ex.submit(run, src, out, 0, args.max_steps, name) for src, name in jobs]
+        futs = [ex.submit(run, src, out, 0, args.max_steps, name, None, args.bench) for src, name in jobs]
         for f in as_completed(futs):
             r = f.result()
             results.append(r)

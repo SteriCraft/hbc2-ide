@@ -1,0 +1,192 @@
+; The mailbox card with the real CPU (circuits/iod/test_iod_cpu.circ, and
+; test_iod_cpu_eager.circ whose test MCU breaks the 1 us firmware rule).
+; The test MCU (designs/test_iod_cpu.py): a byte b sent to TX gets
+;   b < 0x40:        one reply b + 1 on RX
+;   b = 0x40..0x7F:  two replies, b + 1 then b + 2
+;   b = 0x80..0xBF:  one event: port 0xF0 | (v & 0x0F), data v = b + 1
+;   b = 0xC0..0xFF:  two events, v = b + 1 then b + 2
+; The second reply or event is written while the first is still unread, so
+; the MCU waits for the CPU's clear: with the rule (>= 1 us after the flag
+; went to 0) it arrives; the eager MCU writes it during the clear, and it is
+; lost (iod-requirements.md I15).
+; Ports: data 0x00 (mirrors 0x20, 0x3C), status 0x01 (mirrors 0x05, 0x09);
+; 0x02 and 0x40 are empty (OUTs there must not reach TX).
+; x = wrong bytes (replies and event data), y = events taken, c = replies lost
+; expect[iod] x=00 y=0C c=00
+; expect[iod_eager] x=00 y=08 c=04
+_start:
+    mov x, 0
+    mov y, 0
+    mov c, 0
+; ---- 1. one reply per byte, on mirrored ports; OUTs to empty ports in between
+    mov a, 0x10
+p1:
+    mov b, 0x02
+    out b, a            ; empty port: nothing
+    mov b, 0x40
+    out b, a            ; empty port: nothing
+    cal send
+    cal recv
+    inc a
+    cmp d, a
+    jme p1_ok
+    inc x
+p1_ok:
+    cmp a, 0x18
+    jme p2
+    jmp p1
+; ---- 2. two replies per byte: the second waits for the CPU's clear of the first
+p2:
+    mov a, 0x40
+p2_l:
+    cal send
+    cal delay           ; the MCU has reply 2 shifted in and waits for RX to empty
+    cal recv
+    inc a
+    cmp d, a
+    jme p2_ok1
+    inc x
+p2_ok1:
+    cal recv            ; reply 2 (0 when lost: c counted it)
+    inc a
+    cmp d, 0
+    jme p2_next
+    cmp d, a
+    jme p2_next
+    inc x
+p2_next:
+    inc a
+    inc a
+    cmp a, 0x50
+    jme p3
+    jmp p2_l
+; ---- 3. one event per byte: wait for the handler (y + 1)
+p3:
+    mov a, 0x80
+p3_l:
+    mov d, a
+    inc d
+    str evexp, d        ; the handler checks the data in I
+    mov d, y
+    inc d
+    cal send
+    cal evwait
+    inc a
+    inc a
+    inc a
+    inc a
+    cmp a, 0x90
+    jme p4
+    jmp p3_l
+; ---- 4. two events per byte; interrupts off until the MCU waits with event 2
+p4:
+    mov a, 0xC0
+p4_l:
+    mov d, a
+    inc d
+    str evexp, d
+    cli
+    cal send
+    cal delay           ; event 1 pending (INT high, I = 0), event 2 shifted in
+    mov d, y
+    inc d
+    inc d
+    sti
+    cal evwait          ; until y = d, or a timeout
+    inc a
+    inc a
+    inc a
+    inc a
+    cmp a, 0xD0
+    jme done
+    jmp p4_l
+done:
+    cli
+    hlt
+
+; send: a to TX once TX is free (status bit 1)
+send:
+    mov b, 0x01
+send_w:
+    in d, b
+    and d, 0x02
+    jmz send_w
+    mov b, 0x20         ; a mirror of 0x00
+    out b, a
+    ret
+
+; recv: d = the next RX byte; after a timeout, d = 0 and c + 1
+recv:
+    mov j, 40
+recv_w:
+    mov b, 0x05         ; a mirror of 0x01
+    in d, b
+    and d, 0x01
+    jmz recv_n
+    mov b, 0x3C         ; a mirror of 0x00
+    in d, b
+    ret
+recv_n:
+    dec j
+    jmz recv_lost
+    jmp recv_w
+recv_lost:
+    inc c
+    mov d, 0
+    ret
+
+; delay: about 60 us
+delay:
+    mov j, 8
+delay_w:
+    dec j
+    jmz delay_e
+    jmp delay_w
+delay_e:
+    ret
+
+; evwait: until y = d (the handler counts), or a timeout
+evwait:
+    mov j, 40
+evwait_w:
+    cmp y, d
+    jme evwait_e
+    dec j
+    jmz evwait_e
+    jmp evwait_w
+evwait_e:
+    ret
+
+; the handler of ports 0xF0-0xFF: I = the event's data, expected evexp, then evexp + 1
+evh:
+    psf
+    psh a
+    lod a, evexp
+    cmp a, i
+    jme evh_ok
+    inc x
+evh_ok:
+    inc a
+    str evexp, a
+    inc y
+    pop a
+    pof
+    irt
+
+.data evexp 0
+.data16 vf0 $0xFFE0 evh
+.data16 vf1 $0xFFE2 evh
+.data16 vf2 $0xFFE4 evh
+.data16 vf3 $0xFFE6 evh
+.data16 vf4 $0xFFE8 evh
+.data16 vf5 $0xFFEA evh
+.data16 vf6 $0xFFEC evh
+.data16 vf7 $0xFFEE evh
+.data16 vf8 $0xFFF0 evh
+.data16 vf9 $0xFFF2 evh
+.data16 vfa $0xFFF4 evh
+.data16 vfb $0xFFF6 evh
+.data16 vfc $0xFFF8 evh
+.data16 vfd $0xFFFA evh
+.data16 vfe $0xFFFC evh
+.data16 vff $0xFFFE evh

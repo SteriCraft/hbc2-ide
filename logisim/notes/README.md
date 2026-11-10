@@ -25,7 +25,8 @@ These notes are short, one subject per file, so I only open the one I need.
 | [ir-mem-decisions.md](ir-mem-decisions.md) | Instruction register and memory / bus interface: emulator uses, boot, design, timing, questions, Gianni's answers, phase 2 decisions M1– |
 | [ir-mem-report.md](ir-mem-report.md) | Instruction register and memory: phase 2 report (chips, tests, timing, Need Gianni's review) |
 | [iod-requirements.md](iod-requirements.md) | What the CPU side requires from the IOD (synchronous contract, microcontroller IOD through latches / FIFO) |
-| [io-redesign-proposal.md](io-redesign-proposal.md) | Proposal (2026-11-10, for review): replace the IOD with a VIA, a 16C550 and a 74HCT148 interrupt encoder; emulator, library, IDE and docs impact |
+| [io-redesign-proposal.md](io-redesign-proposal.md) | I/O redesign: the VIA / 16C550 proposal (2026-11-10, timing fails, section 8), then option C: a latch mailbox in front of an ESP32 (sections 9–9.9, C-min chosen 2026-11-11) |
+| [iod-decisions.md](iod-decisions.md) | The `iod` mailbox as built (2026-11-11): files, tests (module, CPU-level rule / eager benches), decisions K1–K5, open points |
 | [breadboard-checks.md](breadboard-checks.md) | What to measure on the breadboard with a scope (the paper analysis can't prove it) |
 | [control-requirements.md](control-requirements.md) | What the other sections need from the control unit |
 | [cu-decisions.md](cu-decisions.md) | Control unit: phase 1 paper design (accepted, section 12), phase 2 microcode (section 13: source language, bit layout, placement, rules, model, tests), phase 3 circuits `clkgen` and `cu` (section 14: chips, gates, tests, timing with the duty cycle, decisions U7–U13), phase 4 the whole CPU (section 15: cpu.circ `main`, the trace bench, the comparison with the emulator, coverage, wiring bugs, timing across sections, decisions U14–U20) |

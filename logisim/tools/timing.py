@@ -186,7 +186,7 @@ WIRE_PF_PER_PIN = 2
 WIRE_PF_BUS = {"bus_a": 20, "bus_b": 20, "bus_data": 20, "bus_addr": 20}   # others: 5 (local)
 SLOPE = {"bus": (0.07, 0.10, 0.13), "std": (0.105, 0.15, 0.20)}
 DRIVE = {"74HCT541": "bus", "74HCT574": "bus", "74HCT240": "bus", "74HCT670": "std", "74HCT153": "std",
-         "74HCT157": "std", "74HCT175": "std"}
+         "74HCT157": "std", "74HCT175": "std", "74AHCT595": "bus", "74HCT244": "bus"}
 CIRCUITS = Path(__file__).resolve().parent.parent / "circuits"
 # bus: [(file, top circuit, net), or ("est", inputs, outputs, what)]
 BUSES = {
@@ -200,11 +200,11 @@ BUSES = {
                  ("addr/addr.circ", "addr", "addr_bus_out"),
                  ("mem/mem.circ", "mem", "mem_bus_in"), ("mem/mem.circ", "mem", "mem_bus_out"),
                  ("cu/cu.circ", "cu", "cu_bus_in"),
-                 ("est", 1, 1, "the IOD's port data (not built)")],
+                 ("iod/iod.circ", "iod", "iod_bus_in"), ("iod/iod.circ", "iod", "iod_bus_out")],
     # the low byte (the worst: the IVT reads it back)
     "bus_addr": [("addr/addr.circ", "addr", "addr_bus_addr_lo"), ("addr/addr.circ", "addr", "addr_bus_addr_lo_in"),
                  ("mem/mem.circ", "mem", "mem_addr"), ("cu/cu.circ", "cu", "cu_bus_addr_lo"),
-                 ("est", 2, 1, "the IOD (in and out) (not built)")],
+                 ("iod/iod.circ", "iod", "iod_addr_in"), ("iod/iod.circ", "iod", "iod_addr_out")],
     # the memory section's local data bus (RAM, the ROM buffer, the write and read buffers)
     "mem_d": [("mem/mem.circ", "mem", "mem_d")],
 }
@@ -625,8 +625,63 @@ CPU = {
     "x_int": (True, "IOD INT (by 150, I5) → cu boundary → 574 setup", [], [("path", "c_int", "")]),
     "x_cout": (True, "edge → PC → adder carry out → cu cout_q setup (boot loop)", [], [("path", "c_cout", "")]),
 }
-SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR, "mem": MEM, "cu": CU, "cpu": CPU}
-PATHS = {**PATHS, **FLAGS, **REGS, **ADDR, **MEM, **CU, **CPU}
+# The I/O mailbox (designs/iod.py, iod-requirements.md I3-I6, I10-I16), in the IN / OUT step or the vector
+# step. The decode starts when the port is on bus_addr (the latch, 72 ns) or IE is out of the pipeline;
+# the STATUS flags are not synchronised (I11), so they have no path here.
+IOD = {
+    "i_dec": (False, "bus_addr (A0, A1, A6, A7) → 138 → /Y", ["a_lat"], [
+        ("74HCT138", "A/B/C → Y", "decode (A6, A7 on /G2: G → Y, quicker)"),
+    ]),
+    "i_dec_ie": (False, "IE (574) → 138 G1 → /Y", [], [
+        ("74HCT574", "CP → Q", "pipeline: IE"),
+        ("74HCT138", "G → Y", "decode: G1 = IE"),
+    ]),
+    "i_sel": (True, "**decode settled** (/Y0 TX, /Y2 RX, /Y3 STATUS)", ["i_dec", "i_dec_ie"], []),
+    "i_rx": (True, "**IN RX**: decode → RX 595 /OE → bus_data", ["i_sel"], [
+        ("74AHCT595", "OE → Q", "RX", ("bus_data",)),
+    ]),
+    "i_status": (True, "**IN STATUS**: decode → 244 /OE → bus_data", ["i_sel"], [
+        ("74HCT244", "OE → Y", "STATUS", ("bus_data",)),
+    ]),
+    "i_tx_sel": (True, "OUT TX strobe glitch-free: the decode settles before clk_wr_n can fall", ["i_sel"], []),
+    "i_tx_data": (True, "OUT TX: bus_data valid, 165 setup before the earliest strobe rise", ["x_out"], [
+        ("74HCT165", "setup A–H → SH/LD", "TX"),
+    ]),
+    "i_tx_end": (True, "OUT TX: the strobe rises, latest (165 loaded, TX full set); bus_data is held to the edge", [], [
+        ("@", "fall1", "osc falls"),
+        ("74HCT10", "A/B/C → Y", "clk_wr_n"),
+        ("74HCT32", "A/B → Y", "/Y0 OR clk_wr_n"),
+    ]),
+    "i_rxclr": (True, "rx_clr: /Y2 settled → 74 setup (RX clears in the next step)", ["i_sel"], [
+        ("74HCT74", "setup D → CLK", "rx_clr"),
+    ]),
+    "i_int": (True, "**INT** (evt_s, a 74 on clk)", [], [
+        ("74HCT74", "CLK → Q", "evt_s"),
+    ]),
+    "i_vec_addr": (True, "**vector step**: VEC → EVT port 595 → bus_addr A0–A7", [], [
+        ("74HCT74", "CLK → Q", "VEC (/Q)"),
+        ("74AHCT595", "OE → Q", "EVT port", ("bus_addr",)),
+    ]),
+    "i_vec_data": (True, "**vector step**: VEC → EVT data 595 → bus_data (→ I)", [], [
+        ("74HCT74", "CLK → Q", "VEC (/Q)"),
+        ("74AHCT595", "OE → Q", "EVT data", ("bus_data",)),
+    ]),
+    "i_int_drop": (True, "INT low in the vector step (VEC → evt_s /CLR; the CPU doesn't sample it there)", [], [
+        ("74HCT74", "CLK → Q", "VEC (/Q)"),
+        ("74HCT74", "PRE or CLR → Q", "evt_s"),
+    ]),
+    "i_off_in": (True, "IN drivers off after the edge: IE → 138 → 595 / 244 disable (the slower)", [], [
+        ("74HCT574", "CP → Q", "pipeline: IE"),
+        ("74HCT138", "G → Y", "decode"),
+        ("74HCT244", "OE → Y", "STATUS off (the RX 595: 10)"),
+    ]),
+    "i_off_vec": (True, "vector-step drivers off after the edge: VEC → 595 disable", [], [
+        ("74HCT74", "CLK → Q", "VEC (/Q)"),
+        ("74AHCT595", "OE → Q", "EVT port / data off"),
+    ]),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR, "mem": MEM, "cu": CU, "cpu": CPU, "iod": IOD}
+PATHS = {**PATHS, **FLAGS, **REGS, **ADDR, **MEM, **CU, **CPU, **IOD}
 
 # The clock buffer's branches (clkgen's 74HCT541, cu-decisions.md section 14):
 # the clock inputs on each, and the extra delay their load adds. The skew
@@ -638,7 +693,7 @@ CLOCK_BRANCHES = [
     ("clk_2: cu (pipeline 574s 1-5)", [("cu/cu.circ", "cu", "clk_0")]),
     ("clk_3: cu (574s 6-8, 175s, 377)", [("cu/cu.circ", "cu", "clk_1")]),
     ("clk_4: regs, flags", [("registers/regs.circ", "regs", "clk"), ("flags/flags.circ", "flags", "clk")]),
-    ("clk_5: reset flip-flops, IOD", [("cu/clkgen.circ", "clkgen", "clk_5"), ("est", 1, "the IOD (not built)")]),
+    ("clk_5: reset flip-flops, IOD", [("cu/clkgen.circ", "clkgen", "clk_5"), ("iod/iod.circ", "iod", "clk")]),
 ]
 
 
@@ -710,6 +765,12 @@ LIMITS = {
     "x_addr": ("<=", STEP), "x_wdata": ("<=", "m_wdl"), "x_out": ("<=", 242), "x_fetch": ("<=", STEP),
     "x_mem_reg": ("<=", "w_data"), "x_bypass": ("<=", STEP), "x_flag_jc": ("<=", STEP), "x_ivt": ("<=", STEP),
     "x_int": ("<=", STEP), "x_cout": ("<=", STEP),
+    # the I/O mailbox
+    "i_rx": ("<=", "w_data"), "i_status": ("<=", "w_data"), "i_tx_sel": ("<=", "w_fall_min"),
+    "i_tx_data": ("<=", "w_rise_min"), "i_tx_end": ("<=", STEP), "i_rxclr": ("<=", STEP),
+    "i_int": ("<=", 150),                    # I5
+    "i_vec_addr": ("<=", "a_iod"), "i_vec_data": ("<=", "w_data"),
+    "i_off_in": ("<=", 100), "i_off_vec": ("<=", 100),   # I3 / I6 as amended (Q-C1)
 }
 
 

@@ -84,7 +84,7 @@ NETS = {
 INPUTS = [("osc", 1), ("rc", 1), ("int", 1), ("iod_bus_data", 8), ("iod_bus_addr_lo", 8)]
 OUTPUTS = ([("clk", 6), ("clk_wr_n", 1), ("clk_mem_wr_n", 1), ("rst_n", 1), ("rst_early", 1), ("rst_rc", 1),
             ("bus_data", 8), ("bus_addr", 16), ("bus_a", 8), ("bus_b", 8), ("mem_d", 8), ("alu_r", 8),
-            ("flags", 8), ("addr_cout", 1)]
+            ("flag_reg", 8), ("addr_cout", 1)]
            + [(x, w) for x, w in CU_OUT] + IR_OUT)
 
 
@@ -148,7 +148,7 @@ for k in range(6):
     t.tunnel((e[0] + 20, e[1]), f"clk_{k}", facing="west")
 X, Y = 300, 2200
 sp = t.splitter((X, Y), 8, [[k] for k in range(8)], facing="east", appear="right", spacing=2)
-t.tunnel((X, Y), "flags", 8, facing="east")
+t.tunnel((X, Y), "flag_reg", 8, facing="east")
 for k, f in enumerate(FLAGS):
     e = sp[f"end{k}"]
     t.wire(e, (e[0] + 20, e[1]))

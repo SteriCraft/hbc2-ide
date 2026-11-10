@@ -13,6 +13,11 @@
 //!     before cycle CYCLE runs (cycles counted from power-on, the boot
 //!     included: the Logisim step at which INT rose, minus the reset
 //!     release step). The machine runs one cycle at a time.
+//! `... [--in LINE:VALUE]...`
+//!     (both trace modes) the IN instruction of trace line LINE reads VALUE
+//!     (hex), whatever its port: every port latch is set to VALUE just before
+//!     that line runs. For benches whose IN data doesn't come from the
+//!     emulator's IOD (circuits/iod/test_iod_cpu.circ: the mailbox).
 //! `emutrace cycles`
 //!     the emulator's cycle counts as JSON (for `cputest.py cycles`):
 //!     `Instruction::cycles` for every opcode x mode bits, the interrupt
@@ -79,10 +84,12 @@ fn trace_by_cycle(
     mut m: Machine,
     mut w: TraceWriter<std::io::BufWriter<std::fs::File>>,
     ints: &[(u64, u8, u8)],
+    ins: &[(u64, u8)],
     path: &str,
     out: &str,
 ) -> Result<(), String> {
     let mut k = 0;
+    let mut kin = 0;
     // a halted CPU with nothing to come: stop after a few halt loop turns
     let mut idle = 0;
     while !w.is_full() && w.error().is_none() {
@@ -93,6 +100,9 @@ fn trace_by_cycle(
             m.board.iod.trigger_interrupt(port);
             m.board.iod.set_port(port, keep);
             k += 1;
+        }
+        if !m.mid_instruction() {
+            kin = set_in(&mut m, ins, kin, w.lines() + 1);
         }
         if m.cpu.is_halted() && !m.mid_instruction() {
             let waiting = m.board.int || m.board.inr || m.board.iod.has_pending_interrupt();
@@ -114,6 +124,19 @@ fn trace_by_cycle(
     w.finish().map_err(|e| format!("{out}: {e}"))?;
     println!("{path} -> {out} ({lines} lines, interrupts by cycle)");
     Ok(())
+}
+
+/// `--in`: before line `next` runs, every port latch = the value its IN reads.
+fn set_in(m: &mut Machine, ins: &[(u64, u8)], mut k: usize, next: u64) -> usize {
+    while k < ins.len() && ins[k].0 < next {
+        k += 1;
+    }
+    if k < ins.len() && ins[k].0 == next {
+        for p in 0..=255u8 {
+            m.board.iod.set_port(p, ins[k].1);
+        }
+    }
+    k
 }
 
 fn opt<'a>(args: &'a [String], name: &str) -> Option<&'a str> {
@@ -144,6 +167,16 @@ fn trace(args: &[String]) -> Result<(), String> {
         }
     }
     ints.sort_by_key(|x| x.0);
+    let mut ins: Vec<(u64, u8)> = Vec::new();
+    for (i, a) in args.iter().enumerate() {
+        if a == "--in" {
+            let arg = args.get(i + 1).ok_or("--in LINE:VALUE")?;
+            let bad = || format!("--in {arg}");
+            let (l, v) = arg.split_once(':').ok_or_else(bad)?;
+            ins.push((l.parse().map_err(|_| bad())?, u8::from_str_radix(v, 16).map_err(|_| bad())?));
+        }
+    }
+    ins.sort_by_key(|x| x.0);
     let ram = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
     let config = MachineConfig { monitor: false, rtc: false, keyboard: false, eeprom: None };
     let mut m = Machine::new(config, Some(&ram)).map_err(|e| e.to_string())?;
@@ -151,9 +184,10 @@ fn trace(args: &[String]) -> Result<(), String> {
     let mut w = TraceWriter::new(std::io::BufWriter::new(file), Some(max));
     w.start(&m.cpu);
     if by_cycle {
-        return trace_by_cycle(m, w, &ints, path, out);
+        return trace_by_cycle(m, w, &ints, &ins, path, out);
     }
     let mut k = 0;
+    let mut kin = 0;
     while !w.is_full() && w.error().is_none() {
         while k < ints.len() && ints[k].0 <= w.lines() + 1 {
             let (_, port, data) = ints[k];
@@ -163,6 +197,7 @@ fn trace(args: &[String]) -> Result<(), String> {
             m.board.iod.set_port(port, keep);
             k += 1;
         }
+        kin = set_in(&mut m, &ins, kin, w.lines() + 1);
         if m.cpu.is_halted() {
             let waiting = m.board.int || m.board.inr || m.board.iod.has_pending_interrupt();
             if m.cpu.is_stopped() || (!waiting && (k == ints.len() || ints[k].0 > w.lines() + 1)) {
