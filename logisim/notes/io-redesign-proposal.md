@@ -543,6 +543,8 @@ Section 5b (clean break) is mostly moot: old programs keep working once rebuilt 
 
 ### 9.7 Step order
 
+*Superseded by 9.9 (2026-11-11).*
+
 1. **C1. Logisim `mbx` module** (conventions.md, real 74HCT chips, the 595 / 165 as their #TTL or chip models):
    - **What it does:** decode, latches, toggles, synchroniser, INT, the vector-step drivers.
    - **Tested against the real CPU** (cputest), with a test-bench model of the MCU side driving RCLK, SCK and MOSI:
@@ -664,3 +666,30 @@ C-min's chips:
 - **Level shifter:** SN74LVC244AN.
 
 **Recommendation: C-min, 13 chips.** It keeps the CPU contract (with Q-C1) and today's interrupt model, and fits the ESP32 exactly, without the mouse port. If Gianni accepts amending I6 for the high byte, the pull-downs bring it to 12.
+
+### 9.9 Decisions and step order (Gianni, 2026-11-11)
+
+**C-min it is.** These decisions replace 9.7's step order. The recommendations of 9.6 and 9.8 are accepted where they don't conflict with them.
+
+| # | Decision | Where |
+|---|---|---|
+| D1 | **C-min mailbox, 12 chips**: the 9.8 design with the 74HCT541 replaced by pull-downs. | iod-requirements.md "Target design", I10–I16 |
+| D2 | **Q-C1 accepted**: I3 / I6 "off within 100 ns after the edge" (was 50). The overlap is measured on the breadboard. | iod-requirements.md I3 / I6, breadboard-checks.md B5 |
+| D3 | **A8–A15 pulled to 0** (10 kΩ network on the I/O card) in the vector step. The IOD drives A0–A7 and `bus_data` only. One possible reason against has to be checked on the breadboard: the latch loads 0000 at the same edge as it turns off, so A8–A15 may keep a 1 and decay through 10 kΩ, which is a slow edge on the RAM / ROM address pins. Fallback: put the 74HCT541 back (+1 chip). | iod-requirements.md I6, control-requirements.md C21, B5 (b) |
+| D4 | **The PS/2 mouse port is dropped.** Later, a **CH9350** module (USB keyboard and mouse to one serial line) can replace the PS/2 keyboard and free a GPIO. **Any second microcontroller goes behind the ESP32, never on the CPU bus**, so the decode's second select (`/Y4–/Y7`) stays unused. | here |
+| D5 | READY is dropped (9.8). Q-C7 becomes: the program waits for the plug-in events, as `init.has` already does. | 9.6 Q-C7 |
+
+**Logisim modelling of D3.** Logisim resolves each circuit's nets on their own: a Pull Resistor inside the `iod` module would make its output pin drive 0 strongly onto A8–A15, and fight the address latch. So the module doesn't touch A8–A15 at all, and in the simulation they float in the vector step, as with the old stub (the CPU doesn't read them). The pull-downs exist only on the board.
+
+**Step order:**
+1. **C1. Notes** (this section, iod-requirements.md I3 / I6 / I10–I16, control-requirements.md C21, breadboard-checks.md B5). Done 2026-11-11.
+2. **C2. Logisim `iod` module** (circuits/iod/iod.circ, designs/iod.py), in real parts:
+   - **New chip model:** 74595 (circuits/chips/74595.circ, from the SN74AHCT595 datasheet). Logisim's own 74165, 74244 and 7474 are checked against their datasheets.
+   - **Module test:** `test_iod`, sequences from the cycle-level model in designs/iod.py.
+   - **CPU-level bench:** circuits/iod/test_iod_cpu.circ (main + iod + a test MCU that follows the firmware rule, or breaks it on purpose), run by cputest.
+   - **Tests:** OUT / IN on the data and status ports, the mirrors and empty ports, both handshake directions, the 1 µs rule and the race it prevents, the vectored interrupt step, reset, no contention.
+   - **Timing:** the paths go into `timing.py --section iod`.
+   - **Then stop for review.**
+3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests.
+4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. **Check GPIO 36 on the board's schematic before wiring.**
+5. **C5. Library, templates and docs** (9.5).
