@@ -125,6 +125,21 @@ Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74
 
 Added 2026-11-05 (cu-decisions.md section 14). New parts: **74HCT00 = CD74HCT00E** (TI SCHS398, active; the SN74HCT00N is NRND, so not that one) and **74HCT151 = CD74HCT151E** (TI SCHS150D, active). Off the logic: the pull resistors of C24, **bussed resistor networks, 10 kΩ, SIP-9** (8 resistors and a common pin; e.g. Bourns 4609X-101-103LF, to check before buying), one network per group of up to 8 lines pulled the same way: `bom.py` counts them from the Pull Resistors.
 
+### I/O mailbox (iod, notes/bom-iod.csv)
+
+| Part | Function | Logisim | DIP | SOIC | Qty |
+|---|---|---|---|---|---|
+| 74HCT32 | quad 2-input OR | 7432 | SN74HCT32N | 74HCT32D (Nexperia) | 1 |
+| 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 4 |
+| 74HCT138 | 3-to-8 decoder | 74138 | SN74HCT138N | 74HCT138D (Nexperia) | 1 |
+| 74HCT165 | 8-bit parallel-in / serial-out shift register | 74165 | CD74HCT165E | CD74HCT165M96 (TI) | 1 |
+| 74HCT244 | octal buffer, tri-state, two 4-bit halves | 74244 | CD74HCT244E (STATUS); **SN74LVC244AN** at 3.3 V (the ESP32 side) | 74HCT244D (Nexperia); SN74LVC244ADWR (TI) | 2 |
+| 74HCT595 | 8-bit shift register + storage register, tri-state | 74595 (model) | **SN74AHCT595N** | SN74AHCT595D (TI) | 3 |
+
+Added 2026-11-11 (iod-requirements.md, target design). Two exceptions to the 74HCT rule, both decided with the mailbox (io-redesign-proposal.md 9.8, Q-C11):
+- **SN74AHCT595N:** TI makes no 74HCT595 in DIP (test-rig.md). The AHCT part has the same pinout and TTL-level inputs, and is faster (OE → Q 10.6 ns).
+- **SN74LVC244AN:** powered at 3.3 V, its 5 V-tolerant inputs take the card's 5 V signals to the ESP32. It is the same Logisim chip as the 74HCT244, so `bom.py` counts both in one row.
+
 ### Whole CPU (cpu.circ `main`, notes/bom-cpu.csv)
 
 | Part | Function | DIP | Qty | Sections | Spares to buy |
@@ -189,6 +204,12 @@ So Typ is a rough guide only.
 | 74HCT27 | A/B/C → Y | 9 | 23 | 29 | CD74HCT27, SCHS406 |
 | 74HCT32 | A/B → Y | 15 | 24 | 30 | SN74HCT32, SCLS064G |
 | 74HCT74 | CLK → Q | 20 | 28 | 35 | SN74HCT74, SCLS122 (Q or /Q; fmax 20 MHz at 85 °C) |
+| 74HCT74 | PRE or CLR → Q | 21 | 35 | 44 | SN74HCT74, SCLS169G (setup D → CLK 12 / 15, hold 0) |
+| 74HCT165 | CLK → QH | 17 | 40 | 50 | CD74HCT165 (setup A–H → SH/LD 20 / 25; typ: 5 V, 15 pF) |
+| 74HCT244 | A → Y | 13 | 25 | 31 | CD74HCT244 (typ: 5 V, 15 pF) |
+| 74HCT244 | OE → Y | 15 | 30 | 38 | CD74HCT244, enable and disable |
+| 74AHCT595 | OE → Q | 7 | 11 | 15 | SN74AHCT595, SCLS374Q (enable 10.6 / 14.4, disable 10.3 / 13.2; 85 °C column: −40…125 °C) |
+| 74AHCT595 | RCLK → Q | 6 | 10 | 12 | SN74AHCT595, SCLS374Q (9.4 / 11.5) |
 | 74HCT85 | A/B → A>B, A<B | 15 | 37 | 46 | CD74HCT85 |
 | 74HCT85 | A/B → A=B | 17 | 40 | 50 | CD74HCT85 |
 | 74HCT85 | cascade in → A>B, A<B | 12 | 30 | 38 | CD74HCT85 |
@@ -274,6 +295,8 @@ Before buying: check that the DIP and SOIC references are active and sold by an 
 |---|---|---|
 | 7474, 74138, 74153, 74157, 74161, 74175, 74193, 74377, 74541, 74670 | yes | |
 | 74377 | yes | checked against cd74hct377.pdf (TI SCHS184C) by [circuits/chips/test_74377.circ](../circuits/chips/test_74377.circ): loads on CP rising with /E low, /E is sampled at the edge (no gated clock: /E moving while CP is high loads nothing), 250 / 250 rows |
+| 74165 | yes | checked against cd74hct165.pdf (TI, truth table 7-1) by [circuits/chips/test_74165.circ](../circuits/chips/test_74165.circ): asynchronous parallel load while SH/LD is low, shift on CLK rising with CLK INH low, CLK ignored with CLK INH high. Not checked: CLK INH rising while CLK is low (an edge on the real chip; the mailbox doesn't depend on it). |
+| 74595 | **no** | modelled: [circuits/chips/74595.circ](../circuits/chips/74595.circ) (circuit `ttl74595`), from sn74ahct595.pdf (TI SCLS374Q) |
 | 74574 | **no** | modelled: [circuits/chips/74574.circ](../circuits/chips/74574.circ) (circuit `ttl74574`), from cd74hct574.pdf |
 
 Logisim's 74670 was checked against the CD74HCT670 datasheet (cd74hc670.pdf, which covers HCT) by [circuits/chips/test_74670.circ](../circuits/chips/test_74670.circ): writes are transparent while /WE is low (the addressed word follows D), reads with /RE high are high impedance. It needs no model.
