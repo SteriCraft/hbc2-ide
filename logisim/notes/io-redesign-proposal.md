@@ -102,9 +102,9 @@ Vector numbers `0x00–0xEF` and `0xF8–0xFF` are left to software `INT n` (sys
 |---|---|---|---|---|
 | IOD port latches, queue, port 0 detection | **Removed** from the machine. Kept as `BenchIod` (renamed) for the CPU verification tools and tests only | — | — | Nothing to detect: the ports are fixed by wiring. The bench needs the stub (section 1). |
 | Monitor | **Emulator-only virtual video card** behind /CS2, same 5 registers, marked "not buildable" in the docs (Q6) | `0x20` DATA_0, `0x21` DATA_1, `0x22` POS_X, `0x23` POS_Y, `0x24` CMD | none (as today) | Keeps `screen.has`, the monitor window and graphics programs working until the real video is designed. |
-| Keyboard (scan codes) | **Replaced by the UART console**: the PC terminal's keyboard sends ASCII (plus ANSI sequences for arrows etc.) into RBR | UART `0x10–0x17` | 7 (UART) | That's what the hardware will have. PS/2 behind the VIA comes later, as a new model (Q7). |
-| RTC | **Removed** for now. Time comes from the VIA's T1 tick (`clock()`, delays). Later a **DS1307** (DIP-8, I²C, still made) on two VIA port A pins, its 1 Hz SQW on CA1 (Q8). | VIA `0x00–0x0F` | 6 (VIA) | No RTC on the I/O board yet. |
-| EEPROM | **Removed**, along with the EEPROM build target (1 MiB image, `boot.has`). The **boot ROM** already holds the program. Non-volatile data later on SPI (SD card or a DIP-8 SPI EEPROM / flash) through the VIA (Q9). | — | — | F9: it models no hardware. |
+| Keyboard (scan codes) | **Replaced by the UART console**: the PC terminal's keyboard sends ASCII (plus ANSI sequences for arrows etc.) into RBR. **Comes back as hardware:** a PS/2 keyboard on the VIA (PS/2 clock on CB1, data into the shift register or a port B pin), as a new model (Q7). | UART `0x10–0x17` | 7 (UART) | That's what the hardware will have. |
+| RTC | **Removed** for now. Time comes from the VIA's T1 tick (`clock()`, delays). **Comes back as hardware:** a **DS3231** RTC (Gianni, 2026-11-10) over I²C bit-banged on two VIA port A pins, its 1 Hz SQW on CA1 (Q8). | VIA `0x00–0x0F` | 6 (VIA) | No RTC on the I/O board yet. |
+| EEPROM | **Removed**, along with the EEPROM build target (1 MiB image, `boot.has`). The **boot ROM** already holds the program. **Comes back as hardware:** an SD card over SPI on the VIA (port pins + the shift register), or a **24LC256** I²C EEPROM on the RTC's bus (Q9). | — | — | F9: it models no hardware. |
 | (new) VIA | system tick (T1), T2, ports A / B (LEDs and switches panel in the IDE), SR | `0x00–0x0F` | 6 | |
 | (new) UART | console | `0x10–0x17` | 7 | |
 
@@ -175,15 +175,15 @@ A "legacy IOD" machine option would be cheap in `hbc2-core` (the code exists and
 
 | # | Question | Recommendation |
 |---|---|---|
-| Q1 | **VIA bus timing.** PHI2 must run all the time (timers). With PHI2 = NOT `clk` (high 250–500 ns): address and CS are set up long before the rise, and read data comes about 30 ns after the rise (by about 300 ns < 322, I3), held until the edge. But a write is latched at **PHI2's fall, at the step's edge**, while I4 only promises `bus_data` "held to the edge". | Use PHI2 = NOT `clk`. Measure the CPU's minimum `bus_data` hold after the OUT step's edge with `timing.py` (min delays of pipeline register → 670 /OE). If it covers the W65C22's write hold, add I10 ("`bus_data` held ≥ x ns after the OUT edge") and keep the VIA. If not, fall back to Intel-bus chips (82C55 + 82C54, /RD /WR like the UART). |
-| Q2 | **/RD window for the UART.** It must start after `bus_addr` + 138 settle (about 110 ns) and give data by 322 ns. Using `clk` low (250–500) leaves about 55 ns for the 16C550's /RD → data delay. | Check the chosen 16C550's datasheet. If it's too tight, start /RD at about 125 ns with a phase from the clock generator (`osc`, Q2). Either way, never use an ungated IE·RW. |
+| Q1 | **VIA bus timing.** | **Checked 2026-11-10: fails** with any PHI2 the clock generator can give (section 8). |
+| Q2 | **/RD window for the UART.** | **Checked 2026-11-10: fails** at both ends of the window (section 8). |
 | Q3 | Data in the vector step: `0x00` or the IRQ states? | **IRQ states** (bitmap, 1 = active) through a 74HCT540 from the snapshot. Same chip count as 0x00 (a driver is needed anyway, F3). The handler can see other pending lines and serve them before IRT, which saves a 9-cycle re-entry, and one shared handler becomes possible. |
 | Q4 | A7: mirror or not? | Put A7 on the 138's /G2A (free). `0x80–0xFF` stay empty instead of mirroring, and are left for a second decoder. |
 | Q5 | Line numbers. | UART 7, VIA 6 (as proposed: the UART RX overruns first). Line 0 stays unconnected, so spurious entries (n = 0) land on a plain `irt`. |
 | Q6 | Keep the Monitor? | Yes, as an **emulator-only virtual video card** on /CS2 (`0x20–0x24`), clearly marked not buildable, until the real video is designed. Add a read-only status / ID register at `0x25`, so `screen.has` can tell it's there (an empty port reads `0xFF`). |
 | Q7 | Keyboard. | Console keys come through the UART (ASCII / ANSI). The scan-code keyboard and `key_event` go. A PS/2 model on the VIA comes later, with the PS/2 hardware. |
-| Q8 | Real-time clock. | Now: a software clock from the VIA tick. Later: a DS1307 (DIP-8, I²C bit-banged on PA, SQW 1 Hz → CA1). The emulator then models it behind the VIA pins and can still sync it to host time. |
-| Q9 | EEPROM. | Remove it and its build target. The boot ROM covers power-on. Storage later: an SD card over SPI on the VIA. |
+| Q8 | Real-time clock. | Now: a software clock from the VIA tick. Later: a DS3231 (I²C bit-banged on PA, SQW 1 Hz → CA1; Gianni, 2026-11-10). The emulator then models it behind the VIA pins and can still sync it to host time. |
+| Q9 | EEPROM. | Remove it and its build target. The boot ROM covers power-on. Storage later: an SD card over SPI on the VIA, or a 24LC256 on the RTC's I²C bus. |
 | Q10 | Baud rate and terminal type. | 38400 8N1 (divisor 3 at 1.8432 MHz), FIFO trigger 8. ANSI / VT100 subset, the same in the IDE terminal and on the PC (PuTTY, Tera Term). |
 | Q11 | IN from a port with no chip. | Undefined on the hardware (floating bus). The emulator returns `0xFF`, and the docs say "don't rely on it". No pull-ups on the CPU board. |
 | Q12 | Mask register (74HCT574 on /CS3). | Not now: VIA and UART IERs mask each source. Add it when a source without its own enable shows up. |
@@ -194,11 +194,82 @@ A "legacy IOD" machine option would be cheap in `hbc2-core` (the code exists and
 ## 7. Implementation order
 
 1. **Review this proposal** and answer Q1–Q15. Fix the sketch PDF (F1–F4).
-2. **Hardware timing on paper**: Q1 (VIA write hold) and Q2 (/RD window) with `timing.py` and the datasheets. These are the only answers that could change the chip choice, so they come before any code.
+2. **Hardware timing on paper**: Q1 (VIA write hold) and Q2 (/RD window) with `timing.py` and the datasheets. These are the only answers that could change the chip choice, so they come before any code. **Done 2026-11-10: both fail (section 8); waiting for Gianni's choice of option.**
 3. **hbc2-core**: rename `Iod` → `BenchIod` (emutrace, ucode check, CPU / cycle tests pass unchanged). Add `IrqController` + `IoBus`, then `Uart16550`, `Via`, and the fixed-port `VirtualMonitor`. Lazy device time in `Machine::run` / `is_idle`. Tests: priority and vector numbers, INT dropping in the vector step, re-entry after IRT when the source isn't cleared, I = bitmap, VIA timers / IFR rules, UART IIR priority / FIFO / pacing, `peek` has no side effects.
 4. **Remove the old devices**: RTC, keyboard and EEPROM models, the EEPROM target in `hbc2-asm` / `hbc2-cc` / `hbc2-cli` / IDE.
 5. **Library and runtime**: `devices.has` and `boot.has` out. `crt0` / `init` with `io_init`. `hbc2.h` / `hbc2.has`, `terminal.has` over the UART, `screen.has` on fixed ports, `time.has`, `random.has`. C tests with `.serial_in` / `.serial_out`.
 6. **Runner and IDE**: the Terminal window, the I/O view with the VIA / UART panels, menus and settings.
 7. **Templates and docs**: `interruptHandler.has` (+ `io.has`), `main.has`, `main.c`, the I/O reference replacing `Peripherals/`, Assembly Language.md, the Instruction Manual (.odt → .pdf), READMEs, ABI.md, ROADMAP / TODO. Tag `iod-legacy` before merging.
 8. **Logisim `iod` module** (decoder, snapshot, VEC, vector drivers, glue; the VIA and UART as pin stubs), tested against the emulator's `IrqController`. Then the breadboard card.
-9. **Later**: PS/2 keyboard, SD card, DS1307, 2nd VIA, the real video.
+9. **Later**: PS/2 keyboard, DS3231, SD card or 24LC256, 2nd VIA, the real video.
+
+## 8. Step 1 result: Q1 and Q2 both fail (2026-11-10)
+
+On 2026-11-10 Gianni accepted the corrections (F1–F12) and the recommendations, and asked for Q1 and Q2 to be settled first, stopping if either fails. **Both fail.** The cause is the CPU's I/O step, not the choice of VIA or UART. Nothing has been built, and the emulator is unchanged.
+
+### 8.1 What the CPU gives an I/O chip
+
+Times are in ns from the `clk` edge that starts the IN / OUT step, at max 25 °C and 50 % duty (`python tools/timing.py --section cu`).
+
+| What | When | Source |
+|---|---|---|
+| `bus_addr` = 00:port valid | **72** | The latch loads the port at the start of the I/O step itself: `hbc2.uc` `instr in` = `lat<-0:b`, then `bus<-io, r1<-bus, lat<-pc`. |
+| 74HCT138 outputs settled (glitches before) | **108** | 72 + A → Y 36 |
+| IN: data on `bus_data` valid by | **335** (322 at 45 % duty) | earliest 670 /WE rise 347 − setup 12 (C10, I3) |
+| IN: data held until | **428** (440.5 at 55 %) | latest 670 /WE rise + hold 5 |
+| OUT: data valid / held | 242, held **to the edge (500)** only | I4. No minimum delay after the edge can be shown on paper (TI gives none for the 574, B1). |
+| Address, IE and RW held | to the edge (500) | The IN / OUT step itself does `lat<-pc`. |
+| Clock edges the IOD can use | osc falls at nominal 125 and 375. In the `clk` frame these are **97–125** and **347–375**, and up to 177 / 427 through the 10 and the 74 (Q2). `clk` falls at about 250 and rises at 500. | `timing.py` takes t = 0 as `clk` rising, which can lag osc by FF1's 28 ns. |
+
+So the only strobe edges are near 125, 250, 375 and 500 ns, and each can move by tens of ns. Two windows are needed: one from 108 to 322 (read data), and one from 428 to 500 (end of the access).
+
+### 8.2 Q1: W65C22N fails
+
+From the WDC W65C22 datasheet (table 4-3a, 5 V, 14 MHz grade):
+- **Read:** CS, RS and RWB set up 10 ns before PHI2 rises (tACR). Data is valid 20 ns after PHI2 rises (tCDR) and held 10 ns after PHI2 falls (tHR).
+- **Write:** data set up 10 ns before PHI2 falls and held 10 ns after (tDCW, tHW).
+- **CS, RS and RWB hold:** 10 ns. WDC's table says this is from PHI2's rising edge, but the timing diagrams and the 6522 family use the falling edge.
+- **Outputs:** IOL 3.2 mA, IOH −0.2 mA at 2.4 V (TTL levels).
+
+The timers need PHI2 to run all the time, so there is a PHI2 pulse in every step, and the chip is accessed while PHI2 is high.
+- **Read:** the data goes away 10 ns after PHI2 falls, and the register write needs it until 428. So PHI2 must fall at **418 or later**.
+- **Write, and RS / CS / R/W hold:** the CPU only holds these to 500, and the chip needs 10 ns after PHI2 falls. So PHI2 must fall at **490 or earlier**.
+- **Available falls:**
+  - PHI2 = NOT `clk` falls at 500 or later (the proposal's choice). The write and address holds then rely on CPU delays after the edge, which breaks I4.
+  - PHI2 = Q2 (or NOT `clk_wr_n`) falls at 347–427. The read data can be gone before the register write.
+  - No edge falls surely between 418 and 490. **Fails.**
+
+### 8.3 Q2: TL16C550C fails
+
+From the TI datasheet (SLLS177I, 2021):
+- **Read:** data is valid 45 ns after /RD falls (tRVD, at 75 pF). It floats at most 20 ns after /RD rises (tHZ), and **no minimum data hold** is given.
+- **Address and CS:** set up 7 ns before /RD falls (tAR, tCSR). Held 20 ns (address, tRA) and 10 ns (CS, tRCS) after /RD rises.
+- **Pulses and writes:** /RD and /WR pulses are at least 40 ns. Write data is set up 15 ns and held 5 ns (tDS, tDH).
+- **Outputs:** IOL 1.6 mA, IOH −1 mA.
+- **Package:** the DIP-40 (N) package is NRND.
+
+- **Start.** Reading RBR, IIR or LSR has side effects, so /RD must not fall before the decode settles (108 + 7 = 115).
+  - The osc phase at nominal 125 can come as early as 97, so a glitch could read a register.
+  - The first edge that is surely later is `clk` falling at about 250. Then /RD falls at about 274 (one gate), and the data comes at about 319, even at the datasheet's 75 pF.
+  - On the real `bus_data` (410 pF, driven at 1.6 mA) that is well past 322. **Fails.**
+- **End.** The data isn't held after /RD rises, but the register needs it until 428. The address must stay 20 ns after /RD rises, but the CPU only holds it to 500.
+  - So /RD must rise between 428 and 480, and no edge falls there. **Fails.**
+  - The 16C550's ADS pin can latch the address and CS, which solves the address hold. It doesn't help the start or the deadline.
+
+Both chips drive `bus_data` (about 410 pF) with weak outputs (1.6 / 3.2 mA), so a 74HCT245 between the I/O chips and `bus_data` would probably be needed in any case.
+
+### 8.4 Why, and what could pass
+
+The I/O step is one 500 ns step with no WAIT. The port appears at 72 ns, the register captures at 347–428 ns, and the address may change at 500 ns. That fits latches, which is why I7 says a real IOD answers "through hardware latches and a FIFO". Any bus chip whose strobe must frame the access hits the same two windows. The 82C55 + 82C54 fallback is not checked yet, but it faces the same windows on the same bus.
+
+| Option | CPU | IOD | On paper |
+|---|---|---|---|
+| **A. Longer I/O cycle (microcode only)** | IN becomes a setup step, an access step and a hold step, with IE, RW and the port held through all three (`lat<-pc` only after). OUT becomes a setup step and an access step. Cycle counts change (IN +2, OUT +1), so the isa.rs table, cu-cycles.md and the emulator change too. | A 74HCT74 delays IE twice, so the strobe opens only in the access step, where the decode has been stable since the setup step. | **16C550: passes with large margins** (to be confirmed in `timing.py`). /RD opens about 70 ns into the access step and stays low to its end, so the data comes at about 170 plus the bus load. The hold step keeps the address. **Intel-bus chips** (82C55, 82C54) fit the same way, also to be checked. **W65C22: no clean wiring found even then.** A continuous PHI2 gives a high phase in every step, so CS must frame exactly one PHI2 pulse, which again needs edges the clock generator doesn't have. |
+| B. CPU unchanged, buffered I/O bus | Q2 added to the connector (I1) | A 74HCT573 read latch, a 74HCT541 write buffer, a 74ACT138 decode (3–12 ns, settled by about 84) and strobes from Q2 | **Still fails on paper.** The 573 needs 10 ns data hold after LE, the UART gives none after /RD rises, and both come from the same phase. At 45 % duty the decode settles only 0.5 ns before Q2 can rise. Only a breadboard test could show it works. Not recommended. |
+| C. CPU unchanged, an I7 IOD | none | Latches and a FIFO, filled by a microcontroller | Passes (I7). Not the standard-chips design. |
+
+**Recommendation: option A, with the 16C550, and 82C55 + 82C54 instead of the VIA**, after checking their datasheets against the longer cycle. The VIA could only stay with a read latch, which is option B's weak point.
+- **Needs Gianni's decision:** A changes the microcode and the cycle counts, and the brief says "the CPU must not change".
+- **What 82C55 + 82C54 changes for the later hardware:** PS/2, I²C and SPI become bit-banged on 82C55 port pins. The PS/2 clock interrupt then uses the mode-1 strobe (PC4 /STBA → INTRA), because the 82C55 has no CA1 or shift register.
+
+**Stopped here (step 1), as asked.** Steps 2–4 wait for the choice.
