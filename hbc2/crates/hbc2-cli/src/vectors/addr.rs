@@ -444,6 +444,7 @@ fn run(e: Event, pc0: u16, sp0: u16, flags: u8, rng: &mut Rng) -> Run {
         let (cpu, board) = &mut *m.borrow_mut();
         board.reset();
         cpu.reset();
+        super::past_first_instruction(cpu, board);
         for a in 0..=0xFFFFu16 {
             board.ram.write(a, rng.byte() as u8);
         }

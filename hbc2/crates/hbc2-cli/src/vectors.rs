@@ -614,17 +614,33 @@ fn flags_sets() -> Vec<Vec<Row>> {
     sets
 }
 
+/// After `cpu.reset()`: runs one NOP (four zero bytes at the reset PC, so
+/// the mode bits are 0 too), then puts the PC back. `Cpu::reset` delays
+/// interrupts until the first instruction has run, as the hardware's first
+/// fetch after the boot has no interrupt check; the generators that test
+/// interrupt entries start from a CPU past that instruction. The caller
+/// writes its RAM and state afterwards.
+pub(crate) fn past_first_instruction(cpu: &mut Cpu, board: &mut Board) {
+    let pc = cpu.pc;
+    for k in 0..4 {
+        board.ram.write(pc.wrapping_add(k), 0);
+    }
+    assert!(cpu.tick(board) && !cpu.interrupt_delayed(), "NOP after reset");
+    cpu.pc = pc;
+}
+
 /// Run the CPU from flags `flags`: `program` at address 0, `prep` sets up the
 /// rest, then `ticks` clock cycles. Returns the CPU flags and the byte at
 /// SP (for PSF).
 fn run_cpu(flags: u8, program: u32, prep: impl Fn(&mut Cpu, &mut Board), ticks: usize) -> (u8, u8) {
     MACHINE.with(|m| {
         let (cpu, board) = &mut *m.borrow_mut();
+        board.reset();
+        cpu.reset();
+        past_first_instruction(cpu, board);
         for (i, byte) in program.to_be_bytes().iter().enumerate() {
             board.ram.write(i as u16, *byte);
         }
-        board.reset();
-        cpu.reset();
         cpu.flags = Flags(flags);
         prep(cpu, board);
         for _ in 0..ticks {
