@@ -559,3 +559,108 @@ Section 5b (clean break) is mostly moot: old programs keep working once rebuilt 
    - **Then:** VGA (FabGL), PS/2, SD, time and sound on the TTGO VGA32.
    - **Measure** the per-byte time and the start-up delay (Q-C4).
 4. **C4. Library, templates and docs:** `mbx_in` / `mbx_out`, READY in crt0, removing the EEPROM boot target, then the native PUTS / primitives in `terminal.has` / `screen.has`. Docs as in 9.5.
+
+### 9.8 A simplified mailbox (2026-11-10, for review)
+
+Gianni asked for fewer chips than section 9's 19. Today's count, by job:
+
+| Job | Chips |
+|---|---|
+| decode | 3 |
+| handshake flags | 8 |
+| data latches | 2 |
+| interrupt channel | 3 |
+| CTRL 595 | 1 |
+| STATUS | 1 |
+| level shifter | 1 |
+
+The four ideas, checked:
+
+**1. One 74HCT74 per flag (kept).** Each flag is set by one side and cleared by the other. The two sides use different inputs of the flip-flop, so there is no XOR and no pair of toggles.
+
+| Flag | Set | Clear | Reset |
+|---|---|---|---|
+| TX (byte for the MCU) | CPU: /PRE = the TX strobe OR(/Y0, `clk_wr_n`), the same pulse as the 165's /PL | MCU: CLK = MBX_SEL rising (end of its read), D = 0 | /CLR = `rst_n` |
+| RX (byte for the CPU) | MCU: CLK = RCLK_RX rising, D = 1 (the same edge latches the RX 595) | CPU: /CLR = `rx_clr`, a 74 on `clk` with D = /Y2. It is low for the one step after an IN RX. | `rx_clr`'s /CLR = `rst_n` |
+| EVT (event waiting) | MCU: CLK = RCLK_EVT rising, D = 1 (the same edge latches both EVT 595s) | CPU: /CLR = `evt_clr`, a 74 on `clk` with D = /VEC. It is low in step n + 2, after the vector step. | `evt_clr`'s /CLR = `rst_n` |
+
+- **VEC:** a 74 on `clk`, D = INR, /CLR = `rst_n`. `rst_n` is low from power-up, so VEC is 0 then (C17).
+- **INT = `evt_s`:** a 74 on `clk` with D = EVT and /CLR = /VEC. It is a flip-flop on `clk` (I5), and it is forced to 0 about 60 ns into the vector step. The CPU only samples INT at instruction boundaries, and the vector step is never one. That is no worse than section 9's INT gate, which also drops INT only after the edge.
+- **INT rises again in step n + 2,** because EVT is cleared only during n + 2. I6 allows that ("INT may rise again from n + 2"). The CPU doesn't take it: IE1h has cleared I.
+- **No synchroniser on STATUS.** From the CPU's side, each flag can only change the CPU's way: TX_FREE only goes to 0 when the CPU writes, and RX_AVAIL only goes to 0 when it reads. A read that catches a change gets either value, and both are right. This is what a 6850's status register does.
+- **Count:** 7 flip-flops = **4 × 74HCT74** (1 spare), plus 1 OR gate. That replaces 3 × 86, 2 × 175 and 3 × 74, plus the 74HCT02 and most of the 74HCT32.
+
+**The race that remains** is the MCU setting RX or EVT while the CPU's clear (`rx_clr` / `evt_clr`) still holds /CLR low. /CLR wins, so the byte or event is lost.
+- **How long the clear lasts:** at most one step (500 ns), starting at the edge where the flag reads 0.
+- **Firmware rule that rules it out:** write RX or EVT only when its flag reads 0, and **at least 1 µs after it last went to 0**. That costs nothing: the CPU takes about 18 µs per byte.
+- **The data itself is safe:** RX clears in the step after the IN, and EVT after the vector step. The CPU has stopped using a latch when its flag drops.
+- **TX has no race.** The CPU sets TX only when it's 0, and the MCU clears it only when it's 1, so the two can't meet. If they ever did (a program writing to a full TX), /PRE wins and the new byte overwrites the old one. That is documented like a UART overrun.
+- **True simultaneous set and clear can't happen** on any flag, because each side only acts on the other state of the flag.
+
+**2. GPIO pulses instead of the CTRL 595 (kept, with two pins merged).** Three ESP32 outputs remain:
+- **RCLK_RX** and **RCLK_EVT**, idle low, with pull-downs so the ESP32's boot can't make an edge.
+- **MBX_SEL**, idle high. It does three jobs: the 165's CLK INH, the LVC244's MISO enable (MISO is shared with the SD card), and the TX clear on its rising edge. So it needs **no ACK pin**.
+
+**READY is dropped.** A command sent before the ESP32 is up just waits in TX, and the plug-in events tell the program which devices are present (`devices.has` and `init.has` already wait for them). Four inputs remain: TX, RX, EVT and `rst_n`, through the LVC244.
+
+The 595 chain: RX's SER and the EVT port 595's SER both take MOSI, and the EVT data 595 follows the EVT port 595. So RX is written with 8 bits and an event with 16.
+
+**Pin count.** A TTGO VGA32 v1.4 and a bare ESP32-WROVER devkit have the same **22 free GPIOs**:
+- 0, 2, 4, 5, 12–15, 18, 19, 21–23, 25–27, 32–36, 39;
+- not 6–11 (flash), 16 and 17 (PSRAM), or 1 and 3 (USB serial).
+
+VGA needs 8, PS/2 keyboard 2, SD 4 and audio 1, so 15 are taken.
+
+| Mailbox | Its pins | Total | Fits? |
+|---|---|---|---|
+| Section 9 (CTRL 595) | 1 out + 4 in | 20 | yes, even with the PS/2 mouse port (22) |
+| GPIO pulses, separate ACK and READY (Q-C3 as first written) | 5 out + 4 in | 24 | **no** |
+| **GPIO pulses, MBX_SEL as ACK, no READY** | 3 out + 4 in | 22 | **yes, exactly, without the mouse port**. On the TTGO: outputs 26, 27 (the mouse port's) and 0 (MBX_SEL: idle high, like GPIO0's boot pull-up); inputs 34, 35, 39 and 36. 36 must be free on the TTGO schematic; if it's the board's button, give up audio (25) instead. |
+
+**3. Interrupt channel (vectored kept).** The vector step needs the IOD to drive the low byte of `bus_addr`, which the IVT adds, and `bus_data`, which loads I (F2, F3, I6).
+
+| Interrupt channel | Chips | What it gives up |
+|---|---|---|
+| **Vectored `00:p` + data** | 3 (EVT port 595, EVT data 595, 541 for A8–A15) | nothing: today's per-port vectors, the data in I, `interruptHandler.has` and `devices.has` all stay |
+| One fixed vector, data from RX | 2 (two 541s with tied inputs for `00:p`), or 3 if the RX 595's /OE also needs a gate for the vector step | every interrupt user is rewritten, and every command waiting for a reply must run with interrupts off, since an event and a reply would share RX |
+
+The fixed vector saves **0–1 chip**, which is within Gianni's 1–2 limit, so **compatibility is kept**.
+
+**4. Other savings.**
+- **Kept: decode with the 138 alone.** G1 = IE, /G2A = A7, /G2B = A6, inputs A0, RW, A1. The mailbox is at `0x00–0x01`, mirrored over `0x00–0x3F`, and `0x02–0x03` is free for a second device. `0x40–0xFF` are empty. This drops the A5 OR A6 gate.
+- **Kept: no TX-full gate on the TX strobe and no RX-empty gate on the RX clear.** They only protected against programs that skip the status check. The library always checks.
+- **Rejected for now: pull-downs instead of the 541 on A8–A15** (−1 chip). The CPU reads only the low byte in the vector step (addr-decisions.md: "IOD port on `bus_addr` → IVT"), the RAM isn't enabled, and the ROMs' /OE is off (M8). A 10 kΩ network would only keep the high byte from floating. But I6 says the IOD *drives* `00:p`. Possible if Gianni amends I6.
+- **Rejected: resistor dividers instead of the LVC244.** MISO is shared with the SD card and needs a tri-state buffer. A dedicated MISO pin would be a 23rd GPIO.
+- **Rejected: dropping STATUS.** Polling needs TX_FREE and RX_AVAIL, and a 74HCT125 is still a chip.
+- **Rejected: dropping the `rst_n` input.** It is the only way the MCU can tell a CPU reset from a normal read.
+
+**Timing of the simplified card** (max 25 °C, 45 % duty, the same bus loads as 9.1):
+
+| Path | Max 25 °C | Limit | Margin |
+|---|---|---|---|
+| IN RX: A0 / A1 (72) → 138 A → Y (36) → 595 OE (35 + 41) | 184 | 322 | 138 |
+| STATUS: (72 + 36) → 244 OE (30 + 41) | 179 | 322 | 143 |
+| OUT TX: the same strobe as 9.1 (latest /PL rise) | 423 | 500 − 165 hold | about 75 |
+| `rx_clr` D: /Y2 settled (108) + 74 setup | about 125 | 500 | about 375 |
+| INT: 74 CLK → Q | 28 | 150 (I5) | 122 |
+| vector step: /VEC (28) → 595 OE (35 + 13) on `bus_addr`, → 595 OE (35 + 41) on `bus_data` | 76 / 104 | 237 / 335 | 161 / 231 |
+| drivers off after the edge | 96 (IN) / 58 (vector) | Q-C1 | as 9.1 |
+
+**Summary**:
+
+| Variant | Chips | ESP32 pins (+ SCK / MOSI / MISO shared with SD) | Gives up | Timing passes |
+|---|---|---|---|---|
+| Section 9 as written | 19 | 1 out + 4 in | nothing | yes (Q-C1) |
+| 1 only: 74 flags, CTRL 595 kept | 14 | 1 out + 4 in | the toggle-pair design (needs the 1 µs firmware rule) | yes |
+| **1 + 2 + 4 ("C-min")** | **13** | **3 out + 4 in (22 of 22)** | PS/2 mouse port, READY bit, the second I/O select at `0x10` (now `0x02`), protection against a TX overrun | **yes** (Q-C1) |
+| C-min + fixed vector | 12–13 | 3 out + 4 in | today's interrupt model, and interrupts must be off while waiting for a reply | yes |
+| C-min + A8–A15 pull-downs | 12 | 3 out + 4 in | I6's wording ("drives 00:p") | yes, if I6 is amended |
+
+C-min's chips:
+- **Decode and strobe:** 74HCT138, 74HCT32 (1 gate used).
+- **Flags:** 4 × 74HCT74.
+- **Latches:** 3 × SN74AHCT595N, CD74HCT165E.
+- **Vector step and status:** 74HCT541, 74HCT244.
+- **Level shifter:** SN74LVC244AN.
+
+**Recommendation: C-min, 13 chips.** It keeps the CPU contract (with Q-C1) and today's interrupt model, and fits the ESP32 exactly, without the mouse port. If Gianni accepts amending I6 for the high byte, the pull-downs bring it to 12.
