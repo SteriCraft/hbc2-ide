@@ -906,7 +906,7 @@ fn c_project_builds_and_runs() {
     let (file, _) = h.ide.state.source_location(pc).unwrap();
     assert!(file.ends_with("stdio.has"), "in puts: {}", file.display());
     let ticks = step(&mut h);
-    assert!(ticks <= 4, "one instruction in assembly ({ticks} cycles)");
+    assert!(ticks <= 8, "one instruction in assembly ({ticks} cycles)");
 
     // Shift+F11: puts began with a CAL, so out of that routine first, then
     // out of puts, back on line 8 (after the call); F10 ends the line.

@@ -242,6 +242,7 @@ fn eeprom_copies_boot_ranges_into_ram() {
 #[test]
 fn eeprom_read_and_write_from_a_program() {
     let mut m = eeprom_machine();
+    m.finish_boot();
     m.run(10_000);
     assert!(m.cpu.is_halted());
     assert_eq!(m.cpu.reg(A), 0x99);

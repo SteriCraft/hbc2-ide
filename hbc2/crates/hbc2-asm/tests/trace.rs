@@ -58,6 +58,7 @@ fn loop_program_matches_the_expected_trace() {
     )
     .unwrap_or_else(|e| panic!("{e:?}"));
     let mut machine = Machine::new(bare(), Some(&program.image)).unwrap();
+    machine.finish_boot();
     let got = trace(&mut machine, 1000);
     let expected = std::fs::read_to_string(dir.join("loop.csv")).unwrap();
     assert_eq!(got, expected);
@@ -79,6 +80,7 @@ f:
     ret
 ");
     let mut machine = Machine::new(bare(), Some(&p.image)).unwrap();
+    machine.finish_boot();
     let csv = trace(&mut machine, 1000);
 
     assert!(csv.is_ascii());
@@ -156,6 +158,7 @@ handler:
     let entry = (IVT_START + 7 * 2) as usize;
     image[entry..entry + 2].copy_from_slice(&handler.to_be_bytes());
     let mut machine = Machine::new(bare(), Some(&image)).unwrap();
+    machine.finish_boot();
     machine.board.iod.set_port(7, 0xAB);
     machine.board.iod.trigger_interrupt(7);
 
@@ -193,6 +196,7 @@ handler:
     let entry = (IVT_START + 5 * 2) as usize;
     image[entry..entry + 2].copy_from_slice(&handler.to_be_bytes());
     let mut machine = Machine::new(bare(), Some(&image)).unwrap();
+    machine.finish_boot();
     let csv = trace(&mut machine, 1000);
     let rows = rows(&csv);
     assert_eq!(rows[2][1], "0003");
@@ -209,6 +213,7 @@ fn invalid_opcode_is_a_nop_line() {
     image[0] = 0xFC; // opcode 0x3F: not an instruction
     image[1] = 0x38; // hlt
     let mut machine = Machine::new(bare(), Some(&image)).unwrap();
+    machine.finish_boot();
     let csv = trace(&mut machine, 1000);
     let rows = rows(&csv);
     assert_eq!(
@@ -224,6 +229,7 @@ fn invalid_addressing_mode_stops_the_trace() {
     image[0] = 0x74; // mov with mode bits 0000: mov has no such mode
     image[1] = 0x00;
     let mut machine = Machine::new(bare(), Some(&image)).unwrap();
+    machine.finish_boot();
     let csv = trace(&mut machine, 1000);
     let rows = rows(&csv);
     assert_eq!(rows.len(), 2);
@@ -241,6 +247,7 @@ _start:
     jmp _start
 ");
     let mut machine = Machine::new(bare(), Some(&p.image)).unwrap();
+    machine.finish_boot();
     machine.step();
     machine.step();
     machine.step();

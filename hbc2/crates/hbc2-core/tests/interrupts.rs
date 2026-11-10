@@ -79,14 +79,15 @@ fn interrupt_entry_pushes_i_then_pc() {
 }
 
 #[test]
-fn hardware_interrupt_handshake_takes_two_cycles() {
+fn hardware_interrupt_entry_takes_nine_cycles() {
     let mut m = Image::new()
         .program(&[imm16(O::Jmp, 0x0000)])
         .vector(0, 0xF000)
         .build(monitor_only());
     m.tick(); // JMP runs; the IOD raises INT at the end of the cycle
     assert!(m.board.int);
-    assert_eq!(m.step(), 2, "INR raised, then handler entered");
+    assert_eq!(m.step(), 4, "the rest of JMP Imm16 (5 cycles)");
+    assert_eq!(m.step(), 9, "INR raised (W1), then IE1-IE8");
     assert_eq!(m.cpu.pc, 0xF000);
     assert!(!m.board.inr);
 }
@@ -216,7 +217,10 @@ fn pending_software_interrupt_takes_i_when_taken() {
             none(O::Hlt),
         ])
         .vector(0x10, 0xF000)
-        .code(0xF000, &[reg(O::Mov, A, I), reg_imm8(O::Mov, I, 0x33), none(O::Irt)])
+        .code(
+            0xF000,
+            &[reg(O::Mov, A, I), reg_imm8(O::Mov, I, 0x33), none(O::Irt)],
+        )
         .build(bare());
     steps(&mut m, 4);
     assert_eq!(m.cpu.pending_software_interrupt(), Some(0x10));
@@ -277,7 +281,7 @@ fn breakpoint_stops_before_the_instruction_and_resumes() {
     m.breakpoints.set(at(&program, 2), true);
     let result = m.run(1000);
     assert_eq!(result.stop, Some(StopReason::Breakpoint(at(&program, 2))));
-    assert_eq!(result.ticks, 2);
+    assert_eq!(result.ticks, 3 + 3, "2 x MOV Reg / Imm8");
     assert_eq!(m.cpu.reg(A), 2);
 
     let result = m.run(1000);
@@ -286,7 +290,7 @@ fn breakpoint_stops_before_the_instruction_and_resumes() {
         Some(StopReason::Breakpoint(at(&program, 2))),
         "next loop iteration"
     );
-    assert_eq!(result.ticks, 4);
+    assert_eq!(result.ticks, 3 + 5 + 3 + 3, "MOV, JMP Imm16, MOV, MOV");
 }
 
 #[test]
@@ -303,7 +307,10 @@ fn idle_cycles_are_counted_without_being_simulated() {
     // A billion cycles would take seconds if they were simulated one by one.
     let result = m.run(1_000_000_000);
     assert_eq!(result.ticks, 1_000_000_000);
-    assert_eq!(m.ticks(), 1_000_000_000);
+    assert_eq!(
+        m.ticks(),
+        hbc2_core::isa::HARDWARE_BOOT_CYCLES + 1_000_000_000
+    );
     assert!(m.is_idle());
 
     // A pending interrupt means the next cycles matter again.

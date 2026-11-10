@@ -462,7 +462,11 @@ fn hlt_stops_execution() {
     assert!(!m.cpu.is_stopped(), "interrupts can wake it");
     assert_eq!(m.cpu.pc, 1);
     assert_eq!(m.cpu.reg(A), 0);
-    assert_eq!(m.ticks(), 100, "clock keeps ticking while halted");
+    assert_eq!(
+        m.ticks(),
+        hbc2_core::isa::HARDWARE_BOOT_CYCLES + 100,
+        "clock keeps ticking while halted"
+    );
 }
 
 #[test]

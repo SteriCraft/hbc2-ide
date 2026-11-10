@@ -4,6 +4,7 @@ use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
 use hbc2_asm::Target;
+use hbc2_core::isa::HARDWARE_CLOCK_HZ;
 use hbc2_runner::Speed;
 use serde::{Deserialize, Serialize};
 
@@ -58,6 +59,9 @@ pub const SPEEDS: [Speed; 14] = [
 pub fn speed_label(speed: Speed) -> String {
     match speed {
         Speed::Fastest => "Fastest".into(),
+        Speed::Hz(HARDWARE_CLOCK_HZ) => {
+            format!("{} (hardware)", frequency_label(HARDWARE_CLOCK_HZ as f64))
+        }
         Speed::Hz(hz) => frequency_label(hz as f64),
     }
 }
@@ -376,7 +380,8 @@ mod tests {
     fn labels() {
         assert_eq!(speed_label(Speed::Hz(1)), "1 Hz");
         assert_eq!(speed_label(Speed::Hz(100_000)), "100 kHz");
-        assert_eq!(speed_label(Speed::Hz(2_000_000)), "2 MHz");
+        assert_eq!(speed_label(Speed::Hz(2_000_000)), "2 MHz (hardware)");
+        assert_eq!(speed_label(Speed::Hz(5_000_000)), "5 MHz");
         assert_eq!(frequency_label(1_234_567.0), "1.23 MHz");
     }
 
