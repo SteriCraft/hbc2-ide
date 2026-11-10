@@ -33,7 +33,7 @@ on the same RAM image and `hbc2 compare`.
     python cputest.py run PROG.bin|PROG.has [--max-lines N] [--max-steps N] [--out DIR] [--rc-mutant]
     python cputest.py suite [--random N] [--jobs J] [--max-steps N]   # the test programs + N random ones
     python cputest.py mutants [PROG]        # deliberate wiring bugs in main: each must fail
-    python cputest.py cycles DIR...       # steps per instruction x mode against notes/cu-cycles.md
+    python cputest.py cycles DIR...       # steps per instruction x mode against notes/cu-cycles.md and the emulator's table
 """
 
 import argparse
@@ -146,9 +146,11 @@ class Observer:
         self.writes = []                   # (step, kind, text) of the current line
         self.spans = []                    # (start step, line number)
         self.cycles = []                   # (op, mode, size, steps, next_pc, pc)
+        self.entries = []                  # (hardware, steps from W1 to the handler's F0)
         self.int_prev = 0
         self.rises: deque = deque()
         self.inject: list[tuple] = []      # (line, port, data)
+        self.inject_cycle: list[tuple] = []  # (cycle from the reset release, port, data): INT's rise
         self.hw = self.sw = 0
         self.prev_e = None
         self.halt_since = None
@@ -247,7 +249,7 @@ class Observer:
             if self.cur is not None and not self.cur.get("done"):
                 self.close_line(first, before=s - 4)
             keep = [w for w in self.writes if w[0] >= s - 4]
-            self.cur = {"kind": "int", "start": first}
+            self.cur = {"kind": "int", "start": first, "hw": hw}
             self.writes = keep
             self.spans.append((first, len(self.lines)))
             if hw:
@@ -259,6 +261,7 @@ class Observer:
                     r = self.rises.popleft()
                     line = max(n for st, n in self.spans if st <= r)
                     self.inject.append((line, port, data))
+                    self.inject_cycle.append((r - self.rst_release, port, data))
             else:
                 self.sw += 1
 
@@ -332,6 +335,8 @@ class Observer:
             if len(ms) == 3 and "?" not in "".join(ms):
                 pc = int(ms[2][-2:], 16) << 8 | int(ms[1][-2:], 16)
             self.lines.append(self.fmt(n, pc, "INT", regs, sp, flags, mem_w, io_w))
+            if before is None:             # ended by the handler's F0 (not by another entry)
+                self.entries.append((cur["hw"], at - cur["start"]))
         cur["done"] = True
         self.writes = [w for w in self.writes if w[0] >= cut]
 
@@ -511,6 +516,16 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
         ref = "hbc2 trace"
     subprocess.run(cmd, check=True, capture_output=True)
     cmp = subprocess.run([str(HBC2), "compare", str(lg), str(em)], capture_output=True, text=True)
+    # the same interrupts placed at the cycle where INT rose (the emulator counts cycles since the merge
+    # of emulator-cycles); the line placement above stays the pass criterion
+    cmp_cycle = None
+    if obs.inject_cycle:
+        emc = outdir / f"{name}.emu_cycle.csv"
+        cmd = [str(EMUTRACE), "trace", str(binf), "--max", str(nlines), "-o", str(emc)]
+        for c, port, data in obs.inject_cycle:
+            cmd += ["--int-cycle", f"{c}:{port:02X}:{data:02X}"]
+        subprocess.run(cmd, check=True, capture_output=True)
+        cmp_cycle = subprocess.run([str(HBC2), "compare", str(lg), str(emc)], capture_output=True, text=True)
     result = {
         "name": name, "seconds": round(secs), "steps": obs.step + 1, "rows": obs.nrows, "end": obs.done,
         "reset_release_step": obs.rst_release, "first_fetch_step": obs.first_f0,
@@ -518,7 +533,9 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None)
         "boot_copies": obs.copies, "lines": nlines, "hw_int": obs.hw, "sw_int": obs.sw,
         "pull_rows": obs.pull_rows, "contention_rows": obs.contention, "errors": obs.errors,
         "error_counts": dict(obs.err_count), "reference": ref, "compare_exit": cmp.returncode,
-        "compare": cmp.stdout.strip()[-1500:], "cycles": obs.cycles,
+        "compare": cmp.stdout.strip()[-1500:],
+        "compare_cycle_exit": None if cmp_cycle is None else cmp_cycle.returncode,
+        "compare_cycle": None if cmp_cycle is None else cmp_cycle.stdout.strip()[-1500:], "cycles": obs.cycles, "entries": obs.entries,
     }
     (outdir / f"{name}.json").write_text(json.dumps(result, indent=1), encoding="utf-8")
     return result
@@ -530,6 +547,8 @@ def summary(r: dict) -> str:
             f"({r['seconds']} s), boot {r['boot_steps']} steps, {r['boot_copies']} copy writes, "
             f"hw {r['hw_int']} / sw {r['sw_int']} interrupts, end: {r['end']}; ref {r['reference']}: "
             f"{r['compare'].splitlines()[0] if r['compare'] else '?'}"
+            + ("" if r.get("compare_cycle") is None else
+               f"; interrupts by cycle: {r['compare_cycle'].splitlines()[0] if r['compare_cycle'] else '?'}")
             + ("" if not r["errors"] else "\n    " + "\n    ".join(r["errors"][:10])))
 
 
@@ -608,8 +627,18 @@ def classify(b0, b1, size):
     return MNEMONICS[op], MODES[mode] if mode < len(MODES) else f"mode {mode:X}", mode
 
 
+def emu_cycles():
+    """The emulator's counts (hbc2-core isa.rs: Instruction::cycles and the constants), from `emutrace cycles`."""
+    out = subprocess.run([str(EMUTRACE), "cycles"], capture_output=True, text=True, check=True).stdout
+    return json.loads(out)
+
+
 def cycles(dirs):
     table = cycle_table()
+    emu = emu_cycles()
+    emu_bad = Counter()
+    entries = Counter()
+    boots = Counter()
     seen, bad = Counter(), Counter()
     examples = {}
     for d in dirs:
@@ -620,6 +649,10 @@ def cycles(dirs):
             if r.get("compare_exit") != 0:
                 continue                       # only runs that matched the emulator
             ended = r["end"].startswith(("stopped", "halted"))
+            for hw, n in r.get("entries", []):
+                entries[("hardware" if hw else "software", n)] += 1
+            if r.get("boot_steps") is not None:
+                boots[r["boot_steps"]] += 1
             for k, entry in enumerate(r["cycles"]):
                 b0, b1, size, steps, pc = entry[:5]
                 # runs written before the halt flag was recorded: the last line of a run ended by a halt
@@ -635,20 +668,34 @@ def cycles(dirs):
                 if halt and row in ("POF", "IRT") and key[1] != "stop":
                     steps += 1     # H is loaded before their boundary step: it shows one step before W1
                 seen[key] += 1
+                op, mbits = b0 >> 2, ((b0 & 3) << 2) | ((b1 or 0) >> 6 if size > 1 else 0)
+                if steps != emu["table"][op][mbits]:
+                    emu_bad[key] += 1
+                    examples.setdefault(("emu",) + key, (f.stem, pc, steps, [emu["table"][op][mbits]]))
                 if steps not in want:
                     bad[key] += 1
                     examples.setdefault(key, (f.stem, pc, steps, sorted(want)))
     listed = {(row, MODES[m]) for row, cells in table.items() if row != "invalid" for m in range(9) if cells[m]}
     stops = {(row, "stop") for row, cells in table.items() if row != "invalid" and cells[9]}
     hit = {k for k in seen if k in listed}
-    print(f"instructions checked: {sum(seen.values())}, wrong counts: {sum(bad.values())}")
+    print(f"instructions checked: {sum(seen.values())}, wrong counts: {sum(bad.values())} against cu-cycles.md, "
+          f"{sum(emu_bad.values())} against the emulator (isa.rs CYCLES)")
+    want_e = {"hardware": emu["hardware_interrupt"], "software": emu["software_interrupt"]}
+    wrong_e = sum(c for (kind, n), c in entries.items() if n != want_e[kind])
+    print("interrupt entries (W1 placed from the vector step): "
+          + (", ".join(f"{kind} {n} steps x{c}" for (kind, n), c in sorted(entries.items())) or "none recorded")
+          + f"; emulator: hardware {want_e['hardware']}, software {want_e['software']}; wrong: {wrong_e}")
+    print("boot (reset release to first F0): " + (", ".join(f"{n} x{c}" for n, c in sorted(boots.items())) or "none")
+          + f"; emulator {emu['boot']}; wrong: {sum(c for n, c in boots.items() if n != emu['boot'])}")
     print(f"instruction x mode covered: {len(hit)} / {len(listed)}; stop cases: "
           f"{len([k for k in seen if k in stops])} / {len(stops)}; invalid opcode: {seen[('invalid opcode', 'any')]}")
     for k, (name, pc, steps, want) in examples.items():
-        print(f"  WRONG {k}: {name} pc {pc:04X}: {steps} steps, cu-cycles.md {want}")
+        src = "emulator" if k[0] == "emu" else "cu-cycles.md"
+        print(f"  WRONG {k[-2:]}: {name} pc {pc:04X}: {steps} steps, {src} {want}")
     missing = sorted(listed - hit)
     print("not covered:", ", ".join(f"{r} {m}" for r, m in missing) or "none")
-    return 1 if bad else 0
+    wrong_boot = any(n != emu["boot"] for n in boots)
+    return 1 if bad or emu_bad or wrong_e or wrong_boot else 0
 
 
 def main(argv=None):
