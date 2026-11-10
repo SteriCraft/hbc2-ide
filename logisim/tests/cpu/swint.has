@@ -1,0 +1,33 @@
+; Software interrupts (from crates/hbc2-asm/tests/trace.rs), nested calls,
+; INT with I = 0 (taken at sti), and POF setting H (the halt loop from the
+; boundary), which stops the CPU since the popped flags have I = 0.
+_start:
+    mov i, 0x42
+    int 5
+    cli
+    mov i, 0x43
+    int 5               ; pending: P waits for I
+    nop
+    sti                 ; taken after the next instruction
+    nop
+    mov i, 0x44
+    int 9
+    nop
+    mov a, 0x80         ; H set, I clear
+    psh a
+    pof
+    nop
+handler5:
+    psh a
+    mov a, i
+    cal sub1
+    pop a
+    irt
+handler9:
+    inc i
+    irt
+sub1:
+    inc a
+    ret
+.data16 v5 $0xFE0A handler5
+.data16 v9 $0xFE12 handler9

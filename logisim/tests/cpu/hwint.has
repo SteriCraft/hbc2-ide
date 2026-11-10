@@ -1,0 +1,99 @@
+; Hardware interrupts from the bench's IOD stub (circuits/cpu/test_cpu.circ):
+; `out c, a` with c = 0xF0 + p and a = v > 0 raises INT v steps later for
+; port p; the vector step gives the port latch of p as data (register I).
+; Delays 1..40 against a fixed block of instructions put INT's rise on every
+; step of it; then INT while I = 0 (cli ... sti, and inside a handler), right
+; after sti, in the halt loop, and against a software interrupt.
+_start:
+    mov c, 3
+    mov a, 0x99
+    out c, a            ; port 3's latch: the data of port 3's interrupts
+    mov j, 1            ; delay
+sweep:
+    mov c, 0xF3
+    out c, j            ; INT in j steps, port 3
+    add a, b
+    lod d, var
+    add a, [sp + 1]
+    psh a
+    pop b
+    inc var
+    nop
+    cal sub1
+    xor a, 0x5A
+    inc j
+    cmp j, 41
+    jme cli_test
+    jmp sweep
+cli_test:
+    cli
+    mov c, 0xF4
+    mov a, 2
+    out c, a            ; port 4 in 2 steps: pending while I = 0
+    nop
+    add a, var
+    nop
+    sti                 ; taken after the instruction after sti
+    inc a
+    nop
+    mov c, 0xF5
+    mov a, 1
+    out c, a            ; port 5: its handler arms port 6 (taken after irt)
+    nop
+    nop
+    nop
+    nop
+    mov c, 0xF7
+    mov a, 30
+    out c, a            ; port 7 in 30 steps: wakes the halt loop
+    hlt
+    nop
+    mov c, 0xF7
+    mov a, 3
+    out c, a            ; port 7 in 3 steps, and a software interrupt at once
+    int 8
+    nop
+    nop
+    nop
+    nop
+    nop
+    mov c, 0xF7
+    mov a, 0
+    out c, a            ; v = 0: nothing
+    nop
+    nop
+    cli
+    hlt
+sub1:
+    inc x
+    ret
+h3:
+    inc y
+    mov b, i
+    irt
+h4:
+    mov d, i
+    irt
+h5:
+    mov c, 0xF6
+    mov a, 1
+    out c, a            ; INT for port 6 while in this handler (I = 0)
+    nop
+    nop
+    irt
+h6:
+    inc y
+    irt
+h7:
+    inc x
+    irt
+h8:
+    dec x
+    irt
+.data var 0x10
+.data16 v3 $0xFE06 h3
+.data16 v4 $0xFE08 h4
+.data16 v5 $0xFE0A h5
+.data16 v6 $0xFE0C h6
+.data16 v7 $0xFE0E h7
+.data16 v8 $0xFE10 h8

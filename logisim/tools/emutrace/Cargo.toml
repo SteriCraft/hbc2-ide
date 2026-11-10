@@ -1,0 +1,15 @@
+[package]
+name = "emutrace"
+description = "Emulator side of the Logisim CPU trace test (logisim/tools/cputest.py): random programs from hbc2-ucode's generator, and traces with hardware interrupts injected where the Logisim CPU saw them. Uses hbc2-core and hbc2-ucode as libraries; changes neither."
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[workspace]
+
+[dependencies]
+hbc2-core = { path = "../../../hbc2/crates/hbc2-core" }
+hbc2-ucode = { path = "../../../hbc2/crates/hbc2-ucode" }
+
+[profile.release]
+opt-level = 3

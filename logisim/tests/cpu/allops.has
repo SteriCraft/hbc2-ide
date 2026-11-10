@@ -1,0 +1,250 @@
+; Every instruction in every addressing mode it accepts, with data that
+; changes the flags both ways and conditional jumps both taken and not.
+; Ends stopped (cli, hlt). Port F0-FF writes are avoided (they arm the
+; bench's interrupt source).
+_start:
+    mov a, 0x5A
+    mov b, 0xA5
+    mov c, 0x01
+    mov d, 0x80
+    mov i, 0x7F
+    mov j, 0xFF
+    mov x, buf.msb
+    mov y, buf.lsb
+    ; ALU, every mode: reg, imm8, ram, [r:r + n], [sp + n]
+    psh a
+    psh b
+    add a, b
+    adc a, c
+    add a, 0x7F
+    adc a, 0x80
+    add a, var1
+    adc a, [x:y + 3]
+    add a, [sp + 1]
+    sub a, c
+    sbb a, b
+    sub a, 0x33
+    sbb a, var1
+    sub a, [x:y + 1]
+    sbb a, [sp]
+    and a, i
+    and a, 0xF0
+    and a, var2
+    and a, [x:y]
+    and a, [sp + 1]
+    or a, d
+    or a, 0x0F
+    or a, var1
+    or a, [x:y + 2]
+    or a, [sp]
+    xor a, j
+    xor a, 0x55
+    xor a, var2
+    xor a, [x:y + 3]
+    xor a, [sp + 1]
+    cmp a, b
+    cmp b, a
+    cmp a, a
+    cmp a, 0x10
+    cmp a, [x:y]
+    cmp a, [sp]
+    ; carry and overflow edges
+    mov a, 0xFF
+    add a, c
+    adc a, c
+    mov a, 0x7F
+    add a, c
+    mov a, 0x00
+    sub a, c
+    sbb a, c
+    ; unary and shifts
+    inc a
+    dec a
+    dec b
+    inc var1
+    dec var1
+    inc [x:y + 1]
+    dec [x:y + 2]
+    not c
+    not var2
+    shl a
+    shl d
+    asr d
+    asr i
+    shr a
+    shr j
+    ; moves, loads, stores
+    mov a, b
+    mov c, 0
+    lod c, var2
+    lod d, [x:y + 1]
+    lod i, [sp + 1]
+    str var1, a
+    str [x:y + 4], b
+    str [sp], c
+    ; flags
+    stc
+    ste
+    stn
+    sts
+    stz
+    stf
+    psf
+    clc
+    cle
+    cln
+    cls
+    clz
+    clf
+    pof
+    psf
+    pop a
+    ; stack pointer
+    rsp [x:y]
+    ssp 3
+    asp 2
+    ssp 300
+    asp 301
+    mov x, 0xFD
+    mov y, 0x80
+    wsp [x:y]
+    psh a
+    pop b
+    wsp $0xFDFE
+    pop a
+    pop b
+    ; I/O on ports 0x10..0x13
+    mov c, 0x10
+    out c, a
+    mov c, 0x11
+    out c, b
+    in d, c
+    mov c, 0x10
+    in i, c
+    mov c, 0x13
+    in j, c
+    ; jumps, every condition both ways (flags set and cleared by hand)
+    stc
+    jmc t1
+    hlt
+t1: clc
+    jmc bad
+    ste
+    jme t2
+    hlt
+t2: cle
+    jme bad
+    stn
+    jmn t3
+    hlt
+t3: cln
+    jmn bad
+    sts
+    jms t4
+    hlt
+t4: cls
+    jms bad
+    stz
+    jmz t5
+    hlt
+t5: clz
+    jmz bad
+    stf
+    jmf t6
+    hlt
+t6: clf
+    jmf bad
+    ; and from the ALU
+    mov a, 0xFF
+    add a, 1
+    jmc t7
+    hlt
+t7: cmp a, 0
+    jme t7b
+    jmp t7b
+t7b:
+    mov x, t8.msb
+    mov y, t8.lsb
+    jmp [x:y]
+    hlt
+t8: mov x, sub1.msb
+    mov y, sub1.lsb
+    cal [x:y]
+    cal sub1
+    jmc [x:y]
+t9: mov x, t10.msb
+    mov y, t10.lsb
+    stc
+    jmc [x:y]
+    hlt
+t10:
+    ; the conditional jumps through a pair, taken and not
+    mov x, t10b.msb
+    mov y, t10b.lsb
+    ste
+    jme [x:y]
+    hlt
+t10b:
+    mov y, t10c.lsb
+    cle
+    jme [x:y]
+    stn
+    jmn [x:y]
+    hlt
+t10c:
+    mov y, t10d.lsb
+    cln
+    jmn [x:y]
+    sts
+    jms [x:y]
+    hlt
+t10d:
+    mov y, t10e.lsb
+    cls
+    jms [x:y]
+    stf
+    jmf [x:y]
+    hlt
+t10e:
+    mov y, t10f.lsb
+    clf
+    jmf [x:y]
+    clz
+    jmz [x:y]
+    stz
+    jmz [x:y]
+    hlt
+t10f:
+    mov x, t11.msb
+    mov y, t11.lsb
+    stz
+    jmz [x:y]
+    hlt
+t11:
+    ; software interrupt, return with irt
+    mov i, 0x42
+    int 5
+    cli
+    int 6
+    sti
+    nop
+    ; the end: stopped
+    cli
+    hlt
+bad:
+    cli
+    hlt
+sub1:
+    inc a
+    ret
+handler5:
+    mov a, i
+    irt
+handler6:
+    inc a
+    irt
+.data var1 0x3C
+.data var2 0xC3
+.data buf 0x11, 0x22, 0x33, 0x44, 0x55
+.data16 vector5 $0xFE0A handler5
+.data16 vector6 $0xFE0C handler6

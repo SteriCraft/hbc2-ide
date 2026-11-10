@@ -580,8 +580,47 @@ CU = {
 # the clock generator's paths (module clkgen), shown with the control unit
 CU.update({k: v for k, v in REGS.items() if k in ("w_fall", "w_rise_min", "w_data", "w_pulse", "w_rise")})
 CU.update({k: v for k, v in MEM.items() if k in ("m_addr", "m_pulse", "m_rise")})
-SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR, "mem": MEM, "cu": CU}
-PATHS = {**PATHS, **FLAGS, **REGS, **ADDR, **MEM, **CU}
+# The whole CPU (cpu.circ, cu-decisions.md section 15): paths that cross
+# sections, end to end from the clock edge. The sections' own paths start
+# from "control valid" (r_ctl, a_ctl: one register's CP -> Q); here a step
+# starts at the later of the IR's 377s and the pipeline 574s (with the
+# 574s' load), and the paths go through the next sections up to the
+# flip-flop or deadline that ends them.
+CPU = {
+    "x_ctl": (False, "IR fields and control lines valid (the later of 377 and 574)", ["r_ctl", "c_574"], []),
+    "x_ra": (False, "port A / B index → word read", ["x_ctl"], REGS["r_ra"][3]),
+    "x_re_sel": (False, "port select → bank /RE", ["x_ctl"], [
+        ("74HCT153", "S → Y", "bank /RE by regs_a_sel / regs_b_sel", RE),
+        ("74HCT670", "/RE → Q", "port A / B", BUS_AB),
+    ]),
+    "x_re": (False, "IR bit 2 → bank /RE", ["x_ctl"], REGS["r_re"][3]),
+    "x_lat": (False, "operand latch on", ["x_ctl"], REGS["r_lat"][3]),
+    "x_const": (False, "constant on", ["x_ctl"], REGS["r_const"][3]),
+    "x_op": (True, "edge → control → **bus A / bus B valid** (regs)", ["x_ra", "x_re_sel", "x_re", "x_lat", "x_const"], []),
+    "x_flags": (True, "**edge → regs → ALU → flags** (alu_z, the slowest flag) → 175 setup", ["x_op"], REGS["r_flags"][3]),
+    "x_res": (True, "edge → regs → ALU (alu_r) → result latch setup", ["x_op"], REGS["r_res"][3]),
+    "x_aluop": (True, "edge → alu_op (574) → ALU → flags setup (op taken as late as an operand)", ["c_574"], REGS["r_flags"][3]),
+    "x_addr": (True, "edge → regs → **address adder** → PC / SP / latch setup (Reg16, RamReg)", ["x_op"], ADDR["a_regs"][3]),
+    "x_dbus": (False, "edge → regs → bus_data", ["x_op"], [("74HCT541", "A → Y", "regs: bus A → data bus", ("bus_data",))]),
+    "x_wdata": (True, "edge → regs → bus_data → write buffer → RAM data", ["x_dbus"], [("74HCT541", "A → Y", "mem: write buffer", ("mem_d",))]),
+    "x_out": (True, "edge → regs → bus_data: OUT data for the IOD (I4: by 242)", ["x_dbus"], []),
+    "x_fetch": (True, "edge → latch → bus_addr → **RAM → bus_data → IR** setup (F0..F3)", [], [("path", "m_fetch", "")]),
+    "x_mem_reg": (True, "edge → latch → RAM → bus_data (register write data, LOD / POP)", [], [("path", "m_read", "")]),
+    "x_bypass": (True, "edge → RAM → bus_data → **cu bypass** → EEPROM → 574 setup", [], [("path", "c_bypass", "")]),
+    "x_flag_jc": (True, "edge → flags (175) → cu jump condition (151 D) → 153 → EEPROM → 574 setup", ["f_q"], [
+        ("74HCT151", "D → Y", "jc: a flag input"),
+        ("74HCT153", "I → Y", "cond", ("cu_a",)),
+        ("AT28C256", "address → I/O (tACC)", "microcode"),
+        ("74HCT14", "A → Y", "NOT abus bit"),
+        ("74HCT08", "A/B → Y", "abus: latch high off / IE"),
+        ("74HCT574", "setup D → CP", "pipeline"),
+    ]),
+    "x_ivt": (True, "IOD port on bus_addr → IVT → adder → PC setup (vector step)", [], [("path", "a_ivt", "")]),
+    "x_int": (True, "IOD INT (by 150, I5) → cu boundary → 574 setup", [], [("path", "c_int", "")]),
+    "x_cout": (True, "edge → PC → adder carry out → cu cout_q setup (boot loop)", [], [("path", "c_cout", "")]),
+}
+SECTIONS = {"alu": PATHS, "flags": FLAGS, "regs": REGS, "addr": ADDR, "mem": MEM, "cu": CU, "cpu": CPU}
+PATHS = {**PATHS, **FLAGS, **REGS, **ADDR, **MEM, **CU, **CPU}
 
 # The clock buffer's branches (clkgen's 74HCT541, cu-decisions.md section 14):
 # the clock inputs on each, and the extra delay their load adds. The skew
@@ -660,6 +699,11 @@ LIMITS = {
     "c_force": ("<=", STEP), "c_jc": ("<=", STEP), "c_int": ("<=", STEP), "c_state": ("<=", STEP),
     "c_sel": ("<=", STEP), "c_cout": ("<=", STEP), "c_pnext": ("<=", STEP), "c_swi": ("<=", STEP),
     "c_swi_oe": ("<=", "a_iod"),             # the vector step: the pending port is the IOD's place
+    # the whole CPU
+    "x_op": ("<=", STEP), "x_flags": ("<=", STEP), "x_res": ("<=", STEP), "x_aluop": ("<=", STEP),
+    "x_addr": ("<=", STEP), "x_wdata": ("<=", "m_wdl"), "x_out": ("<=", 242), "x_fetch": ("<=", STEP),
+    "x_mem_reg": ("<=", "w_data"), "x_bypass": ("<=", STEP), "x_flag_jc": ("<=", STEP), "x_ivt": ("<=", STEP),
+    "x_int": ("<=", STEP), "x_cout": ("<=", STEP),
 }
 
 
@@ -730,7 +774,8 @@ def margins(name, done, table):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="HBC-2 path delays from chips.md (ALU, flags, registers, address, memory, control unit).")
-    ap.add_argument("--section", choices=SECTIONS, default="alu", help="which paths to show (default alu)")
+    ap.add_argument("--section", choices=[*SECTIONS, "all"], default="alu",
+                    help="which paths to show (default alu); all: one line per section (worst margins)")
     ap.add_argument("--limit", type=int, help="also fail if a shown path is over this at max 25 °C")
     ap.add_argument("--duty", type=float, default=50,
                     help="oscillator duty cycle in %% (default 50; the part is specified 45-55, Q9)")
@@ -739,6 +784,27 @@ def main(argv=None):
     sys.stdout.reconfigure(encoding="utf-8")
     table = delays()
     done, via = compute(table)
+    if args.section == "all":
+        print("| Section | Paths with a limit | Worst margin 25 °C (pass) | Worst margin 85 °C (info) | Paths over at 85 °C |")
+        print("|---|---|---|---|---|")
+        bad = 0
+        for sec, paths in SECTIONS.items():
+            ms = []
+            for n, (shown, label, _, _) in paths.items():
+                lm = margins(n, done, table) if shown else None
+                if lm:
+                    ms.append((lm[1], label.replace("*", "")))
+            if not ms:
+                worst = max((done[n][PASS], label.replace("*", "")) for n, (sh, label, _, _) in paths.items() if sh)
+                print(f"| {sec} | 0 (checked inside the cpu paths) | — (slowest: {worst[1]}, {worst[0]} ns) | — | — |")
+                continue
+            w25 = min(ms, key=lambda x: x[0][PASS])
+            w85 = min(ms, key=lambda x: x[0][COL["85"]])
+            over = [f"{lab} ({m[COL['85']]})" for m, lab in ms if m[COL["85"]] < 0]
+            bad += sum(1 for m, _ in ms if m[PASS] < 0)
+            print(f"| {sec} | {len(ms)} | {w25[0][PASS]} ({w25[1]}) | {w85[0][COL['85']]} ({w85[1]}) | {'; '.join(over) or '—'} |")
+        print(f"\nOscillator duty: {args.duty:g} %. Pass (max 25 °C): " + ("all limits met" if not bad else f"{bad} FAIL"))
+        sys.exit(1 if bad else 0)
     print("| Path | Through (per stage, max 25 / 85 °C, ns) | Typ | Max 25 °C | Max 85 °C "
           "| Limit (25 / 85 °C) | Margin 25 °C (pass) | Margin 85 °C (info) |")
     print("|---|---|---|---|---|---|---|---|")

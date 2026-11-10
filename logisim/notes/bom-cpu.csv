@@ -1,0 +1,26 @@
+part,function,qty,dip_ref,soic_ref,modules,spare
+74HCT00,quad 2-input NAND,1,CD74HCT00E,CD74HCT00M96 (TI),cu,1
+74HCT08,quad 2-input AND,7,SN74HCT08N,74HCT08D (Nexperia),add_sub8 addr cu logic8,2
+74HCT10,triple 3-input NAND,1,CD74HCT10E,74HCT10D (Nexperia),clkgen,1
+74HCT11,triple 3-input AND,5,CD74HCT11E,74HCT11D (Nexperia),flags flags8 rmux8,1
+74HCT14,hex Schmitt-trigger inverter,4,SN74HCT14N,SN74HCT14D or 74HCT14D (Nexperia),clkgen cu ir mem,1
+74HCT27,triple 3-input NOR,2,CD74HCT27E,74HCT27D (Nexperia),cu flags8,1
+74HCT32,quad 2-input OR,4,SN74HCT32N,74HCT32D (Nexperia),logic8 mem regs,1
+74HCT74,"dual D flip-flop, set / reset",2,SN74HCT74N,74HCT74D (Nexperia),clkgen,1
+74HCT85,4-bit magnitude comparator,2,CD74HCT85E,CD74HCT85M or CD74HCT85M96 (TI),cmp8,1
+74HCT86,quad 2-input XOR,10,CD74HCT86E,74HCT86D (Nexperia),add_sub8 addr flags logic8,2
+AT28C256,"32 K × 8 parallel EEPROM, 150 ns",9,AT28C256-15PU,AT28C256-15SU (Microchip),cu mem,2
+AS6C1008,"128 K × 8 static RAM, 55 ns",1,AS6C1008-55PCN,AS6C1008-55SIN (Alliance),mem,1
+74HCT138,3-to-8 decoder,4,SN74HCT138N,74HCT138D (Nexperia),cu flags rmux8,1
+74HCT151,8-to-1 multiplexer,1,CD74HCT151E,CD74HCT151M96 (TI),cu,1
+74HCT153,dual 4-to-1 multiplexer,18,CD74HCT153E,74HCT153D (Nexperia),addr cu flags regs shift8,3
+74HCT157,quad 2-to-1 multiplexer,11,CD74HCT157E,74HCT157D (Nexperia),add_sub8 addr cu flags,2
+74HCT175,quad D flip-flop with clear,4,CD74HCT175E,CD74HCT175M96 (TI),cu flags,1
+74HCT240,"octal inverting buffer, tri-state",1,CD74HCT240E,74HCT240D (Nexperia),rmux8,1
+74HCT283,4-bit binary adder,7,CD74HCT283E,CD74HCT283M96 (TI),add_sub8 addr,2
+74HCT377,"octal D flip-flop, data enable",13,CD74HCT377E,CD74HCT377M96 (TI),addr cu ir,2
+74HCT541,"octal buffer, tri-state",20,SN74HCT541N,74HCT541D (Nexperia),addr clkgen cu flags mem regs rmux8,3
+74HCT574,"octal D flip-flop, tri-state",11,CD74HCT574E,CD74HCT574M96 (TI),cu regs,2
+74HCT670,"4 × 4 register file, tri-state",8,CD74HCT670E,CD74HCT670M (TI),regs,2
+resistor network,"10 kΩ × 8, bussed, SIP-9 (pull resistors, C24): 36 up, 24 down",8,4609X-101-103LF (Bourns),,cu,1
+total,23 part numbers,146,,,,35

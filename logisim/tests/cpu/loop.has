@@ -1,0 +1,20 @@
+; Trace test: mov, psh, out, a loop closed by cmp + jme, a call.
+_start:
+    mov a, 3        ; loop counter
+    mov b, 0
+    mov d, 0x5A     ; value saved by the routine
+    mov c, 0x10     ; output port
+loop:
+    psh a
+    out c, a
+    dec a
+    cmp a, b
+    jme done
+    jmp loop
+done:
+    cal save
+    hlt
+save:
+    str var, d
+    ret
+.data var 0

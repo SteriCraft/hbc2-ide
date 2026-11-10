@@ -1,0 +1,6 @@
+; Invalid opcodes (36-3F) are 1-byte NOPs; then a valid opcode with an
+; invalid mode stops the CPU (H set, I clear, PC on the instruction).
+_start:
+    mov a, 1
+    jmp $0x0100
+.data bad $0x0100 0xD8, 0xDC, 0xFC, 0xFF, 0xD9, 0x74, 0x00
