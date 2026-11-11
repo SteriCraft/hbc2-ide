@@ -26,7 +26,9 @@ The I/O processor runs the IOD: **256 ports** numbered `0x00` to `0xFF`.
 * Each port is an 8-bit **latch**: it holds the last value written to it, by
   the CPU or by the device.
 
-The diagram `HBC-2_Input_Output.pdf` shows the mailbox and its ports.
+The mailbox, the I/O processor and their protocol are described in
+[HBC-2_Input_Output.md](../HBC-2_Input_Output.md), with the diagram
+`HBC-2_Input_Output.pdf`.
 
 ### Reading and writing ports
 
