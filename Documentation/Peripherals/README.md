@@ -28,7 +28,7 @@ The I/O processor runs the IOD: **256 ports** numbered `0x00` to `0xFF`.
 
 The mailbox, the I/O processor and their protocol are described in
 [HBC-2_Input_Output.md](../HBC-2_Input_Output.md), with the diagram
-`HBC-2_Input_Output.pdf`.
+`HBC-2_Input_Output_diagram.pdf`.
 
 ### Reading and writing ports
 

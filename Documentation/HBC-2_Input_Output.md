@@ -2,8 +2,8 @@
 
 How the HBC-2 talks to its devices: the I/O mailbox card, the I/O processor
 (an ESP32) behind it, the byte protocol between them, and what happens at
-start-up and reset. The diagram [HBC-2_Input_Output.pdf](HBC-2_Input_Output.pdf)
-draws the card (source: `src/HBC-2_Input_Output.html`). Each device's ports
+start-up and reset. The diagram [HBC-2_Input_Output_diagram.pdf](HBC-2_Input_Output_diagram.pdf)
+draws the card (source: `src/HBC-2_Input_Output_diagram.html`). Each device's ports
 and commands are in [Peripherals/](Peripherals/README.md).
 
 ## Overview

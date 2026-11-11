@@ -42,3 +42,5 @@ kicad/**/_restore_backup_*/
 
 # KiCad lock files, present while a project is open
 kicad/**/~*.lck
+# KiCad per-user project settings
+kicad/**/*.kicad_prl

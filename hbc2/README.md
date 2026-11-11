@@ -7,7 +7,7 @@ machine does is defined by the documents in `../Documentation/`:
 |---|---|
 | CPU and instruction set | `HBC-2_Instruction_Manual.pdf`, `HBC-2_Instruction_Set.pdf` |
 | Assembly language, `.has` files, boot ROM export | `HBC-2 Assembly Language.md` |
-| Devices (monitor, keyboard, RTC, EEPROM) and the I/O mailbox | `Peripherals/README.md`, `HBC-2_Input_Output.pdf` |
+| Devices (monitor, keyboard, RTC, EEPROM) and the I/O mailbox | `Peripherals/README.md`, `HBC-2_Input_Output_diagram.pdf` |
 | C: calling convention, startup, library | `../compiler/ABI.md`, `../compiler/lib/README.md` |
 | Hardware design (Logisim), I/O redesign | `../logisim/notes/` (`iod-decisions.md` for the mailbox) |
 

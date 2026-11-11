@@ -2,7 +2,7 @@
 
 Status: **2026-11-10: the VIA / UART design (sections 2–5) failed its timing check (section 8). Gianni chose option C: a mailbox and an ESP32 I/O processor, proposed in section 9, waiting for review.** Nothing is changed in the code. Original status: **proposal for Gianni's review, 2026-11-10. Nothing is changed in the code.** The CPU does not change: IN / OUT, IE / RW, INT / INR and the vector table at `0xFE00` stay as they are (iod-requirements.md I1–I9).
 
-Sources checked: `hbc2-core` (`cpu.rs`, `board.rs`, `iod.rs`, `machine.rs`, `peripherals/*.rs`), the microcode (`hbc2.uc`, interrupt entry IE1h–IE8), cu-decisions.md, addr-decisions.md, control-requirements.md C12 / C19 / C21 / C22, iod-requirements.md, the templates, the C library and runtime, the IDE and runner, and `Documentation/` (including the new `HBC-2_Input_Output.pdf` sketch).
+Sources checked: `hbc2-core` (`cpu.rs`, `board.rs`, `iod.rs`, `machine.rs`, `peripherals/*.rs`), the microcode (`hbc2.uc`, interrupt entry IE1h–IE8), cu-decisions.md, addr-decisions.md, control-requirements.md C12 / C19 / C21 / C22, iod-requirements.md, the templates, the C library and runtime, the IDE and runner, and `Documentation/` (including the new `HBC-2_Input_Output_diagram.pdf` sketch).
 
 ## 0. Where the brief doesn't match the code (read first)
 
@@ -160,7 +160,7 @@ Vector numbers `0x00–0xEF` and `0xF8–0xFF` are left to software `INT n` (sys
 | `Documentation/Peripherals/` (README + 4 device pages + Specifications.txt) | the whole IOD model | **Replaced** by an I/O reference: port map, interrupt lines and vectors, VIA page, UART page, virtual monitor page (the old Monitor page, ports fixed). Keyboard, RTC and EEPROM pages are deleted. |
 | `Documentation/HBC-2 Assembly Language.md` | opening example (monitor on ports 1–5), line 223 (`$0xFE02`, "port 1's vector"), 417 (`interruptHandler.has`), 431–440 (EEPROM target), 471 ("port n: `$0xFE00 + 2n`") | UART hello example. Vector example `$0xFFEE`. "Interrupt n: `$0xFE00 + 2n`; hardware lines are n = `0xF0–0xF7`". EEPROM section removed. |
 | `Documentation/src/HBC-2_IDE_Instruction_Manual.odt` → `HBC-2_Instruction_Manual.pdf` | "256 ports (port #0 reserved for CPU <> IOD)", IOD × 15, queue × 5, INR × 3 | I/O chapter rewritten: port space, the handshake with the snapshot / VEC, the vector is `0xF0 + n`, I = line bitmap, "clear the source before IRT". The CPU instruction pages don't change. |
-| `Documentation/HBC-2_Input_Output.pdf` (the new sketch, in French) | 244 enabled by INR, A0–A7 only, INT straight from /GS | Fix F1–F4 (VEC flip-flop, high byte, data driver, snapshot). |
+| `Documentation/HBC-2_Input_Output_diagram.pdf` (the new sketch, in French) | 244 enabled by INR, A0–A7 only, INT straight from /GS | Fix F1–F4 (VEC flip-flop, high byte, data driver, snapshot). |
 | `hbc2/README.md`, `compiler/ABI.md` §8 (startup) and §10 (handlers), `compiler/ROADMAP.md` step 13, `compiler/lib/README.md`, `TODO.md` (RTC lines) | describe detection, EEPROM, IOD | Updated. |
 | `logisim/notes/iod-requirements.md` | contract | Target chips added (done with this proposal, marked "proposed"). I1–I9 unchanged. |
 | `logisim/tests/cpu/*.has`, the bench stub | bench IOD | **No change**: the CPU and its bench stay. |
@@ -520,7 +520,7 @@ RCLK could take 26 or 27, giving up the mouse port, or GPIO 0, which is fine onc
 | `hbc2/templates/main.has`, `main.c` | Unchanged, or one line on READY. |
 | `compiler/tests` | Pass unchanged once the emulator routes through the mailbox. New tests: the native commands, a handler sending commands while `main` waits on a reply. |
 | `logisim/tests/cpu/*.has`, the bench stub | No change (the CPU bench keeps its stub). |
-| Docs | The Instruction Manual's IOD chapter and `Documentation/Peripherals/README.md`: the mailbox (ports 0x00 / 0x01, STATUS, events) and the protocol. The per-device pages stay. `HBC-2_Input_Output.pdf`: redrawn for the mailbox. ABI.md §8: READY and no EEPROM boot. |
+| Docs | The Instruction Manual's IOD chapter and `Documentation/Peripherals/README.md`: the mailbox (ports 0x00 / 0x01, STATUS, events) and the protocol. The per-device pages stay. `HBC-2_Input_Output_diagram.pdf`: redrawn for the mailbox. ABI.md §8: READY and no EEPROM boot. |
 
 Section 5b (clean break) is mostly moot: old programs keep working once rebuilt with the new library. Only programs using the EEPROM boot, or their own direct `in` / `out` instructions, need changes.
 
@@ -691,7 +691,7 @@ C-min's chips:
    - **Timing:** the paths go into `timing.py --section iod`.
    - **Then stop for review.** Done 2026-11-11: iod-decisions.md has the results.
 3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests. Done 2026-11-11 (iod-decisions.md, C3): compat + NOP + INFO, behind `MachineConfig::mailbox` (off by default until C5).
-**Gianni, 2026-11-11, after C3:** the library part of C5 comes next. For the docs, Claude lists what has to change and Gianni edits them himself, except the I/O diagram (`HBC-2_Input_Output.pdf`), which Claude redraws. C4 waits until some hardware is built (weeks away).
+**Gianni, 2026-11-11, after C3:** the library part of C5 comes next. For the docs, Claude lists what has to change and Gianni edits them himself, except the I/O diagram (`HBC-2_Input_Output_diagram.pdf`), which Claude redraws. C4 waits until some hardware is built (weeks away).
 
 4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. (The GPIO 36 question is gone with D7: the fourth input goes on 25.)
 5. **C5. Library, templates and docs** (9.5). Library part done 2026-11-11 (iod-decisions.md, C5): `mbx_out` / `mbx_in`, the mailbox on by default, the I/O diagram redrawn, the list of doc changes for Gianni. Open: the EEPROM target, a `mailbox.has` template, the IDE panel.
