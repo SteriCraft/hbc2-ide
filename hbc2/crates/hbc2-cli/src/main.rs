@@ -14,9 +14,10 @@ use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register, TraceWriter};
 const USAGE: &str = "\
 usage:
   hbc2 asm <main.has> [-o out.bin] [--boot-rom] [--strip] [--symbols] [--map]
-        assemble (64 KiB RAM image); --strip leaves out unreached code and data; --boot-rom also writes
-        the RAM image as the hardware CPU's boot ROM, one 32 KiB file per
-        AT28C256: out_lo.bin (0000-7FFF) and out_hi.bin (8000-FFFF)
+        assemble (64 KiB RAM image); --strip leaves out unreached code
+        and data; --boot-rom also writes the RAM image as the hardware
+        CPU's boot ROM, one 32 KiB file per AT28C256: out_lo.bin
+        (0000-7FFF) and out_hi.bin (8000-FFFF)
   hbc2 cc <file.c | file.has>... [-o out.bin] [--boot-rom] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir

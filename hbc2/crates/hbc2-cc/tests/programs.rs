@@ -10,9 +10,6 @@
 //! - `name.keys`: text typed on the keyboard once the program reads keys
 //!   (letters as on the keys, without Shift; a new line is Enter).
 //!
-//! A program whose first line says "built for the EEPROM" is built for the
-//! EEPROM and started from it (boot loader), with no RAM image.
-//!
 //! Needs the compiler tools (compiler/build.cmd).
 
 use std::path::{Path, PathBuf};

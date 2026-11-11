@@ -125,9 +125,8 @@ The form decides the addressing mode.
 
 An instruction takes 1 to 4 bytes: the CPU reads only the bytes its form
 (its addressing mode) needs. The assembler places each instruction right
-after the one before, so the size matters when counting bytes (what fits in
-the EEPROM's first 512 bytes) or when computing an address from a label
-(`jmp loop + 3`).
+after the one before, so the size matters when counting bytes or when
+computing an address from a label (`jmp loop + 3`).
 
 | Size | Forms |
 |---|---|
@@ -292,9 +291,8 @@ two names for the area:
   when there is no `.bss`).
 
 A third name, `__program_end`, is the address just after the last byte of
-code or data placed automatically (fixed blocks and data are not counted):
-a boot loader copies the program up to there (the C compiler's EEPROM
-startup does). These names cannot be defined by the program. A startup
+code or data placed automatically (fixed blocks and data are not counted),
+for a loader that copies the program up to there. These names cannot be defined by the program. A startup
 loop clears the area:
 
 ```
@@ -318,9 +316,6 @@ clear_carry:
     jmp clear
 clear_done:
 ```
-
-For the EEPROM target, the area may be anywhere in RAM: it is not copied
-from the EEPROM.
 
 ### `.common`: a zeroed variable shared by several files
 
@@ -480,21 +475,6 @@ these routines for `in()` / `out()` and all its drivers. A new assembly
 project in the IDE gets its own copy of `mailbox.has`, already included by
 `main.has`.
 
-## EEPROM target
-
-`hbc2 asm main.has --eeprom` produces a 1 MiB EEPROM image instead of a 64 KiB
-RAM image. Addresses can then go up to `$0xFFFFF`. At power-on, the EEPROM
-copies only the first 512 bytes (`$0x0000-$0x01FF`) and the interrupt vector
-table (`$0xFE00-$0xFFFF`) into RAM, so:
-
-* automatic placement only uses `$0x0000-$0x01FF`,
-* the assembler warns about anything placed elsewhere (it stays in the EEPROM,
-  for the program to read through the EEPROM's ports).
-
-Interrupt handlers are not copied: the code in the first 512 bytes has to
-copy them (and anything else it needs) from the EEPROM into RAM before it
-enables interrupts. See the EEPROM reference in `Peripherals/EEPROM/`.
-
 ## Boot ROM for the hardware CPU
 
 The hardware CPU (the Logisim design in `logisim/`) copies a 64 KiB boot ROM
@@ -505,12 +485,10 @@ is two AT28C256 EEPROMs of 32 KiB each, so the image is written as two files:
   as usual, plus `main_lo.bin` (`$0x0000-$0x7FFF`, the low chip) and
   `main_hi.bin` (`$0x8000-$0xFFFF`, the high chip). With `-o out.bin` they
   are `out_lo.bin` and `out_hi.bin`.
-* In the IDE: Build menu, "Export boot ROM…" (RAM target only).
+* In the IDE: Assembler menu, "Export boot ROM…".
 
 Each file is the chip's contents from its address 0, as an EEPROM
-programmer (an Arduino one, for instance) writes it. `--boot-rom` doesn't work
-with `--eeprom`: the EEPROM target is the emulator's EEPROM peripheral, not
-the boot ROM.
+programmer (an Arduino one, for instance) writes it.
 
 ## Changes from the first IDE
 

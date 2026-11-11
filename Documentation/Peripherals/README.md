@@ -184,7 +184,6 @@ With all four, their ports are:
 | Monitor | 1-5 |
 | RTC | 6-12 |
 | Keyboard | 13-14 |
-| EEPROM | 15-19 (only when the program is built for the EEPROM) |
+| EEPROM | 15-19 |
 
-The monitor, RTC and keyboard can be unplugged in the IDE's **Peripherals**
-menu, which moves the next ones down: always use the detected ports rather than these numbers.
+Each device can be unplugged in the IDE's **Peripherals** menu, which moves the next ones down: always use the detected ports rather than these numbers.

@@ -52,7 +52,7 @@ Details moved out of this file to keep it short. Open the one for the part you t
 6. **Types:** `char` unsigned by default (already FCC's default: `__castuc_`). `int`/`short` 16, `long` 32, pointers 16. `float` = IEEE binary32, `double` and `long double` the same type (decision of 2026-11-04; was: an error).
 6b. **C99 declarations after statements (user, 2026-10-31):** allowed in any `{ }` block (`declaration_block()` called again in the block loop of `fcc/body.c`). `for (int i = ...)` is NOT supported. tests/c99decl.c (mutation-checked).
 7. **Frames > 255 bytes:** compute the address with `rsp` (see notes), no compile error.
-8. **EEPROM (step 13, user 2026-10-31):** `eeprom_read/write/load/save` in hbc2.h (asm in `lib/asm/hbc2.has`), and an EEPROM target for C: `runtime/boot.has` replaces crt0's start (see ABI.md 8 and `notes/library.md`).
+8. **EEPROM (step 13, user 2026-10-31):** `eeprom_read/write/load/save` in hbc2.h (asm in `lib/asm/hbc2.has`), and an EEPROM target for C: `runtime/boot.has` replaces crt0's start (see ABI.md 8 and `notes/library.md`). **The EEPROM target and boot.has were removed on 2026-11-11** (logisim/notes/io-redesign-proposal.md 9.5): the hardware starts from its boot ROM; the EEPROM stays as storage, plugged by default.
 9. **Interrupt handlers:** hand-written asm only (they may call C functions). No compiler support.
 10. **Zeroed variables (BSS):** `.bss name size` in hbc2-asm (DONE 2026-10-30): all `.bss` placed together after code and data, nothing in the image, `__bss_start` / `__bss_end` defined; `crt0` clears the area (loop example in the assembly manual).
 11. **Licence/packaging:** not a concern (single user). Repo is GPLv3 like the kit.

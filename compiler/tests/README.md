@@ -1,13 +1,12 @@
 # C compiler tests
 
-Each file says what `main` returns on its first line; "built for the
-EEPROM" on that line builds it for the EEPROM and starts it from there
-(no RAM image). A test that uses
+Each file says what `main` returns on its first line. A test that uses
 the monitor or the keyboard can have, next to `name.c`, a `name.screen`
 file (the text the monitor shows at the end; rows without trailing spaces,
 empty rows at the end left out) and a `name.keys` file (text typed once
 the program reads keys; a new line is Enter). Programs run with a monitor,
-an RTC (at 2000-01-01 00:00:00, not moving) and a keyboard. The Rust test
+an RTC (at 2000-01-01 00:00:00, not moving), a keyboard and a blank
+EEPROM. The Rust test
 `hbc2/crates/hbc2-cc/tests/programs.rs` compiles and runs them all
 (`cargo test -p hbc2-cc`, after `compiler/build.cmd`), and prints the size
 of each program's code and the number of instructions it ran.
@@ -16,11 +15,9 @@ of each program's code and the number of instructions it ran.
 * `bench.c`: small real programs (sieve, sort, strings, CRC, `long`
   arithmetic); also the benchmark for the code the compiler makes.
 * `hardware.c`: `hbc2.h` (device ports, `in`/`out`, monitor text and
-  pixels, RTC, keyboard, EEPROM functions refused without an EEPROM) and
-  `exit`.
-* `eeprom.c`: built for the EEPROM (its first line says so) and started
-  from it: the boot loader, `eeprom_read`/`write`/`load`/`save` (64 KiB and
-  256-byte boundaries, the last byte, past the end).
+  pixels, RTC, keyboard) and `exit`.
+* `eeprom.c`: `eeprom_read`/`write`/`load`/`save` (64 KiB and 256-byte
+  boundaries, the last byte, past the end).
 * `stdio.c`: `putchar`, `puts`, `getchar`, `gets`, scrolling.
 * `strings.c`: `string.h`, with lengths over 255 and overlapping moves.
 * `ctype.c`: `ctype.h`, every function on every value from `EOF` to 255

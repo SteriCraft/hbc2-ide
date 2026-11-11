@@ -516,7 +516,7 @@ RCLK could take 26 or 27, giving up the mouse port, or GPIO 0, which is fine onc
 | `compiler/lib/asm/hbc2.has` (30), `screen.has` (46), `terminal.has` (11), `time.has` (7), `math/misc/random.has` (5) | Each `in` / `out` becomes a call to `mbx_in` / `mbx_out` (or a macro): about 100 sites, mechanical. `in()` / `out()` in C keep their signatures. `screen.has` and `terminal.has` can later move to PUTS / primitives for speed. |
 | `compiler/runtime/devices.has`, `hbc2/templates/interruptHandler.has` | **Unchanged** (port-0 plug-in, IDs and per-port vectors kept). |
 | `compiler/runtime/crt0.has`, `init.has` | Wait for READY before `main`, because the ESP32 starts after the CPU (Q-C7). The device wait already in `init.has` stays. |
-| `compiler/runtime/boot.has` + the EEPROM build target (`hbc2-asm`, `hbc2-cc`, `hbc2-cli`, IDE) | **Removed**: no power-on copy (F9). |
+| `compiler/runtime/boot.has` + the EEPROM build target (`hbc2-asm`, `hbc2-cc`, `hbc2-cli`, IDE) | **Removed**: no power-on copy (F9). **Done 2026-11-11**; the EEPROM device stays as storage (iod-decisions.md, C5). |
 | `hbc2/templates/main.has`, `main.c` | Unchanged, or one line on READY. |
 | `compiler/tests` | Pass unchanged once the emulator routes through the mailbox. New tests: the native commands, a handler sending commands while `main` waits on a reply. |
 | `logisim/tests/cpu/*.has`, the bench stub | No change (the CPU bench keeps its stub). |

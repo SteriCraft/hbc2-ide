@@ -125,8 +125,8 @@ struct return.
   removed, the build compiles them all again.
 
 Device detection (`monitor_port`, …) is in the startup code:
-`../runtime/devices.has`, included by `../runtime/crt0.has` (RAM) and
-`../runtime/boot.has` (EEPROM; see `../ABI.md`, section 8).
+`../runtime/devices.has`, included by `../runtime/crt0.has` (see
+`../ABI.md`, section 8).
 
 `printf` has `%d %i %u %x %X %c %s %%` and `%f %F %e %E %g %G`, `l` for
 `long` (`%ld %lu %lx %lX`; `h`, `L` change nothing), the flags `- 0 + space

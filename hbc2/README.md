@@ -1,37 +1,50 @@
-# HBC-2 (Rust rewrite)
+# HBC-2 emulator and IDE (Rust)
 
-New implementation of the HBC-2 emulator and IDE. The reference for its
-behaviour is the HBC-2 Instruction Manual and the peripheral references in
-`../Documentation/` (`Peripherals/README.md` for the devices). The old Qt IDE
-is in the git history.
+The emulator, assembler, C compiler driver and IDE of the HBC-2. What the
+machine does is defined by the documents in `../Documentation/`:
+
+| Topic | Where |
+|---|---|
+| CPU and instruction set | `HBC-2_Instruction_Manual.pdf`, `HBC-2_Instruction_Set.pdf` |
+| Assembly language, `.has` files, boot ROM export | `HBC-2 Assembly Language.md` |
+| Devices (monitor, keyboard, RTC, EEPROM) and the I/O mailbox | `Peripherals/README.md`, `HBC-2_Input_Output.pdf` |
+| C: calling convention, startup, library | `../compiler/ABI.md`, `../compiler/lib/README.md` |
+| Hardware design (Logisim), I/O redesign | `../logisim/notes/` (`iod-decisions.md` for the mailbox) |
 
 ## Crates
 
 | Crate | Role |
 |---|---|
-| `hbc2-core` | CPU, RAM, the I/O mailbox card and the I/O processor model (which runs the IOD), peripherals (monitor, keyboard, RTC, EEPROM) and `Machine`. No GUI, no threads, no dependencies. |
-| `hbc2-asm` | Assembler and disassembler for `.has` files. The language is described in `../Documentation/HBC-2 Assembly Language.md`. |
+| `hbc2-core` | CPU, RAM, the I/O mailbox card, the I/O processor model (the ESP32, which runs the devices), peripherals and `Machine`. No GUI, no threads, no dependencies. |
+| `hbc2-asm` | Assembler and disassembler for `.has` files. |
 | `hbc2-runner` | Runs a machine on its own thread at a chosen clock speed (1 Hz to "as fast as possible"). Commands in, state snapshots out. |
 | `hbc2-cc` | C compiler driver: runs the Fuzix Compiler Kit stages of `../compiler` (built by `../compiler/build.cmd`) and assembles the result with the C runtime and library. |
-| `hbc2-ucode` | Microcode of the hardware control unit: source language, generator (7 AT28C256 images), datapath model checked against the emulator (`hbc2 ucode`). |
-| `hbc2-cli` | `hbc2` command: assemble, compile C, headless run, speed benchmark. |
-| `hbc2-ide` | `hbc2-ide`: the IDE (egui). Editor, assembler, emulator controls, and views of the CPU, memory, disassembly, IOD and peripherals. |
+| `hbc2-ucode` | Microcode of the hardware control unit: source language, generator (7 AT28C256 images), datapath model checked against the emulator. |
+| `hbc2-cli` | The `hbc2` command (below). |
+| `hbc2-ide` | The IDE (egui): editor, build, emulator controls, views of the CPU, memory, disassembly, I/O and devices. |
 
-`templates/` holds the files of a new project (`main.has`, `interruptHandler.has`, `main.c`).
+`templates/` holds the files of a new assembly project (`main.has`,
+`mailbox.has`, `interruptHandler.has`) and of a C project (`main.c`).
+`mailbox.has` is a copy of `../compiler/lib/asm/mailbox.has`; a test checks
+they match.
 
 ## Commands
 
 ```sh
-cargo test                                               # run all tests
+cargo test                                               # all tests (the C ones need ../compiler/build.cmd first)
 cargo run --release --bin hbc2-ide                       # the IDE
-cargo run --release --bin hbc2-ide -- my/project --run   # open a project folder, assemble and run it
+cargo run --release --bin hbc2-ide -- my/project --run   # open a project folder, build and run it
 cargo run --release --bin hbc2 -- asm templates/main.has --symbols
+cargo run --release --bin hbc2 -- asm main.has --boot-rom   # also main_lo.bin / main_hi.bin for the two AT28C256
 cargo run --release --bin hbc2 -- run templates/main.has --ticks 10000
-cargo run --release --bin hbc2 -- cc main.c other.c -o program.bin   # C program (needs ../compiler/build.cmd first)
-cargo run --release --bin hbc2 -- run main.c --ticks 1000000
+cargo run --release --bin hbc2 -- cc main.c other.c -o program.bin
+cargo run --release --bin hbc2 -- run main.c --ticks 1000000 --eeprom eeprom.bin
 cargo run --release --bin hbc2 -- bench                  # emulation speed in MHz
-cargo run --release --bin hbc2 -- bench --hz 100000000   # paced at 100 MHz on the emulator thread
 ```
+
+`hbc2` with no arguments lists everything, including `trace` / `compare`
+(execution traces), `vectors` (Logisim test vectors) and `ucode` (the
+microcode images).
 
 ## Installer (Windows)
 
@@ -45,65 +58,57 @@ next to its executable. The version is the workspace's (`Cargo.toml`).
 
 ## The IDE
 
-- A project is a folder with a `main.has`, where assembly starts. File ▸ New
-  project creates one from the templates.
-- A C project is a folder with a `main.c` instead. Build (F7) saves the open
-  files, then compiles every `.c` file and assembles them with every `.has`
-  file of the folder, the startup code, the runtime and the C library, in
-  the background (the toolbar shows "Building…"; Run or Step pressed
-  meanwhile start once it is loaded). Compiled files go to `.build/` (hidden
-  in the project view). Errors point at the C lines; breakpoints and the
-  current line work on the C source. In a C file, F11 (step into) runs the
-  whole line: it stops at the next line, inside a called C function, or at
-  the first instruction of an assembly file (runtime, library, interrupt
-  handler), where F11 steps one instruction again. F10 (step over) runs the
-  whole line with the functions it calls. A line that never ends runs until
-  Pause. The startup code, runtime and library open read-only. For the
-  EEPROM target, a boot loader copies the C program into RAM at power-on.
-- **F7** assembles and loads the program (paused at power-on). **F5** runs,
-  **F6** pauses, **Ctrl+F5** power-cycles. Stepping (one instruction in
-  assembly, one line in C): **F10** steps over (the routines called with CAL,
-  and the interrupt handlers entered, run until they return; a breakpoint in
-  them stops it), **F11** steps into them, **Shift+F11** (or Shift+F10) steps
-  out (runs until the current routine or interrupt handler returns). Run
-  assembles by itself when nothing is loaded yet, or when the sources changed
-  and the program has not started. A failed assembly never runs.
-- Assembling uses the editors' text, saved or not.
-- Click the editor margin to set a breakpoint. When the emulator pauses, the
-  editor shows the line of the next instruction.
-- Functions fold: the arrows at the right of the margin fold one (C: any
-  `{ }` block; assembly: a label after a comment, a directive or a blank
-  line, up to its last instruction). **Ctrl+K** collapses all functions,
-  **Ctrl+J** expands everything.
-- Settings ▸ Shortcuts lists the shortcuts by category; click one, then
-  press the new keys (or choose "No shortcut"). "Restore defaults" puts
-  them all back.
-- The CPU and Memory views highlight what changed since the last run or
-  step. RAM bytes can be edited in the Memory view while paused.
-- Click the monitor to type on the HBC-2 keyboard (an AZERTY keyboard: see
-  Help ▸ Keyboard map).
-- Clock speed goes from 1 Hz to 100 MHz, or as fast as the host can go.
-- Target RAM (64 KiB image) or EEPROM (1 MiB image, which plugs the EEPROM in).
-  Images can be exported, and loaded back without the sources.
-- Tabs can be moved, split and closed (View brings them back). The layout,
-  the last project, and each project's target, peripherals, breakpoints and
-  open files are remembered.
+- **Projects.** A project is a folder with a `main.has` (assembly) or a
+  `main.c` (C). File ▸ New project creates one from the templates.
+- **Building.** F7 assembles (using the editors' text, saved or not) and
+  loads the program, paused at power-on. A C project is saved first, then
+  every `.c` file is compiled and assembled with every `.has` file of the
+  folder, the startup code, the runtime and the C library, in the
+  background (compiled files go to the hidden `.build/`). Errors point at
+  the C lines. The startup code, runtime and library open read-only.
+- **Running.** F5 runs (it builds first when nothing is loaded, or when the
+  sources changed and the program has not started), F6 pauses, Ctrl+F5
+  power-cycles. A failed build never runs.
+- **Stepping.** One instruction in assembly, one line in C. F10 steps over
+  (called routines and interrupt handlers run until they return, unless a
+  breakpoint stops them), F11 steps into them, Shift+F11 steps out. In C,
+  F11 stops at the next line, inside a called C function, or at the first
+  instruction of an assembly file. Click the editor margin for a
+  breakpoint; breakpoints and the current line work on the C source.
+- **Views.** The CPU and Memory views highlight what changed since the last
+  run or step; RAM bytes can be edited while paused. Click the monitor to
+  type on the HBC-2 keyboard (AZERTY: Help ▸ Keyboard map).
+- **Devices.** Emulator ▸ Peripherals plugs or unplugs each device (it
+  resets the machine). The EEPROM starts blank and keeps what programs
+  write across resets and new builds; the Emulator menu saves its content
+  to a file and loads it back.
+- **Images.** The Assembler menu exports the 64 KiB RAM image, or the same
+  image as the boot ROM's two files. Emulator ▸ Load image runs an image
+  without its sources.
+- **Editor.** Functions fold (arrows in the margin; Ctrl+K collapses all,
+  Ctrl+J expands). Settings ▸ Shortcuts lists and changes every shortcut.
+- **Layout.** Tabs can be moved, split and closed (View brings them back).
+  The layout, the last project, and each project's peripherals,
+  breakpoints and open files are remembered.
 
 ## Design notes
 
-- One `Machine::tick()` is one clock cycle: it runs one whole instruction, or
-  one step of the interrupt handshake, or nothing when halted.
-- Peripherals are event-driven: a command runs once, when the CPU writes the
-  peripheral's CMD port. Nothing else runs on every cycle but the CPU, the
-  mailbox card and the I/O processor model, and those two are skipped while
-  they have nothing to do. Without the mailbox (`MachineConfig::mailbox` =
-  None, the CPU tests) the CPU talks to the IOD directly, as the first design did.
-- The machine is a plain value owned by whoever drives it. `hbc2-runner` moves
-  it onto one emulator thread: other threads send commands through a channel
-  and read the latest snapshot (a copy of the state, published about 60 times
-  per second). Nothing else is shared, so neither side can block the other.
+- One `Machine::tick()` is one clock cycle. An instruction takes the cycles
+  of the hardware (`hbc2-core/src/isa.rs`); the machine reports an
+  instruction boundary on its last cycle.
+- Devices are event-driven: a command runs once, when the I/O processor
+  delivers a write to its port. Nothing else runs on every cycle but the
+  CPU, the mailbox card and the I/O processor model, and those two are
+  skipped while they have nothing to do. Without the mailbox
+  (`MachineConfig::mailbox` = None, used by the CPU tests) the CPU talks to
+  the IOD directly, as the first design did.
+- The machine is a plain value owned by whoever drives it. `hbc2-runner`
+  moves it onto one emulator thread: other threads send commands through a
+  channel and read the latest snapshot (a copy of the state, published about
+  60 times per second). Nothing else is shared, so neither side can block
+  the other.
 - A halted CPU with no pending interrupt is idle: `Machine::run` counts the
   remaining cycles without simulating them, and the runner sleeps.
 - The IDE reads one snapshot per frame and only repaints when a new one is
-  published (or on input), so a paused emulator costs nothing. Views and menus
-  queue actions (`app::Action`), which run once the frame is drawn.
+  published (or on input), so a paused emulator costs nothing. Views and
+  menus queue actions (`app::Action`), which run once the frame is drawn.
