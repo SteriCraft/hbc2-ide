@@ -2,7 +2,7 @@
 
 use std::path::Path;
 
-use hbc2_asm::{MemoryFiles, Program, Target, assemble};
+use hbc2_asm::{MemoryFiles, Program, assemble};
 use hbc2_core::isa::IVT_START;
 use hbc2_core::{Machine, MachineConfig, TRACE_HEADER, TraceWriter};
 
@@ -20,7 +20,6 @@ fn asm(source: &str) -> Program {
     assemble(
         Path::new("main.has"),
         &MemoryFiles::new().with("main.has", source),
-        Target::Ram,
     )
     .unwrap_or_else(|e| panic!("{e:?}"))
 }
@@ -55,7 +54,7 @@ fn loop_program_matches_the_expected_trace() {
     let program = hbc2_asm::assemble_with(
         &dir.join("loop.has"),
         &hbc2_asm::FileSystem,
-        hbc2_asm::Options::new(Target::Ram),
+        hbc2_asm::Options::default(),
     )
     .unwrap_or_else(|e| panic!("{e:?}"));
     let mut machine = Machine::new(bare(), Some(&program.image)).unwrap();

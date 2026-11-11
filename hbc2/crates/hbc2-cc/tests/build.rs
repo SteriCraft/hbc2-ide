@@ -1,7 +1,6 @@
 //! Programs of several files that must not build: the error messages name
 //! the C files and the C names. Needs the compiler tools (compiler/build.cmd).
 
-use hbc2_asm::Target;
 use hbc2_cc::{Library, build_library, build_program, report};
 
 /// Writes `files` (name, text) into a folder of its own, and builds them.
@@ -14,7 +13,7 @@ fn build(test: &str, files: &[(&str, &str)], library: &Library) -> Result<(), St
         std::fs::write(&path, text).unwrap();
         sources.push(path);
     }
-    build_program(&sources, library, &dir.join("out"), Target::Ram)
+    build_program(&sources, library, &dir.join("out"))
         .map(|_| ())
         .map_err(|e| report(&e))
 }
@@ -144,7 +143,10 @@ fn error_lines() {
             "#include \"defs.h\"\nint main(void)\n{\n  int x = 1\n  return x;\n}\n",
         ),
         ("defs.h", "int f(void);\nint g(void) { return ; }\n"),
-        ("a.c", "int f(void)\n{\n  float q; q = nope;\n  return 0;\n}\n"),
+        (
+            "a.c",
+            "int f(void)\n{\n  float q; q = nope;\n  return 0;\n}\n",
+        ),
         ("b.c", "int h(void) { return 0; }\n#include \"nothere.h\"\n"),
         ("c.c", "int k(void) { return 0; }\n\n#error stop here\n"),
     ];
@@ -155,7 +157,7 @@ fn error_lines() {
             sources.push(dir.join(name));
         }
     }
-    let errors = match build_program(&sources, library, &dir.join("out"), Target::Ram) {
+    let errors = match build_program(&sources, library, &dir.join("out")) {
         Ok(_) => panic!("built"),
         Err(e) => e,
     };
@@ -176,7 +178,9 @@ fn error_lines() {
     );
     assert!(!at("defs.h", 2).is_empty(), "{all}");
     assert!(
-        at("a.c", 3).iter().any(|d| d.message.contains("unknown symbol")),
+        at("a.c", 3)
+            .iter()
+            .any(|d| d.message.contains("unknown symbol")),
         "{all}"
     );
     assert!(
@@ -215,13 +219,8 @@ fn c_lines() {
          }\n",
     )
     .unwrap();
-    let build = build_program(
-        std::slice::from_ref(&main),
-        library(),
-        &dir.join("out"),
-        Target::Ram,
-    )
-    .unwrap_or_else(|e| panic!("{}", report(&e)));
+    let build = build_program(std::slice::from_ref(&main), library(), &dir.join("out"))
+        .unwrap_or_else(|e| panic!("{}", report(&e)));
     let program = &build.program;
     let file = program
         .files
@@ -256,7 +255,7 @@ fn program(test: &str, main: &str) -> hbc2_asm::Program {
     std::fs::create_dir_all(&dir).unwrap();
     let path = dir.join("main.c");
     std::fs::write(&path, main).unwrap();
-    build_program(&[path], library(), &dir.join("out"), Target::Ram)
+    build_program(&[path], library(), &dir.join("out"))
         .unwrap_or_else(|e| panic!("{}", report(&e)))
         .program
 }
@@ -359,50 +358,4 @@ fn volatile_reloads() {
         &format!("static volatile int v;\n{code}"),
     );
     assert_eq!(count(&st, "_v"), 4, "{st}");
-}
-
-#[test]
-fn eeprom_image() {
-    let dir = std::env::temp_dir().join("hbc2-cc-build").join("eeprom");
-    std::fs::create_dir_all(&dir).unwrap();
-    let main = dir.join("main.c");
-    std::fs::write(&main, "int main(void) { return 0; }\n").unwrap();
-    // fixed data past the end of the program: not copied by the boot loader
-    let fixed = dir.join("fixed.has");
-    std::fs::write(&fixed, ".data table $0x8000 1, 2, 3\n.keep table\n").unwrap();
-    let build = build_program(&[main, fixed], library(), &dir.join("out"), Target::Eeprom)
-        .unwrap_or_else(|e| panic!("{}", report(&e)));
-    let program = &build.program;
-    let image = build.eeprom_image.as_ref().expect("an EEPROM image");
-    assert_eq!(image.len(), 0x10_0000);
-    assert_eq!(
-        image[..0x1_0000],
-        program.image[..],
-        "the RAM image at the start"
-    );
-    assert!(image[0x1_0000..].iter().all(|&b| b == 0));
-    let start = program.symbol("_start").unwrap();
-    assert!(program.files[start.file].ends_with("boot.has"));
-    // the boot loader and the device detection are copied at power-on
-    for name in ["_start", "devices_handler", "devices_ignore"] {
-        let s = program.symbol(name).unwrap();
-        assert!(s.address + s.size <= 0x01FA, "{name} at {:#x}", s.address);
-    }
-    assert_eq!(program.symbol("_eeprom_port").unwrap().address, 0x01FF);
-    let warnings = report(&build.warnings);
-    assert!(
-        warnings.contains("'table' ($0x8000) is not copied"),
-        "{warnings}"
-    );
-    assert!(
-        build_program(
-            &[dir.join("main.c")],
-            library(),
-            &dir.join("out"),
-            Target::Ram
-        )
-        .unwrap()
-        .eeprom_image
-        .is_none()
-    );
 }

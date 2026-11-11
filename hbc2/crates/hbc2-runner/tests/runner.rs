@@ -5,7 +5,7 @@ use std::sync::Arc;
 use std::sync::atomic::{AtomicUsize, Ordering};
 use std::time::{Duration, Instant};
 
-use hbc2_asm::{MemoryFiles, Program, Target, assemble};
+use hbc2_asm::{MemoryFiles, Program, assemble};
 use hbc2_core::isa::{HARDWARE_BOOT_CYCLES, PROGRAM_START};
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
 use hbc2_runner::{RunState, Runner, Snapshot, Speed};
@@ -38,7 +38,6 @@ fn program(source: &str) -> Program {
     assemble(
         Path::new("main.has"),
         &MemoryFiles::new().with("main.has", source),
-        Target::Ram,
     )
     .unwrap_or_else(|errors| panic!("{errors:?}"))
 }

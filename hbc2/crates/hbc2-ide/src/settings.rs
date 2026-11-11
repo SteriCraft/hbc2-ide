@@ -3,7 +3,6 @@
 use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::path::{Path, PathBuf};
 
-use hbc2_asm::Target;
 use hbc2_core::isa::HARDWARE_CLOCK_HZ;
 use hbc2_runner::Speed;
 use serde::{Deserialize, Serialize};
@@ -81,26 +80,10 @@ pub fn frequency_label(hz: f64) -> String {
     }
 }
 
-#[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
-pub enum TargetSetting {
-    Ram,
-    Eeprom,
-}
-
-impl From<TargetSetting> for Target {
-    fn from(t: TargetSetting) -> Target {
-        match t {
-            TargetSetting::Ram => Target::Ram,
-            TargetSetting::Eeprom => Target::Eeprom,
-        }
-    }
-}
-
 /// Remembered for each project.
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, Default, Serialize, Deserialize)]
 #[serde(default)]
 pub struct ProjectSettings {
-    pub target: TargetSetting,
     /// Assembly projects: leave out the code and data nothing reaches
     /// (always on for C projects).
     pub strip: bool,
@@ -111,19 +94,6 @@ pub struct ProjectSettings {
     pub open_files: Vec<PathBuf>,
     /// How the editor tabs were split into groups.
     pub editor_layout: Option<EditorLayout>,
-}
-
-impl Default for ProjectSettings {
-    fn default() -> Self {
-        ProjectSettings {
-            target: TargetSetting::Ram,
-            strip: false,
-            peripherals: Peripherals::default(),
-            breakpoints: BTreeMap::new(),
-            open_files: Vec::new(),
-            editor_layout: None,
-        }
-    }
 }
 
 /// Where the monitor window opens on the screen.

@@ -30,12 +30,11 @@ use std::path::PathBuf;
 
 use hbc2_core::Opcode;
 use hbc2_core::isa::{IVT_START, PROGRAM_START};
-use hbc2_core::peripherals::eeprom::BOOT_RANGES;
 
 use crate::diagnostic::{Loc, Report};
 use crate::encode::{Kind, Resolved, encode_instruction, instruction_size, usage};
 use crate::parser::{Address, DataValue, Located, Op, Operand, Stmt, Value8};
-use crate::{Options, Removed, SourceLine, Symbol, SymbolKind, Target};
+use crate::{MEMORY_SIZE, Options, Removed, SourceLine, Symbol, SymbolKind};
 
 pub(crate) enum Item {
     /// A statement, and whether it comes after `.library`.
@@ -150,7 +149,6 @@ pub(crate) fn assemble(
     options: Options,
     report: &mut Report,
 ) -> Option<Output> {
-    let target = options.target;
     let Grouped {
         mut blocks,
         mut data,
@@ -169,12 +167,12 @@ pub(crate) fn assemble(
     } else {
         Vec::new()
     };
-    let (bss_area, program_end) = place(&mut blocks, &mut data, &mut bss, target, report);
+    let (bss_area, program_end) = place(&mut blocks, &mut data, &mut bss, report);
     if report.has_errors() {
         return None;
     }
     let symbols = symbols(&blocks, &data, &bss, bss_area, program_end);
-    let mut output = write(&blocks, &data, symbols, target, report);
+    let mut output = write(&blocks, &data, symbols, report);
     output.removed = removed;
     if report.has_errors() {
         None
@@ -672,25 +670,12 @@ fn strip(
 
 // ----- 2. Placement
 
-/// Where automatic placement may put things.
-#[allow(clippy::single_range_in_vec_init)] // a list of regions, one of them for RAM
-/// Never in the interrupt vector table (from $0xFE00).
-fn auto_regions(target: Target) -> Vec<Range<u32>> {
-    let ivt = IVT_START as u32;
-    match target {
-        Target::Ram => vec![PROGRAM_START as u32..ivt],
-        // Only these ranges are copied from the EEPROM to RAM at power-on.
-        Target::Eeprom => vec![PROGRAM_START as u32..BOOT_RANGES[0].end as u32],
-    }
-}
-
 /// Places everything; returns the `.bss` area and the address after the
 /// last byte placed automatically (code and data).
 fn place(
     blocks: &mut [Block],
     data: &mut [Data],
     bss: &mut [Bss],
-    target: Target,
     report: &mut Report,
 ) -> (Range<u32>, u32) {
     // Fixed ranges: (range, name, location)
@@ -706,7 +691,7 @@ fn place(
         }
     }
 
-    let end = target.memory_size();
+    let end = MEMORY_SIZE;
     for (range, name, loc) in &fixed {
         if range.end > end {
             report.error(
@@ -738,7 +723,9 @@ fn place(
         return (0..0, 0);
     }
 
-    let mut free = auto_regions(target);
+    // Automatic placement: never in the interrupt vector table (from $0xFE00).
+    #[allow(clippy::single_range_in_vec_init)] // a list of free ranges
+    let mut free = vec![PROGRAM_START as u32..IVT_START as u32];
     for (range, _, _) in &fixed {
         subtract(&mut free, range);
     }
@@ -768,8 +755,7 @@ fn place(
         return (0..0, 0);
     }
 
-    // .bss is RAM only (nothing is in the image), so it may go anywhere in
-    // RAM that is free, for the EEPROM target too.
+    // .bss (nothing in the image) goes in the RAM left free.
     #[allow(clippy::single_range_in_vec_init)] // a list of free ranges
     let mut ram = vec![PROGRAM_START as u32..IVT_START as u32];
     for b in blocks.iter() {
@@ -887,18 +873,12 @@ fn symbols(
 
 // ----- 4. Resolution and encoding
 
-fn write(
-    blocks: &[Block],
-    data: &[Data],
-    symbols: Vec<Symbol>,
-    target: Target,
-    report: &mut Report,
-) -> Output {
+fn write(blocks: &[Block], data: &[Data], symbols: Vec<Symbol>, report: &mut Report) -> Output {
     let by_name: HashMap<&str, u32> = symbols
         .iter()
         .map(|s| (s.name.as_str(), s.address))
         .collect();
-    let mut image = vec![0u8; target.memory_size() as usize];
+    let mut image = vec![0u8; MEMORY_SIZE as usize];
     let mut lines = Vec::new();
     let mut bytes_used = 0usize;
 
@@ -983,13 +963,6 @@ fn write(
             }
         }
         bytes_used += block.size() as usize;
-        warn_location(
-            target,
-            start..start + block.size(),
-            &block.labels[0].0,
-            block.loc,
-            report,
-        );
     }
 
     for d in data {
@@ -1032,9 +1005,6 @@ fn write(
             }
         }
         bytes_used += d.size() as usize;
-        if d.address.is_some() {
-            warn_location(target, start..start + d.size(), &d.name, d.loc, report);
-        }
     }
 
     lines.sort_by_key(|l| l.address);
@@ -1056,26 +1026,6 @@ fn address16(value: i64, loc: Loc, report: &mut Report) -> Option<Resolved> {
             format!("address {value:#x} does not fit in 16 bits ($0x0000-$0xFFFF)"),
         );
         None
-    }
-}
-
-fn warn_location(target: Target, range: Range<u32>, name: &str, loc: Loc, report: &mut Report) {
-    if range.is_empty() {
-        return;
-    }
-    match target {
-        Target::Ram => {}
-        Target::Eeprom => {
-            if !BOOT_RANGES
-                .iter()
-                .any(|b| b.start as u32 <= range.start && range.end <= b.end as u32)
-            {
-                report.warning(
-                    loc,
-                    format!("'{name}' is not in a range copied to RAM at power-on ($0x0000-$0x01FF, $0xFE00-$0xFFFF)"),
-                );
-            }
-        }
     }
 }
 

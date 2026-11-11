@@ -6,7 +6,7 @@
 
 use std::path::Path;
 
-use hbc2_asm::{MemoryFiles, Program, Target, assemble};
+use hbc2_asm::{MemoryFiles, Program, assemble};
 use hbc2_core::isa::IVT_START;
 use hbc2_core::peripherals::{monitor, rtc};
 use hbc2_core::{IopConfig, Machine, MachineConfig, Register};
@@ -208,26 +208,52 @@ evc:                    ; a = port; flags and a pushed by the stub
         s += &format!("ev{p:02X}:\n    psf\n    psh a\n    mov a, {p}\n    jmp evc\n");
     }
     s += io;
-    for v in ["evn", "rd0", "rd1", "year", "second", "free", "infok", "info0", "info1", "info2"] {
+    for v in [
+        "evn", "rd0", "rd1", "year", "second", "free", "infok", "info0", "info1", "info2",
+    ] {
         s += &format!(".data {v} 0\n");
     }
     for p in 0..HANDLED {
-        s += &format!(".data16 v{p:02X} ${:#06X} ev{p:02X}\n", IVT_START + 2 * p as u16);
+        s += &format!(
+            ".data16 v{p:02X} ${:#06X} ev{p:02X}\n",
+            IVT_START + 2 * p as u16
+        );
     }
     s
 }
 
 fn asm(source: &str) -> Program {
-    assemble(Path::new("main.has"), &MemoryFiles::new().with("main.has", source), Target::Ram)
-        .unwrap_or_else(|e| panic!("{}", e.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")))
+    assemble(
+        Path::new("main.has"),
+        &MemoryFiles::new().with("main.has", source),
+    )
+    .unwrap_or_else(|e| {
+        panic!(
+            "{}",
+            e.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
+        )
+    })
 }
 
 fn config(mailbox: Option<IopConfig>) -> MachineConfig {
-    MachineConfig { monitor: true, rtc: true, keyboard: true, eeprom: None, mailbox }
+    MachineConfig {
+        monitor: true,
+        rtc: true,
+        keyboard: true,
+        eeprom: None,
+        mailbox,
+    }
 }
 
 fn var(m: &Machine, p: &Program, name: &str) -> u8 {
-    m.board.ram.read(p.symbol(name).unwrap_or_else(|| panic!("no {name}")).address as u16)
+    m.board.ram.read(
+        p.symbol(name)
+            .unwrap_or_else(|| panic!("no {name}"))
+            .address as u16,
+    )
 }
 
 /// Runs until the PC is at `label` (at most `max` cycles); returns the cycles.
@@ -235,7 +261,10 @@ fn run_to(m: &mut Machine, p: &Program, label: &str, max: u64) -> u64 {
     let at = p.symbol(label).unwrap().address as u16;
     let start = m.ticks();
     while m.cpu.pc != at {
-        assert!(m.ticks() - start < max, "{label} not reached in {max} cycles");
+        assert!(
+            m.ticks() - start < max,
+            "{label} not reached in {max} cycles"
+        );
         m.step();
     }
     m.ticks() - start
@@ -262,8 +291,17 @@ fn run(io: &str, mailbox: Option<IopConfig>) -> (Outcome, Program) {
     let n = var(&m, &p, "evn") as u16;
     let out = Outcome {
         log: (0..n).map(|k| m.board.ram.read(LOG + k)).collect(),
-        vars: ["evn", "rd0", "rd1", "year", "second", "free"].iter().map(|v| var(&m, &p, v)).collect(),
-        text: m.peripherals.monitor.as_ref().unwrap().text_buffer().to_vec(),
+        vars: ["evn", "rd0", "rd1", "year", "second", "free"]
+            .iter()
+            .map(|v| var(&m, &p, v))
+            .collect(),
+        text: m
+            .peripherals
+            .monitor
+            .as_ref()
+            .unwrap()
+            .text_buffer()
+            .to_vec(),
         registers: std::array::from_fn(|r| m.cpu.reg(Register::ALL[r])),
         cycles,
     };
@@ -277,16 +315,36 @@ fn the_mailbox_runs_the_iod_protocol() {
     // Plug-in (port 0: first port, ID) x 3, then the key press (port 13) and release (14).
     assert_eq!(
         direct.log,
-        [0, 1, 0, 0x4A, 0, 6, 0, 0x95, 0, 13, 0, 0xAA, 13, 0x41, 14, 0x41],
+        [
+            0, 1, 0, 0x4A, 0, 6, 0, 0x95, 0, 13, 0, 0xAA, 13, 0x41, 14, 0x41
+        ],
         "the old IOD's events"
     );
-    assert_eq!(mbx.log, direct.log, "the same events, in order, with the same data in I");
-    assert_eq!(mbx.vars, direct.vars, "evn, monitor READ, RTC year / second, a free latch");
-    assert_eq!((direct.vars[1], direct.vars[2]), (0x12, b'C'), "READ at column 4");
+    assert_eq!(
+        mbx.log, direct.log,
+        "the same events, in order, with the same data in I"
+    );
+    assert_eq!(
+        mbx.vars, direct.vars,
+        "evn, monitor READ, RTC year / second, a free latch"
+    );
+    assert_eq!(
+        (direct.vars[1], direct.vars[2]),
+        (0x12, b'C'),
+        "READ at column 4"
+    );
     assert!(mbx.text == direct.text, "the same screen");
-    assert_eq!(mbx.text[3 * monitor::TEXT_COLUMNS + 2 + 19].ascii, b'A' + 19);
+    assert_eq!(
+        mbx.text[3 * monitor::TEXT_COLUMNS + 2 + 19].ascii,
+        b'A' + 19
+    );
     assert_eq!(mbx.registers, direct.registers);
-    assert!(mbx.cycles > direct.cycles, "the protocol costs time: {} vs {}", mbx.cycles, direct.cycles);
+    assert!(
+        mbx.cycles > direct.cycles,
+        "the protocol costs time: {} vs {}",
+        mbx.cycles,
+        direct.cycles
+    );
 }
 
 #[test]
@@ -296,8 +354,16 @@ fn info_reports_the_protocol_and_the_devices() {
     run_to(&mut m, &p, "keys", 2_000_000);
     assert_eq!(var(&m, &p, "infok"), 1);
     assert_eq!(
-        [var(&m, &p, "info0"), var(&m, &p, "info1"), var(&m, &p, "info2")],
-        [hbc2_core::iop::PROTOCOL_VERSION, hbc2_core::iop::FIRMWARE_VERSION, 0x07],
+        [
+            var(&m, &p, "info0"),
+            var(&m, &p, "info1"),
+            var(&m, &p, "info2")
+        ],
+        [
+            hbc2_core::iop::PROTOCOL_VERSION,
+            hbc2_core::iop::FIRMWARE_VERSION,
+            0x07
+        ],
         "version 1, the emulator's firmware, monitor + RTC + keyboard"
     );
     assert_eq!(m.iop.partial_command(), &[] as &[u8]);
@@ -308,17 +374,33 @@ fn info_reports_the_protocol_and_the_devices() {
 #[test]
 fn breaking_the_rule_loses_events() {
     let p = asm(&program(MAILBOX));
-    let eager = IopConfig { service_cycles: 1, rule_cycles: 0 };
+    let eager = IopConfig {
+        service_cycles: 1,
+        rule_cycles: 0,
+    };
     let mut m = Machine::new(config(Some(eager)), Some(&p.image)).unwrap();
     m.run(500_000);
     let n = var(&m, &p, "evn");
-    assert!(n < 12, "with the rule broken, some of the 6 plug-in events are lost ({} logged)", n / 2);
+    assert!(
+        n < 12,
+        "with the rule broken, some of the 6 plug-in events are lost ({} logged)",
+        n / 2
+    );
     assert!(n >= 2, "the first one arrives");
-    assert_eq!(m.iop.events, 6, "the MCU wrote all 6: the others were cleared by the CPU's evt_clr");
-    assert!(m.cpu.pc < p.symbol("plugged").unwrap().address as u16, "still waiting for the devices");
+    assert_eq!(
+        m.iop.events, 6,
+        "the MCU wrote all 6: the others were cleared by the CPU's evt_clr"
+    );
+    assert!(
+        m.cpu.pc < p.symbol("plugged").unwrap().address as u16,
+        "still waiting for the devices"
+    );
 
     // With the rule (and the same fast MCU), all arrive.
-    let fast = IopConfig { service_cycles: 1, rule_cycles: 2 };
+    let fast = IopConfig {
+        service_cycles: 1,
+        rule_cycles: 2,
+    };
     let mut m = Machine::new(config(Some(fast)), Some(&p.image)).unwrap();
     run_to(&mut m, &p, "keys", 2_000_000);
     assert_eq!(var(&m, &p, "evn"), 12);

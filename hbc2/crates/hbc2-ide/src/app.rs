@@ -17,7 +17,7 @@ use egui_dock::{DockState, Node, NodeIndex, TabIndex};
 
 use crate::editor_groups::{self, Drop};
 use hbc2_asm::source::normalize;
-use hbc2_asm::{Diagnostic, Program, Severity, SourceProvider, Target};
+use hbc2_asm::{Diagnostic, Program, Severity, SourceProvider};
 use hbc2_runner::{RunState, Snapshot, Speed};
 use serde::{Deserialize, Serialize};
 
@@ -26,7 +26,7 @@ use crate::document::{Document, shift_breakpoints};
 use crate::emulator::{Emulator, Image, Peripherals, ram_address};
 use crate::find::{Find, FindMode};
 use crate::project::{self, Language, Project};
-use crate::settings::{ProjectSettings, Settings, TargetSetting};
+use crate::settings::{ProjectSettings, Settings};
 use crate::signatures::Signatures;
 use crate::tabs::Tab;
 use crate::views::disasm::DisasmView;
@@ -107,9 +107,9 @@ pub enum Action {
     ExportBootRom,
     LoadImage,
     SaveEeprom,
+    LoadEeprom,
     /// Starts recording an execution trace (asks for the file), or stops it.
     ToggleTrace,
-    SetTarget(TargetSetting),
     /// Leave out unused code in an assembly project, or keep everything.
     SetStrip(bool),
     SetPeripherals(Peripherals),
@@ -1330,19 +1330,7 @@ impl Ide {
             Action::ToggleTrace => state.toggle_trace(),
             Action::LoadImage => state.load_image(),
             Action::SaveEeprom => state.save_eeprom(),
-            Action::SetTarget(target) => {
-                if state.project_settings.target != target {
-                    state.project_settings.target = target;
-                    state.edits += 1; // the loaded build no longer matches
-                    let name = match target {
-                        TargetSetting::Ram => "RAM",
-                        TargetSetting::Eeprom => "EEPROM",
-                    };
-                    state
-                        .console
-                        .info(format!("Target: {name}. Assemble (F7) to rebuild."));
-                }
-            }
+            Action::LoadEeprom => state.load_eeprom(),
             Action::SetStrip(strip) => {
                 if state.project_settings.strip != strip {
                     state.project_settings.strip = strip;
@@ -1850,11 +1838,6 @@ impl State {
         self.signatures = signatures;
     }
 
-    /// The program's target.
-    pub fn target(&self) -> Target {
-        self.project_settings.target.into()
-    }
-
     /// Whether `path` is shown but not edited: the compiled files of a C
     /// project and the compiler's own files (startup code, runtime,
     /// library), which the debugger opens.
@@ -1890,18 +1873,12 @@ impl State {
             if !self.save(&self.dirty_paths()) {
                 return false;
             }
-            let target = self.target();
-            let target_name = match target {
-                Target::Ram => "RAM",
-                Target::Eeprom => "EEPROM",
-            };
             // Only the last build stays in the console.
             self.console.clear();
-            self.console
-                .info(format!("Building {name} for {target_name}…"));
+            self.console.info(format!("Building {name}…"));
             let (send, result) = std::sync::mpsc::channel();
             std::thread::spawn(move || {
-                let _ = send.send(build_c(&sources, &dir, target));
+                let _ = send.send(build_c(&sources, &dir));
             });
             self.building = Some(PendingBuild {
                 result,
@@ -1917,7 +1894,6 @@ impl State {
         let Some(project) = &self.project else {
             return false;
         };
-        let target = self.target();
         let entry = project.entry();
         let sources = Sources(
             self.docs
@@ -1925,25 +1901,16 @@ impl State {
                 .map(|d| (d.path.clone(), d.text.as_str()))
                 .collect(),
         );
-        let target_name = match target {
-            Target::Ram => "RAM",
-            Target::Eeprom => "EEPROM",
-        };
         // Only the last build stays in the console.
         self.console.clear();
-        self.console
-            .info(format!("Assembling {name} for {target_name}…"));
+        self.console.info(format!("Assembling {name}…"));
         let started = Instant::now();
         let options = hbc2_asm::Options {
-            target,
             strip: self.project_settings.strip,
         };
         let result = hbc2_asm::assemble_with(&entry, &sources, options).map(|p| {
             let warnings = p.warnings.clone();
-            let image = match target {
-                Target::Ram => Image::Ram(p.image.clone().into()),
-                Target::Eeprom => Image::Eeprom(p.image.clone().into()),
-            };
+            let image = Image(p.image.clone().into());
             (p, image, warnings)
         });
         self.finish_build(result, false, started, self.edits)
@@ -1985,15 +1952,11 @@ impl State {
                 self.console.push(
                     Level::Success,
                     format!(
-                        "{} in {:.0} ms: {} bytes used ({:.1}% of the {}), {} warning(s). Loaded, paused at power-on.",
+                        "{} in {:.0} ms: {} bytes used ({:.1}% of the RAM), {} warning(s). Loaded, paused at power-on.",
                         if c { "Built" } else { "Assembled" },
                         elapsed.as_secs_f64() * 1000.0,
                         program.bytes_used,
-                        program.bytes_used as f64 * 100.0 / program.target.memory_size() as f64,
-                        match program.target {
-                            hbc2_asm::Target::Ram => "RAM",
-                            hbc2_asm::Target::Eeprom => "EEPROM",
-                        },
+                        program.bytes_used as f64 * 100.0 / hbc2_asm::MEMORY_SIZE as f64,
                         warnings.len()
                     ),
                     None,
@@ -2062,7 +2025,7 @@ impl State {
                 .lines
                 .iter()
                 .filter(|l| l.file == file && l.line == line)
-                .filter_map(|l| ram_address(program.target, l.address))
+                .filter_map(|l| ram_address(l.address))
                 .collect(),
         )
     }
@@ -2081,10 +2044,7 @@ impl State {
             self.console.error("Nothing to export: assemble first.");
             return;
         };
-        let (bytes, name) = match &image {
-            Image::Ram(bytes) => (bytes.clone(), "ram.bin"),
-            Image::Eeprom(bytes) => (bytes.clone(), "eeprom.bin"),
-        };
+        let (bytes, name) = (image.0, "ram.bin");
         let mut dialog = rfd::FileDialog::new()
             .add_filter("Binary image", &["bin"])
             .set_file_name(name);
@@ -2106,9 +2066,8 @@ impl State {
     /// Writes the RAM image as the hardware CPU's boot ROM: one 32 KiB file
     /// per AT28C256, `name_lo.bin` (0000-7FFF) and `name_hi.bin` (8000-FFFF).
     fn export_boot_rom(&mut self) {
-        let Some(Image::Ram(bytes)) = self.emulator.image().cloned() else {
-            self.console
-                .error("Nothing to export: assemble for the RAM target first.");
+        let Some(Image(bytes)) = self.emulator.image().cloned() else {
+            self.console.error("Nothing to export: assemble first.");
             return;
         };
         let mut dialog = rfd::FileDialog::new()
@@ -2193,7 +2152,7 @@ impl State {
 
     fn load_image(&mut self) {
         let Some(path) = rfd::FileDialog::new()
-            .set_title("Load a RAM (64 KiB) or EEPROM (1 MiB) image")
+            .set_title("Load a RAM image (64 KiB)")
             .add_filter("Binary image", &["bin", "rom"])
             .pick_file()
         else {
@@ -2217,7 +2176,7 @@ impl State {
     fn save_eeprom(&mut self) {
         let Some(eeprom) = self.snapshot.eeprom.clone() else {
             self.console
-                .error("No EEPROM plugged in (assemble for the EEPROM target).");
+                .error("No EEPROM plugged in (Peripherals menu).");
             return;
         };
         if let Some(path) = rfd::FileDialog::new()
@@ -2233,6 +2192,33 @@ impl State {
                     .console
                     .error(format!("Cannot write {}: {e}", path.display())),
             }
+        }
+    }
+
+    /// Replaces the EEPROM's content with a 1 MiB file. The machine restarts.
+    fn load_eeprom(&mut self) {
+        if !self.emulator.peripherals.eeprom {
+            self.console
+                .error("No EEPROM plugged in (Peripherals menu).");
+            return;
+        }
+        let Some(path) = rfd::FileDialog::new()
+            .set_title("Load the EEPROM's content (1 MiB)")
+            .add_filter("Binary image", &["bin"])
+            .pick_file()
+        else {
+            return;
+        };
+        let breakpoints = self.breakpoint_addresses();
+        let result = std::fs::read(&path)
+            .map_err(|e| e.to_string())
+            .and_then(|content| self.emulator.load_eeprom(content, &breakpoints));
+        match result {
+            Ok(()) => self.console.success(format!(
+                "EEPROM content loaded from {}: the machine was reset.",
+                path.display()
+            )),
+            Err(e) => self.message("Cannot load the EEPROM content", e),
         }
     }
 }
@@ -2291,16 +2277,11 @@ fn history_step(
 
 /// Compiles and assembles a C project: the program, its image and its
 /// warnings, or the errors (with the warnings). The library is compiled
-/// into `dir/lib` when it changed. The program's addresses are RAM
-/// addresses for both targets: the EEPROM's boot loader copies the program
-/// to the same addresses.
-fn build_c(sources: &[PathBuf], dir: &Path, target: Target) -> BuildResult {
+/// into `dir/lib` when it changed.
+fn build_c(sources: &[PathBuf], dir: &Path) -> BuildResult {
     let library = hbc2_cc::build_library(&dir.join("lib"))?;
-    let build = hbc2_cc::build_program(sources, &library, dir, target)?;
-    let image = match build.eeprom_image {
-        Some(eeprom) => Image::Eeprom(eeprom.into()),
-        None => Image::Ram(build.program.image.clone().into()),
-    };
+    let build = hbc2_cc::build_program(sources, &library, dir)?;
+    let image = Image(build.program.image.clone().into());
     Ok((build.program, image, build.warnings))
 }
 
@@ -2312,7 +2293,7 @@ fn breakpoint_addresses(program: &Program, settings: &ProjectSettings) -> Vec<u1
         };
         for &line in lines {
             if let Some(address) = program.address_of(file, line)
-                && let Some(address) = ram_address(program.target, address)
+                && let Some(address) = ram_address(address)
             {
                 addresses.push(address);
             }

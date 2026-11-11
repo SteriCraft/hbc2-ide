@@ -1,39 +1,27 @@
-/* Expected: main returns 0 (built for the EEPROM: boot loader, eeprom_*) */
-/* Returns the number of the first failed check. Uses printf so that the
-   boot loader copies several pages; eeprom.screen is what it prints. */
+/* Expected: main returns 0 (eeprom_read, write, load, save) */
+/* Returns the number of the first failed check. The EEPROM is storage
+   only, plugged and blank at power-on. eeprom.screen is what it prints. */
 
 #include <hbc2.h>
 #include <stdio.h>
 #include <string.h>
 
-static const char text[] = "Copied from the EEPROM at power-on";
+static const char text[] = "Saved in the EEPROM";
 static unsigned char buffer[300];
 static unsigned char back[300];
-static int counter = 1234;      /* .data: copied by the boot loader */
 
-int boot(void)
+int plugged(void)
 {
-    unsigned char *code = (unsigned char *)boot;
-    unsigned i;
     if (eeprom_port == 0 || monitor_port == 0 || rtc_port == 0 || keyboard_port == 0)
         return 1;
-    if (counter != 1234)
+    if (eeprom_read(0) != 0 || eeprom_read(0xFFFFFL) != 0)    /* blank */
         return 2;
-    /* the program is in the EEPROM at its RAM addresses */
-    for (i = 0; i < sizeof text; i++)
-        if (eeprom_read((unsigned)text + i) != (unsigned char)text[i])
-            return 3;
-    for (i = 0; i < 16; i++)
-        if (eeprom_read((unsigned)code + i) != code[i])
-            return 4;
     return 0;
 }
 
 int bytes(void)
 {
-    if (eeprom_read(EEPROM_FREE) != 0)              /* the rest is blank */
-        return 10;
-    if (eeprom_write(EEPROM_FREE, 0xA5) || eeprom_read(EEPROM_FREE) != 0xA5)
+    if (eeprom_write(0, 0xA5) || eeprom_read(0) != 0xA5)
         return 11;
     if (eeprom_write(0xFFFFFL, 0x5A) || eeprom_read(0xFFFFFL) != 0x5A)
         return 12;                                  /* the last byte */
@@ -80,9 +68,13 @@ void finish(int r)
 
 int main(void)
 {
-    finish(boot());
+    finish(plugged());
     finish(bytes());
     finish(blocks());
-    printf("%s\n%d\n", text, counter);
+    /* a string there and back */
+    memset(back, 0, sizeof back);
+    if (eeprom_save(0x80000L, text, sizeof text) || eeprom_load(back, 0x80000L, sizeof text))
+        return 30;
+    printf("%s\n", back);
     return 0;
 }

@@ -1,26 +1,22 @@
 //! Menu bar, toolbar, status bar, start page and dialogs.
 
 use eframe::egui::{self, Align, Button, Color32, Layout, RichText};
-use hbc2_asm::Target;
 use hbc2_core::StopReason;
 use hbc2_runner::{RunState, Speed};
 
 use crate::app::{Action, Dialog, SettingsPage, State, can_undo};
-use crate::emulator::Image;
 use crate::find::FindMode;
 use crate::project::{
     Language, folder_name, new_file_content, project_folder_name, source_file_name,
 };
-use crate::settings::{
-    MonitorSettings, Placement, SPEEDS, Settings, TargetSetting, frequency_label, speed_label,
-};
+use crate::settings::{MonitorSettings, Placement, SPEEDS, Settings, frequency_label, speed_label};
 use crate::shortcuts::{self, Category, Command};
 
 fn shortcut_button(text: &str, shortcut: String) -> Button<'static> {
     Button::new(text.to_string()).shortcut_text(shortcut)
 }
 
-/// Why a C project has no EEPROM target.
+/// Why the option is off for a C project.
 const C_STRIPS: &str = "C programs always leave out unused code";
 
 fn build_label(c_project: bool) -> &'static str {
@@ -37,7 +33,6 @@ fn is_c_project(state: &State) -> bool {
 pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
     let c_project = is_c_project(state);
     let building = state.is_building();
-    let eeprom_target = state.target() == Target::Eeprom;
     let actions = &mut state.actions;
     let has_project = state.project.is_some();
     let keys = state.settings.shortcuts.clone();
@@ -167,24 +162,6 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     actions.push(Action::Assemble);
                 }
                 ui.separator();
-                ui.label(RichText::new("Memory target").weak());
-                let target = state.project_settings.target;
-                if ui
-                    .radio(target == TargetSetting::Ram, "RAM (64 KiB image)")
-                    .clicked()
-                {
-                    actions.push(Action::SetTarget(TargetSetting::Ram));
-                }
-                if ui
-                    .radio(
-                        target == TargetSetting::Eeprom,
-                        "EEPROM (1 MiB image, boots into RAM)",
-                    )
-                    .clicked()
-                {
-                    actions.push(Action::SetTarget(TargetSetting::Eeprom));
-                }
-                ui.separator();
                 let mut strip = state.project_settings.strip || c_project;
                 if ui
                     .add_enabled(
@@ -207,11 +184,10 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 {
                     actions.push(Action::ExportImage);
                 }
-                let ram_image = matches!(state.emulator.image(), Some(Image::Ram(_)));
                 if ui
-                    .add_enabled(ram_image, Button::new("Export boot ROM…"))
+                    .add_enabled(loaded, Button::new("Export boot ROM…"))
                     .on_hover_text("The RAM image as two 32 KiB files, one per AT28C256 of the hardware CPU: _lo.bin (0000-7FFF) and _hi.bin (8000-FFFF)")
-                    .on_disabled_hover_text("Assemble for the RAM target first.")
+                    .on_disabled_hover_text("Assemble first.")
                     .clicked()
                 {
                     actions.push(Action::ExportBootRom);
@@ -276,16 +252,10 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     let mut changed = ui.checkbox(&mut p.monitor, "Monitor").changed();
                     changed |= ui.checkbox(&mut p.rtc, "Real-time clock").changed();
                     changed |= ui.checkbox(&mut p.keyboard, "Keyboard").changed();
-                    ui.add_enabled(
-                        false,
-                        egui::Checkbox::new(
-                            &mut eeprom_target.clone(),
-                            "EEPROM",
-                        ),
-                    )
-                    .on_disabled_hover_text(
-                        "Plugged in when the program is built for the EEPROM target",
-                    );
+                    changed |= ui
+                        .checkbox(&mut p.eeprom, "EEPROM")
+                        .on_hover_text("1 MiB of storage. Its content stays when the program changes.")
+                        .changed();
                     ui.label(RichText::new("Changing them resets the machine.").weak());
                     if changed {
                         actions.push(Action::SetPeripherals(p));
@@ -294,7 +264,7 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 ui.separator();
                 if ui
                     .button("Load image…")
-                    .on_hover_text("Run a RAM or EEPROM image file")
+                    .on_hover_text("Run a RAM image file (64 KiB)")
                     .clicked()
                 {
                     actions.push(Action::LoadImage);
@@ -305,6 +275,13 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                     .clicked()
                 {
                     actions.push(Action::SaveEeprom);
+                }
+                if ui
+                    .add_enabled(eeprom, Button::new("Load EEPROM content…"))
+                    .on_hover_text("Replace the EEPROM's content with a 1 MiB file (resets the machine)")
+                    .clicked()
+                {
+                    actions.push(Action::LoadEeprom);
                 }
                 ui.separator();
                 if ui
@@ -392,22 +369,6 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
                         if ui.selectable_label(current == speed, speed_label(speed)).clicked() {
                             actions.push(Action::SetSpeed(speed));
                         }
-                    }
-                });
-            ui.label("Target");
-            let target = state.project_settings.target;
-            egui::ComboBox::from_id_salt("target")
-                .selected_text(match target {
-                    TargetSetting::Ram => "RAM",
-                    TargetSetting::Eeprom => "EEPROM",
-                })
-                .width(80.0)
-                .show_ui(ui, |ui| {
-                    if ui.selectable_label(target == TargetSetting::Ram, "RAM").clicked() {
-                        actions.push(Action::SetTarget(TargetSetting::Ram));
-                    }
-                    if ui.selectable_label(target == TargetSetting::Eeprom, "EEPROM").clicked() {
-                        actions.push(Action::SetTarget(TargetSetting::Eeprom));
                     }
                 });
             ui.separator();

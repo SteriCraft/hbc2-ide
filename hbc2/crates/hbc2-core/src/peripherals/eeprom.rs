@@ -1,9 +1,7 @@
-//! The HBC-2 EEPROM: 1 MiB of non-volatile memory (20-bit addresses).
-//!
-//! At power-on it copies the first 512 bytes of the program (0x0000-0x01FF)
-//! and the interrupt vector table (0xFE00-0xFFFF) from its memory into RAM.
-//! Anything else (interrupt handlers included) has to be copied by that
-//! program, through the ports.
+//! The HBC-2 EEPROM: 1 MiB of non-volatile storage (20-bit addresses),
+//! read and written through its ports. On the hardware it is a file on the
+//! I/O processor's SD card (io-redesign-proposal.md 9.3). Programs start
+//! from the boot ROM, not from here.
 //!
 //! Ports: CMD, DATA, ADDR_0 (bits 19-16), ADDR_1 (bits 15-8), ADDR_2 (bits 7-0).
 //! Writing CMD executes READ (DATA = memory[address]) or WRITE
@@ -27,9 +25,6 @@ pub mod command {
     pub const READ: u8 = 1;
     pub const WRITE: u8 = 2;
 }
-
-/// RAM ranges copied from the EEPROM at power-on.
-pub const BOOT_RANGES: [std::ops::Range<usize>; 2] = [0x0000..0x0200, 0xFE00..0x1_0000];
 
 #[derive(Clone)]
 pub struct Eeprom {
@@ -103,12 +98,8 @@ impl Peripheral for Eeprom {
     }
 
     /// Memory content is kept: the EEPROM is non-volatile.
-    fn power_on(&mut self, first_port: u8, board: &mut Board) {
+    fn power_on(&mut self, first_port: u8, _board: &mut Board) {
         self.first_port = Some(first_port);
-        let ram = board.ram.as_mut_slice();
-        for range in BOOT_RANGES {
-            ram[range.clone()].copy_from_slice(&self.memory[range]);
-        }
     }
 
     fn port_written(&mut self, offset: u8, board: &mut Board) {

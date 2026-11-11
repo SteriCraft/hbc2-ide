@@ -872,6 +872,7 @@ fn c_project_builds_and_runs() {
         monitor: true,
         rtc: false,
         keyboard: false,
+        eeprom: false,
     }));
     // A breakpoint on a C line: Run builds, then stops there, and the
     // editor shows the C line.

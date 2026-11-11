@@ -165,15 +165,12 @@ int rtc_set(const struct rtc_time *time);
 
 
 // --- EEPROM ------------------------------------------------------------
-// 1 MiB that keeps its content when the power is off: addresses 0 to
-// 0xFFFFF. Plugged when the program is built for the EEPROM (see
-// compiler/ABI.md, section 8): the program itself is at the start of
-// the EEPROM, at the same addresses as in RAM ($0x0000 to $0xFFFF), so
-// keep your data from EEPROM_FREE on. The functions return -1 or 1 when
-// there is no EEPROM or the addresses go past its end.
+// 1 MiB of storage that keeps its content when the power is off:
+// addresses 0 to 0xFFFFF, all free for the program's data. On the
+// hardware it is a file on the I/O processor's SD card. The functions
+// return -1 or 1 when there is no EEPROM or the addresses go past its end.
 
 #define EEPROM_SIZE 0x100000L
-#define EEPROM_FREE 0x10000L        // the first address after a program
 
 // Returns the byte, or -1 if address is past the end or there is no EEPROM.
 int eeprom_read(unsigned long address);

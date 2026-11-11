@@ -18,8 +18,8 @@
 //!   into the IR, then latch, PC := V1:V2 through the IR's outputs, checked
 //!   against the CPU's handler address.
 //!
-//! The ROM image is the program's power-on RAM (`Machine::power_on` without an
-//! EEPROM copies it as is); the bench writes it into the at28c256 model, so
+//! The ROM image is the program's power-on RAM (`Machine::power_on` copies
+//! it as is); the bench writes it into the at28c256 model, so
 //! the generator writes it to $HBC2_ROM_OUT (designs/test_mem_cpu.py does).
 //! One step = 4 rows: clk_mem_wr_n high, low (the RAM writes), high, then
 //! the rising clk edge.
@@ -385,7 +385,7 @@ fn sets() -> Vec<Vec<Row>> {
     assert_eq!((m.lat, m.pc), (Some(0), Some(0)));
     assert!(m.ram.iter().zip(&image).all(|(r, i)| *r == Some(*i)), "boot copy");
 
-    // the emulator: Machine::power_on without an EEPROM, then the program
+    // the emulator: Machine::power_on, then the program
     let mut cpu = Cpu::new();
     let mut board = Board::default();
     cpu.reset();

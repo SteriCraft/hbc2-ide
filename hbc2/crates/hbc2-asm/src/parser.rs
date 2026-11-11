@@ -492,16 +492,13 @@ fn number(c: &mut Cursor) -> ParseResult<i64> {
     }
 }
 
-/// `$` followed by a number: an absolute address (up to 20 bits for the EEPROM).
+/// `$` followed by a number: an absolute address (16 bits).
 fn absolute(c: &mut Cursor) -> ParseResult<u32> {
     c.expect(Tok::Dollar, "'$'")?;
     let col = c.col();
     let n = number(c)?;
-    if !(0..=0xF_FFFF).contains(&n) {
-        return Err((
-            col,
-            format!("address {n:#x} is out of range (max $0xFFFFF)"),
-        ));
+    if !(0..=0xFFFF).contains(&n) {
+        return Err((col, format!("address {n:#x} is out of range (max $0xFFFF)")));
     }
     Ok(n as u32)
 }

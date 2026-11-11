@@ -74,11 +74,6 @@ impl Report {
         self.entries.push((Severity::Error, None, message.into()));
     }
 
-    pub fn warning(&mut self, loc: Loc, message: impl Into<String>) {
-        self.entries
-            .push((Severity::Warning, Some(loc), message.into()));
-    }
-
     pub fn has_errors(&self) -> bool {
         self.entries.iter().any(|(s, _, _)| *s == Severity::Error)
     }

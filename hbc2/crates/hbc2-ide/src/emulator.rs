@@ -3,21 +3,23 @@
 
 use std::sync::Arc;
 
-use hbc2_asm::{Program, Target};
+use hbc2_asm::Program;
 use hbc2_core::isa::RAM_SIZE;
 use hbc2_core::peripherals::Eeprom;
-use hbc2_core::peripherals::eeprom::{BOOT_RANGES, MEMORY_SIZE};
 use hbc2_core::{IopConfig, Machine, MachineConfig};
 use hbc2_runner::{Runner, Snapshot, Speed};
 use serde::{Deserialize, Serialize};
 
-/// Peripherals the user chose (the EEPROM is plugged when the program is
-/// built for it).
+/// Peripherals the user chose.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(default)]
 pub struct Peripherals {
     pub monitor: bool,
     pub rtc: bool,
     pub keyboard: bool,
+    /// The EEPROM (storage). Its content is kept from one machine to the
+    /// next (rebuilds, new programs), as on the hardware.
+    pub eeprom: bool,
 }
 
 impl Default for Peripherals {
@@ -26,65 +28,48 @@ impl Default for Peripherals {
             monitor: true,
             rtc: true,
             keyboard: true,
+            eeprom: true,
         }
     }
 }
 
-/// Memory image the machine starts from.
+/// The 64 KiB RAM image the machine starts from (the boot ROM's content on
+/// the hardware).
 #[derive(Clone, Debug)]
-pub enum Image {
-    /// 64 KiB copied into RAM at power-on.
-    Ram(Arc<[u8]>),
-    /// 1 MiB EEPROM; it fills RAM at power-on.
-    Eeprom(Arc<[u8]>),
-}
+pub struct Image(pub Arc<[u8]>);
 
 impl Image {
-    /// Accepts a 64 KiB RAM image or a 1 MiB EEPROM image.
     pub fn from_bytes(bytes: Vec<u8>) -> Result<Image, String> {
         match bytes.len() {
-            RAM_SIZE => Ok(Image::Ram(bytes.into())),
-            MEMORY_SIZE => Ok(Image::Eeprom(bytes.into())),
+            RAM_SIZE => Ok(Image(bytes.into())),
             n => Err(format!(
-                "the file is {n} bytes; expected {RAM_SIZE} (RAM image) or {MEMORY_SIZE} (EEPROM image)"
+                "the file is {n} bytes; expected {RAM_SIZE} (a RAM image)"
             )),
         }
     }
-
-    pub fn target(&self) -> Target {
-        match self {
-            Image::Ram(_) => Target::Ram,
-            Image::Eeprom(_) => Target::Eeprom,
-        }
-    }
 }
 
-pub fn build_machine(image: Option<&Image>, peripherals: Peripherals) -> Result<Machine, String> {
-    let mut config = MachineConfig {
+/// `eeprom`: the EEPROM's content, when it has one already (else blank).
+pub fn build_machine(
+    image: Option<&Image>,
+    peripherals: Peripherals,
+    eeprom: Option<Eeprom>,
+) -> Result<Machine, String> {
+    let config = MachineConfig {
         monitor: peripherals.monitor,
         rtc: peripherals.rtc,
         keyboard: peripherals.keyboard,
-        eeprom: None,
+        eeprom: peripherals
+            .eeprom
+            .then(|| eeprom.unwrap_or_else(Eeprom::blank)),
         mailbox: Some(IopConfig::default()),
     };
-    let ram = match image {
-        None => None,
-        Some(Image::Ram(ram)) => Some(&ram[..]),
-        Some(Image::Eeprom(memory)) => {
-            config.eeprom = Some(Eeprom::from_image(memory.to_vec()).map_err(|e| e.to_string())?);
-            None
-        }
-    };
-    Machine::new(config, ram).map_err(|e| e.to_string())
+    Machine::new(config, image.map(|i| &i.0[..])).map_err(|e| e.to_string())
 }
 
-/// RAM address of a program address, if the instruction there ends up in RAM.
-pub fn ram_address(target: Target, address: u32) -> Option<u16> {
-    let in_ram = match target {
-        Target::Ram => address < RAM_SIZE as u32,
-        Target::Eeprom => BOOT_RANGES.iter().any(|r| r.contains(&(address as usize))),
-    };
-    in_ram.then_some(address as u16)
+/// RAM address of a program address.
+pub fn ram_address(address: u32) -> Option<u16> {
+    (address < RAM_SIZE as u32).then_some(address as u16)
 }
 
 pub struct Emulator {
@@ -103,7 +88,8 @@ impl Emulator {
         speed: Speed,
         notify: impl Fn() + Send + Sync + 'static,
     ) -> Emulator {
-        let machine = build_machine(None, peripherals).expect("an empty machine always builds");
+        let machine =
+            build_machine(None, peripherals, None).expect("an empty machine always builds");
         let runner = Runner::with_notify(machine, notify);
         runner.set_speed(speed);
         Emulator {
@@ -119,6 +105,23 @@ impl Emulator {
         self.image.as_ref()
     }
 
+    /// The EEPROM's content now, for the next machine.
+    fn eeprom(&self) -> Option<Eeprom> {
+        self.runner.sync().eeprom.as_deref().cloned()
+    }
+
+    /// Replaces the EEPROM's content (a 1 MiB file), on a new machine.
+    pub fn load_eeprom(&mut self, content: Vec<u8>, breakpoints: &[u16]) -> Result<(), String> {
+        let eeprom = Eeprom::from_image(content).map_err(|e| e.to_string())?;
+        let mut machine = build_machine(self.image.as_ref(), self.peripherals, Some(eeprom))?;
+        for &address in breakpoints {
+            machine.breakpoints.set(address, true);
+        }
+        self.runner.load(machine);
+        self.baseline = None;
+        Ok(())
+    }
+
     /// Loads a new image, paused at power-on, and sets the breakpoints.
     pub fn load(
         &mut self,
@@ -126,7 +129,7 @@ impl Emulator {
         program: Option<Arc<Program>>,
         breakpoints: &[u16],
     ) -> Result<(), String> {
-        let mut machine = build_machine(Some(&image), self.peripherals)?;
+        let mut machine = build_machine(Some(&image), self.peripherals, self.eeprom())?;
         for &address in breakpoints {
             machine.breakpoints.set(address, true);
         }
@@ -147,7 +150,7 @@ impl Emulator {
     /// Rebuilds the machine with the current image and peripherals (after
     /// the peripherals changed). Breakpoints are kept.
     pub fn rebuild(&mut self, breakpoints: &[u16]) -> Result<(), String> {
-        let mut machine = build_machine(self.image.as_ref(), self.peripherals)?;
+        let mut machine = build_machine(self.image.as_ref(), self.peripherals, self.eeprom())?;
         for &address in breakpoints {
             machine.breakpoints.set(address, true);
         }
@@ -209,24 +212,23 @@ mod tests {
 
     #[test]
     fn images_by_size() {
-        assert!(matches!(
-            Image::from_bytes(vec![0; RAM_SIZE]),
-            Ok(Image::Ram(_))
-        ));
-        assert!(matches!(
-            Image::from_bytes(vec![0; MEMORY_SIZE]),
-            Ok(Image::Eeprom(_))
-        ));
+        assert!(Image::from_bytes(vec![0; RAM_SIZE]).is_ok());
+        assert!(Image::from_bytes(vec![0; 0x10_0000]).is_err());
         assert!(Image::from_bytes(vec![0; 10]).is_err());
+        assert_eq!(ram_address(0x0300), Some(0x0300));
+        assert_eq!(ram_address(0x1_0000), None);
     }
 
     #[test]
-    fn eeprom_breakpoints_only_in_boot_ranges() {
-        assert_eq!(ram_address(Target::Ram, 0x0300), Some(0x0300));
-        assert_eq!(ram_address(Target::Eeprom, 0x01FC), Some(0x01FC));
-        assert_eq!(ram_address(Target::Eeprom, 0xFE04), Some(0xFE04));
-        assert_eq!(ram_address(Target::Eeprom, 0x0200), None);
-        assert_eq!(ram_address(Target::Eeprom, 0xF004), None);
-        assert_eq!(ram_address(Target::Eeprom, 0x1_0000), None);
+    fn eeprom_content_is_kept_across_machines() {
+        let mut emulator = Emulator::new(Peripherals::default(), Speed::Fastest, || {});
+        let mut content = vec![0; 0x10_0000];
+        content[0x1234] = 0x42;
+        emulator.load_eeprom(content, &[]).unwrap();
+        emulator
+            .load(Image(vec![0; RAM_SIZE].into()), None, &[])
+            .unwrap();
+        let eeprom = emulator.runner.sync().eeprom.clone().expect("plugged");
+        assert_eq!(eeprom.memory()[0x1234], 0x42);
     }
 }

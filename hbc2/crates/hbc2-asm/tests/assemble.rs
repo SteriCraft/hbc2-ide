@@ -1,24 +1,22 @@
 use std::path::Path;
 
 use hbc2_asm::encode::{Kind, forms};
-use hbc2_asm::{
-    MemoryFiles, Options, Program, SymbolKind, Target, assemble, assemble_with, disassemble,
-};
+use hbc2_asm::{MemoryFiles, Options, Program, SymbolKind, assemble, assemble_with, disassemble};
 use hbc2_core::isa::{Instruction, STACK_RESET, encode};
 use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
 
-fn build(files: MemoryFiles, target: Target) -> Result<Program, Vec<String>> {
-    assemble(Path::new("main.has"), &files, target)
+fn build(files: MemoryFiles) -> Result<Program, Vec<String>> {
+    assemble(Path::new("main.has"), &files)
         .map_err(|errors| errors.iter().map(ToString::to_string).collect())
 }
 
 fn asm(source: &str) -> Program {
-    build(MemoryFiles::new().with("main.has", source), Target::Ram)
+    build(MemoryFiles::new().with("main.has", source))
         .unwrap_or_else(|e| panic!("{}", e.join("\n")))
 }
 
 fn errors(source: &str) -> Vec<String> {
-    build(MemoryFiles::new().with("main.has", source), Target::Ram).expect_err("should fail")
+    build(MemoryFiles::new().with("main.has", source)).expect_err("should fail")
 }
 
 /// The instruction at `address`: only its own bytes (see `Instruction::size`).
@@ -367,7 +365,7 @@ after_handler:   ; continues at 0xF001
 ",
         )
         .with("lib/math.has", "double:\n    add a, a\n    ret\n");
-    let p = build(files, Target::Ram).unwrap();
+    let p = build(files).unwrap();
     assert_eq!(addr(&p, "_start"), 0x0000);
     assert_eq!(addr(&p, "next"), 0x0004);
     assert_eq!(addr(&p, "handler"), 0xF000);
@@ -399,7 +397,7 @@ shared:
     ret
 ",
         );
-    let e = build(files, Target::Ram).expect_err("should fail");
+    let e = build(files).expect_err("should fail");
     assert!(
         e[0].contains("'shared' is already defined (lib.has, line 2)"),
         "{e:?}"
@@ -418,7 +416,7 @@ fn include_once_and_relative_paths() {
             "lib/b.has",
             ".include \"../a.has\"\n.define B_VALUE 3\n.data b_var 0\n",
         );
-    let p = build(files, Target::Ram).unwrap();
+    let p = build(files).unwrap();
     assert_eq!(p.files.len(), 3);
     assert!(p.symbol("b_var").is_some());
 }
@@ -441,7 +439,7 @@ _start:
             ".data b_var 0
 ",
         );
-    let p = build(files, Target::Ram).unwrap_or_else(|e| {
+    let p = build(files).unwrap_or_else(|e| {
         panic!(
             "{}",
             e.join(
@@ -490,7 +488,8 @@ fn error_messages_have_locations() {
     assert!(errors("_start: $0x0400\n")[0].contains("always at $0x0000"));
     assert!(errors(".include \"missing.has\"\n_start:\n")[0].contains("cannot read"));
     assert!(errors("_start:\n    nop\n.data v $0x0000 1\n")[0].contains("overlaps"));
-    assert!(errors("_start:\n    lod a, $0x10000\n")[0].contains("16 bits"));
+    assert!(errors("_start:\n    lod a, $0x10000\n")[0].contains("max $0xFFFF"));
+    assert!(errors("_start:\n    lod a, v + 1\n.data v $0xFFFF 0\n")[0].contains("16 bits"));
 }
 
 #[test]
@@ -528,28 +527,30 @@ fn every_form_round_trips_through_the_disassembler() {
 }
 
 #[test]
-fn eeprom_target() {
-    let source = "
-_start:
-    nop
-.data table $0x12345 1, 2, 3
-.data auto 7
-far: $0x20000
-    nop
-";
-    let p = build(MemoryFiles::new().with("main.has", source), Target::Eeprom).unwrap();
-    assert_eq!(p.image.len(), 0x10_0000);
-    assert_eq!(&p.image[0x12345..0x12348], [1, 2, 3]);
+fn addresses_stay_in_ram() {
     assert_eq!(
-        addr(&p, "auto"),
-        0x0001,
-        "automatic placement stays in boot ranges"
+        asm("_start:
+")
+        .image
+        .len(),
+        0x1_0000
     );
-    let warnings: Vec<String> = p.warnings.iter().map(ToString::to_string).collect();
-    assert_eq!(warnings.len(), 2, "{warnings:?}");
-    assert!(warnings.iter().all(|w| w.contains("not in a range copied")));
-
-    assert!(errors(".data far $0x12345 1\n_start:\n")[0].contains("past the end of memory"));
+    assert!(
+        errors(
+            "_start:
+.data far $0x12345 1
+"
+        )[0]
+        .contains("out of range (max $0xFFFF)")
+    );
+    assert!(
+        errors(
+            ".data far $0xFFFF 1, 2
+_start:
+"
+        )[0]
+        .contains("past the end of memory")
+    );
 }
 
 #[test]
@@ -564,7 +565,7 @@ fn templates_assemble_and_detect_peripherals() {
             read("templates/interruptHandler.has"),
         )
         .with("mailbox.has", read("../compiler/lib/asm/mailbox.has"));
-    let p = build(files, Target::Ram).unwrap_or_else(|e| {
+    let p = build(files).unwrap_or_else(|e| {
         panic!(
             "{}",
             e.join(
@@ -612,7 +613,7 @@ loop:
     let files = MemoryFiles::new()
         .with("main.has", main)
         .with("interruptHandler.has", handler);
-    let p = build(files, Target::Ram).unwrap_or_else(|e| panic!("{}", e.join("\n")));
+    let p = build(files).unwrap_or_else(|e| panic!("{}", e.join("\n")));
 
     let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
     m.finish_boot();
@@ -858,7 +859,7 @@ _start:
 .common hits 2
 ",
         );
-    let p = build(files, Target::Ram).unwrap();
+    let p = build(files).unwrap();
     let start = addr(&p, "__bss_start");
     assert_eq!(
         addr(&p, "hits"),
@@ -878,7 +879,7 @@ _start:
             ".include \"lib.has\"\n_start:\n    hlt\n.common put 2\n",
         )
         .with("lib.has", ".library\nput:\n    ret\n.common spare 1\n");
-    let p = build(files, Target::Ram).unwrap();
+    let p = build(files).unwrap();
     assert_eq!(p.symbol("put").unwrap().kind, SymbolKind::Data);
     assert!(p.symbol("spare").is_some(), "a library .common alone stays");
 
@@ -915,10 +916,7 @@ _start:
 
 fn stripped_build(source: &str) -> Result<Program, Vec<String>> {
     let files = MemoryFiles::new().with("main.has", source);
-    let options = Options {
-        target: Target::Ram,
-        strip: true,
-    };
+    let options = Options { strip: true };
     assemble_with(Path::new("main.has"), &files, options)
         .map_err(|errors| errors.iter().map(ToString::to_string).collect())
 }
@@ -1088,10 +1086,7 @@ put:
 ",
         )
         .with("lib/more.has", "spare:\n    ret\n.data counter 0\n");
-    let options = Options {
-        target: Target::Ram,
-        strip: true,
-    };
+    let options = Options { strip: true };
     let p = assemble_with(Path::new("main.has"), &files, options).unwrap();
     let put = addr(&p, "put");
     assert_eq!(p.symbol("put").unwrap().file, 0, "the program's put");
@@ -1121,7 +1116,7 @@ put:
     assert_eq!(p.symbol("put").unwrap().file, 0);
 
     // Without strip the library's definitions stay, under their hidden names.
-    let p = build(files, Target::Ram).unwrap();
+    let p = build(files).unwrap();
     assert!(p.symbol("put (library, replaced)").is_some());
 }
 
@@ -1132,7 +1127,7 @@ fn library_duplicates_and_scope() {
             .with("main.has", main)
             .with("lib.has", lib)
             .with("other.has", "dup:\n    ret\n");
-        build(files, Target::Ram)
+        build(files)
     };
     // two library definitions
     let e = lib(

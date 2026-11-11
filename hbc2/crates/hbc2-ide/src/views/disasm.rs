@@ -49,7 +49,7 @@ fn program_rows(program: &Program) -> Vec<Row> {
         .lines
         .iter()
         .filter_map(|line| {
-            let address = ram_address(program.target, line.address)?;
+            let address = ram_address(line.address)?;
             let file = program.files.get(line.file)?.file_name()?.to_string_lossy();
             Some(Row {
                 address,

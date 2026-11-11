@@ -3,8 +3,8 @@
 //! The language is described in `Documentation/HBC-2 Assembly Language.md`.
 //!
 //! ```no_run
-//! use hbc2_asm::{Target, assemble_file};
-//! match assemble_file("main.has", Target::Ram) {
+//! use hbc2_asm::assemble_file;
+//! match assemble_file("main.has") {
 //!     Ok(program) => println!("{} bytes used", program.bytes_used),
 //!     Err(errors) => errors.iter().for_each(|e| eprintln!("{e}")),
 //! }
@@ -27,24 +27,9 @@ pub use source::{FileSystem, MemoryFiles, SourceProvider};
 
 use diagnostic::Report;
 
-/// What the program is assembled for.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
-pub enum Target {
-    /// A 64 KiB RAM image, loaded directly into the emulator's RAM.
-    Ram,
-    /// A 1 MiB EEPROM image. Only $0x0000-$0x01FF and $0xFE00-$0xFFFF are
-    /// copied to RAM at power-on.
-    Eeprom,
-}
-
-impl Target {
-    pub const fn memory_size(self) -> u32 {
-        match self {
-            Target::Ram => 0x1_0000,
-            Target::Eeprom => 0x10_0000,
-        }
-    }
-}
+/// Size of a program's image: the whole RAM. The emulator loads it
+/// directly; on the hardware it is the boot ROM's contents.
+pub const MEMORY_SIZE: u32 = 0x1_0000;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum SymbolKind {
@@ -79,21 +64,11 @@ pub struct Removed {
 }
 
 /// How to assemble.
-#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub struct Options {
-    pub target: Target,
     /// Leave out every label and variable that can't be reached from
     /// `_start`, fixed addresses or `.keep` (used for C programs).
     pub strip: bool,
-}
-
-impl Options {
-    pub const fn new(target: Target) -> Self {
-        Options {
-            target,
-            strip: false,
-        }
-    }
 }
 
 /// Where an instruction comes from.
@@ -108,8 +83,7 @@ pub struct SourceLine {
 /// A successfully assembled program.
 #[derive(Clone, Debug)]
 pub struct Program {
-    pub target: Target,
-    /// Full memory image (64 KiB for RAM, 1 MiB for EEPROM).
+    /// Full memory image (64 KiB).
     pub image: Vec<u8>,
     /// Every source file, in the order they were read. Index 0 is the entry file.
     pub files: Vec<PathBuf>,
@@ -158,12 +132,8 @@ impl Program {
 }
 
 /// Assembles `entry` and the files it includes, read through `provider`.
-pub fn assemble(
-    entry: &Path,
-    provider: &dyn SourceProvider,
-    target: Target,
-) -> Result<Program, Vec<Diagnostic>> {
-    assemble_with(entry, provider, Options::new(target))
+pub fn assemble(entry: &Path, provider: &dyn SourceProvider) -> Result<Program, Vec<Diagnostic>> {
+    assemble_with(entry, provider, Options::default())
 }
 
 /// [`assemble`] with options.
@@ -172,7 +142,6 @@ pub fn assemble_with(
     provider: &dyn SourceProvider,
     options: Options,
 ) -> Result<Program, Vec<Diagnostic>> {
-    let target = options.target;
     let mut report = Report::default();
     let loaded = preprocess::load(entry, provider, &mut report);
 
@@ -196,7 +165,6 @@ pub fn assemble_with(
     let diagnostics = report.into_diagnostics(&loaded.files);
     match output {
         Some(output) => Ok(Program {
-            target,
             image: output.image,
             files: loaded.files,
             symbols: output.symbols,
@@ -210,6 +178,6 @@ pub fn assemble_with(
 }
 
 /// Assembles a file from disk.
-pub fn assemble_file(entry: impl AsRef<Path>, target: Target) -> Result<Program, Vec<Diagnostic>> {
-    assemble(entry.as_ref(), &FileSystem, target)
+pub fn assemble_file(entry: impl AsRef<Path>) -> Result<Program, Vec<Diagnostic>> {
+    assemble(entry.as_ref(), &FileSystem)
 }

@@ -191,9 +191,8 @@ fn key_event_without_keyboard_is_dropped() {
 
 const EE: u8 = 1;
 
-fn eeprom_image() -> Vec<u8> {
-    let mut image = vec![0u8; eeprom::MEMORY_SIZE];
-    // Program at 0x0000: read EEPROM[0x12345] into A, then write 0x55 to EEPROM[0x01010].
+/// Reads EEPROM[0x12345] into A, then writes 0x55 to EEPROM[0x01010].
+fn eeprom_program() -> Vec<u8> {
     let code = program(&[
         &out(EE + eeprom::port::ADDR_0, 0x01),
         &out(EE + eeprom::port::ADDR_1, 0x23),
@@ -206,37 +205,30 @@ fn eeprom_image() -> Vec<u8> {
         &out(EE + eeprom::port::DATA, 0x55),
         &out(EE + eeprom::port::CMD, eeprom::command::WRITE),
     ]);
-    let ram = Image::new().program(&code).0;
-    image[..0x0200].copy_from_slice(&ram[..0x0200]);
-    image[0xFE00..0xFE02].copy_from_slice(&[0x01, 0xF0]); // IVT: port 0 -> 0x01F0
-    image[0x01F0] = none(O::Irt).to_bytes()[0]; // handler, first 512 bytes
-    image[0xF000] = 0xEE; // the old handlers area: not copied any more
-    image[0x0200] = 0xEE; // just after the first 512 bytes
-    image[0x12345] = 0x99;
-    image
+    let mut ram = Image::new().program(&code).0;
+    ram[0xFE00..0xFE02].copy_from_slice(&[0x01, 0xF0]); // IVT: port 0 -> 0x01F0
+    ram[0x01F0] = none(O::Irt).to_bytes()[0];
+    ram
 }
 
 fn eeprom_machine() -> Machine {
+    let mut image = vec![0u8; eeprom::MEMORY_SIZE];
+    image[..0x0200].fill(0xEE);
+    image[0xFE00..0x1_0000].fill(0xEE);
+    image[0x12345] = 0x99;
     let config = MachineConfig {
-        eeprom: Some(Eeprom::from_image(eeprom_image()).unwrap()),
+        eeprom: Some(Eeprom::from_image(image).unwrap()),
         ..bare()
     };
-    // A RAM image is ignored when an EEPROM is plugged.
-    Machine::new(config, Some(&vec![0x11; hbc2_core::isa::RAM_SIZE])).unwrap()
+    Machine::new(config, Some(&eeprom_program())).unwrap()
 }
 
 #[test]
-fn eeprom_copies_boot_ranges_into_ram() {
+fn eeprom_leaves_ram_alone() {
     let m = eeprom_machine();
-    assert_eq!(ram(&m, 0xFE01), 0xF0, "IVT copied");
-    assert_eq!(
-        ram(&m, 0x01F0),
-        none(O::Irt).to_bytes()[0],
-        "first 512 bytes copied"
-    );
-    assert_eq!(ram(&m, 0x0200), 0x00, "not copied");
-    assert_eq!(ram(&m, 0xF000), 0x00, "handlers are not copied");
-    assert_eq!(ram(&m, 0x8000), 0x00, "RAM image ignored");
+    assert_eq!(ram(&m, 0xFE01), 0xF0, "the RAM image's IVT");
+    assert_eq!(ram(&m, 0x01F0), none(O::Irt).to_bytes()[0]);
+    assert_eq!(ram(&m, 0x8000), 0x00);
 }
 
 #[test]

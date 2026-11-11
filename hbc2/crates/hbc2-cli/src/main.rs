@@ -6,28 +6,26 @@ use std::path::{Path, PathBuf};
 use std::process::ExitCode;
 use std::time::{Duration, Instant};
 
-use hbc2_asm::{Program, Target};
+use hbc2_asm::Program;
 use hbc2_core::isa::{PROGRAM_START, encode};
 use hbc2_core::peripherals::Eeprom;
 use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register, TraceWriter};
 
 const USAGE: &str = "\
 usage:
-  hbc2 asm <main.has> [-o out.bin] [--eeprom | --boot-rom] [--strip] [--symbols] [--map]
-        assemble (64 KiB RAM image, or 1 MiB EEPROM image with --eeprom);
-        --strip leaves out unreached code and data; --boot-rom also writes
+  hbc2 asm <main.has> [-o out.bin] [--boot-rom] [--strip] [--symbols] [--map]
+        assemble (64 KiB RAM image); --strip leaves out unreached code and data; --boot-rom also writes
         the RAM image as the hardware CPU's boot ROM, one 32 KiB file per
         AT28C256: out_lo.bin (0000-7FFF) and out_hi.bin (8000-FFFF)
-  hbc2 cc <file.c | file.has>... [-o out.bin] [--eeprom | --boot-rom] [--dir build] [--symbols] [--map]
+  hbc2 cc <file.c | file.has>... [-o out.bin] [--boot-rom] [--dir build] [--symbols] [--map]
         compile C files (with the startup code, runtime and C library) and
         assemble them with the .has files; compiled files go to --dir
         (default: .build next to the first file); unreached code and data
         are left out (--map lists what is kept and what is left out);
-        --eeprom: a 1 MiB EEPROM image that boots the program;
         --boot-rom: as for asm
-  hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom [file.has | eeprom.bin]]
-        run headless, then print the CPU state (C files: built as with cc;
-        with --eeprom and no file, built for the EEPROM and started from it)
+  hbc2 run <main.has | ram.bin | file.c...> [--ticks N] [--eeprom eeprom.bin]
+        run headless, then print the CPU state (C files: built as with cc);
+        the EEPROM (storage, 1 MiB) starts blank, or with eeprom.bin
   hbc2 trace <main.has | ram.bin> --max N [-o trace.csv] [--peripherals]
         write an execution trace (CSV, one line per instruction) until
         line N or until the CPU halts (H set); no peripherals unless
@@ -105,9 +103,17 @@ fn compare(args: &[String]) -> ExitCode {
 /// Returns the value following `--name`, if present.
 /// `hbc2 ucode`: the control unit's microcode.
 fn ucode(args: &[String]) -> Result<(), String> {
-    let mc = hbc2_ucode::build().map_err(|e| format!("{} error(s):
-{}", e.len(), e.join("
-")))?;
+    let mc = hbc2_ucode::build().map_err(|e| {
+        format!(
+            "{} error(s):
+{}",
+            e.len(),
+            e.join(
+                "
+"
+            )
+        )
+    })?;
     println!(
         "microcode: {} words used of 32768, 54 bits (7 x AT28C256)",
         mc.origin.iter().filter(|o| o.is_some()).count()
@@ -256,8 +262,8 @@ fn input(args: &[String]) -> Result<&str, String> {
 
 /// Assembles a file, printing warnings; errors are returned as one message.
 /// `strip`: leave out what nothing reaches.
-fn assemble(path: &str, target: Target, strip: bool) -> Result<Program, String> {
-    let options = hbc2_asm::Options { target, strip };
+fn assemble(path: &str, strip: bool) -> Result<Program, String> {
+    let options = hbc2_asm::Options { strip };
     match hbc2_asm::assemble_with(Path::new(path), &hbc2_asm::FileSystem, options) {
         Ok(program) => {
             for warning in &program.warnings {
@@ -288,15 +294,9 @@ fn is_c(path: &str) -> bool {
         .is_some_and(|e| e.eq_ignore_ascii_case("c"))
 }
 
-/// `--eeprom` without a file after it: build the C program for the EEPROM.
-fn c_for_eeprom(args: &[String]) -> bool {
-    has(args, "--eeprom") && option(args, "--eeprom").is_none_or(|v| v.starts_with('-'))
-}
-
 /// Builds the C program of the files at the start of `args` (up to the
 /// first option), printing warnings; errors are returned as one message.
-/// Also gives the EEPROM image with `--eeprom` (see [`c_for_eeprom`]).
-fn build_c(args: &[String]) -> Result<(Program, Option<Vec<u8>>), String> {
+fn build_c(args: &[String]) -> Result<Program, String> {
     let sources: Vec<PathBuf> = args
         .iter()
         .take_while(|a| !a.starts_with('-'))
@@ -310,16 +310,11 @@ fn build_c(args: &[String]) -> Result<(Program, Option<Vec<u8>>), String> {
             .join(hbc2_cc::BUILD_DIR)
     });
     let library = hbc2_cc::build_library(&dir.join("lib")).map_err(|e| failed(&e))?;
-    let target = if c_for_eeprom(args) {
-        Target::Eeprom
-    } else {
-        Target::Ram
-    };
-    let build = hbc2_cc::build_program(&sources, &library, &dir, target).map_err(|e| failed(&e))?;
+    let build = hbc2_cc::build_program(&sources, &library, &dir).map_err(|e| failed(&e))?;
     for warning in &build.warnings {
         eprintln!("{warning}");
     }
-    Ok((build.program, build.eeprom_image))
+    Ok(build.program)
 }
 
 /// The messages of a failed build, and how many errors.
@@ -337,37 +332,23 @@ build failed ({errors} error(s))",
 
 fn cc(args: &[String]) -> Result<(), String> {
     let first = input(args)?;
-    let (program, eeprom) = build_c(args)?;
-    write_image(&program, eeprom.as_deref(), first, args)
+    let program = build_c(args)?;
+    write_image(&program, first, args)
 }
 
 fn asm(args: &[String]) -> Result<(), String> {
     let path = input(args)?;
-    let target = if has(args, "--eeprom") {
-        Target::Eeprom
-    } else {
-        Target::Ram
-    };
-    let program = assemble(path, target, has(args, "--strip"))?;
-    write_image(&program, None, path, args)
+    let program = assemble(path, has(args, "--strip"))?;
+    write_image(&program, path, args)
 }
 
 /// Writes the image (`-o`, or `source` with the extension `.bin`), the
 /// symbols with `--symbols` or `--map`, and what was left out with `--map`.
-/// Writes the image (`eeprom` when given, else the program's).
-fn write_image(
-    program: &Program,
-    eeprom: Option<&[u8]>,
-    source: &str,
-    args: &[String],
-) -> Result<(), String> {
+fn write_image(program: &Program, source: &str, args: &[String]) -> Result<(), String> {
     let output = option(args, "-o")
         .map(PathBuf::from)
         .unwrap_or_else(|| Path::new(source).with_extension("bin"));
-    let image = eeprom.unwrap_or(&program.image);
-    if has(args, "--boot-rom") && has(args, "--eeprom") {
-        return Err("--boot-rom holds the 64 KiB RAM image: build without --eeprom".into());
-    }
+    let image = &program.image;
     std::fs::write(&output, image).map_err(|e| format!("{}: {e}", output.display()))?;
     let removed = match program.bytes_removed() {
         0 => String::new(),
@@ -420,24 +401,15 @@ fn run(args: &[String]) -> Result<(), String> {
     let ticks: u64 = parse(args, "--ticks", 1_000_000)?;
 
     let mut config = MachineConfig::default();
-    if let Some(eeprom_path) =
-        option(args, "--eeprom").filter(|_| !(is_c(path) && c_for_eeprom(args)))
-    {
-        let image = if is_source(eeprom_path) {
-            assemble(eeprom_path, Target::Eeprom, false)?.image
-        } else {
-            std::fs::read(eeprom_path).map_err(|e| format!("{eeprom_path}: {e}"))?
-        };
+    if let Some(eeprom_path) = option(args, "--eeprom") {
+        let image = std::fs::read(eeprom_path).map_err(|e| format!("{eeprom_path}: {e}"))?;
         config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
     }
     let (ram, program) = if is_c(path) {
-        let (program, eeprom) = build_c(args)?;
-        if let Some(image) = eeprom {
-            config.eeprom = Some(Eeprom::from_image(image).map_err(|e| e.to_string())?);
-        }
+        let program = build_c(args)?;
         (program.image.clone(), Some(program))
     } else if is_source(path) {
-        let program = assemble(path, Target::Ram, false)?;
+        let program = assemble(path, false)?;
         (program.image.clone(), Some(program))
     } else {
         (
@@ -494,7 +466,7 @@ fn trace(args: &[String]) -> Result<(), String> {
         .unwrap_or_else(|| Path::new(path).with_extension("csv"));
 
     let ram = if is_source(path) {
-        assemble(path, Target::Ram, false)?.image
+        assemble(path, false)?.image
     } else {
         std::fs::read(path).map_err(|e| format!("{path}: {e}"))?
     };

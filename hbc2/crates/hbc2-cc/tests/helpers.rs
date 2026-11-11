@@ -4,7 +4,7 @@
 
 use std::sync::OnceLock;
 
-use hbc2_asm::{Program, Target, assemble_file};
+use hbc2_asm::{Program, assemble_file};
 use hbc2_cc::runtime_dir;
 use hbc2_core::{Machine, MachineConfig, Register, StopReason};
 
@@ -29,7 +29,7 @@ fn program() -> &'static Program {
             ),
         )
         .unwrap();
-        assemble_file(&main, Target::Ram).unwrap_or_else(|e| {
+        assemble_file(&main).unwrap_or_else(|e| {
             panic!(
                 "{}",
                 e.iter().map(ToString::to_string).collect::<Vec<_>>().join("\n")

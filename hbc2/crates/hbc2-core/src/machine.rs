@@ -10,8 +10,8 @@
 use crate::board::Board;
 use crate::cpu::{Cpu, CpuState};
 use crate::iop::{Iop, IopConfig};
-use crate::mailbox::Mailbox;
 use crate::isa::{Flag, HARDWARE_BOOT_CYCLES, RAM_SIZE};
+use crate::mailbox::Mailbox;
 use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
 use crate::trace::{NoProbe, Probe};
@@ -22,7 +22,7 @@ pub struct MachineConfig {
     pub monitor: bool,
     pub rtc: bool,
     pub keyboard: bool,
-    /// With an EEPROM, RAM starts empty and is filled by the EEPROM at power-on.
+    /// The EEPROM (storage only), with its content.
     pub eeprom: Option<Eeprom>,
     /// The I/O: Some (the default) = the mailbox card and the I/O processor
     /// (the ESP32) running the IOD as its protocol; None = the IOD on the
@@ -36,7 +36,7 @@ impl Default for MachineConfig {
             monitor: true,
             rtc: true,
             keyboard: true,
-            eeprom: None,
+            eeprom: Some(Eeprom::blank()),
             mailbox: Some(IopConfig::default()),
         }
     }
@@ -123,7 +123,7 @@ pub struct Machine {
     /// The I/O processor, when the board has a mailbox.
     pub iop: Iop,
     pub breakpoints: Breakpoints,
-    /// RAM content loaded at each power-on (when there is no EEPROM).
+    /// RAM content loaded at each power-on.
     ram_image: Option<Box<[u8]>>,
     ticks: u64,
     /// Cycles left in the instruction (or interrupt entry, or halt loop turn)
@@ -134,8 +134,7 @@ pub struct Machine {
 }
 
 impl Machine {
-    /// Builds and powers on a machine. `ram_image`, if given, must be 64 KiB;
-    /// it is ignored when an EEPROM is plugged (the EEPROM fills RAM instead).
+    /// Builds and powers on a machine. `ram_image`, if given, must be 64 KiB.
     pub fn new(config: MachineConfig, ram_image: Option<&[u8]>) -> Result<Machine, MachineError> {
         if let Some(image) = ram_image
             && image.len() != RAM_SIZE
@@ -148,7 +147,10 @@ impl Machine {
             keyboard: config.keyboard.then(Keyboard::new),
             eeprom: config.eeprom,
         };
-        let board = Board { mailbox: config.mailbox.map(|_| Mailbox::new()), ..Board::default() };
+        let board = Board {
+            mailbox: config.mailbox.map(|_| Mailbox::new()),
+            ..Board::default()
+        };
         let mut machine = Machine {
             cpu: Cpu::new(),
             board,
@@ -175,9 +177,9 @@ impl Machine {
         self.cpu.reset();
         self.board.reset();
         self.iop.reset();
-        match (&self.ram_image, self.peripherals.eeprom.is_some()) {
-            (Some(image), false) => self.board.ram.as_mut_slice().copy_from_slice(image),
-            _ => self.board.ram.fill(0),
+        match &self.ram_image {
+            Some(image) => self.board.ram.as_mut_slice().copy_from_slice(image),
+            None => self.board.ram.fill(0),
         }
         self.peripherals.power_on(&mut self.board);
     }
@@ -278,7 +280,9 @@ impl Machine {
     /// True when more steps without I/O would change nothing on the mailbox
     /// side (but the I/O processor's ages, see [`Iop::skip`]).
     fn io_quiet(&self) -> bool {
-        self.board.mailbox.as_ref().is_none_or(|m| m.settled()) && !self.board.inr && self.iop.idle(&self.board)
+        self.board.mailbox.as_ref().is_none_or(|m| m.settled())
+            && !self.board.inr
+            && self.iop.idle(&self.board)
     }
 
     /// `cycles` steps without I/O from the CPU.
@@ -383,7 +387,8 @@ impl Machine {
             return self.io_quiet()
                 && (cpu.is_stopped()
                     || (!board.int
-                        && (cpu.pending_software_interrupt().is_none() || !cpu.flag(Flag::Interrupt))));
+                        && (cpu.pending_software_interrupt().is_none()
+                            || !cpu.flag(Flag::Interrupt))));
         }
         if cpu.is_stopped() {
             // Interrupts are ignored; only the INT line may still follow the queue.

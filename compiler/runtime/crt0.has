@@ -1,5 +1,5 @@
 ; C startup code for a program loaded into RAM, at $0x0000 (see
-; compiler/ABI.md, section 8). The EEPROM target uses boot.has instead.
+; compiler/ABI.md, section 8).
 
 ; Variables of devices.has. .data, not .bss: the handler may run before
 ; init.has clears the .bss area.

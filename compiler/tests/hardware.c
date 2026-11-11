@@ -62,17 +62,12 @@ int cells(void)
 
 int ports(void)
 {
-    if (monitor_port == 0 || rtc_port == 0 || keyboard_port == 0 || eeprom_port != 0)
+    if (monitor_port == 0 || rtc_port == 0 || keyboard_port == 0 || eeprom_port == 0)
         return 20;
     /* a port is a latch: it holds the last value written */
     out(monitor_port + 2, 17);                  /* the monitor's POS_X */
     if (in(monitor_port + 2) != 17)
         return 21;
-    /* no EEPROM (a RAM program): everything refused */
-    if (eeprom_read(0) != -1 || eeprom_write(EEPROM_FREE, 1) != 1)
-        return 22;
-    if (eeprom_load(&monitor_port, 0, 1) != 1 || eeprom_save(0, &monitor_port, 1) != 1)
-        return 23;
     return 0;
 }
 
