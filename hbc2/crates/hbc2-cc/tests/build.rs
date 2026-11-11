@@ -359,3 +359,29 @@ fn volatile_reloads() {
     );
     assert_eq!(count(&st, "_v"), 4, "{st}");
 }
+
+#[test]
+fn a_literal_character_without_a_windows_1252_code() {
+    use hbc2_cc::Severity;
+    let library = library();
+    let dir = std::env::temp_dir().join("hbc2-cc-build").join("charset");
+    std::fs::create_dir_all(&dir).unwrap();
+    // é and € have codes; the arrow doesn't. Comments may hold anything.
+    let text = "/* → ok here */\nint main(void)\n{\n  char *s = \"é€\";\n  char *t = \"a → b\";\n  return s[0] + t[0];\n}\n";
+    std::fs::write(dir.join("main.c"), text).unwrap();
+    let errors = match build_program(&[dir.join("main.c")], library, &dir.join("out")) {
+        Ok(_) => panic!("built"),
+        Err(e) => e,
+    };
+    let e = errors
+        .iter()
+        .find(|d| d.severity == Severity::Error)
+        .expect("an error");
+    assert_eq!(e.file.as_deref(), Some(&*dir.join("main.c")));
+    assert_eq!((e.line, e.col), (5, 16));
+    assert!(
+        e.message.contains("'→' (U+2192) has no Windows-1252 code"),
+        "{}",
+        e.message
+    );
+}

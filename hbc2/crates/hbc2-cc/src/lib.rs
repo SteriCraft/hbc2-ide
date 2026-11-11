@@ -17,6 +17,7 @@
 //! C file and its line. The program's instructions point at their C lines
 //! too (see `lines.rs`), so the debugger works on the C source.
 
+mod charset;
 mod lines;
 mod messages;
 mod reloads;
@@ -433,6 +434,8 @@ pub fn compile(
     // where a file named in a message is looked for
     let include = [folder.clone(), lib_dir().join("include")];
     let mut diagnostics = Vec::new();
+    // a literal character without a Windows-1252 code (charset.rs)
+    let mut literal_error = None;
     let mut messages = |stage: &Stage| {
         let severity = if stage.ok {
             Severity::Warning
@@ -470,6 +473,20 @@ pub fn compile(
         if !messages(&cpp) {
             return Ok(false);
         }
+        // UTF-8 literals to Windows-1252 (a file that isn't UTF-8 is left as it is)
+        let text = fs::read(&pre).map_err(|e| format!("{}: {e}", pre.display()))?;
+        if let Ok(text) = String::from_utf8(text) {
+            match charset::literals_to_cp1252(&text) {
+                Ok(converted) => {
+                    fs::write(&pre, converted).map_err(|e| format!("{}: {e}", pre.display()))?
+                }
+                Err(mut e) => {
+                    e.file = e.file.map(|f| hbc2_asm::source::normalize(&f));
+                    literal_error = Some(e);
+                    return Ok(false);
+                }
+            }
+        }
         let sym = symbols.to_string_lossy().to_string();
         let unit_arg = unit.to_string();
         let rules = compiler_dir().join("fcc").join("rules.hbc2");
@@ -495,6 +512,7 @@ pub fn compile(
     for f in [pre, tokens, trees, symbols, raw] {
         let _ = fs::remove_file(f);
     }
+    diagnostics.extend(literal_error);
     let ok = match result {
         Ok(ok) => ok,
         Err(message) => {

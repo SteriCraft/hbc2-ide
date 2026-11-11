@@ -167,6 +167,7 @@ fn scan_quoted(chars: &[char], start: usize, quote: char) -> Result<(Vec<u8>, us
                 i += 2;
                 bytes.push(match e {
                     'n' => b'\n',
+                    'b' => 0x08,
                     'r' => b'\r',
                     't' => b'\t',
                     '0' => 0,
@@ -184,11 +185,28 @@ fn scan_quoted(chars: &[char], start: usize, quote: char) -> Result<(Vec<u8>, us
                     other => return Err((col, format!("unknown escape sequence '\\{other}'"))),
                 });
             }
-            c if c.is_ascii() && !c.is_ascii_control() => {
-                bytes.push(c as u8);
-                i += 1;
+            c if c.is_control() => {
+                return Err((
+                    col,
+                    format!("control character {c:?} in a literal: use an escape"),
+                ));
             }
-            other => return Err((col, format!("character '{other}' is not printable ASCII"))),
+            // Sources are UTF-8; the HBC-2 speaks Windows-1252 (é = 0xE9).
+            c => match hbc2_core::charset::from_char(c) {
+                Some(byte) => {
+                    bytes.push(byte);
+                    i += 1;
+                }
+                None => {
+                    return Err((
+                        col,
+                        format!(
+                            "character '{c}' (U+{:04X}) has no Windows-1252 code",
+                            c as u32
+                        ),
+                    ));
+                }
+            },
         }
     }
 }
@@ -250,6 +268,24 @@ mod tests {
         assert_eq!(toks(r#""a;b\"c""#), [Tok::Str(b"a;b\"c".to_vec())]);
         assert!(lex_line("\"open").is_err());
         assert!(lex_line("'ab'").is_err());
+        assert_eq!(toks(r"'\b'"), [Tok::Char(0x08)]);
+    }
+
+    #[test]
+    fn utf8_literals_become_windows_1252() {
+        assert_eq!(
+            toks("\"Noël œ€\""),
+            [Tok::Str(vec![b'N', b'o', 0xEB, b'l', b' ', 0x9C, 0x80])]
+        );
+        assert_eq!(toks("'é' 'Ÿ'"), [Tok::Char(0xE9), Tok::Char(0x9F)]);
+        let error = lex_line("mov a, '→'").unwrap_err();
+        assert!(
+            error.1.contains("'→' (U+2192) has no Windows-1252 code"),
+            "{error:?}"
+        );
+        assert!(lex_line("\"a\tb\"").is_err(), "a raw tab: use \\t");
+        // Comments may hold anything.
+        assert_eq!(toks("nop ; → ✓"), [Tok::Ident("nop".into())]);
     }
 
     #[test]
