@@ -1,0 +1,270 @@
+<!doctype html>
+<html lang="fr">
+<head>
+<meta charset="utf-8">
+<title>Entrées/sorties du HBC-2</title>
+<!-- Source of Documentation/HBC-2_Input_Output.pdf. To rebuild the PDF:
+     chrome --headless --no-pdf-header-footer --print-to-pdf=HBC-2_Input_Output.pdf HBC-2_Input_Output.html -->
+<style>
+  @page { size: 1300px 900px; margin: 0; }
+  :root {
+    --page: #f3f4f6; --panel: #ffffff; --line: #d6dae0; --text: #1f2933; --muted: #5b6573;
+    --data: #2a72b5; --addr: #2f8a57; --ctrl: #8a5a14; --sel: #6b4fa8; --mcu: #148a8a; --irq: #c0353a; --grey: #6b7280;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; background: var(--page); color: var(--text);
+    font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .page { width: 1300px; height: 900px; padding: 40px 72px; page-break-after: always; overflow: hidden; }
+  .page:last-child { page-break-after: auto; }
+  h1 { font-size: 28px; margin: 0 0 12px; }
+  .lead { color: var(--muted); font-size: 16px; line-height: 1.6; margin: 0 0 18px; max-width: 1100px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; }
+  .legend { display: flex; gap: 26px; padding: 12px 18px; border-top: 1px solid var(--line); font-size: 14px; color: var(--muted); flex-wrap: wrap; }
+  .legend span::before { content: ""; display: inline-block; width: 26px; height: 4px; border-radius: 2px; margin-right: 8px; vertical-align: middle; background: var(--c); }
+  svg text { font-family: "IBM Plex Sans", "Segoe UI", Arial, sans-serif; fill: var(--text); }
+  svg .mono { font-family: "IBM Plex Mono", Consolas, monospace; }
+  svg .t { font-size: 14px; font-weight: 600; text-anchor: middle; }
+  svg .c { font-size: 12px; text-anchor: middle; }
+  svg .n { font-size: 11px; fill: var(--muted); text-anchor: middle; }
+  svg .l { font-size: 11px; fill: var(--muted); }
+  svg .box { fill: #fff; stroke: #1f2933; stroke-width: 1.2; }
+  svg .soft { fill: #f7f8fa; stroke: #9aa3ad; stroke-width: 1; }
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; }
+  h2 { font-size: 19px; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin-bottom: 10px; }
+  th { text-align: left; font-size: 11px; letter-spacing: .06em; color: var(--muted); font-weight: 600; padding: 7px 10px; border-bottom: 2px solid var(--line); }
+  td { padding: 4px 10px; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.4; }
+  code, .m { font-family: "IBM Plex Mono", Consolas, monospace; font-size: 13px; }
+  ol { margin: 0 0 8px; padding-left: 20px; font-size: 13.5px; line-height: 1.5; }
+  li { margin-bottom: 3px; }
+  .note { border-left: 3px solid var(--line); padding: 2px 12px; color: var(--muted); font-size: 13px; line-height: 1.5; margin: 6px 0 14px; }
+</style>
+</head>
+<body>
+
+<!-- ====================================================== page 1 -->
+<section class="page">
+  <h1>Entrées/sorties du HBC-2 : boîte aux lettres et processeur d'E/S</h1>
+  <p class="lead">Schéma bloc simplifié : le CPU garde IN/OUT et l'échange INT/INR. L'IOD devient une carte « boîte aux lettres »
+    de 12 puces devant un ESP32, qui gère les périphériques comme le faisait l'IOD. La RAM et la ROM ne sont pas dessinées.</p>
+  <div class="card">
+  <svg viewBox="0 0 1240 640" width="1154" height="596">
+    <!-- the mailbox card -->
+    <rect x="190" y="140" width="740" height="405" rx="6" fill="#fafbfc" stroke="#9aa3ad" stroke-dasharray="6 4"/>
+    <text x="885" y="161" style="font-size:13px;font-weight:600;text-anchor:end">Carte boîte aux lettres · 12 puces</text>
+
+    <!-- CPU -->
+    <rect class="box" x="20" y="20" width="130" height="580" rx="3"/>
+    <text class="t" x="85" y="300">CPU</text>
+    <text class="t" x="85" y="318">HBC-2</text>
+    <text class="n" x="85" y="338">(inchangé)</text>
+    <text class="mono" x="142" y="54" style="font-size:12px;text-anchor:end">D0–D7</text>
+    <text class="mono" x="142" y="89" style="font-size:12px;text-anchor:end">A0–A15</text>
+    <text class="mono" x="142" y="124" style="font-size:12px;text-anchor:end">RW IE clk</text>
+    <text class="mono" x="142" y="524" style="font-size:12px;text-anchor:end">INT</text>
+    <text class="mono" x="142" y="574" style="font-size:12px;text-anchor:end">INR</text>
+
+    <!-- buses -->
+    <line x1="150" y1="50" x2="912" y2="50" stroke="var(--data)" stroke-width="5"/>
+    <line x1="150" y1="85" x2="898" y2="85" stroke="var(--addr)" stroke-width="5"/>
+    <line x1="150" y1="120" x2="830" y2="120" stroke="var(--ctrl)" stroke-width="5"/>
+    <text class="l mono" x="700" y="42">données, 8 bits</text>
+    <text class="l mono" x="700" y="77">adresse</text>
+    <text class="l mono" x="700" y="112">contrôle (+ rst_n)</text>
+
+    <!-- row 1: decode, TX, RX, STATUS -->
+    <line x1="245" y1="85" x2="245" y2="175" stroke="var(--addr)" stroke-width="2"/><circle cx="245" cy="85" r="4" fill="var(--addr)"/>
+    <text class="l mono" x="250" y="135" style="font-size:10px">A0 A1 A6 A7</text>
+    <line x1="330" y1="120" x2="330" y2="175" stroke="var(--ctrl)" stroke-width="2"/><circle cx="330" cy="120" r="4" fill="var(--ctrl)"/>
+    <rect class="box" x="205" y="175" width="158" height="80" rx="3"/>
+    <text class="t" x="284" y="197">Décodage</text>
+    <text class="c mono" x="284" y="215">74HCT138</text>
+    <text class="c mono" x="284" y="230">+ 74HCT32</text>
+    <text class="n" x="284" y="246">IE, RW, A0, A1, A6, A7</text>
+
+    <line x1="420" y1="50" x2="420" y2="175" stroke="var(--data)" stroke-width="2"/><circle cx="420" cy="50" r="4" fill="var(--data)"/>
+    <rect class="box" x="375" y="175" width="158" height="80" rx="3"/>
+    <text class="t" x="454" y="197">TX</text>
+    <text class="c mono" x="454" y="215">74HCT165</text>
+    <text class="n" x="454" y="231">OUT port 0</text>
+    <text class="n" x="454" y="246">CPU → ESP32</text>
+
+    <line x1="590" y1="50" x2="590" y2="175" stroke="var(--data)" stroke-width="2"/><circle cx="590" cy="50" r="4" fill="var(--data)"/>
+    <rect class="box" x="545" y="175" width="158" height="80" rx="3"/>
+    <text class="t" x="624" y="197">RX</text>
+    <text class="c mono" x="624" y="215">74AHCT595</text>
+    <text class="n" x="624" y="231">IN port 0</text>
+    <text class="n" x="624" y="246">ESP32 → CPU</text>
+
+    <line x1="760" y1="50" x2="760" y2="175" stroke="var(--data)" stroke-width="2"/><circle cx="760" cy="50" r="4" fill="var(--data)"/>
+    <rect class="box" x="715" y="175" width="158" height="80" rx="3"/>
+    <text class="t" x="794" y="197">STATUS</text>
+    <text class="c mono" x="794" y="215">74HCT244</text>
+    <text class="n" x="794" y="231">IN port 1</text>
+    <text class="n" x="794" y="246">RX_AVAIL, TX_FREE, EVT_PEND</text>
+
+    <!-- selections -->
+    <polyline points="284,255 284,274 794,274 794,255" fill="none" stroke="var(--sel)" stroke-width="2"/>
+    <line x1="454" y1="274" x2="454" y2="255" stroke="var(--sel)" stroke-width="2"/><circle cx="454" cy="274" r="3.5" fill="var(--sel)"/>
+    <line x1="624" y1="274" x2="624" y2="255" stroke="var(--sel)" stroke-width="2"/><circle cx="624" cy="274" r="3.5" fill="var(--sel)"/>
+    <line x1="540" y1="274" x2="540" y2="440" stroke="var(--sel)" stroke-width="2"/><circle cx="540" cy="274" r="3.5" fill="var(--sel)"/>
+    <text class="l mono" x="458" y="290">/Y0</text>
+    <text class="l mono" x="628" y="290">/Y2</text>
+    <text class="l mono" x="798" y="290">/Y3</text>
+    <text class="l" x="296" y="290">sélections</text>
+
+    <!-- A8-A15 pull-downs -->
+    <line x1="198" y1="85" x2="198" y2="340" stroke="var(--addr)" stroke-width="2"/><circle cx="198" cy="85" r="4" fill="var(--addr)"/>
+    <line x1="198" y1="340" x2="205" y2="340" stroke="var(--addr)" stroke-width="2"/>
+    <rect class="soft" x="205" y="305" width="158" height="70" rx="3"/>
+    <text class="t" x="284" y="327">A8–A15 à 0</text>
+    <text class="c mono" x="284" y="345">réseau 10 kΩ</text>
+    <text class="n" x="284" y="362">pendant le pas du vecteur</text>
+
+    <!-- EVT -->
+    <line x1="898" y1="85" x2="898" y2="310" stroke="var(--addr)" stroke-width="2"/><circle cx="898" cy="85" r="4" fill="var(--addr)"/>
+    <line x1="912" y1="50" x2="912" y2="310" stroke="var(--data)" stroke-width="2"/><circle cx="912" cy="50" r="4" fill="var(--data)"/>
+    <text class="l mono" x="845" y="302" style="text-anchor:end">A0–A7 = port, D0–D7 = donnée</text>
+    <rect class="box" x="715" y="310" width="210" height="72" rx="3"/>
+    <text class="t" x="820" y="332">EVT (événement)</text>
+    <text class="c mono" x="820" y="350">2 × 74AHCT595</text>
+    <text class="n" x="820" y="368">port et donnée de l'interruption</text>
+
+    <!-- link to the ESP32 -->
+    <polyline points="985,410 420,410 420,255" fill="none" stroke="var(--mcu)" stroke-width="3"/>
+    <line x1="624" y1="410" x2="624" y2="255" stroke="var(--mcu)" stroke-width="3"/><circle cx="624" cy="410" r="4" fill="var(--mcu)"/>
+    <line x1="780" y1="410" x2="780" y2="382" stroke="var(--mcu)" stroke-width="3"/><circle cx="780" cy="410" r="4" fill="var(--mcu)"/>
+    <text class="l mono" x="430" y="425" style="font-size:10px">SCK MOSI MISO MBX_SEL RCLK_RX RCLK_EVT</text>
+
+    <!-- row 3: flags, level shifter -->
+    <rect class="box" x="375" y="440" width="328" height="80" rx="3"/>
+    <text class="t" x="539" y="462">Drapeaux</text>
+    <text class="c mono" x="539" y="480">4 × 74HCT74</text>
+    <text class="n" x="539" y="497">tx_full, rx_full, evt_pend, rx_clr, evt_clr,</text>
+    <text class="n" x="539" y="511">VEC (= INR un pas plus tard), evt_s (= INT)</text>
+
+    <rect class="box" x="735" y="440" width="190" height="80" rx="3"/>
+    <text class="t" x="830" y="462">Niveaux 3,3 V</text>
+    <text class="c mono" x="830" y="480">74LVC244</text>
+    <text class="n" x="830" y="497">MISO, tx_full, rx_full,</text>
+    <text class="n" x="830" y="511">evt_pend, rst_n → ESP32</text>
+    <line x1="703" y1="480" x2="735" y2="480" stroke="var(--mcu)" stroke-width="2"/>
+    <line x1="925" y1="480" x2="985" y2="480" stroke="var(--mcu)" stroke-width="3"/>
+    <text class="l mono" x="955" y="472" style="text-anchor:middle">4 + MISO</text>
+
+    <!-- interrupts -->
+    <polyline points="150,520 355,520 355,470 375,470" fill="none" stroke="var(--irq)" stroke-width="2.5"/>
+    <text class="l mono" x="170" y="512">INT = evt_s</text>
+    <polyline points="150,570 460,570 460,520" fill="none" stroke="var(--irq)" stroke-width="2.5"/>
+    <text class="l mono" x="170" y="562">INR : le CPU est prêt</text>
+    <polyline points="690,440 690,395 740,395 740,382" fill="none" stroke="var(--irq)" stroke-width="2.5"/>
+    <text class="l mono" x="696" y="436">VEC</text>
+    <text class="l mono" x="745" y="394" style="font-size:10px">/OE</text>
+
+    <!-- ESP32 and its devices -->
+    <rect class="box" x="985" y="175" width="235" height="335" rx="3"/>
+    <text class="t" x="1102" y="205">ESP32</text>
+    <text class="c" x="1102" y="225">processeur d'E/S</text>
+    <text class="n" x="1102" y="243">(carte TTGO VGA32 prévue)</text>
+    <text class="n" x="1102" y="280">lit les commandes sur TX,</text>
+    <text class="n" x="1102" y="296">répond sur RX,</text>
+    <text class="n" x="1102" y="312">envoie les interruptions sur EVT</text>
+    <text class="n" x="1102" y="345">garde le modèle de l'ancien IOD :</text>
+    <text class="n" x="1102" y="361">verrous des ports, détection</text>
+    <text class="n" x="1102" y="377">au port 0, file d'événements</text>
+    <text class="n" x="1102" y="425">attend au moins 1 µs après qu'un</text>
+    <text class="n" x="1102" y="441">drapeau RX / EVT est revenu à 0</text>
+    <text class="n" x="1102" y="457">avant de le réécrire (règle I15)</text>
+    <line x1="1102" y1="510" x2="1102" y2="545" stroke="var(--grey)" stroke-width="2"/>
+    <rect class="soft" x="985" y="545" width="235" height="70" rx="3"/>
+    <text class="n" x="1102" y="567">VGA (moniteur) · clavier PS/2</text>
+    <text class="n" x="1102" y="584">carte SD (SPI partagé avec la carte)</text>
+    <text class="n" x="1102" y="601">horloge · EEPROM (fichier) · son</text>
+  </svg>
+  <div class="legend">
+    <span style="--c:var(--data)">données</span>
+    <span style="--c:var(--addr)">adresse</span>
+    <span style="--c:var(--ctrl)">contrôle</span>
+    <span style="--c:var(--sel)">sélection de puce</span>
+    <span style="--c:var(--mcu)">liaison ESP32</span>
+    <span style="--c:var(--irq)">interruptions</span>
+    <span style="--c:transparent">● = connexion</span>
+  </div>
+  </div>
+</section>
+
+<!-- ====================================================== page 2 -->
+<section class="page">
+  <div class="cols">
+    <div>
+      <h2>Carte des ports</h2>
+      <table>
+        <tr><th>PORTS</th><th>IN</th><th>OUT</th></tr>
+        <tr><td class="m">0x00</td><td>RX : l'octet de l'ESP32</td><td>TX : un octet pour l'ESP32</td></tr>
+        <tr><td class="m">0x01</td><td>STATUS</td><td>rien</td></tr>
+        <tr><td class="m">0x04, 0x08 … 0x3C<br>0x05, 0x09 … 0x3D</td><td colspan="2">copies de 0x00 et 0x01 (A2–A5 ne sont pas décodés)</td></tr>
+        <tr><td class="m">0x02, 0x03 (mod 4)<br>dans 0x00–0x3F</td><td colspan="2">seconde sélection libre (/Y4–/Y7), non câblée</td></tr>
+        <tr><td class="m">0x40–0xFF</td><td colspan="2">vides : rien ne répond (0xFF dans l'émulateur)</td></tr>
+      </table>
+      <table>
+        <tr><th>STATUS</th><th>NOM</th><th>À 1 QUAND</th></tr>
+        <tr><td class="m">bit 0</td><td class="m">RX_AVAIL</td><td>un octet attend dans RX</td></tr>
+        <tr><td class="m">bit 1</td><td class="m">TX_FREE</td><td>TX est vide : on peut écrire</td></tr>
+        <tr><td class="m">bit 2</td><td class="m">EVT_PEND</td><td>un événement attend dans EVT</td></tr>
+      </table>
+
+    <h2 style="margin-top:16px">Liste des puces</h2>
+    <table>
+      <tr><th style="width:130px">PUCE</th><th style="width:40px">QTÉ</th><th>RÔLE</th></tr>
+      <tr><td class="m">74HCT138</td><td>1</td><td>Décodage : G1 = IE, /G2A = A7, /G2B = A6, A = A0, B = RW, C = A1</td></tr>
+      <tr><td class="m">74HCT32</td><td>1</td><td>Impulsion d'écriture de TX = OU(/Y0, clk_wr_n) (3 portes libres)</td></tr>
+      <tr><td class="m">74HCT74</td><td>4</td><td>Drapeaux TX, RX, EVT ; rx_clr, evt_clr, VEC, evt_s = INT (1 bascule libre)</td></tr>
+      <tr><td class="m">SN74AHCT595N</td><td>3</td><td>RX → données ; port de l'événement → A0–A7 ; donnée de l'événement → données</td></tr>
+      <tr><td class="m">CD74HCT165E</td><td>1</td><td>TX : chargé depuis le bus de données, lu en série par l'ESP32</td></tr>
+      <tr><td class="m">74HCT244</td><td>1</td><td>STATUS → bus de données</td></tr>
+      <tr><td class="m">SN74LVC244AN</td><td>1</td><td>5 V → 3,3 V vers l'ESP32 : MISO (validé par MBX_SEL), tx_full, rx_full, evt_pend, rst_n</td></tr>
+      <tr><td class="m">réseau 10 kΩ</td><td>1</td><td>Tire A8–A15 à 0 pendant le pas du vecteur (passif, hors des 12 puces)</td></tr>
+    </table>
+    </div>
+    <div>
+      <h2>Commandes (CPU → ESP32)</h2>
+      <table>
+        <tr><th>OCTETS</th><th>COMMANDE</th><th>RÉPONSE SUR RX</th></tr>
+        <tr><td class="m">0x00</td><td>NOP</td><td>—</td></tr>
+        <tr><td class="m">0x01 p v</td><td>OUT : port p = v</td><td>—</td></tr>
+        <tr><td class="m">0x02 p</td><td>IN : lit le port p</td><td>1 octet</td></tr>
+        <tr><td class="m">0x03</td><td>INFO</td><td>3 octets : protocole, firmware, périphériques</td></tr>
+      </table>
+      <p class="note">Les ports p sont ceux de l'ancien IOD (moniteur, horloge, clavier, EEPROM, attribués au démarrage) :
+        ils existent dans l'ESP32, plus sur le bus. La bibliothèque envoie chaque commande interruptions coupées
+        (<code>mbx_out</code>, <code>mbx_in</code>). D'autres commandes (texte, dessin, carte SD…) viendront avec le firmware.</p>
+      <h2 style="margin-top:14px">Envoi d'un octet (OUT 0x00)</h2>
+      <ol>
+        <li>Le CPU lit STATUS jusqu'à TX_FREE = 1.</li>
+        <li><code>out</code> sur le port 0 : le 74HCT165 charge l'octet, <code>tx_full</code> passe à 1.</li>
+        <li>L'ESP32 voit <code>tx_full</code>, baisse MBX_SEL, lit 8 bits (SCK, MISO), puis remonte MBX_SEL : <code>tx_full</code> revient à 0.</li>
+      </ol>
+      <h2>Réception d'un octet (IN 0x00)</h2>
+      <ol>
+        <li>L'ESP32 décale 8 bits dans le 595 RX (SCK, MOSI) et envoie une impulsion sur RCLK_RX : <code>rx_full</code> = 1.</li>
+        <li>Le CPU lit STATUS jusqu'à RX_AVAIL = 1, puis fait <code>in</code> sur le port 0.</li>
+        <li><code>rx_full</code> revient à 0 au pas suivant.</li>
+      </ol>
+      <h2>Déroulement d'une interruption</h2>
+      <ol>
+        <li>L'ESP32 décale 16 bits dans les 595 EVT (la donnée, puis le port) et envoie une impulsion sur RCLK_EVT : <code>evt_pend</code> = 1.</li>
+        <li>Au front d'horloge suivant, <code>evt_s</code> recopie <code>evt_pend</code> : c'est INT.</li>
+        <li>Si le drapeau I est à 1, le CPU termine son instruction et monte INR.</li>
+        <li>Un pas plus tard (VEC), les 595 EVT mettent le port p sur A0–A7 et la donnée d sur D0–D7 (A8–A15 tirés à 0).
+          Le CPU met d dans I et saute au vecteur <code>$0xFE00 + 2 × p</code>, comme avant.</li>
+        <li><code>evt_pend</code> revient à 0 au pas suivant. L'ESP32 attend au moins 1 µs avant l'événement suivant.</li>
+      </ol>
+      <p class="note">Les gestionnaires ne changent pas : numéro d'interruption = port, donnée dans I.
+        La file d'attente des événements est dans l'ESP32.</p>
+    </div>
+  </div>
+
+</section>
+
+</body>
+</html>
