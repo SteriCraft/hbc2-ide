@@ -59,6 +59,8 @@ The default glyphs come from the public domain `font8x8` (Daniel Hepper:
 `font8x8_basic` and `font8x8_ext_latin`), plus the Windows-1252 glyphs drawn
 for the HBC-2.
 
+![The default font: row = high hex digit, column = low digit](charmap.png)
+
 **Source files are UTF-8.** The assembler and the C compiler convert string
 and character literals to Windows-1252: `"Noël"` gives the bytes
 `4E 6F EB 6C`, `'œ'` gives `0x9C`. A character Windows-1252 can't represent
@@ -118,7 +120,7 @@ All values are bytes. Colours use their low 4 bits (the high 4 are ignored).
 | `0x04`–`0x0F` | reserved | | | | |
 
 `INFO`'s protocol version becomes **2**: the I/O processor understands the
-native commands. Version 1 (today's emulator) doesn't.
+native commands. Version 1 (the I/O processor before them) doesn't.
 
 ### Text (`0x10`–`0x2F`)
 
@@ -266,8 +268,8 @@ event needs a **port** (its interrupt vector, `$0xFE00 + 2p`).
 
 * A different subclass from the monitor (`03 00`), so `dev_find(DEV_DISPLAY,
   DEV_VGA)` still finds the old monitor ports and `dev_find(DEV_DISPLAY,
-  0x80)` the native display. New names: `DEV_OTHER_DISPLAY` /
-  `DEVICE_OTHER_DISPLAY`, `PRODUCT_DISPLAY`, and `display_port` (0 when
+  DEV_OTHER)` the native display (`DEVICE_DISPLAY`, `DEVICE_OTHER` in C).
+  `PRODUCT_DISPLAY` is its product ID, and `display_port` (0 when
   there is none) set at startup, next to `monitor_port`.
 * In the emulator it is plugged **last**, after the EEPROM (port 20 with all
   devices), so today's port numbers don't move. It comes and goes with the
@@ -291,7 +293,7 @@ through `0x01` / `0x02`) stay, mapped onto the native picture:
 * A control code written with `WRITE` is stored in the cell and drawn
   blank.
 * Old programs that use columns 32–41 lose them; the 6 × 8 font is gone.
-* The [Monitor reference](../Monitor/Reference.md) is rewritten in step 2.
+* See the [Monitor reference](../Monitor/Reference.md).
 
 The new library uses only the native commands.
 

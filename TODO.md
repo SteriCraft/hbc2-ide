@@ -8,13 +8,6 @@ history keeps them). Detailed notes are linked; this file only lists.
 - **Website:** a site for the project (user guide of the IDE, the manuals),
   later. The old Qt Doxygen site (`docs/`) is gone; the logo is now
   `Documentation/images/logo.png`.
-- **Instruction Manual** (`Documentation/src/HBC-2_IDE_Instruction_Manual.odt`,
-  Gianni edits it): the mailbox chapter is mostly done (2026-11-11). Left:
-  the **I/O protocol** (the command bytes NOP, OUT `0x01 p v`, IN `0x02 p`,
-  INFO `0x03` and its reply, and the TX_FREE / RX_AVAIL handshake), now
-  that the INFO start-up is done (2026-11-11; reference:
-  `Documentation/Peripherals/README.md`, "Detecting the devices"). Then
-  export `HBC-2_Instruction_Manual.pdf`.
 
 ## IDE and emulator (`hbc2/`)
 
