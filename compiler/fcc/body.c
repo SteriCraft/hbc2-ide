@@ -145,11 +145,28 @@ static void for_statement(void)
 	cont_tag = oldcont;
 }
 
+/* HBC-2: the function returns a struct (ABI.md 5) */
+static unsigned struct_result(void)
+{
+	return IS_STRUCT(func_type) && !PTR(func_type);
+}
+
 static void return_statement(void)
 {
+	struct node *p;
 	next_token();
 	header(H_RETURN, func_tag, 0);
-	expression_typed(func_type);
+	if (struct_result()) {
+		/* HBC-2: copy the value where the hidden first argument points
+		   (an lval of the struct, like *p); the copy's value, that
+		   address, is the result */
+		p = frame_address(T_ARGUMENT, 0, type_ptr(type_ptr(func_type)));
+		p = tree(T_DEREF, NULL, p);
+		p->type = func_type;
+		p->flags |= LVAL;
+		write_tree(struct_assign(p, expression_tree(0)));
+	} else
+		expression_typed(func_type);
 	footer(H_RETURN, func_tag, 0);
 }
 
@@ -308,7 +325,7 @@ static void statement(void)
 	default:
 		/* It is valid to follow a label with just ; */
 		if (token != T_SEMICOLON) {
-			struct node *n = expression_tree(1);
+			struct node *n = struct_unused(expression_tree(1));
 			/* A statement top node need not worry about
 			   generating the correct result */
 			n->flags |= NORETURN;
@@ -415,6 +432,40 @@ static void load_registers(void)
 }
 
 /*
+ *	HBC-2: structs by value (ABI.md 5). With a struct result, the
+ *	hidden pointer is the first argument: the others move up 2 bytes.
+ *	A struct argument arrives as the address of the caller's struct: it
+ *	becomes a local, a copy made here, at the start of the function.
+ */
+static void struct_arguments(void)
+{
+	register struct symbol *s;
+	struct node *n, *src;
+	unsigned shift = struct_result() ? 2 : 0;
+
+	for (s = symtab; s <= last_sym; s++) {
+		if (S_STORAGE(s->infonext) != S_ARGUMENT)
+			continue;
+		s->data.offset += shift;
+		if (!IS_STRUCT(s->type) || PTR(s->type))
+			continue;
+		/* the pointer in the argument */
+		src = frame_address(T_ARGUMENT, s->data.offset,
+			type_ptr(type_ptr(s->type)));
+		src = tree(T_DEREF, NULL, src);
+		src->type = type_ptr(s->type);
+		/* the argument is now a local */
+		s->infonext = (s->infonext & ~0xF000) | S_AUTO;
+		s->data.offset = assign_storage(s->type, S_AUTO);
+		n = sf_tree(T_STRUCTCOPY, make_symbol(s), src);
+		n->type = s->type;
+		n->value = type_sizeof(s->type);
+		n->flags |= LVAL | NORETURN;
+		write_tree(n);
+	}
+}
+
+/*
  *	We have parsed the declaration part of a function and found it
  *	is followed by a body. Set up the headersfor the backend and turn
  *	the contents into expressions and headers.
@@ -449,6 +500,8 @@ void function_body(unsigned st, unsigned name, unsigned type)
 		error("invalid storage class");
 	func_tag = next_tag++;
 	header(H_FUNCTION, func_tag, name);
+	if (struct_result())
+		func_argframe += 2;	/* HBC-2: the hidden pointer */
 	header(H_ARGFRAME, func_argframe, 0);
 	hrw = mark_header();
 	header(H_FRAME, 0, 0);
@@ -456,6 +509,7 @@ void function_body(unsigned st, unsigned name, unsigned type)
 	/* Register arguments need loading into registers */
 	if (arg_flags)
 		load_registers();
+	struct_arguments();
 
 	init_labels();
 

@@ -69,7 +69,7 @@ static unsigned get_size(unsigned t)
 		return 0;
 	if (t == FLOAT || t == DOUBLE)
 		return 4;
-	error("unsupported type (structs can't be copied by value yet)");
+	error("unsupported type");
 	return 0;
 }
 

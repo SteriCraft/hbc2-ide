@@ -153,6 +153,20 @@ fn errors() {
     .unwrap_err();
     assert!(e.contains("main.c:4:1: error: invalid storage class"), "{e}");
 
+    // struct arguments (tests/structval.c): another struct type, and a
+    // struct value that is not an object (c ? a : b)
+    let e = build(
+        "structarg",
+        &[(
+            "main.c",
+            "struct a { int x; };\nstruct b { int x; };\nint f(struct a v) { return v.x; }\nint main(void) { struct a p; struct b q; int c = 1;\n  f(q);\n  return f(c ? p : p);\n}\n",
+        )],
+        library,
+    )
+    .unwrap_err();
+    assert!(e.contains("main.c:5:1: error: invalid type conversion"), "{e}");
+    assert!(e.contains("main.c:6:1: error: struct value not supported here"), "{e}");
+
     // neither .c nor .has
     let e = build("kind", &[("notes.txt", "")], library).unwrap_err();
     assert!(e.contains("not a .c or .has file"), "{e}");

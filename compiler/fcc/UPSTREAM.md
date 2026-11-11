@@ -91,3 +91,20 @@ through `../msvc/compat.h`, a forced include):
   loop; its initial values are written before `H_FOR`, which then gets a
   null first expression (no backend change). `static`, `extern` and
   `typedef` there are an error.
+* Structs and unions by value (HBC-2, 2026-11-11), no backend change
+  (ABI.md 5):
+  * `type_iterator.c` (`parse_function_arguments`): a struct parameter is
+    allowed and takes 2 bytes (its address).
+  * `expression.c`: `call_args` passes a struct argument as its address
+    (`struct_argument`); `function_call` gives a struct result a
+    temporary of the caller's frame, whose address is a hidden first
+    argument (pushed last), and the call is an lval of it;
+    `struct_unused` keeps only the address of a struct value that is not
+    read (`f();`, the left of a comma, the clauses of `for`);
+    `frame_address` builds a `T_LOCAL` / `T_ARGUMENT` address.
+  * `body.c`: `struct_arguments` (at the start of a function: with a
+    struct result the arguments move up 2 bytes; each struct parameter
+    becomes a local, copied from the caller's struct), `return_statement`
+    (a struct is copied where the hidden pointer points, which is the
+    result), `statement` (`struct_unused`).
+  * `symbol.h`: `symtab` and `last_sym` declared for `body.c`.

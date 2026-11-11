@@ -84,6 +84,56 @@ struct node *typeconv_implicit(register struct node *n)
 }
 
 /*
+ *	HBC-2: structs by value (see UPSTREAM.md and ABI.md 5).
+ */
+
+/* The address of a local (T_LOCAL) or of an argument (T_ARGUMENT) at
+   offset, as a value of the given pointer type */
+struct node *frame_address(unsigned op, unsigned offset, unsigned type)
+{
+	register struct node *n = new_node();
+	n->op = op;
+	n->value = offset;
+	n->type = type;
+	return n;
+}
+
+/* A struct argument is passed as its address (the function copies it):
+   n is the struct value, the T_DEREF of its address, or a struct
+   assignment (whose value is the address of its left side) */
+static struct node *struct_argument(register struct node *n)
+{
+	unsigned t = type_canonical(n->type);
+	struct node *a;
+	if (n->op == T_DEREF) {
+		a = n->right;
+		free_node(n);
+		n = a;
+	} else if (n->op != T_STRUCTCOPY) {
+		error("struct value not supported here");	/* c ? a : b */
+		return n;
+	}
+	n->flags &= ~LVAL;
+	n->type = type_ptr(t);
+	return n;
+}
+
+/* A struct value nobody reads (f(); for a function returning a struct,
+   the left side of a comma): only its address is computed, the backend
+   can't load a struct */
+struct node *struct_unused(register struct node *n)
+{
+	struct node *a;
+	if (n->op == T_DEREF && IS_STRUCT(n->type) && !PTR(n->type)) {
+		a = n->right;
+		a->flags |= n->flags & NORETURN;
+		free_node(n);
+		return a;
+	}
+	return n;
+}
+
+/*
  *	Build an argument tree for right to left stacking
  *
  *	Both here and in the space allocation we need to
@@ -117,6 +167,8 @@ struct node *call_args(unsigned *narg, register unsigned *argt, unsigned *argsiz
 		} else
 			unexarg();
 	}
+	if (IS_STRUCT(n->type) && !PTR(n->type))
+		n = struct_argument(n);
 	*argsize += target_argsize(n->type);
 	t = n->type;
 	if (match(T_COMMA)) {
@@ -142,6 +194,8 @@ struct node *function_call(register struct node *n)
 	unsigned argsize = 0;
 	unsigned narg;
 	unsigned va = 0;
+	unsigned sret;
+	struct node *args;
 
 	/* Must be a function or pointer to function */
 	if (!IS_FUNCTION(n->type)) {
@@ -149,6 +203,7 @@ struct node *function_call(register struct node *n)
 		return n;
 	}
 	type = func_return(n->type);
+	sret = IS_STRUCT(type) && !PTR(type);
 	argt = func_args(n->type);
 
 	if (!argt)
@@ -163,17 +218,32 @@ struct node *function_call(register struct node *n)
 	/* A function without arguments */
 	if (match(T_RPAREN)) {
 		/* Make sure no arguments is acceptable */
-		n  = sf_tree(T_FUNCCALL, NULL, n);
+		args = NULL;
 		missedarg(narg, argp[0]);
 	} else {
-		n = sf_tree(T_FUNCCALL, call_args(&narg, argp, &argsize, &va), n);
+		args = call_args(&narg, argp, &argsize, &va);
 		missedarg(narg, argp[0]);
 	}
+	/* HBC-2: a struct result. The caller gives a temporary of its own
+	   frame as a hidden first argument (pushed last); the function copies
+	   its result there and returns its address. The call is then an lval
+	   of the temporary, like *p. */
+	if (sret) {
+		struct node *h = frame_address(T_LOCAL,
+			assign_storage(type, S_AUTO), type_ptr(type));
+		args = args ? typed_tree(T_ARGCOMMA, h->type, args, h) : h;
+		argsize += target_argsize(h->type);
+	}
+	n = sf_tree(T_FUNCCALL, args, n);
 	/* Always emit this - some targets have other uses for knowing
 	   the boundary of a function call return */
-	n->type = type;
+	n->type = sret ? type_ptr(type) : type;
 	n = tree(T_CLEANUP, n, make_constant(argsize, UINT));
 	n->val2 = va;
+	if (sret) {
+		n->type = type;
+		n->flags |= LVAL;
+	}
 	return n;
 }
 
@@ -819,7 +889,7 @@ struct node *hier0(unsigned comma)
 		l->flags |= NORETURN;
 		r = hier0(comma);
 		/* The return of a comma operator is never an lval */
-		l = typed_tree(T_COMMA, r->type, make_rval(l), make_rval(r));
+		l = typed_tree(T_COMMA, r->type, struct_unused(make_rval(l)), make_rval(r));
 	}
 	return l;
 }
@@ -844,6 +914,8 @@ static struct node *expression(unsigned comma, unsigned mkbool, unsigned flags)
 	if (token == T_SEMICOLON)
 		return NULL;
 	n = expression_tree(comma);
+	if (flags & NORETURN)
+		n = struct_unused(n);	/* HBC-2: for (; ; f()) */
 	if (mkbool && !(flags & NORETURN)) {
 		/* Float and double are valid */
 		if (!IS_ARITH(n->type) && !PTR(n->type))

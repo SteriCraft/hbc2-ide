@@ -13,6 +13,9 @@ struct symbol
 /* HBC-2: block depth, 0 at file level; the arguments of a function and
    its outer { } are one deeper, each inner { } one more */
 extern unsigned block_depth;
+/* HBC-2: the table, read by body.c (struct_arguments) */
+extern struct symbol symtab[];
+extern struct symbol *last_sym;
 
 #define INITIALIZED	0x0800
 #define S_FREE		0x0000	/* Unused */

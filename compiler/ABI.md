@@ -131,8 +131,47 @@ offset grows by the bytes pushed; the compiler keeps track of it.
 | `long` | `[c:d]:[a:b]` |
 | `void` | nothing |
 
-Structures can't be passed or returned by value (the compiler refuses it): use
-pointers.
+### Structures and unions by value
+
+* **Argument:** the caller pushes the **address** of the struct (2 bytes,
+  like a pointer). The function copies the struct into a local of its own
+  when it starts, before its first statement, so it may change its copy
+  freely and the caller's struct never changes.
+* **Result:** the caller reserves a temporary in its own frame and pushes
+  its address **last**, as a hidden first argument: it is at
+  `[sp + L + 2]` in the function, and the other arguments come 2 bytes
+  further than usual. `return v;` copies `v` there, and the function
+  returns that address in `[a:b]`. The caller then reads the struct from
+  the temporary (or copies it: `a = f();`).
+
+`struct pt add(struct pt a, struct pt b)` called as `r = add(p, q)`:
+
+```
+    ...                         ; push &r (for the copy after the call)
+    rsp [a:b]                   ; &q
+    add b, 6
+    adc a, 0
+    psh b, a
+    rsp [a:b]                   ; &p
+    add b, 4
+    adc a, 0
+    psh b, a
+    rsp [a:b]                   ; &temporary: the hidden argument, last
+    add b, 18
+    adc a, 0
+    psh b, a
+    cal _add
+    asp 6                       ; [a:b] = &temporary, then copied into r
+
+_add:
+    ssp 8                       ; the copies of a and b
+                                ; [sp + 10] = &temporary
+                                ; [sp + 12] = &p, [sp + 14] = &q
+```
+
+An assembly function taking or returning a struct follows the same rules.
+`va_start` can't follow a struct parameter (it is a local copy by then),
+and `va_arg` can't read a struct.
 
 ### Example
 
@@ -410,9 +449,11 @@ float library keeps every register, the helpers don't (like the others).
 The Fuzix Compiler Kit compiles C89, without:
 
 * bitfields,
-* structures passed or returned by value (assignment works: `a = b`,
-  `a = *p`, `struct s v = w;`),
 * K&R function definitions (`int f(a) int a; { … }`).
+
+Structures and unions can be assigned (`a = b`, `a = *p`,
+`struct s v = w;`), passed and returned by value (section 5). A struct
+value must be an object or a call: `c ? a : b` of structs is refused.
 
 From C99 it takes declarations after statements (in any block) and in the
 first clause of `for` (`for (int i = 0; …)`, `i` known in the loop only).

@@ -209,7 +209,7 @@ static void declarator_add(unsigned form, unsigned ptr, unsigned *idx)
 static void parse_function_arguments(unsigned *tplt)
 {
 	unsigned *tn = tplt + 1;
-	unsigned t;
+	unsigned t, st;
 	unsigned an;
 	register unsigned reg;
 	register struct symbol *sym;
@@ -236,11 +236,16 @@ static void parse_function_arguments(unsigned *tplt)
 			*tn++ = VOID;
 			break;
 		}
-		if (!PTR(t) && (IS_STRUCT(t) || IS_FUNCTION(t))) {
+		if (!PTR(t) && IS_FUNCTION(t)) {
 			error("cannot pass objects");
 			t = CINT;
 		}
 		t = type_canonical(t);
+		/* HBC-2: a struct argument arrives as its address (2 bytes); the
+		   function copies it into a local (body.c, struct_arguments) */
+		st = t;
+		if (IS_STRUCT(t) && !PTR(t))
+			st = type_ptr(t);
 		/* Don't do register allocations for expressions within a function body, they are
 		   always declations to functions as functions cannot be nested in C */
 		if (funcbody)
@@ -251,16 +256,16 @@ static void parse_function_arguments(unsigned *tplt)
 			/*  We allow only 8 registers so this is fine */
 			if (reg == 0) {
 				sym = update_symbol_by_name(an, S_ARGUMENT, t);
-				sym->data.offset = assign_storage(t, S_ARGUMENT);
+				sym->data.offset = assign_storage(st, S_ARGUMENT);
 			} else {
 				sym = update_symbol_by_name(an, S_REGISTER, t);
 				sym->data.offset = reg;
 				reg_load[reg] = sym;
-				reg_offset[reg] = assign_storage(t, S_ARGUMENT);
+				reg_offset[reg] = assign_storage(st, S_ARGUMENT);
 			}
 			*tn++ = t;
 		} else {
-			assign_storage(t, S_ARGUMENT);
+			assign_storage(st, S_ARGUMENT);
 			*tn++ = t;
 		}
 		if (!match(T_COMMA))

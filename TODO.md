@@ -36,9 +36,8 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 ## C compiler (`compiler/`, tracking file `compiler/ROADMAP.md`)
 
-- **Language still missing** (ABI.md 12): structs passed / returned by
-  value. (Bitfields and K&R definitions: dropped by Gianni,
-  2026-11-11.)
+- **Language:** nothing left that is planned (bitfields and K&R
+  definitions: dropped by Gianni, 2026-11-11; ABI.md 12).
 - **Backend:** carry what the registers hold across loop labels (a dataflow
   version of `reloads.rs`; in bench.c's loops the paths into a loop label
   rarely agree: small gain expected).
