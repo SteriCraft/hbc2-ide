@@ -7,7 +7,7 @@ use hbc2_asm::{Program, Target};
 use hbc2_core::isa::RAM_SIZE;
 use hbc2_core::peripherals::Eeprom;
 use hbc2_core::peripherals::eeprom::{BOOT_RANGES, MEMORY_SIZE};
-use hbc2_core::{Machine, MachineConfig};
+use hbc2_core::{IopConfig, Machine, MachineConfig};
 use hbc2_runner::{Runner, Snapshot, Speed};
 use serde::{Deserialize, Serialize};
 
@@ -65,7 +65,7 @@ pub fn build_machine(image: Option<&Image>, peripherals: Peripherals) -> Result<
         rtc: peripherals.rtc,
         keyboard: peripherals.keyboard,
         eeprom: None,
-        mailbox: None,
+        mailbox: Some(IopConfig::default()),
     };
     let ram = match image {
         None => None,

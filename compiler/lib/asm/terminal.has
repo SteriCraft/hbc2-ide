@@ -6,7 +6,8 @@
 ; design_projects/ASM_p/lib/monitor:
 ; - the port variables have their C names (_monitor_port, _rtc_port,
 ;   _keyboard_port: compiler/runtime/devices.has);
-; - no .include of the screen driver: lib.has includes both.
+; - no .include of the screen driver: lib.has includes both;
+; - in / out go through the I/O mailbox (mbx_in / mbx_out, mailbox.has).
 ;
 ; The input line starts on the top row and goes down one row per
 ; command. Once on the last row it stays there: the rows above move up
@@ -150,12 +151,22 @@ term_scroll:
 term_scroll_row:
     mov x, 0
 term_scroll_cell:
-    out i, x                ; POS_X = column
-    out c, y                ; POS_Y = row y
-    out j, a                ; READ the cell
+    psh i, x                ; POS_X = column
+    cal mbx_out
+    asp 2
+    psh c, y                ; POS_Y = row y
+    cal mbx_out
+    asp 2
+    psh j, a                ; READ the cell
+    cal mbx_out
+    asp 2
     dec y
-    out c, y                ; POS_Y = row y - 1
-    out j, b                ; WRITE it one row up
+    psh c, y                ; POS_Y = row y - 1
+    cal mbx_out
+    asp 2
+    psh j, b                ; WRITE it one row up
+    cal mbx_out
+    asp 2
     inc y
     inc x
     cmp x, SCREEN_COLUMNS
@@ -164,16 +175,26 @@ term_scroll_cell:
     cmp y, SCREEN_ROWS
     jmf term_scroll_row     ; y < 24: next row
     lod a, term_color       ; blank the last row
-    out d, a                ; DATA_0 = colors
+    psh d, a                ; DATA_0 = colors
+    cal mbx_out
+    asp 2
     inc d
     mov a, ' '
-    out d, a                ; DATA_1 = space
+    psh d, a                ; DATA_1 = space
+    cal mbx_out
+    asp 2
     mov y, TERM_LAST_ROW
-    out c, y                ; POS_Y = last row
+    psh c, y                ; POS_Y = last row
+    cal mbx_out
+    asp 2
     mov x, 0
 term_scroll_blank:
-    out i, x                ; POS_X = column
-    out j, b                ; WRITE
+    psh i, x                ; POS_X = column
+    cal mbx_out
+    asp 2
+    psh j, b                ; WRITE
+    cal mbx_out
+    asp 2
     inc x
     cmp x, SCREEN_COLUMNS
     jmf term_scroll_blank
@@ -284,7 +305,9 @@ term_blink:
     cmp d, 0
     jme term_blink_end      ; no RTC
     add d, TERM_RTC_SECOND
-    in a, d                 ; a = current second
+    psh d                   ; a = current second
+    cal mbx_in
+    pop a
     lod d, term_last_second
     cmp a, d
     jme term_blink_end      ; same second: nothing to do

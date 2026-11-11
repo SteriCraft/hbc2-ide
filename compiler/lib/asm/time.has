@@ -483,7 +483,9 @@ _time:
     jme lib_time_none
     add d, 6                    ; CMD = GET_TIME
     mov a, 1
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     sub d, 6
     rsp [x:y]
     mov a, 0
@@ -493,23 +495,35 @@ _time:
     str [x:y + 4], a
     str [x:y + 2], a
     str [x:y], a
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     str [x:y + 11], b           ; year: since 1900, like tm_year
     inc d
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     dec b
     str [x:y + 9], b            ; month: 1-12 -> 0-11
     inc d
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     str [x:y + 7], b            ; day
     inc d
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     str [x:y + 5], b            ; hour
     inc d
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     str [x:y + 3], b            ; minute
     inc d
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     str [x:y + 1], b            ; second
     cal lib_tm_make
     jmc lib_time_none

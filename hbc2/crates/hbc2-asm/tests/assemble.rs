@@ -647,7 +647,11 @@ fn language_documentation_example_prints_hi() {
     let example = doc.split("```").nth(1).expect("first code block");
     let p = asm(example);
 
-    let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+    // The example still writes to the monitor with `out` on ports 1-5, as
+    // with the old IOD; with the mailbox those go to the card. Back to the
+    // default config once the manual's example uses mbx_out.
+    let config = MachineConfig { mailbox: None, ..MachineConfig::default() };
+    let mut m = Machine::new(config, Some(&p.image)).unwrap();
     m.finish_boot();
     m.run(1_000);
     let screen = m.peripherals.monitor.as_ref().unwrap().text_buffer();

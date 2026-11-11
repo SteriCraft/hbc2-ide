@@ -52,16 +52,26 @@ srand_rtc:
     mov i, d
     add i, 6                ; CMD port
     mov a, 1                ; GET_TIME
-    out i, a
+    psh i, a
+    cal mbx_out
+    asp 2
     mov i, d
     add i, 2
-    in a, i                 ; DAY
+    psh i                   ; DAY
+    cal mbx_in
+    pop a
     inc i
-    in b, i                 ; HOUR
+    psh i                   ; HOUR
+    cal mbx_in
+    pop b
     inc i
-    in c, i                 ; MINUTE
+    psh i                   ; MINUTE
+    cal mbx_in
+    pop c
     inc i
-    in d, i                 ; SECOND
+    psh i                   ; SECOND
+    cal mbx_in
+    pop d
     str rand_s, a
     str rand_s + 1, b
     str rand_s + 2, c

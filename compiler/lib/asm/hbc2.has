@@ -26,14 +26,18 @@ lib_minus_one:
 ; unsigned char in(unsigned char port)
 _in:
     lod d, [sp + 2]
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     ret
 
 ; void out(unsigned char port, unsigned char value)
 _out:
     lod d, [sp + 2]
     lod a, [sp + 3]
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     ret
 
 _interrupts_off:
@@ -260,24 +264,38 @@ _rtc_get:
     lod y, [sp + 3]
     add d, 6                    ; CMD
     mov a, 1
-    out d, a                    ; GET_TIME: the date and time on ports 0-5
+    psh d, a                    ; GET_TIME: the date and time on ports 0-5
+    cal mbx_out
+    asp 2
     sub d, 6
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y], a                ; year
     inc d
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y + 1], a            ; month
     inc d
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y + 2], a            ; day
     inc d
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y + 3], a            ; hour
     inc d
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y + 4], a            ; minute
     inc d
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     str [x:y + 5], a            ; second
     mov a, 0
     mov b, 0
@@ -295,27 +313,43 @@ _rtc_set:
     lod x, [sp + 2]
     lod y, [sp + 3]
     lod a, [x:y]
-    out d, a                    ; year
+    psh d, a                    ; year
+    cal mbx_out
+    asp 2
     inc d
     lod a, [x:y + 1]
-    out d, a                    ; month
+    psh d, a                    ; month
+    cal mbx_out
+    asp 2
     inc d
     lod a, [x:y + 2]
-    out d, a                    ; day
+    psh d, a                    ; day
+    cal mbx_out
+    asp 2
     inc d
     lod a, [x:y + 3]
-    out d, a                    ; hour
+    psh d, a                    ; hour
+    cal mbx_out
+    asp 2
     inc d
     lod a, [x:y + 4]
-    out d, a                    ; minute
+    psh d, a                    ; minute
+    cal mbx_out
+    asp 2
     inc d
     lod a, [x:y + 5]
-    out d, a                    ; second
+    psh d, a                    ; second
+    cal mbx_out
+    asp 2
     inc d
     mov a, 2
-    out d, a                    ; CMD = SET_TIME
+    psh d, a                    ; CMD = SET_TIME
+    cal mbx_out
+    asp 2
     sub d, 6
-    in b, d                     ; YEAR = 1 when set, 0 when refused
+    psh d                       ; YEAR = 1 when set, 0 when refused
+    cal mbx_in
+    pop b
     xor b, 1                    ; C result: 0 when set, 1 when refused
     mov a, 0
     ret
@@ -340,11 +374,17 @@ lib_eeprom_seek_high:
     jms lib_eeprom_refused      ; bits 23-20 not 0
     mov i, j
     add i, 2
-    out i, a                    ; ADDR_0
+    psh i, a                    ; ADDR_0
+    cal mbx_out
+    asp 2
     inc i
-    out i, c                    ; ADDR_1
+    psh i, c                    ; ADDR_1
+    cal mbx_out
+    asp 2
     inc i
-    out i, d                    ; ADDR_2
+    psh i, d                    ; ADDR_2
+    cal mbx_out
+    asp 2
     clc
     ret
 lib_eeprom_refused:
@@ -379,9 +419,13 @@ lib_eeprom_next:
     mov i, j
     add i, 4                    ; ADDR_2
 lib_eeprom_next_port:
-    in a, i
+    psh i
+    cal mbx_in
+    pop a
     inc a
-    out i, a
+    psh i, a
+    cal mbx_out
+    asp 2
     cmp a, 0
     jme lib_eeprom_next_carry
     ret
@@ -398,9 +442,13 @@ _eeprom_read:
     cal lib_eeprom_seek
     jmc lib_minus_one
     mov a, 1
-    out j, a                    ; READ
+    psh j, a                    ; READ
+    cal mbx_out
+    asp 2
     inc j
-    in b, j                     ; DATA
+    psh j                       ; DATA
+    cal mbx_in
+    pop b
     mov a, 0
     ret
 
@@ -414,10 +462,14 @@ _eeprom_write:
     jmc lib_carry
     lod a, [sp + 6]
     inc j
-    out j, a                    ; DATA
+    psh j, a                    ; DATA
+    cal mbx_out
+    asp 2
     dec j
     mov a, 2
-    out j, a                    ; WRITE
+    psh j, a                    ; WRITE
+    cal mbx_out
+    asp 2
     clc
     jmp lib_carry
 
@@ -444,9 +496,13 @@ lib_eeprom_load_low:
     jme lib_eeprom_done
 lib_eeprom_load_byte:
     mov a, 1
-    out j, a                    ; READ
+    psh j, a                    ; READ
+    cal mbx_out
+    asp 2
     inc j
-    in a, j                     ; DATA
+    psh j                       ; DATA
+    cal mbx_in
+    pop a
     dec j
     str [x:y], a
     add y, 1
@@ -483,10 +539,14 @@ lib_eeprom_save_low:
 lib_eeprom_save_byte:
     lod a, [x:y]
     inc j
-    out j, a                    ; DATA
+    psh j, a                    ; DATA
+    cal mbx_out
+    asp 2
     dec j
     mov a, 2
-    out j, a                    ; WRITE
+    psh j, a                    ; WRITE
+    cal mbx_out
+    asp 2
     add y, 1
     adc x, 0
     sub c, 1

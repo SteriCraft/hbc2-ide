@@ -7,7 +7,8 @@
 ; - the port variables have their C names (_monitor_port, _rtc_port,
 ;   _keyboard_port: compiler/runtime/devices.has);
 ; - _monitor_mode (C: monitor_mode) keeps the mode set by
-;   screen_pixel_mode / screen_text_mode.
+;   screen_pixel_mode / screen_text_mode;
+; - in / out go through the I/O mailbox (mbx_in / mbx_out, mailbox.has).
 
 .define SCREEN_HEIGHT 192
 
@@ -49,7 +50,9 @@ screen_mode_send:
     cmp d, 0
     jme screen_mode_none    ; no monitor
     add d, 4
-    out d, a                ; CMD = switch mode
+    psh d, a                ; CMD = switch mode
+    cal mbx_out
+    asp 2
     sub a, SCREEN_CMD_PIXEL_MODE    ; command 3 -> 0 (pixel), 4 -> 1 (text)
     str _monitor_mode, a
     pop a, d
@@ -77,14 +80,22 @@ screen_put_pixel_draw:
     lod d, _monitor_port      ; d = DATA_0 port
     cmp d, 0
     jme screen_put_pixel_none   ; no monitor
-    out d, b                ; DATA_0 = color
+    psh d, b                ; DATA_0 = color
+    cal mbx_out
+    asp 2
     add d, 2
-    out d, x                ; POS_X = x
+    psh d, x                ; POS_X = x
+    cal mbx_out
+    asp 2
     inc d
-    out d, y                ; POS_Y = y
+    psh d, y                ; POS_Y = y
+    cal mbx_out
+    asp 2
     inc d
     mov a, SCREEN_CMD_WRITE
-    out d, a                ; CMD = WRITE: the monitor draws the pixel
+    psh d, a                ; CMD = WRITE: the monitor draws the pixel
+    cal mbx_out
+    asp 2
     pop a, d
     clc
     ret
@@ -109,14 +120,22 @@ screen_get_pixel_read:
     cmp d, 0
     jme screen_get_pixel_none   ; no monitor
     add d, 2
-    out d, x                ; POS_X = x
+    psh d, x                ; POS_X = x
+    cal mbx_out
+    asp 2
     inc d
-    out d, y                ; POS_Y = y
+    psh d, y                ; POS_Y = y
+    cal mbx_out
+    asp 2
     inc d
     mov a, SCREEN_CMD_READ
-    out d, a                ; CMD = READ: the monitor puts the color on DATA_0
+    psh d, a                ; CMD = READ: the monitor puts the color on DATA_0
+    cal mbx_out
+    asp 2
     sub d, 4
-    in b, d                 ; b = color (DATA_0)
+    psh d                   ; b = color (DATA_0)
+    cal mbx_in
+    pop b
     pop a, d
     clc
     ret
@@ -141,7 +160,9 @@ screen_fill:
     lod d, _monitor_port      ; d = DATA_0 port
     cmp d, 0
     jme screen_fill_none    ; no monitor
-    out d, b                ; DATA_0 = color
+    psh d, b                ; DATA_0 = color
+    cal mbx_out
+    asp 2
     mov i, d
     add i, 2                ; i = POS_X port
     mov d, i
@@ -151,20 +172,38 @@ screen_fill:
     mov a, SCREEN_CMD_WRITE
     mov y, 0
 screen_fill_row:
-    out d, y                ; POS_Y = row
+    psh d, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     mov x, 0
 screen_fill_pixels:
-    out i, x                ; POS_X = x
-    out j, a                ; CMD = WRITE
+    psh i, x                ; POS_X = x
+    cal mbx_out
+    asp 2
+    psh j, a                ; CMD = WRITE
+    cal mbx_out
+    asp 2
     inc x
-    out i, x
-    out j, a
+    psh i, x
+    cal mbx_out
+    asp 2
+    psh j, a
+    cal mbx_out
+    asp 2
     inc x
-    out i, x
-    out j, a
+    psh i, x
+    cal mbx_out
+    asp 2
+    psh j, a
+    cal mbx_out
+    asp 2
     inc x
-    out i, x
-    out j, a
+    psh i, x
+    cal mbx_out
+    asp 2
+    psh j, a
+    cal mbx_out
+    asp 2
     inc x
     jmz screen_fill_next    ; x back to 0: row done
     jmp screen_fill_pixels
@@ -213,16 +252,26 @@ screen_putc_draw:
     lod d, _monitor_port      ; d = DATA_0 port
     cmp d, 0
     jme screen_putc_none    ; no monitor
-    out d, b                ; DATA_0 = colors
+    psh d, b                ; DATA_0 = colors
+    cal mbx_out
+    asp 2
     inc d
-    out d, a                ; DATA_1 = character
+    psh d, a                ; DATA_1 = character
+    cal mbx_out
+    asp 2
     inc d
-    out d, x                ; POS_X = column
+    psh d, x                ; POS_X = column
+    cal mbx_out
+    asp 2
     inc d
-    out d, y                ; POS_Y = row
+    psh d, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     inc d
     mov b, SCREEN_CMD_WRITE
-    out d, b                ; CMD = WRITE: the monitor draws the cell
+    psh d, b                ; CMD = WRITE: the monitor draws the cell
+    cal mbx_out
+    asp 2
     pop b, d
     clc
     ret
@@ -252,16 +301,26 @@ screen_getc_read:
     cmp d, 0
     jme screen_getc_none    ; no monitor
     add d, 2
-    out d, x                ; POS_X = column
+    psh d, x                ; POS_X = column
+    cal mbx_out
+    asp 2
     inc d
-    out d, y                ; POS_Y = row
+    psh d, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     inc d
     mov a, SCREEN_CMD_READ
-    out d, a                ; CMD = READ: the monitor puts the cell on DATA_0/1
+    psh d, a                ; CMD = READ: the monitor puts the cell on DATA_0/1
+    cal mbx_out
+    asp 2
     sub d, 4
-    in b, d                 ; b = colors (DATA_0)
+    psh d                   ; b = colors (DATA_0)
+    cal mbx_in
+    pop b
     inc d
-    in a, d                 ; a = character (DATA_1)
+    psh d                   ; a = character (DATA_1)
+    cal mbx_in
+    pop a
     pop d
     clc
     ret
@@ -325,10 +384,14 @@ screen_clear:
     lod d, _monitor_port      ; d = DATA_0 port
     cmp d, 0
     jme screen_clear_none   ; no monitor
-    out d, b                ; DATA_0 = colors
+    psh d, b                ; DATA_0 = colors
+    cal mbx_out
+    asp 2
     inc d
     mov a, ' '
-    out d, a                ; DATA_1 = space
+    psh d, a                ; DATA_1 = space
+    cal mbx_out
+    asp 2
     inc d
     mov i, d                ; i = POS_X port
     inc d                   ; d = POS_Y port
@@ -337,11 +400,17 @@ screen_clear:
     mov a, SCREEN_CMD_WRITE
     mov y, 0
 screen_clear_row:
-    out d, y                ; POS_Y = row
+    psh d, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     mov x, 0
 screen_clear_cell:
-    out i, x                ; POS_X = column
-    out j, a                ; CMD = WRITE
+    psh i, x                ; POS_X = column
+    cal mbx_out
+    asp 2
+    psh j, a                ; CMD = WRITE
+    cal mbx_out
+    asp 2
     inc x
     cmp x, SCREEN_COLUMNS
     jmf screen_clear_cell   ; x < 42: same row
@@ -381,18 +450,30 @@ screen_set_bg:
     inc j                   ; j = CMD port
     mov y, 0
 screen_set_bg_row:
-    out c, y                ; POS_Y = row
+    psh c, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     mov x, 0
 screen_set_bg_cell:
-    out i, x                ; POS_X = column
+    psh i, x                ; POS_X = column
+    cal mbx_out
+    asp 2
     mov b, SCREEN_CMD_READ
-    out j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
-    in b, d
+    psh j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
+    cal mbx_out
+    asp 2
+    psh d
+    cal mbx_in
+    pop b
     and b, 0x0F             ; keep the character color
     or b, a                 ; new background
-    out d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    psh d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    cal mbx_out
+    asp 2
     mov b, SCREEN_CMD_WRITE
-    out j, b                ; CMD = WRITE
+    psh j, b                ; CMD = WRITE
+    cal mbx_out
+    asp 2
     inc x
     cmp x, SCREEN_COLUMNS
     jmf screen_set_bg_cell  ; x < 42: same row
@@ -430,18 +511,30 @@ screen_set_txt:
     inc j                   ; j = CMD port
     mov y, 0
 screen_set_txt_row:
-    out c, y                ; POS_Y = row
+    psh c, y                ; POS_Y = row
+    cal mbx_out
+    asp 2
     mov x, 0
 screen_set_txt_cell:
-    out i, x                ; POS_X = column
+    psh i, x                ; POS_X = column
+    cal mbx_out
+    asp 2
     mov b, SCREEN_CMD_READ
-    out j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
-    in b, d
+    psh j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
+    cal mbx_out
+    asp 2
+    psh d
+    cal mbx_in
+    pop b
     and b, 0xF0             ; keep the background color
     or b, a                 ; new text color
-    out d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    psh d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
+    cal mbx_out
+    asp 2
     mov b, SCREEN_CMD_WRITE
-    out j, b                ; CMD = WRITE
+    psh j, b                ; CMD = WRITE
+    cal mbx_out
+    asp 2
     inc x
     cmp x, SCREEN_COLUMNS
     jmf screen_set_txt_cell  ; x < 42: same row

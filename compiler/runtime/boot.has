@@ -8,6 +8,10 @@
 ; the EEPROM's port, copies the rest of the program ($0x0200 to
 ; __program_end) from the EEPROM to the same RAM addresses, then starts
 ; the program like crt0.has.
+;
+; The EEPROM's ports are behind the I/O mailbox: boot_out and boot_in
+; below are copies of mbx_out and mbx_in (lib/asm/mailbox.has, same
+; calls), which come too late in the program to be copied at power-on.
 
 ; Variables of devices.has, at fixed addresses in the first 512 bytes:
 ; placed automatically, they would come after all the code, and the copy
@@ -27,13 +31,17 @@ _start:
     mov i, a
     add i, 2                    ; i = ADDR_0
     mov a, 0
-    out i, a                    ; EEPROM $0x0xxxx = RAM $0xxxx
+    psh i, a                    ; EEPROM $0x0xxxx = RAM $0xxxx
+    cal boot_out
+    asp 2
     inc i                       ; i = ADDR_1
     mov j, i
     inc j                       ; j = ADDR_2
     mov x, 0x02                 ; [x:y] = $0x0200, the first byte not copied yet
     mov y, 0x00
-    out i, x
+    psh i, x
+    cal boot_out
+    asp 2
     mov c, __program_end.msb    ; [c:d] = the end
     mov d, __program_end.lsb
 boot_loop:
@@ -44,11 +52,17 @@ boot_loop:
     jmf boot_byte
     jmp crt0_init
 boot_byte:
-    out j, y                    ; ADDR_2
+    psh j, y                    ; ADDR_2
+    cal boot_out
+    asp 2
     mov a, 1
-    out b, a                    ; CMD = READ
+    psh b, a                    ; CMD = READ
+    cal boot_out
+    asp 2
     inc b                       ; b = DATA
-    in a, b
+    psh b
+    cal boot_in
+    pop a
     dec b
     str [x:y], a
     inc y
@@ -56,8 +70,61 @@ boot_byte:
     jmp boot_loop
 boot_next_page:
     inc x
-    out i, x                    ; ADDR_1
+    psh i, x                    ; ADDR_1
+    cal boot_out
+    asp 2
     jmp boot_loop
+
+; OUT through the mailbox: [sp + 3] = port, [sp + 2] = value.
+boot_out:
+    psf
+    cli
+    psh a, b                    ; [sp + 5] = value, [sp + 6] = port
+    mov b, MBX_CMD_OUT
+    cal boot_send
+    lod b, [sp + 6]
+    cal boot_send
+    lod b, [sp + 5]
+    cal boot_send
+    pop a, b
+    pof
+    ret
+
+; IN through the mailbox: [sp + 2] = port, replaced by the value.
+boot_in:
+    psf
+    cli
+    psh a, b                    ; [sp + 5] = port
+    mov b, MBX_CMD_IN
+    cal boot_send
+    lod b, [sp + 5]
+    cal boot_send
+    psh c
+    mov c, MBX_STATUS
+boot_in_wait:
+    in a, c
+    and a, MBX_RX_AVAIL
+    jmz boot_in_wait
+    mov c, MBX_DATA
+    in b, c
+    pop c
+    str [sp + 5], b
+    pop a, b
+    pof
+    ret
+
+; Sends b once TX is free. Changes a and the flags.
+boot_send:
+    psh c
+    mov c, MBX_STATUS
+boot_send_wait:
+    in a, c
+    and a, MBX_TX_FREE
+    jmz boot_send_wait
+    mov c, MBX_DATA
+    out c, b
+    pop c
+    ret
 
 .include "devices.has"
 .include "init.has"

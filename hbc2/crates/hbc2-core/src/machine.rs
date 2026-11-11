@@ -24,9 +24,9 @@ pub struct MachineConfig {
     pub keyboard: bool,
     /// With an EEPROM, RAM starts empty and is filled by the EEPROM at power-on.
     pub eeprom: Option<Eeprom>,
-    /// The I/O: None = the IOD on the CPU's bus (the old design, and the CPU
-    /// bench's stub); Some = the mailbox card and the I/O processor (the
-    /// ESP32) running the IOD as its protocol.
+    /// The I/O: Some (the default) = the mailbox card and the I/O processor
+    /// (the ESP32) running the IOD as its protocol; None = the IOD on the
+    /// CPU's bus (the old design, and the CPU bench's stub).
     pub mailbox: Option<IopConfig>,
 }
 
@@ -37,7 +37,7 @@ impl Default for MachineConfig {
             rtc: true,
             keyboard: true,
             eeprom: None,
-            mailbox: None,
+            mailbox: Some(IopConfig::default()),
         }
     }
 }

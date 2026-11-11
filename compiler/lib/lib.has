@@ -6,6 +6,7 @@
 
 .library
 
+.include "asm/mailbox.has"
 .include "asm/screen.has"
 .include "asm/terminal.has"
 .include "asm/hbc2.has"

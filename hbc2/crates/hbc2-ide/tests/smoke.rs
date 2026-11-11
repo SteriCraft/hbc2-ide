@@ -16,15 +16,30 @@ const PROGRAM: &str = r#".include "interruptHandler.has"
 _start:
     mov d, 1        ; monitor DATA_0 (the monitor is plugged first: ports 1-5)
     mov b, 0x0F     ; white on black
-    out d, b
+    cal put
     mov d, 2        ; DATA_1
     mov b, 'H'
-    out d, b
+    cal put
     mov d, 5        ; CMD
     mov b, 1        ; WRITE
-    out d, b
+    cal put
 loop:
     jmp loop
+
+put:                ; port d = b, through the mailbox: OUT command 0x01 d b
+    mov a, 0x01     ; OUT
+    cal send
+    mov a, d
+    cal send
+    mov a, b
+send:               ; a to TX, once free (STATUS bit 1)
+    mov c, 1
+    in c, c
+    and c, 2
+    jmz send
+    mov c, 0
+    out c, a
+    ret
 "#;
 
 struct Harness {
