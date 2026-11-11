@@ -12,6 +12,10 @@ pub const MAIN_TEMPLATE: &str = include_str!("../../../templates/main.has");
 pub const INTERRUPT_HANDLER_FILE: &str = "interruptHandler.has";
 pub const INTERRUPT_HANDLER_TEMPLATE: &str =
     include_str!("../../../templates/interruptHandler.has");
+/// The devices' IN and OUT through the I/O mailbox (`mbx_in`, `mbx_out`):
+/// the C library's own file, copied into every assembly project.
+pub const MAILBOX_FILE: &str = "mailbox.has";
+pub const MAILBOX_TEMPLATE: &str = include_str!("../../../../compiler/lib/asm/mailbox.has");
 /// Content of a `.has` file created with "New file".
 pub const NEW_FILE_TEMPLATE: &str = "\
 ; === DEFINES ===
@@ -81,7 +85,7 @@ impl Project {
     }
 
     /// Creates the entry file from its template in `root` (created if
-    /// needed): `main.c` for C, otherwise `main.has`, with
+    /// needed): `main.c` for C, otherwise `main.has` and `mailbox.has`, with
     /// `interruptHandler.has` when `interrupt_handler` is set. Then opens
     /// it. Existing files are kept.
     pub fn create(root: &Path, language: Language, interrupt_handler: bool) -> io::Result<Project> {
@@ -89,7 +93,10 @@ impl Project {
         let main = main_source(interrupt_handler);
         let mut files = match language {
             Language::C => vec![(C_ENTRY_FILE, C_MAIN_TEMPLATE)],
-            Language::Assembly => vec![(ENTRY_FILE, main.as_str())],
+            Language::Assembly => vec![
+                (ENTRY_FILE, main.as_str()),
+                (MAILBOX_FILE, MAILBOX_TEMPLATE),
+            ],
         };
         if interrupt_handler && language == Language::Assembly {
             files.push((INTERRUPT_HANDLER_FILE, INTERRUPT_HANDLER_TEMPLATE));
@@ -281,14 +288,14 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         let project = Project::create(&dir.join("demo"), Language::Assembly, true).unwrap();
         assert_eq!(project.name(), "demo");
-        assert_eq!(project.files.len(), 2);
+        assert_eq!(project.files.len(), 3);
         assert!(project.entry().is_absolute());
 
         std::fs::create_dir(project.root.join("lib")).unwrap();
         std::fs::write(project.root.join("lib/math.has"), "").unwrap();
         std::fs::write(project.root.join("notes.txt"), "").unwrap();
         let mut project = Project::open(&project.root).unwrap();
-        assert_eq!(project.files.len(), 3);
+        assert_eq!(project.files.len(), 4);
         assert_eq!(project.folders, vec![project.root.join("lib")]);
         assert_eq!(
             project.include_path(&project.root.join("lib/math.has")),
@@ -303,9 +310,10 @@ mod tests {
         assert!(Project::open(&dir).is_err(), "no main.has");
 
         let bare = Project::create(&dir.join("bare"), Language::Assembly, false).unwrap();
-        assert_eq!(bare.files, vec![bare.entry()]);
+        assert_eq!(bare.files, vec![bare.root.join(MAILBOX_FILE), bare.entry()]);
         let main = std::fs::read_to_string(bare.entry()).unwrap();
         assert!(!main.contains(INTERRUPT_HANDLER_FILE));
+        assert!(main.contains(MAILBOX_FILE));
         assert!(main.contains("_start:"));
 
         let c = Project::create(&dir.join("c"), Language::C, true).unwrap();

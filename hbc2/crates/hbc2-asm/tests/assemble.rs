@@ -554,14 +554,23 @@ far: $0x20000
 
 #[test]
 fn templates_assemble_and_detect_peripherals() {
-    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/main.has");
-    let p = hbc2_asm::assemble_file(&templates, Target::Ram).unwrap_or_else(|e| {
+    // The IDE copies these three files into a new assembly project.
+    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
+    let read = |path: &str| std::fs::read_to_string(root.join(path)).unwrap();
+    let files = MemoryFiles::new()
+        .with("main.has", read("templates/main.has"))
+        .with(
+            "interruptHandler.has",
+            read("templates/interruptHandler.has"),
+        )
+        .with("mailbox.has", read("../compiler/lib/asm/mailbox.has"));
+    let p = build(files, Target::Ram).unwrap_or_else(|e| {
         panic!(
             "{}",
-            e.iter()
-                .map(ToString::to_string)
-                .collect::<Vec<_>>()
-                .join("\n")
+            e.join(
+                "
+"
+            )
         )
     });
     assert_eq!(addr(&p, "_iod_interrupt_handler"), 0xF000);
