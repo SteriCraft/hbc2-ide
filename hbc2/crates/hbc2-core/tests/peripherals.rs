@@ -58,6 +58,7 @@ fn ports_are_allocated_in_order_and_described() {
             [0x08, 0x03, 0x00, 0x02, 6, 7],
             [0x09, 0x00, 0x00, 0x03, 13, 2],
             [0x01, 0x80, 0x00, 0x04, 15, 5],
+            [0x03, 0x80, 0x00, 0x06, 20, 1],
         ]
     );
 }
@@ -89,9 +90,18 @@ fn monitor_text_write() {
     assert_eq!(screen.mode(), monitor::Mode::Text);
     let cell = screen.text_buffer()[3 + 2 * monitor::TEXT_COLUMNS];
     assert_eq!(
-        (cell.background(), cell.foreground(), cell.ascii),
+        (cell.background(), cell.foreground(), cell.code),
         (0x1, 0xF, b'A')
     );
+    // Drawn into the picture: cell (3, 2) is at pixel (24, 16).
+    let glyph = screen.font()[b'A' as usize];
+    for (row, bits) in glyph.iter().enumerate() {
+        for col in 0..8 {
+            let on = bits & (0x80 >> col) != 0;
+            let pixel = screen.pixel_buffer()[24 + col + (16 + row) * monitor::WIDTH];
+            assert_eq!(pixel, if on { 0xF } else { 0x1 }, "pixel {col}, {row}");
+        }
+    }
 }
 
 #[test]
@@ -104,7 +114,11 @@ fn monitor_only_acts_when_cmd_is_written() {
         ],
     );
     let screen = m.peripherals.monitor.as_ref().unwrap();
-    assert_eq!(screen.text_buffer()[0].ascii, 0);
+    assert_eq!(
+        screen.text_buffer()[0].code,
+        0,
+        "written with DATA_1 = 0, not 'Z'"
+    );
 }
 
 #[test]
@@ -141,7 +155,7 @@ fn monitor_invalid_positions() {
         monitor_only(),
         &[
             &out(MON + monitor::port::DATA_1, b'X'),
-            &out(MON + monitor::port::POS_X, 42), // one past the last column
+            &out(MON + monitor::port::POS_X, 32), // one past the last column
             &out(MON + monitor::port::CMD, monitor::command::WRITE),
             &out(MON + monitor::port::CMD, monitor::command::READ),
             &input(A, MON + monitor::port::DATA_1),
@@ -149,7 +163,7 @@ fn monitor_invalid_positions() {
     );
     let screen = m.peripherals.monitor.as_ref().unwrap();
     assert!(
-        screen.text_buffer().iter().all(|c| c.ascii == 0),
+        screen.text_buffer().iter().all(|c| c.code == b' '),
         "write ignored"
     );
     assert_eq!(m.cpu.reg(A), 0, "READ of an invalid position returns 0x00");

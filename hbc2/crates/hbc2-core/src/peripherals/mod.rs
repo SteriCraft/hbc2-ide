@@ -5,6 +5,7 @@
 //! time. They never run on every clock cycle, which keeps the CPU loop fast.
 
 pub mod eeprom;
+pub mod font;
 pub mod keyboard;
 pub mod monitor;
 pub mod rtc;
@@ -21,6 +22,8 @@ use crate::board::Board;
 pub mod class {
     /// Display controller, VGA-compatible (`03 00`).
     pub const DISPLAY: u16 = 0x0300;
+    /// Display controller, other (`03 80`): the native display.
+    pub const DISPLAY_OTHER: u16 = 0x0380;
     /// Input device, keyboard (`09 00`).
     pub const KEYBOARD: u16 = 0x0900;
     /// System peripheral, real-time clock (`08 03`).
@@ -38,6 +41,16 @@ pub mod product {
     pub const EEPROM: u16 = 0x0004;
     /// Reserved for the SD card (not in the emulator yet).
     pub const SD_CARD: u16 = 0x0005;
+    /// The native display (Peripherals/Native/Reference.md).
+    pub const DISPLAY: u16 = 0x0006;
+}
+
+/// The native display's descriptor: one port, for the VSYNC event. It is
+/// part of the [`Monitor`] (one screen) and plugged after every other
+/// device, so the older devices' ports don't move.
+pub mod display {
+    pub const NAME: &str = "Display";
+    pub const PORT_COUNT: u8 = 1;
 }
 
 /// Common shape of every peripheral.
@@ -70,6 +83,8 @@ pub enum PeripheralKind {
     Rtc,
     Keyboard,
     Eeprom,
+    /// The native display's port (the monitor's VSYNC event).
+    Display,
 }
 
 impl PeripheralKind {
@@ -79,6 +94,7 @@ impl PeripheralKind {
             PeripheralKind::Rtc => Rtc::NAME,
             PeripheralKind::Keyboard => Keyboard::NAME,
             PeripheralKind::Eeprom => Eeprom::NAME,
+            PeripheralKind::Display => display::NAME,
         }
     }
 
@@ -89,6 +105,7 @@ impl PeripheralKind {
             Rtc::PRODUCT => Some(PeripheralKind::Rtc),
             Keyboard::PRODUCT => Some(PeripheralKind::Keyboard),
             Eeprom::PRODUCT => Some(PeripheralKind::Eeprom),
+            product::DISPLAY => Some(PeripheralKind::Display),
             _ => None,
         }
     }
@@ -105,8 +122,8 @@ pub struct Peripherals {
 
 impl Peripherals {
     /// Plugs every present peripheral into the IOD (in a fixed order:
-    /// monitor, RTC, keyboard, EEPROM) and powers it on. A peripheral that
-    /// gets no ports is unplugged.
+    /// monitor, RTC, keyboard, EEPROM, then the monitor's native display
+    /// port) and powers it on. A peripheral that gets no ports is unplugged.
     pub(crate) fn power_on(&mut self, board: &mut Board) {
         fn plug<P: Peripheral>(slot: &mut Option<P>, board: &mut Board) {
             if let Some(device) = slot {
@@ -120,6 +137,19 @@ impl Peripherals {
         plug(&mut self.rtc, board);
         plug(&mut self.keyboard, board);
         plug(&mut self.eeprom, board);
+        if let Some(monitor) = &mut self.monitor {
+            let port = board.iod.connect(product::DISPLAY, display::PORT_COUNT);
+            monitor.set_display_port(port);
+        }
+    }
+
+    /// The reset button (`rst_n`): the I/O processor keeps its devices, but
+    /// the screen goes back to its default text state (Native/Reference.md,
+    /// "Reset and power-on").
+    pub(crate) fn reset_button(&mut self) {
+        if let Some(monitor) = &mut self.monitor {
+            monitor.reset_button();
+        }
     }
 
     /// Routes a CPU write on `port` to the peripheral that owns it.
@@ -136,7 +166,7 @@ impl Peripherals {
             Some(PeripheralKind::Rtc) => deliver(&mut self.rtc, port, board),
             Some(PeripheralKind::Keyboard) => deliver(&mut self.keyboard, port, board),
             Some(PeripheralKind::Eeprom) => deliver(&mut self.eeprom, port, board),
-            None => {}
+            Some(PeripheralKind::Display) | None => {}
         }
     }
 
@@ -149,8 +179,15 @@ impl Peripherals {
             let [p0, p1] = P::PRODUCT.to_be_bytes();
             Some([c0, c1, p0, p1, first, P::PORT_COUNT])
         }
+        let display = self.monitor.as_ref().and_then(|m| {
+            let first = m.display_port()?;
+            let [c0, c1] = class::DISPLAY_OTHER.to_be_bytes();
+            let [p0, p1] = product::DISPLAY.to_be_bytes();
+            Some([c0, c1, p0, p1, first, display::PORT_COUNT])
+        });
         let mut list: Vec<[u8; 6]> = [
             descriptor(&self.monitor),
+            display,
             descriptor(&self.rtc),
             descriptor(&self.keyboard),
             descriptor(&self.eeprom),

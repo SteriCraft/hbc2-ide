@@ -1,33 +1,21 @@
 ; ============================================================
-; terminal.has - DOS-like text terminal
+; terminal.has - DOS-like text terminal on the native display
 ; ============================================================
 ;
-; Copy for the C library (compiler/lib). Changes from the original in
-; design_projects/ASM_p/lib/monitor:
-; - the port variables have their C names (_monitor_port, _rtc_port,
-;   _keyboard_port: compiler/runtime/devices.has);
-; - no .include of the screen driver: lib.has includes both;
-; - in / out go through the I/O mailbox (mbx_in / mbx_out, mailbox.has).
+; Copy for the C library (compiler/lib). Text goes to the native
+; display's cursor (screen.has): the I/O processor wraps the rows,
+; scrolls on the last one, runs '\n', '\b', '\t', '\r' and blinks the
+; cursor. Keys typed are read by term_readline (AZERTY keyboard, Shift,
+; AltGr, the accented keys in Windows-1252).
 ;
-; The input line starts on the top row and goes down one row per
-; command. Once on the last row it stays there: the rows above move up
-; (scroll) to make room.
-; The cursor '_' blinks: it changes every second, timed by the RTC.
-; Text is printed at the cursor (term_putc, term_print).
-;
-; Keys typed are read by term_readline (AZERTY keyboard, Shift, AltGr).
-;
-; Use: call term_init once, then term_prompt + term_readline for each
-; command. Interrupts must be enabled (peripheral detection, keyboard).
-; Every register is restored, except outputs. Flags are changed.
+; Use: term_init once (the C library does it on its first output), then
+; term_prompt + term_readline for each command. Interrupts must be
+; enabled (keyboard). Every register is restored, except outputs.
+; Flags are changed.
 
 
 .define TERM_PROMPT '>'
-.define TERM_CURSOR '_'
-.define TERM_LAST_ROW 23        ; SCREEN_ROWS - 1
-.define TERM_RTC_SECOND 5       ; RTC port holding the seconds
-.define TERM_LINE_MAX 127       ; longest line typed (4 rows at most, with the '>')
-.define TERM_LAST_COL 41        ; SCREEN_COLUMNS - 1
+.define TERM_LINE_MAX 127       ; longest line typed
 
 ; Scan codes (see hbc2-ide keymap.rs: an AZERTY keyboard)
 .define TERM_KEY_BACKSPACE 0x08
@@ -36,12 +24,6 @@
 .define TERM_KEY_ALT 0x11       ; Alt and AltGr
 .define TERM_KEY_PAD_ENTER 0x12
 .define TERM_KEY_RELEASED 0x80  ; added to the scan code of a released key
-
-.data term_color 0x07           ; colors of the terminal: light gray on black, like DOS
-.data term_row 0                ; row of the input line
-.data term_col 0                ; column of the cursor
-.data term_cursor_on 0          ; 1 while the '_' is drawn
-.data term_last_second 0xFF     ; last RTC second seen by term_blink
 
 .data term_line 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0  ; line typed + 0
 .data term_line_len 0           ; characters in term_line
@@ -57,185 +39,72 @@
 ; Characters of the keys other than letters and keypad digits.
 ; term_keys_scan lists the scan codes (0 ends it); the 3 tables below give
 ; the character of each key at the same place: alone, with Shift, with
-; AltGr. 0 = no ASCII character (é, è, ç, à, ù, °, £, µ, §, ¨, ¤...).
+; AltGr, in Windows-1252 (é = 0xE9...). 0 = no character.
 ;                       space &     é     "     '     (     -     è     _     ç     à     )     =     ^     $     ù     *     ,     ;     :     !     <     pad+  pad-  pad*  pad/  pad.
 .data term_keys_scan    0x20, 0x26, 0x7E, 0x22, 0x27, 0x28, 0x2D, 0x60, 0x5F, 0x5B, 0x40, 0x29, 0x2B, 0x5E, 0x24, 0x25, 0x2A, 0x2C, 0x2E, 0x3A, 0x21, 0x3C, 0x13, 0x14, 0x15, 0x16, 0x17, 0
-.data term_keys_normal  ' ',  '&',  0,    '"',  '\'', '(',  '-',  0,    '_',  0,    0,    ')',  '=',  '^',  '$',  0,    '*',  ',',  ';',  ':',  '!',  '<',  '+',  '-',  '*',  '/',  '.'
-.data term_keys_shift   ' ',  '1',  '2',  '3',  '4',  '5',  '6',  '7',  '8',  '9',  '0',  0,    '+',  0,    0,    '%',  0,    '?',  '.',  '/',  0,    '>',  '+',  '-',  '*',  '/',  '.'
-.data term_keys_altgr   ' ',  0,    '~',  '#',  '{',  '[',  '|',  '`',  '\\', '^',  '@',  ']',  '}',  0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0,    0
+.data term_keys_normal  ' ',  '&',  0xE9, '"',  '\'', '(',  '-',  0xE8, '_',  0xE7, 0xE0, ')',  '=',  '^',  '$',  0xF9, '*',  ',',  ';',  ':',  '!',  '<',  '+',  '-',  '*',  '/',  '.'
+.data term_keys_shift   ' ' , '1' , '2' , '3' , '4' , '5' , '6' , '7' , '8' , '9' , '0' , 0xB0, '+' , 0xA8, 0xA3, '%' , 0xB5, '?' , '.' , '/' , 0xA7, '>' , '+' , '-' , '*' , '/' , '.'
+.data term_keys_altgr   ' ' , 0   , '~' , '#' , '{' , '[' , '|' , '`' , '\\', '^' , '@' , ']' , '}' , 0   , 0xA4, 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0   , 0
+
 
 
 ; ------------------------------------------------------------
-; term_init: clears the screen and shows the prompt on the top row
+; term_init: term_clear, then the prompt
 ; ------------------------------------------------------------
-; Waits for the monitor to be detected first (the IOD interrupts can
-; arrive after the program has started).
 
 term_init:
-    psh b
-term_init_wait:
-    lod b, _monitor_port
-    cmp b, 0
-    jme term_init_wait      ; monitor not detected yet
-	cal screen_text_mode	; set the monitor to text mode
-    lod b, term_color
-    cal screen_clear
-    mov b, 0
-    str term_row, b         ; input line on the top row
-    pop b
-    cal term_kbd_install    ; if the keyboard is already detected
+    cal term_clear
     cal term_prompt
     ret
 
+; term_clear: clears the screen in screen_colors, cursor at the top left
+; and shown (blinking), keys kept from now on. Nothing without a display.
+term_clear:
+    psh a, b
+    lod b, screen_colors
+    cal screen_clear
+    mov a, 1
+    cal screen_show_cursor
+    cal term_kbd_install
+    pop a, b
+    ret
+
 ; ------------------------------------------------------------
-; term_prompt: draws '>' at the start of the input line, cursor after it
+; term_prompt: '>' at the start of a row (a new row unless the cursor is
+; in column 0 already), cursor after it
 ; ------------------------------------------------------------
 
 term_prompt:
-    psh a, b, x, y
-    lod b, term_color
+    psh a, x, y
+    cal screen_get_cursor
+    jmc term_prompt_end     ; no display
+    cmp x, 0
+    jme term_prompt_draw
+    mov a, '\n'
+    cal screen_out
+term_prompt_draw:
     mov a, TERM_PROMPT
-    mov x, 0
-    lod y, term_row
-    cal screen_putc
-    mov x, 1
-    str term_col, x         ; cursor right after the prompt
-    pop a, b, x, y
-    cal term_cursor_show
+    cal screen_out
+term_prompt_end:
+    pop a, x, y
     ret
 
-; ------------------------------------------------------------
-; term_newline: moves the input line down one row, cursor in column 0
-; ------------------------------------------------------------
-; On the last row, the screen scrolls up instead and the input line
-; stays on the last row. The cursor is hidden (the next blink or
-; term_prompt shows it again).
-
+; term_newline: the cursor to the start of the next row (scrolling on the
+; last one).
 term_newline:
     psh a
-    cal term_cursor_hide    ; no '_' left behind on the old line
-    mov a, 0
-    str term_col, a
-    lod a, term_row
-    cmp a, TERM_LAST_ROW
-    jme term_newline_scroll
-    inc a                   ; not on the last row yet: go down
-    str term_row, a
-    pop a
-    ret
-term_newline_scroll:
-    cal term_scroll         ; last row: everything moves up
+    mov a, '\n'
+    cal screen_out
     pop a
     ret
 
 ; ------------------------------------------------------------
-; term_scroll: moves rows 1..23 up one row, then blanks the last row
+; term_putc: prints character a at the cursor, or runs control code a
+; ('\n', '\b', '\t', '\r'). C = 1 without a display.
 ; ------------------------------------------------------------
-; Each cell is READ on row y, then WRITTEN on row y - 1: DATA_0 and
-; DATA_1 still hold what READ returned, so only the position changes.
-
-term_scroll:
-    psh a, b, c, d, i, j, x, y
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme term_scroll_end     ; no monitor
-    mov i, d
-    add i, 2                ; i = POS_X port
-    mov c, i
-    inc c                   ; c = POS_Y port
-    mov j, c
-    inc j                   ; j = CMD port
-    mov a, SCREEN_CMD_READ
-    mov b, SCREEN_CMD_WRITE
-    mov y, 1                ; first row to move up
-term_scroll_row:
-    mov x, 0
-term_scroll_cell:
-    psh i, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    psh c, y                ; POS_Y = row y
-    cal mbx_out
-    asp 2
-    psh j, a                ; READ the cell
-    cal mbx_out
-    asp 2
-    dec y
-    psh c, y                ; POS_Y = row y - 1
-    cal mbx_out
-    asp 2
-    psh j, b                ; WRITE it one row up
-    cal mbx_out
-    asp 2
-    inc y
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf term_scroll_cell    ; x < 42: same row
-    inc y
-    cmp y, SCREEN_ROWS
-    jmf term_scroll_row     ; y < 24: next row
-    lod a, term_color       ; blank the last row
-    psh d, a                ; DATA_0 = colors
-    cal mbx_out
-    asp 2
-    inc d
-    mov a, ' '
-    psh d, a                ; DATA_1 = space
-    cal mbx_out
-    asp 2
-    mov y, TERM_LAST_ROW
-    psh c, y                ; POS_Y = last row
-    cal mbx_out
-    asp 2
-    mov x, 0
-term_scroll_blank:
-    psh i, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    psh j, b                ; WRITE
-    cal mbx_out
-    asp 2
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf term_scroll_blank
-term_scroll_end:
-    pop a, b, c, d, i, j, x, y
-    ret
-
-; ------------------------------------------------------------
-; term_putc: prints character a at the cursor, which moves after it
-; ------------------------------------------------------------
-; At the end of a row, the cursor goes to the start of the next row
-; (scrolling on the last row). '\n' starts a new row.
-; C = 1 and nothing happens when a is not displayable (other than '\n').
 
 term_putc:
-    cmp a, '\n'
-    jme term_putc_newline
-    psh b, x, y
-    lod b, term_color
-    lod x, term_col
-    lod y, term_row
-    cal screen_putc         ; replaces the '_' if it was drawn
-    jmc term_putc_err       ; not displayable
-    inc x                   ; next column
-    str term_col, x
-    cmp x, SCREEN_COLUMNS
-    jme term_putc_wrap      ; end of the row
-    pop b, x, y
-    cal term_cursor_show
-    clc
-    ret
-term_putc_wrap:
-    pop b, x, y
-term_putc_newline:
-    cal term_newline
-    cal term_cursor_show
-    clc
-    ret
-term_putc_err:
-    pop b, x, y
-    stc
+    cal screen_out
     ret
 
 ; ------------------------------------------------------------
@@ -243,31 +112,19 @@ term_putc_err:
 ; ------------------------------------------------------------
 ; [i:j] ADVANCES: it ends on the 0, like the text conversions of the
 ; math library (so their output can be printed straight away).
-; Characters that are not displayable (other than '\n') are skipped.
 
 term_print:
-    psh a
-term_print_next:
-    lod a, [i:j]
-    cmp a, 0
-    jme term_print_end      ; end of the text
-    cal term_putc
-    add j, 1                ; next character
-    adc i, 0
-    jmp term_print_next
-term_print_end:
-    pop a
+    cal screen_puts
     ret
 
 ; ------------------------------------------------------------
 ; term_readline: reads a line typed on the keyboard, until Enter
 ; ------------------------------------------------------------
-; The text goes at the cursor (call term_prompt first). At the end of a
-; row it goes on at the start of the next row. Backspace erases the last
-; character, going back up a row if needed; at most TERM_LINE_MAX
-; characters fit, more are ignored. Enter moves to a new row (cursor hidden) and returns.
+; The text goes at the cursor (call term_prompt first), wrapping to the
+; next rows. Backspace erases the last character, going back up a row if
+; needed; at most TERM_LINE_MAX characters fit, more are ignored. Enter
+; moves to a new row and returns.
 ; Out: a = length, the text is in term_line (0-terminated).
-; The cursor blinks while waiting.
 
 term_readline:
     mov a, 0
@@ -282,88 +139,55 @@ term_readline_wait:
     ret
 
 ; ------------------------------------------------------------
-; term_update: blinks the cursor and handles the keys typed; call it
-; as often as possible
+; term_update: handles the keys typed; call it as often as possible
 ; ------------------------------------------------------------
 ; Keys are only read while term_readline waits for a line: the others
 ; stay in the queue (up to 15 key events) until the next term_readline.
 
 term_update:
     cal term_kbd_install
-    cal term_blink
     cal term_kbd_read
     ret
 
 ; ------------------------------------------------------------
-; term_blink: shows or hides the cursor each time the RTC second
-; changes. Without an RTC, the cursor does not blink.
-; ------------------------------------------------------------
-
-term_blink:
-    psh a, d
-    lod d, _rtc_port
-    cmp d, 0
-    jme term_blink_end      ; no RTC
-    add d, TERM_RTC_SECOND
-    psh d                   ; a = current second
-    cal mbx_in
-    pop a
-    lod d, term_last_second
-    cmp a, d
-    jme term_blink_end      ; same second: nothing to do
-    str term_last_second, a
-    lod a, term_cursor_on
-    cmp a, 0
-    jme term_blink_show
-    cal term_cursor_hide
-    jmp term_blink_end
-term_blink_show:
-    cal term_cursor_show
-term_blink_end:
-    pop a, d
-    ret
-
-; ------------------------------------------------------------
-; void term_get_cursor_pos(char *row, char *column)
-; _term_get_cursor_pos: stores the cursor row and column positions
-; at the addresses given in the parameters
+; void term_get_cursor_pos(char *row, char *column): 0, 0 is the top
+; left; column 32 when the last character went in column 31 (the next
+; one wraps). Both 0 without a display.
 ; ------------------------------------------------------------
 
 _term_get_cursor_pos:
-    lod x, [sp + 2]                     ; [sp + 2]: char *row pointer's MSB
-    lod y, [sp + 3]                     ; [sp + 3]: char *row pointer's LSB
-    lod a, term_row
-    str [x:y], a                        ; Store row number at the pointer's address
-    lod x, [sp + 4]                     ; [sp + 4]: char *column pointer's MSB
-    lod y, [sp + 5]                     ; [sp + 5]: char *column pointer's LSB
-    lod a, term_col
-    str [x:y], a                        ; Store column number at the pointer's address
+    cal screen_get_cursor
+    jmc term_get_cursor_none
+    jmp term_get_cursor_store
+term_get_cursor_none:
+    mov x, 0
+    mov y, 0
+term_get_cursor_store:
+    mov a, x
+    mov b, y
+    lod x, [sp + 2]                     ; char *row
+    lod y, [sp + 3]
+    str [x:y], b
+    lod x, [sp + 4]                     ; char *column
+    lod y, [sp + 5]
+    str [x:y], a
     ret
 
 ; ------------------------------------------------------------
-; char term_set_cursor_pos(char row, char column)
-; _term_set_cursor_pos: sets the cursor row and column positions
-; returns 0 if values are in bound
+; char term_set_cursor_pos(char row, char column): 0 when the cell is on
+; the screen (and there is a display), else 1 and the cursor stays
 ; ------------------------------------------------------------
 
 _term_set_cursor_pos:
-    lod a, [sp + 2]                     ; [sp + 2]: char row
-    cmp a, SCREEN_ROWS
-    jmf term_set_cursor_pos_row_ok  ; row < 24
-    mov b, 1
-    ret
-term_set_cursor_pos_row_ok:
-    lod b, [sp + 3]                     ; [sp + 3]: char column
-    cmp b, SCREEN_COLUMNS
-    jmf term_set_cursor_pos_col_ok  ; column < 42
-    mov b, 1
-    ret
-term_set_cursor_pos_col_ok:
-    cal term_cursor_hide
-    str term_row, a
-    str term_col, b
-    cal term_cursor_show
+    lod y, [sp + 2]                     ; row
+    lod x, [sp + 3]                     ; column
+    cal screen_cursor
+    mov a, 0
     mov b, 0
+    jmc term_set_cursor_pos_err
+    ret
+term_set_cursor_pos_err:
+    mov b, 1
     ret
 
 ; ------------------------------------------------------------
@@ -525,7 +349,8 @@ term_key_enter:
     str [x:b + term_line.lsb], a    ; term_line[len] = 0
     mov a, 1
     str term_line_done, a
-    cal term_newline
+    mov a, '\n'
+    cal screen_out
     jmp term_key_end
 
 term_key_backspace:
@@ -534,21 +359,12 @@ term_key_backspace:
     jme term_key_end        ; nothing to erase
     dec b
     str term_line_len, b
-    cal term_cursor_hide    ; erase the cursor...
-    lod b, term_col
-    cmp b, 0
-    jme term_key_backspace_up
-    dec b                   ; back one column
-    str term_col, b
-    jmp term_key_backspace_show
-term_key_backspace_up:
-    mov b, TERM_LAST_COL    ; start of a row: back to the end of the row above
-    str term_col, b
-    lod b, term_row
-    dec b
-    str term_row, b
-term_key_backspace_show:
-    cal term_cursor_show    ; ...and draw it over the last character
+    mov a, 0x08             ; '\b': back one cell (up a row from column 0),
+    cal screen_out          ; erase, back again
+    mov a, ' '
+    cal screen_out
+    mov a, 0x08
+    cal screen_out
 term_key_end:
     pop a, b, x
     ret
@@ -615,36 +431,4 @@ term_key_char_none:
     mov a, 0
 term_key_char_end:
     pop b, c, d, x, y
-    ret
-
-; ------------------------------------------------------------
-; term_cursor_show / term_cursor_hide: draws '_' or ' ' at the cursor
-; ------------------------------------------------------------
-
-term_cursor_show:
-    psh a
-    mov a, TERM_CURSOR
-    cal term_cursor_draw
-    mov a, 1
-    str term_cursor_on, a
-    pop a
-    ret
-
-term_cursor_hide:
-    psh a
-    mov a, ' '
-    cal term_cursor_draw
-    mov a, 0
-    str term_cursor_on, a
-    pop a
-    ret
-
-; term_cursor_draw: draws character a at (term_col, term_row)
-term_cursor_draw:
-    psh b, x, y
-    lod b, term_color
-    lod x, term_col
-    lod y, term_row
-    cal screen_putc
-    pop b, x, y
     ret

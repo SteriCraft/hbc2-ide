@@ -167,7 +167,7 @@ fn assemble_run_and_break() {
     });
     let s = h.ide.state.snapshot.clone();
     let monitor = s.monitor.as_ref().unwrap();
-    assert_eq!(monitor.text_buffer()[0].ascii, b'H');
+    assert_eq!(monitor.text_buffer()[0].code, b'H');
     assert_eq!(monitor.text_buffer()[0].colors, 0x0F);
     assert_eq!(
         h.ide.state.pc_line(&main),
@@ -954,7 +954,7 @@ fn c_project_builds_and_runs() {
     h.wait("the text on the monitor", |ide| {
         ide.state.snapshot.monitor.as_ref().is_some_and(|m| {
             let text = m.text_buffer();
-            text[0].ascii == b'H' && text[1].ascii == b'i'
+            text[0].code == b'H' && text[1].code == b'i'
         })
     });
     h.act(Action::Pause);

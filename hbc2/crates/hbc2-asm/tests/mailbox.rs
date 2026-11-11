@@ -336,10 +336,7 @@ fn the_mailbox_runs_the_iod_protocol() {
         "READ at column 4"
     );
     assert!(mbx.text == direct.text, "the same screen");
-    assert_eq!(
-        mbx.text[3 * monitor::TEXT_COLUMNS + 2 + 19].ascii,
-        b'A' + 19
-    );
+    assert_eq!(mbx.text[3 * monitor::TEXT_COLUMNS + 2 + 19].code, b'A' + 19);
     assert_eq!(mbx.registers, direct.registers);
     assert!(
         mbx.cycles > direct.cycles,
@@ -356,18 +353,19 @@ fn info_reports_the_protocol_and_the_devices() {
     run_to(&mut m, &p, "keys", 2_000_000);
     assert_eq!(var(&m, &p, "infok"), 1);
     let info = p.symbol("info").unwrap().address as u16;
-    let reply: Vec<u8> = (0..20).map(|k| m.board.ram.read(info + k)).collect();
+    let reply: Vec<u8> = (0..26).map(|k| m.board.ram.read(info + k)).collect();
     #[rustfmt::skip]
     assert_eq!(
         reply,
         [
             hbc2_core::iop::PROTOCOL_VERSION,
-            3,
+            4,
             0x03, 0x00, 0x00, 0x01, 1, 5,  // display, the monitor, ports 1-5
             0x08, 0x03, 0x00, 0x02, 6, 7,  // RTC, ports 6-12
             0x09, 0x00, 0x00, 0x03, 13, 2, // keyboard, ports 13-14
+            0x03, 0x80, 0x00, 0x06, 15, 1, // the native display, port 15
         ],
-        "version 1, 3 devices: class, product ID, first port, number of ports"
+        "version 2, 4 devices: class, product ID, first port, number of ports"
     );
     assert_eq!(m.iop.partial_command(), &[] as &[u8]);
 

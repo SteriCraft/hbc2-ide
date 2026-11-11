@@ -126,31 +126,7 @@ lib_device_none:
     mov b, 0
     ret
 
-; --- Monitor -------------------------------------------------------------
-
-; int screen_set_mode(unsigned char mode): 0 = pixel, 1 = text.
-; Refused (1) for another mode or without a monitor. screen.has keeps
-; _monitor_mode up to date.
-_screen_set_mode:
-    lod a, [sp + 2]
-    cmp a, 1
-    jme lib_set_text
-    cmp a, 0
-    jme lib_set_pixel
-    mov a, 0                    ; not a mode
-    mov b, 1
-    ret
-lib_set_text:
-    cal screen_text_mode
-    jmp lib_carry
-lib_set_pixel:
-    cal screen_pixel_mode
-    jmp lib_carry
-
-; unsigned char screen_get_mode(void)
-_screen_get_mode:
-    lod b, _monitor_mode
-    ret
+; --- Screen (the native display) -----------------------------------------
 
 ; int screen_putc(char c, unsigned char x, unsigned char y, unsigned char colors)
 _screen_putc:
@@ -174,7 +150,7 @@ _screen_getc:
 
 ; unsigned screen_write(const char *text, unsigned length,
 ;                       unsigned char x, unsigned char y, unsigned char colors)
-; Returns the characters left ([c:d]: 0 when all were drawn).
+; Returns 0, or length when nothing was drawn (off the grid, no display).
 _screen_write:
     lod i, [sp + 2]
     lod j, [sp + 3]
@@ -186,6 +162,10 @@ _screen_write:
     cal screen_write
     mov a, c
     mov b, d
+    jmc lib_screen_write_end
+    mov a, 0
+    mov b, 0
+lib_screen_write_end:
     ret
 
 ; int screen_clear(unsigned char colors)
@@ -202,7 +182,7 @@ _screen_set_bg:
 
 ; int screen_set_txt(unsigned char color);
 _screen_set_txt:
-    lod a, [sp + 2]             ; a = color
+    lod a, [sp + 2]
     cal screen_set_txt
     jmp lib_carry
 
@@ -229,13 +209,64 @@ _screen_fill:
     cal screen_fill
     jmp lib_carry
 
+; int screen_line(unsigned char x0, unsigned char y0,
+;                 unsigned char x1, unsigned char y1, unsigned char color)
+_screen_line:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod b, [sp + 6]
+    cal screen_line
+    jmp lib_carry
+
+; int screen_rect(unsigned char x, unsigned char y, unsigned char width,
+;                 unsigned char height, unsigned char color)
+_screen_rect:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod b, [sp + 6]
+    cal screen_rect
+    jmp lib_carry
+
+; int screen_fill_rect(unsigned char x, unsigned char y, unsigned char width,
+;                      unsigned char height, unsigned char color)
+_screen_fill_rect:
+    lod x, [sp + 2]
+    lod y, [sp + 3]
+    lod i, [sp + 4]
+    lod j, [sp + 5]
+    lod b, [sp + 6]
+    cal screen_fill_rect
+    jmp lib_carry
+
+; int screen_scroll(unsigned char rows)
+_screen_scroll:
+    lod a, [sp + 2]
+    cal screen_scroll
+    jmp lib_carry
+
+; int screen_define_char(unsigned char code, const unsigned char *rows)
+_screen_define_char:
+    lod a, [sp + 2]
+    lod i, [sp + 3]
+    lod j, [sp + 4]
+    cal screen_defchar
+    jmp lib_carry
+
+; int screen_reset(void)
+_screen_reset:
+    cal screen_reset
+    jmp lib_carry
+
 ; --- Terminal ------------------------------------------------------------
 
 .data lib_term_ready 0          ; 1 once the terminal has been cleared
 
-; lib_term_start: the first time, switches to text mode and clears the
-; screen (nothing without a monitor: tried again next time).
-; Changes a, b.
+; lib_term_start: the first time, clears the screen and shows the cursor
+; (nothing without a display: tried again next time). Changes a, b.
 lib_term_start:
     lod a, lib_term_ready
     cmp a, 0
@@ -244,39 +275,32 @@ lib_term_start:
 
 ; void term_clear(void)
 _term_clear:
-    lod a, _monitor_port
+    lod a, _display_port
     cmp a, 0
-    jme lib_term_clear_end      ; no monitor
+    jme lib_term_clear_end      ; no display
     mov a, 1
     str lib_term_ready, a
-    cal screen_text_mode
-    lod b, term_color
-    cal screen_clear
-    mov a, 0
-    str term_row, a
-    str term_col, a
-    cal term_kbd_install        ; keys are kept from now on
-    cal term_cursor_show
+    cal term_clear
 lib_term_clear_end:
     ret
 
 ; void term_set_colors(unsigned char colors, unsigned char fill)
 _term_set_colors:
-    lod a, [sp + 2]             ; a = colors
-    lod b, [sp + 3]             ; b = fill
-    str term_color, a
-    cmp b, 0
-    jme term_set_colors_end     ; fill = 0: only the next characters
-    mov b, a
-    and a, 0x0F                 ; a = text color (low nibble)
+    lod b, [sp + 2]             ; b = colors
+    cal screen_set_colors
+    lod a, [sp + 3]             ; fill
+    cmp a, 0
+    jme lib_term_set_colors_end ; fill = 0: only the next characters
+    mov a, b
+    and a, 0x0F                 ; the text colour (low nibble)
     cal screen_set_txt
     mov a, b
-    shr a                       ; a = background (high nibble)
+    shr a                       ; the background (high nibble)
     shr a
     shr a
     shr a
     cal screen_set_bg
-term_set_colors_end:
+lib_term_set_colors_end:
     ret
 
 ; void term_prompt(void)
@@ -302,51 +326,14 @@ _term_update:
 ; struct rtc_time: year, month, day, hour, minute, second (one byte each),
 ; in the order of the RTC ports 0-5.
 
-; int rtc_get(struct rtc_time *time): 0, or 1 (no RTC)
+; int rtc_get(struct rtc_time *time): 0, or 1 (no clock). GET_TIME
+; (time.has, lib_get_time): the 6 bytes in the order of the struct.
 _rtc_get:
-    lod d, _rtc_port
-    cmp d, 0
-    jme lib_rtc_none
     lod x, [sp + 2]             ; [x:y] = time
     lod y, [sp + 3]
-    add d, 6                    ; CMD
-    mov a, 1
-    psh d, a                    ; GET_TIME: the date and time on ports 0-5
-    cal mbx_out
-    asp 2
-    sub d, 6
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y], a                ; year
-    inc d
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y + 1], a            ; month
-    inc d
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y + 2], a            ; day
-    inc d
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y + 3], a            ; hour
-    inc d
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y + 4], a            ; minute
-    inc d
-    psh d
-    cal mbx_in
-    pop a
-    str [x:y + 5], a            ; second
-    mov a, 0
-    mov b, 0
-    ret
+    cal lib_get_time
+    jmp lib_carry
+
 lib_rtc_none:
     mov a, 0
     mov b, 1

@@ -2,8 +2,9 @@
 ; asctime, ctime, strftime.
 ;
 ; time_t = the seconds since 1970-01-01 00:00:00, unsigned 32 bits: up to
-; 2106-02-07 06:28:15. The RTC keeps the host's local time and knows no
-; time zone: localtime and gmtime are the same.
+; 2106-02-07 06:28:15. The I/O processor's clock (GET_TIME) keeps local
+; time and knows no time zone: localtime and gmtime are the same.
+; clock() counts the native display's frames (VSYNC, 60 per second).
 ;
 ; struct tm: 9 ints, 2 bytes each, most significant byte first:
 ;   0 tm_sec, 2 tm_min, 4 tm_hour, 6 tm_mday, 8 tm_mon (0-11),
@@ -474,19 +475,184 @@ lib_tm_load:
     lod b, lib_tm_secs + 3
     ret
 
-; time_t time(time_t *t): the RTC's date and time, also put at t when t
-; is not NULL. (time_t)-1 without an RTC or before 1970.
-_time:
-    ssp 18                      ; a struct tm
-    lod d, _rtc_port
-    cmp d, 0
-    jme lib_time_none
-    add d, 6                    ; CMD = GET_TIME
+; --- The clock and the tick -----------------------------------------------
+
+.bss lib_time_now 6             ; GET_TIME's reply
+
+; lib_get_time: the date and time (GET_TIME: year since 1900, month,
+; day, hour, minute, second) in the 6 bytes at [x:y]. C = 1 when there is
+; no clock: an I/O processor without native commands (protocol < 2), or
+; month 0 in the reply. Every register is kept.
+lib_get_time:
+    psh a
+    lod a, dev_protocol
+    cmp a, 2
+    pop a
+    jmf lib_get_time_none
+    psf
+    cli
+    psh a, b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_GET_TIME
+    cal scr_byte
+    cal scr_recv
+    str [x:y], b                ; year
+    cal scr_recv
+    str [x:y + 1], b            ; month
+    cal scr_recv
+    str [x:y + 2], b            ; day
+    cal scr_recv
+    str [x:y + 3], b            ; hour
+    cal scr_recv
+    str [x:y + 4], b            ; minute
+    cal scr_recv
+    str [x:y + 5], b            ; second
+    pop a, b, c, d
+    pof
+    psh a
+    lod a, [x:y + 1]
+    cmp a, 0
+    pop a
+    jme lib_get_time_none       ; month 0: no clock
+    clc
+    ret
+lib_get_time_none:
+    stc
+    ret
+
+; The tick: the native display's VSYNC event, 60 per second. Turned on by
+; the first clock() or delay(); lib_ticks then counts the frames.
+.data lib_ticks 0, 0, 0, 0      ; frames, most significant byte first
+.data lib_tick_state 0          ; 0 off, 1 waiting for the first event, 2 counting
+.data lib_tick_last 0           ; the frame count (mod 256) of the last event
+
+; lib_tick_start: the first time, points the display's interrupt vector
+; to lib_tick_handler and turns VSYNC on. C = 1: no display. Keeps every
+; register.
+lib_tick_start:
+    psh a
+    lod a, lib_tick_state
+    cmp a, 0
+    jme lib_tick_start_go
+    pop a
+    clc
+    ret
+lib_tick_start_go:
+    lod a, _display_port
+    cmp a, 0
+    jme lib_tick_start_none
+    psh x, y
+    psf
+    cli                         ; no interrupt while the vector is half written
+    mov x, 0xFE
+    mov y, a
+    shl y                       ; C = 1 for port 128 or more: $0xFFxx
+    adc x, 0                    ; [x:y] = $0xFE00 + 2 * port
+    mov a, lib_tick_handler.msb
+    str [x:y], a
+    mov a, lib_tick_handler.lsb
+    str [x:y + 1], a
     mov a, 1
-    psh d, a
-    cal mbx_out
-    asp 2
-    sub d, 6
+    str lib_tick_state, a
+    pof
+    pop x, y
+    cal screen_vsync            ; a = 1: on
+    pop a
+    clc
+    ret
+lib_tick_start_none:
+    pop a
+    stc
+    ret
+
+; The VSYNC handler: i = the frame count (mod 256). Adds the frames since
+; the last event (several when events merged while interrupts were off).
+lib_tick_handler:
+    psf
+    psh a, b
+    lod a, lib_tick_state
+    cmp a, 2
+    jme lib_tick_count
+    mov a, 2                    ; the first event: only its count is kept
+    str lib_tick_state, a
+    jmp lib_tick_keep
+lib_tick_count:
+    mov a, i
+    lod b, lib_tick_last
+    sub a, b                    ; a = frames since the last event
+    lod b, lib_ticks + 3
+    add b, a
+    str lib_ticks + 3, b
+    lod b, lib_ticks + 2
+    adc b, 0
+    str lib_ticks + 2, b
+    lod b, lib_ticks + 1
+    adc b, 0
+    str lib_ticks + 1, b
+    lod b, lib_ticks
+    adc b, 0
+    str lib_ticks, b
+lib_tick_keep:
+    mov a, i
+    str lib_tick_last, a
+    pop a, b
+    pof
+    irt
+
+; clock_t clock(void): the frames (CLOCKS_PER_SEC = 60) since the first
+; call; (clock_t)-1 without a display.
+_clock:
+    cal lib_tick_start
+    jmc lib_time_minus1
+    psf
+    cli                         ; the 4 bytes of one moment
+    lod c, lib_ticks
+    lod d, lib_ticks + 1
+    lod a, lib_ticks + 2
+    lod b, lib_ticks + 3
+    pof
+    ret
+
+; void delay(unsigned frames): waits that many sixtieths of a second
+; (hbc2.h). Turns interrupts on. Returns at once without a display.
+_delay:
+    cal lib_tick_start
+    jmc lib_delay_end
+    lod x, [sp + 2]             ; [x:y] = frames
+    lod y, [sp + 3]
+    psf
+    cli
+    lod c, lib_ticks + 2        ; [c:d] = the tick to reach (16 bits)
+    lod d, lib_ticks + 3
+    pof
+    add d, y
+    adc c, x
+lib_delay_wait:
+    psf
+    cli
+    lod a, lib_ticks + 2
+    lod b, lib_ticks + 3
+    pof
+    sub b, d                    ; [a:b] = now - target
+    sbb a, c
+    and a, 0x80
+    jmz lib_delay_end           ; now >= target
+    sti
+    hlt                         ; until the next interrupt
+    jmp lib_delay_wait
+lib_delay_end:
+    ret
+
+; time_t time(time_t *t): the I/O processor's date and time (GET_TIME),
+; also put at t when t is not NULL. (time_t)-1 without a clock or before
+; 1970.
+_time:
+    mov x, lib_time_now.msb
+    mov y, lib_time_now.lsb
+    cal lib_get_time
+    jmc lib_time_none_now
+    ssp 18                      ; a struct tm
     rsp [x:y]
     mov a, 0
     str [x:y + 10], a
@@ -495,35 +661,18 @@ _time:
     str [x:y + 4], a
     str [x:y + 2], a
     str [x:y], a
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now
     str [x:y + 11], b           ; year: since 1900, like tm_year
-    inc d
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now + 1
     dec b
     str [x:y + 9], b            ; month: 1-12 -> 0-11
-    inc d
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now + 2
     str [x:y + 7], b            ; day
-    inc d
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now + 3
     str [x:y + 5], b            ; hour
-    inc d
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now + 4
     str [x:y + 3], b            ; minute
-    inc d
-    psh d
-    cal mbx_in
-    pop b
+    lod b, lib_time_now + 5
     str [x:y + 1], b            ; second
     cal lib_tm_make
     jmc lib_time_none
@@ -532,6 +681,7 @@ _time:
     jmp lib_time_store
 lib_time_none:
     asp 18
+lib_time_none_now:
     cal lib_time_minus1
 lib_time_store:
     lod x, [sp + 2]
@@ -546,9 +696,8 @@ lib_time_store:
 lib_time_end:
     ret
 
-; clock_t clock(void): -1, the HBC-2 does not count the time used.
-_clock:
-lib_time_minus1:                ; [c:d]:[a:b] = -1
+; [c:d]:[a:b] = -1
+lib_time_minus1:
     mov a, -1
     mov b, -1
     mov c, -1

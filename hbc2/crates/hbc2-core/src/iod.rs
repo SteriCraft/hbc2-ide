@@ -115,6 +115,21 @@ impl Iod {
         true
     }
 
+    /// Queues an interrupt on `port` unless one on that port already waits
+    /// in the queue: that one then carries the port's current data instead
+    /// (the VSYNC event: at most one waits, with the latest frame count).
+    /// Returns false if the queue is full.
+    pub fn trigger_or_update_interrupt(&mut self, port: u8) -> bool {
+        let data = self.ports[port as usize];
+        match self.queue.iter_mut().find(|i| i.port == port) {
+            Some(waiting) => {
+                waiting.data = data;
+                true
+            }
+            None => self.trigger_interrupt(port),
+        }
+    }
+
     /// Plugs a peripheral: allocates `count` consecutive ports starting at the
     /// first free port (port 0 excluded). Returns the first allocated port,
     /// or `None` if there is no room.

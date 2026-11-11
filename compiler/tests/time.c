@@ -3,6 +3,7 @@
    at 2000-01-01 00:00:00 and does not move. */
 
 #include <time.h>
+#include <hbc2.h>
 #include <string.h>
 #include <stdlib.h>
 
@@ -83,6 +84,7 @@ static int fmt(const char *f, const char *want)
 int main(void)
 {
     time_t s, s2;
+    clock_t c0, c1;
     unsigned i;
     struct tm *p;
 
@@ -90,7 +92,11 @@ int main(void)
     s = 1;
     if (time(NULL) != 946684800UL || time(&s) != 946684800UL || s != 946684800UL)
         return 1;
-    if (clock() != (clock_t)-1)
+    /* clock: 0 at the first call, then the frames (60 per second) */
+    c0 = clock();
+    delay(6);
+    c1 = clock();
+    if (c0 != 0 || c1 < 5 || c1 > 7)
         return 2;
 
     /* well-known dates */

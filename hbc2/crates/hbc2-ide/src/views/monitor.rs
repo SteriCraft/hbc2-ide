@@ -8,15 +8,14 @@ use eframe::egui::{
     TextureHandle, TextureOptions, vec2,
 };
 use hbc2_core::peripherals::Monitor;
-use hbc2_core::peripherals::monitor::{
-    CHAR_HEIGHT, CHAR_WIDTH, HEIGHT, Mode, PALETTE, TEXT_COLUMNS, TEXT_ROWS, WIDTH,
-};
+use hbc2_core::peripherals::monitor::{CELL, HEIGHT, PALETTE, WIDTH};
 use hbc2_runner::Runner;
 
-use crate::{font, keymap};
+use crate::keymap;
 
-/// Text mode is 252 pixels wide, pixel mode 256.
-const TEXT_WIDTH: usize = TEXT_COLUMNS * CHAR_WIDTH;
+/// The cursor shown by SHOW_CURSOR blinks twice a second: on for this
+/// long, then off as long.
+const BLINK_SECONDS: f64 = 0.25;
 
 /// Width of the stripe around the screen while it has focus (drawn
 /// outside, so that it hides no HBC-2 pixel).
@@ -73,32 +72,10 @@ pub fn color(index: u8) -> Color32 {
     Color32::from_rgb((rgb >> 16) as u8, (rgb >> 8) as u8, rgb as u8)
 }
 
-/// Renders the monitor into an image (252×192 in text mode, 256×192 in pixel mode).
+/// The picture, 256 × 192 (the blinking cursor is drawn over it).
 pub fn render(monitor: &Monitor) -> ColorImage {
-    match monitor.mode() {
-        Mode::Pixel => {
-            let pixels = monitor.pixel_buffer().iter().map(|&p| color(p)).collect();
-            ColorImage::new([WIDTH, HEIGHT], pixels)
-        }
-        Mode::Text => {
-            let mut pixels = vec![Color32::BLACK; TEXT_WIDTH * HEIGHT];
-            for (index, cell) in monitor.text_buffer().iter().enumerate() {
-                let (column, row) = (index % TEXT_COLUMNS, index / TEXT_COLUMNS);
-                let (fg, bg) = (color(cell.foreground()), color(cell.background()));
-                let glyph = font::glyph(cell.ascii);
-                for y in 0..CHAR_HEIGHT {
-                    let bits = glyph.map_or(0, |g| g[y]);
-                    let start = (row * CHAR_HEIGHT + y) * TEXT_WIDTH + column * CHAR_WIDTH;
-                    for x in 0..CHAR_WIDTH {
-                        let on = bits & (1 << (CHAR_WIDTH - 1 - x)) != 0;
-                        pixels[start + x] = if on { fg } else { bg };
-                    }
-                }
-            }
-            debug_assert_eq!(TEXT_ROWS * CHAR_HEIGHT, HEIGHT);
-            ColorImage::new([TEXT_WIDTH, HEIGHT], pixels)
-        }
-    }
+    let pixels = monitor.pixel_buffer().iter().map(|&p| color(p)).collect();
+    ColorImage::new([WIDTH, HEIGHT], pixels)
 }
 
 impl MonitorView {
@@ -139,14 +116,12 @@ impl MonitorView {
                 .on_hover_text(
                     "Scale by whole numbers only, so every HBC-2 pixel has the same size.",
                 );
-            let mode = match monitor.mode() {
-                Mode::Text => "text mode, 42×24",
-                Mode::Pixel => "pixel mode, 256×192",
-            };
-            ui.weak(mode);
+            let (x, y, pending) = monitor.cursor();
+            let x = if pending { 32 } else { x };
+            ui.weak(format!("256×192, text 32×24, cursor {x}, {y}"));
         });
 
-        // Keep the 4:3 shape (text mode keeps the same height, 4 pixels narrower).
+        // Keep the 4:3 shape.
         let size = texture.size_vec2();
         let stripes = vec2(2.0 * FRAME, 2.0 * FRAME);
         let available = ui.available_size() - stripes - vec2(0.0, HINT_HEIGHT);
@@ -156,7 +131,6 @@ impl MonitorView {
         if self.integer_scale && scale >= 1.0 {
             scale = scale.floor();
         }
-        // The screen is the image: text mode is a little narrower.
         let screen_size = size * scale;
         let (outer, response) = ui.allocate_exact_size(
             vec2(ui.available_width(), screen_size.y + stripes.y),
@@ -170,6 +144,21 @@ impl MonitorView {
             Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
             Color32::WHITE,
         );
+        // SHOW_CURSOR: an underline on the cursor's cell, in the text colour,
+        // drawn by the "firmware" over the picture (GET_PIXEL doesn't see it).
+        if monitor.cursor_shown() {
+            let time = ui.input(|i| i.time);
+            if ((time / BLINK_SECONDS) as u64).is_multiple_of(2) {
+                let (x, y, _) = monitor.cursor();
+                let cell = CELL as f32 * scale;
+                let min = screen.min + vec2(x as f32 * cell, y as f32 * cell + cell - scale);
+                let line = Rect::from_min_size(min, vec2(cell, scale));
+                painter.rect_filled(line, 0.0, color(monitor.colors().0));
+            }
+            let left = BLINK_SECONDS - time % BLINK_SECONDS;
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_secs_f64(left));
+        }
 
         // Keyboard: the monitor takes keys while it has focus.
         if response.clicked() {
@@ -284,11 +273,14 @@ mod tests {
     use hbc2_core::{Machine, MachineConfig};
 
     #[test]
-    fn renders_both_modes() {
+    fn renders_the_picture() {
         let machine = Machine::new(MachineConfig::default(), None).unwrap();
         let monitor = machine.peripherals.monitor.as_ref().unwrap();
         let image = render(monitor);
-        assert_eq!(image.size, [TEXT_WIDTH, HEIGHT]);
-        assert!(image.pixels.iter().all(|&p| p == Color32::BLACK));
+        assert_eq!(image.size, [WIDTH, HEIGHT]);
+        assert!(
+            image.pixels.iter().all(|&p| p == color(1)),
+            "blue at power-on"
+        );
     }
 }

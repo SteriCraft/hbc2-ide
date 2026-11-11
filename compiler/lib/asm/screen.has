@@ -1,551 +1,755 @@
 ; ============================================================
-; Monitor driver, basic routines
+; screen.has - the native display
 ; ============================================================
 ;
-; Copy for the C library (compiler/lib). Changes from the original in
-; design_projects/ASM_p/lib/monitor:
-; - the port variables have their C names (_monitor_port, _rtc_port,
-;   _keyboard_port: compiler/runtime/devices.has);
-; - _monitor_mode (C: monitor_mode) keeps the mode set by
-;   screen_pixel_mode / screen_text_mode;
-; - in / out go through the I/O mailbox (mbx_in / mbx_out, mailbox.has).
+; Text and graphics through the I/O processor's native commands
+; (Documentation/Peripherals/Native/Reference.md): one picture of
+; 256 x 192 pixels, 16 colours, text in 8 x 8 cells (32 columns x 24
+; rows, Windows-1252 characters), a cursor kept by the I/O processor.
+;
+; Copy for the C library: the display's port is _display_port
+; (compiler/runtime/devices.has), 0 when there is no native display.
+; Every routine sets C = 1 and sends nothing without one.
+;
+; Each command is sent with interrupts off (the flags are saved and
+; restored), straight to the mailbox: c = STATUS, d = DATA while sending.
+; Every register is restored, except outputs. Flags are changed.
+;
+; screen_colors holds the text colours of the terminal (bg << 4 | fg):
+; the routines that draw text in other colours set them back afterwards.
 
-.define SCREEN_HEIGHT 192
-
-.define SCREEN_COLUMNS 42
+.define SCREEN_COLUMNS 32
 .define SCREEN_ROWS 24
+.define SCREEN_HEIGHT 192
+.define SCREEN_DEFAULT_COLORS 0x1E  ; bright yellow on blue
 
-.define SCREEN_CMD_WRITE 1
-.define SCREEN_CMD_READ 2
-.define SCREEN_CMD_PIXEL_MODE 3
-.define SCREEN_CMD_TEXT_MODE 4
+.define NAT_PUTC 0x10           ; native commands
+.define NAT_PUTS 0x11
+.define NAT_CURSOR 0x12
+.define NAT_COLOR 0x13
+.define NAT_CLEAR 0x14
+.define NAT_SCROLL 0x15
+.define NAT_DEFCHAR 0x16
+.define NAT_GET_CHAR 0x17
+.define NAT_GET_CURSOR 0x18
+.define NAT_SHOW_CURSOR 0x19
+.define NAT_TEXT_RESET 0x1F
+.define NAT_PIXEL 0x30
+.define NAT_LINE 0x31
+.define NAT_RECT 0x32
+.define NAT_FILL_RECT 0x33
+.define NAT_GET_PIXEL 0x34
+.define NAT_GET_TIME 0x60
+.define NAT_VSYNC 0x61
 
-; ============================================================
-; Pixel mode
-; ============================================================
-; 256 by 192 pixels: x = 0..255 (every value), y = 0..191.
-; Colors: 0..15 (see the palette in the monitor manual).
-; The pixel routines only work while the monitor is in pixel mode
-; (screen_pixel_mode); the text routines need text mode
-; (screen_text_mode). Each mode keeps its own picture.
+.data screen_colors 0x1E        ; the terminal's text colours
+.data scr_count 0               ; bytes left in the PUTS being sent
+
 
 ; ------------------------------------------------------------
-; screen_pixel_mode: switches the monitor to pixel mode
-; screen_text_mode: switches the monitor to text mode
+; Sending
 ; ------------------------------------------------------------
-; C = 1 when there is no monitor (_monitor_mode unchanged).
 
-.data _monitor_mode 1       ; 0 = pixel mode, 1 = text mode (the power-on mode)
-
-screen_pixel_mode:
+; C = 1 when there is no native display. Changes the flags only.
+scr_check:
     psh a
-    mov a, SCREEN_CMD_PIXEL_MODE
-    jmp screen_mode_send
-screen_text_mode:
-    psh a
-    mov a, SCREEN_CMD_TEXT_MODE
-screen_mode_send:
-    psh d
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_mode_none    ; no monitor
-    add d, 4
-    psh d, a                ; CMD = switch mode
-    cal mbx_out
-    asp 2
-    sub a, SCREEN_CMD_PIXEL_MODE    ; command 3 -> 0 (pixel), 4 -> 1 (text)
-    str _monitor_mode, a
-    pop a, d
+    lod a, _display_port
+    cmp a, 0
+    pop a
+    jme scr_check_none
     clc
     ret
-screen_mode_none:
-    pop a, d
+scr_check_none:
     stc
     ret
 
-; ------------------------------------------------------------
-; screen_put_pixel: draws a pixel of color b at x, y
-; ------------------------------------------------------------
-; C = 1 and nothing is drawn when b > 15, y > 191, or there is no
-; monitor.
-
-screen_put_pixel:
-    cmp b, 0x0F
-    jms screen_put_pixel_err    ; not a color
-    cmp y, SCREEN_HEIGHT
-    jmf screen_put_pixel_draw   ; y < 192
-    jmp screen_put_pixel_err
-screen_put_pixel_draw:
-    psh a, d
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_put_pixel_none   ; no monitor
-    psh d, b                ; DATA_0 = color
-    cal mbx_out
-    asp 2
-    add d, 2
-    psh d, x                ; POS_X = x
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, y                ; POS_Y = y
-    cal mbx_out
-    asp 2
-    inc d
-    mov a, SCREEN_CMD_WRITE
-    psh d, a                ; CMD = WRITE: the monitor draws the pixel
-    cal mbx_out
-    asp 2
-    pop a, d
-    clc
-    ret
-screen_put_pixel_none:
-    pop a, d
-screen_put_pixel_err:
-    stc
+; Sends b once TX is free (c = STATUS, d = DATA). Changes a.
+scr_byte:
+    in a, c
+    and a, MBX_TX_FREE
+    jmz scr_byte
+    out d, b
     ret
 
-; ------------------------------------------------------------
-; screen_get_pixel: b = color of the pixel at x, y
-; ------------------------------------------------------------
-; C = 1 and b unchanged when y > 191 or there is no monitor.
+; b = the next reply byte (c = STATUS, d = DATA). Changes a.
+scr_recv:
+    in a, c
+    and a, MBX_RX_AVAIL
+    jmz scr_recv
+    in b, d
+    ret
 
-screen_get_pixel:
-    cmp y, SCREEN_HEIGHT
-    jmf screen_get_pixel_read   ; y < 192
-    jmp screen_get_pixel_err
-screen_get_pixel_read:
-    psh a, d
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_get_pixel_none   ; no monitor
-    add d, 2
-    psh d, x                ; POS_X = x
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, y                ; POS_Y = y
-    cal mbx_out
-    asp 2
-    inc d
-    mov a, SCREEN_CMD_READ
-    psh d, a                ; CMD = READ: the monitor puts the color on DATA_0
-    cal mbx_out
-    asp 2
-    sub d, 4
-    psh d                   ; b = color (DATA_0)
-    cal mbx_in
+; Sends COLOR for the colours in x (bg << 4 | fg). Changes a, b.
+scr_color:
+    mov b, NAT_COLOR
+    cal scr_byte
+    mov b, x
+    and b, 0x0F
+    cal scr_byte
+    mov b, x
+    shr b
+    shr b
+    shr b
+    shr b
+    cal scr_byte
+    ret
+
+; Sends COLOR screen_colors. Changes a, b, x.
+scr_color_back:
+    lod x, screen_colors
+    cal scr_color
+    ret
+
+; Sends CURSOR x y. Changes a, b.
+scr_cursor:
+    mov b, NAT_CURSOR
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    ret
+
+; Sends the [x:y] bytes at [i:j] as PUTS commands of 255 bytes at most,
+; with interrupts off (the caller's). [i:j] advances past the text.
+; Changes a, b, x, y.
+scr_stream:
+    mov a, x
+    or a, y
+    jmz scr_stream_end          ; nothing (left)
+    mov b, 255                  ; b = this command's length
+    cmp x, 0
+    jme scr_stream_short
+    jmp scr_stream_go           ; 256 or more left: 255
+scr_stream_short:
+    cmp y, 255
+    jme scr_stream_go
+    mov b, y                    ; less than 255 left: all of them
+scr_stream_go:
+    sub y, b                    ; [x:y] -= b
+    sbb x, 0
+    str scr_count, b
+    psh b
+    mov b, NAT_PUTS
+    cal scr_byte
     pop b
-    pop a, d
-    clc
-    ret
-screen_get_pixel_none:
-    pop a, d
-screen_get_pixel_err:
-    stc
-    ret
-
-; ------------------------------------------------------------
-; screen_fill: fills the whole screen with color b
-; ------------------------------------------------------------
-; C = 1 and nothing changes when b > 15 or there is no monitor.
-; DATA_0 is set once: each pixel then only needs its position and
-; the WRITE command. A row is drawn 4 pixels at a time (256 is a
-; multiple of 4): x wraps to 0 after the last one, which ends the row.
-
-screen_fill:
-    cmp b, 0x0F
-    jms screen_fill_err     ; not a color
-    psh a, d, i, j, x, y
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_fill_none    ; no monitor
-    psh d, b                ; DATA_0 = color
-    cal mbx_out
-    asp 2
-    mov i, d
-    add i, 2                ; i = POS_X port
-    mov d, i
-    inc d                   ; d = POS_Y port
-    mov j, d
-    inc j                   ; j = CMD port
-    mov a, SCREEN_CMD_WRITE
-    mov y, 0
-screen_fill_row:
-    psh d, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    mov x, 0
-screen_fill_pixels:
-    psh i, x                ; POS_X = x
-    cal mbx_out
-    asp 2
-    psh j, a                ; CMD = WRITE
-    cal mbx_out
-    asp 2
-    inc x
-    psh i, x
-    cal mbx_out
-    asp 2
-    psh j, a
-    cal mbx_out
-    asp 2
-    inc x
-    psh i, x
-    cal mbx_out
-    asp 2
-    psh j, a
-    cal mbx_out
-    asp 2
-    inc x
-    psh i, x
-    cal mbx_out
-    asp 2
-    psh j, a
-    cal mbx_out
-    asp 2
-    inc x
-    jmz screen_fill_next    ; x back to 0: row done
-    jmp screen_fill_pixels
-screen_fill_next:
-    inc y
-    cmp y, SCREEN_HEIGHT
-    jmf screen_fill_row     ; y < 192: next row
-    pop a, d, i, j, x, y
-    clc
-    ret
-screen_fill_none:
-    pop a, d, i, j, x, y
-screen_fill_err:
-    stc
+    cal scr_byte                ; n
+scr_stream_next:
+    lod b, [i:j]
+scr_stream_wait:
+    in a, c
+    and a, MBX_TX_FREE
+    jmz scr_stream_wait
+    out d, b
+    add j, 1
+    adc i, 0
+    dec scr_count
+    jmz scr_stream
+    jmp scr_stream_next
+scr_stream_end:
     ret
 
-; ============================================================
-; Text mode
-; ============================================================
-; Text mode: 42 columns (x = 0..41) by 24 rows (y = 0..23).
-; Displayable characters: ASCII 0x20 (space) to 0x7E ('~').
-; Uses _monitor_port, set at startup from INFO (runtime/devices.has;
-; 0 = no monitor: port 0 is never given to a peripheral).
-; Every register is restored. Flags are changed.
 
 ; ------------------------------------------------------------
-; screen_putc: draws character a at column x, row y, in colors b
+; Text
 ; ------------------------------------------------------------
-; C = 1 and nothing is drawn when a is not displayable, (x, y) is
-; outside the screen, or there is no monitor.
 
+; screen_putc: character a (0x20-0xFF) in cell x, y (0-31, 0-23), colours
+; b; the cursor ends after it. C = 1: a < 0x20, off the grid, no display.
 screen_putc:
-    cmp a, ' '
-    jmf screen_putc_err     ; a < 0x20: control character
-    cmp a, '~'
-    jms screen_putc_err     ; a > 0x7E: DEL, or not ASCII
+    cal scr_check
+    jmc screen_putc_err
+    cmp a, 0x20
+    jmf screen_putc_err
     cmp x, SCREEN_COLUMNS
-    jmf screen_putc_y       ; x < 42
+    jmf screen_putc_x
     jmp screen_putc_err
-screen_putc_y:
+screen_putc_x:
     cmp y, SCREEN_ROWS
-    jmf screen_putc_draw    ; y < 24
-    jmp screen_putc_err
-screen_putc_draw:
-    psh b, d
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_putc_none    ; no monitor
-    psh d, b                ; DATA_0 = colors
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, a                ; DATA_1 = character
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    inc d
-    mov b, SCREEN_CMD_WRITE
-    psh d, b                ; CMD = WRITE: the monitor draws the cell
-    cal mbx_out
-    asp 2
-    pop b, d
-    clc
-    ret
-screen_putc_none:
-    pop b, d
+    jmf screen_putc_ok
 screen_putc_err:
     stc
     ret
-
-; ------------------------------------------------------------
-; screen_getc: a = character, b = colors of the cell at column x, row y
-; ------------------------------------------------------------
-; C = 1 and a, b unchanged when (x, y) is outside the screen or there
-; is no monitor.
-
-screen_getc:
-    cmp x, SCREEN_COLUMNS
-    jmf screen_getc_y       ; x < 42
-    jmp screen_getc_err
-screen_getc_y:
-    cmp y, SCREEN_ROWS
-    jmf screen_getc_read    ; y < 24
-    jmp screen_getc_err
-screen_getc_read:
-    psh d
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_getc_none    ; no monitor
-    add d, 2
-    psh d, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    inc d
-    psh d, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    inc d
-    mov a, SCREEN_CMD_READ
-    psh d, a                ; CMD = READ: the monitor puts the cell on DATA_0/1
-    cal mbx_out
-    asp 2
-    sub d, 4
-    psh d                   ; b = colors (DATA_0)
-    cal mbx_in
-    pop b
-    inc d
-    psh d                   ; a = character (DATA_1)
-    cal mbx_in
-    pop a
-    pop d
+screen_putc_ok:
+    psf
+    cli
+    psh a, b, c, d, x
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    cal scr_cursor
+    lod x, [sp + 3]             ; x = b, the colours
+    cal scr_color
+    mov b, NAT_PUTC
+    cal scr_byte
+    lod b, [sp + 4]             ; a, the character
+    cal scr_byte
+    cal scr_color_back
+    pop a, b, c, d, x
+    pof
     clc
     ret
-screen_getc_none:
-    pop d
+
+; screen_getc: the cell x, y -> a = character, b = colours.
+; C = 1 off the grid or without a display.
+screen_getc:
+    cal scr_check
+    jmc screen_getc_err
+    cmp x, SCREEN_COLUMNS
+    jmf screen_getc_x
+    jmp screen_getc_err
+screen_getc_x:
+    cmp y, SCREEN_ROWS
+    jmf screen_getc_ok
 screen_getc_err:
     stc
     ret
+screen_getc_ok:
+    psf
+    cli
+    psh c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_GET_CHAR
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    cal scr_recv
+    psh b                       ; the character
+    cal scr_recv                ; b = colours
+    pop a
+    pop c, d
+    pof
+    clc
+    ret
 
-; ------------------------------------------------------------
-; screen_write: draws [c:d] characters read at [i:j], from column x,
-; row y, in colors b
-; ------------------------------------------------------------
-; At the end of a row, writing goes on at the start of the next row.
-; [i:j], [c:d], x and y ADVANCE: they end after the last character drawn,
-; so the next write can follow straight after. After the very last cell
-; of the screen, x = 0 and y = 24 (one row below the screen).
-; C = 1 when a character cannot be drawn (not displayable, below the
-; screen, or no monitor): writing stops there, [i:j] points at that
-; character and [c:d] counts it with the ones left.
-
+; screen_write: the [c:d] characters at [i:j] from cell x, y, in colours
+; b, as PUTS draws them (control codes, wrap, scroll). C = 1: off the
+; grid, or no display.
 screen_write:
-    psh a
-screen_write_next:
-    mov a, c
-    or a, d
-    jmz screen_write_done   ; [c:d] = 0: all written
-    lod a, [i:j]            ; a = next character
-    cal screen_putc
+    cal scr_check
     jmc screen_write_err
-    add j, 1                ; [i:j] = next character
-    adc i, 0
-    sub d, 1                ; [c:d] = one less to write
-    sbb c, 0
-    inc x                   ; next column
     cmp x, SCREEN_COLUMNS
-    jme screen_write_row
-    jmp screen_write_next
-screen_write_row:
-    mov x, 0                ; end of the row: start of the next one
-    inc y
-    jmp screen_write_next
-screen_write_done:
-    pop a
-    clc
-    ret
+    jmf screen_write_x
+    jmp screen_write_err
+screen_write_x:
+    cmp y, SCREEN_ROWS
+    jmf screen_write_ok
 screen_write_err:
+    stc
+    ret
+screen_write_ok:
+    psf
+    cli
+    psh a, b, c, d, i, j, x, y
+    mov a, c                    ; [x:y] = the length (after the cursor)
+    mov b, d
+    psh a, b
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    cal scr_cursor
+    lod x, [sp + 8]             ; the colours (b)
+    cal scr_color
+    pop x, y
+    cal scr_stream
+    cal scr_color_back
+    pop a, b, c, d, i, j, x, y
+    pof
+    clc
+    ret
+
+; screen_puts: the 0-terminated text at [i:j], at the cursor, in
+; screen_colors. [i:j] ADVANCES to the 0. C = 1: no display (nothing
+; sent, [i:j] still advances).
+screen_puts:
+    psh a, x, y
+    mov x, 0                    ; [x:y] = the length
+    mov y, 0
+    psh i, j
+screen_puts_len:
+    lod a, [i:j]
+    cmp a, 0
+    jme screen_puts_counted
+    add j, 1
+    adc i, 0
+    add y, 1
+    adc x, 0
+    jmp screen_puts_len
+screen_puts_counted:
+    pop i, j
+    cal scr_check
+    jmc screen_puts_none
+    psf
+    cli
+    psh b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    cal scr_stream
+    pop b, c, d
+    pof
+    pop a, x, y
+    clc
+    ret
+screen_puts_none:
+    add j, y                    ; skip the text anyway
+    adc i, x
+    pop a, x, y
+    stc
+    ret
+
+; screen_out: PUTC a at the cursor (a character or a control code).
+; C = 1: no display.
+screen_out:
+    cal scr_check
+    jmc screen_out_end
+    psf
+    cli
+    psh a, b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_PUTC
+    cal scr_byte
+    lod b, [sp + 3]             ; a
+    cal scr_byte
+    pop a, b, c, d
+    pof
+    clc
+screen_out_end:
+    ret
+
+; screen_clear: the screen in colours b (spaces), cursor at 0, 0.
+; C = 1: no display.
+screen_clear:
+    cal scr_check
+    jmc screen_clear_end
+    psf
+    cli
+    psh a, b, c, d, x
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov x, b
+    cal scr_color               ; the spaces' colours
+    mov b, NAT_CLEAR
+    cal scr_byte
+    mov b, x
+    shr b
+    shr b
+    shr b
+    shr b
+    cal scr_byte                ; the background
+    cal scr_color_back
+    pop a, b, c, d, x
+    pof
+    clc
+screen_clear_end:
+    ret
+
+; screen_set_colors: the text colours for what comes next = b (bg << 4 |
+; fg), kept in screen_colors. C = 1: no display (screen_colors is set).
+screen_set_colors:
+    str screen_colors, b
+    cal scr_check
+    jmc screen_set_colors_end
+    psf
+    cli
+    psh a, b, c, d, x
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov x, b
+    cal scr_color
+    pop a, b, c, d, x
+    pof
+    clc
+screen_set_colors_end:
+    ret
+
+; screen_set_bg / screen_set_txt: a = new background / character colour
+; (0-15) of every cell, characters kept. The cursor goes back where it
+; was (a pending wrap is lost). C = 1: a > 15 or no display.
+screen_set_bg:
+    psh b
+    mov b, 0x0F                 ; keep the character colour
+    jmp scr_recolor
+screen_set_txt:
+    psh b
+    mov b, 0xF0                 ; keep the background
+    jmp scr_recolor
+; b = the bits of the old colours to keep, a = the new colour.
+scr_recolor:
+    cmp a, 16
+    jmf scr_recolor_ok
+scr_recolor_err:
+    pop b
+    stc
+    ret
+scr_recolor_ok:
+    cal scr_check
+    jmc scr_recolor_err
+    psf
+    cli
+    psh a, c, d, i, j, x, y
+    cmp b, 0x0F
+    jme scr_recolor_bg
+    jmp scr_recolor_go          ; text colour: a stays in the low nibble
+scr_recolor_bg:
+    shl a                       ; background: in the high nibble
+    shl a
+    shl a
+    shl a
+scr_recolor_go:
+    mov i, a                    ; i = the new colour, in place
+    mov j, b                    ; j = the bits kept
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_GET_CURSOR
+    cal scr_byte
+    cal scr_recv
+    mov x, b
+    cal scr_recv
+    mov y, b
+    psh x, y                    ; the cursor, to put back
+    mov y, 0
+scr_recolor_row:
+    mov x, 0
+scr_recolor_cell:
+    mov b, NAT_GET_CHAR
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    cal scr_recv
+    psh b                       ; the character
+    cal scr_recv                ; b = its colours
+    and b, j
+    or b, i                     ; b = the new colours
+    psh b
+    cal scr_cursor
+    pop b
+    psh x
+    mov x, b
+    cal scr_color
+    pop x
+    mov b, NAT_PUTC
+    cal scr_byte
+    pop b
+    cmp b, 0x20
+    jmf scr_recolor_control
+    cal scr_byte                ; the character again, in the new colours
+    jmp scr_recolor_next
+scr_recolor_control:
+    mov b, ' '                  ; a control code (old ports): drawn blank
+    cal scr_byte
+scr_recolor_next:
+    inc x
+    cmp x, SCREEN_COLUMNS
+    jmf scr_recolor_cell
+    inc y
+    cmp y, SCREEN_ROWS
+    jmf scr_recolor_row
+    pop x, y
+    cmp x, SCREEN_COLUMNS
+    jmf scr_recolor_cursor
+    mov x, 31                   ; a pending wrap: back on the last column
+scr_recolor_cursor:
+    cal scr_cursor
+    cal scr_color_back
+    pop a, c, d, i, j, x, y
+    pof
+    pop b
+    clc
+    ret
+
+; screen_scroll: the screen moves up a rows. C = 1: no display.
+screen_scroll:
+    psh b
+    mov b, NAT_SCROLL
+    jmp scr_cmd_a
+
+; screen_show_cursor: a = 1 shows the blinking cursor, 0 hides it.
+; C = 1: no display.
+screen_show_cursor:
+    psh b
+    mov b, NAT_SHOW_CURSOR
+    jmp scr_cmd_a
+
+; screen_vsync: a = 1 sends the VSYNC event every frame, 0 stops it.
+; C = 1: no display.
+screen_vsync:
+    psh b
+    mov b, NAT_VSYNC
+    jmp scr_cmd_a
+
+; Sends command b (pushed by the caller) with the argument a.
+scr_cmd_a:
+    cal scr_check
+    jmc scr_cmd_a_end
+    psf
+    cli
+    psh a, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    cal scr_byte
+    lod b, [sp + 2]             ; a
+    cal scr_byte
+    pop a, c, d
+    pof
+    clc
+scr_cmd_a_end:
+    pop b
+    ret
+
+; screen_cursor: the cursor to cell x, y. C = 1: off the grid, no display.
+screen_cursor:
+    cal scr_check
+    jmc screen_cursor_end
+    cmp x, SCREEN_COLUMNS
+    jmf screen_cursor_x
+    jmp screen_cursor_err
+screen_cursor_x:
+    cmp y, SCREEN_ROWS
+    jmf screen_cursor_ok
+screen_cursor_err:
+    stc
+    ret
+screen_cursor_ok:
+    psf
+    cli
+    psh a, b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    cal scr_cursor
+    pop a, b, c, d
+    pof
+    clc
+screen_cursor_end:
+    ret
+
+; screen_get_cursor: x = column (32 with a pending wrap), y = row.
+; C = 1: no display.
+screen_get_cursor:
+    cal scr_check
+    jmc screen_get_cursor_end
+    psf
+    cli
+    psh a, b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_GET_CURSOR
+    cal scr_byte
+    cal scr_recv
+    mov x, b
+    cal scr_recv
+    mov y, b
+    pop a, b, c, d
+    pof
+    clc
+screen_get_cursor_end:
+    ret
+
+; screen_defchar: the glyph of code a (0x20-0xFF) = the 8 bytes at [i:j]
+; (top row first, bit 7 = left). C = 1: a < 0x20, no display.
+screen_defchar:
+    cmp a, 0x20
+    jmf screen_defchar_err
+    cal scr_check
+    jmc screen_defchar_end
+    psf
+    cli
+    psh a, b, c, d, x
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_DEFCHAR
+    cal scr_byte
+    lod b, [sp + 4]             ; a
+    cal scr_byte
+    psh i, j
+    mov x, 8
+screen_defchar_row:
+    lod b, [i:j]
+    cal scr_byte
+    add j, 1
+    adc i, 0
+    dec x
+    jmz screen_defchar_done
+    jmp screen_defchar_row
+screen_defchar_done:
+    pop i, j
+    pop a, b, c, d, x
+    pof
+    clc
+screen_defchar_end:
+    ret
+screen_defchar_err:
+    stc
+    ret
+
+; screen_reset: TEXT_RESET (default font, colours, cursor; the screen
+; cleared in blue), screen_colors back to its default. C = 1: no display.
+screen_reset:
+    cal scr_check
+    jmc screen_reset_end
+    psf
+    cli
+    psh a, b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_TEXT_RESET
+    cal scr_byte
+    mov a, SCREEN_DEFAULT_COLORS
+    str screen_colors, a
+    pop a, b, c, d
+    pof
+    clc
+screen_reset_end:
+    ret
+
+
+; ------------------------------------------------------------
+; Graphics
+; ------------------------------------------------------------
+
+; screen_put_pixel: pixel x, y in colour b. C = 1: b > 15, y > 191, no
+; display.
+screen_put_pixel:
+    cmp y, SCREEN_HEIGHT
+    jmf screen_put_pixel_y
+    stc
+    ret
+screen_put_pixel_y:
+    psh a
+    mov a, NAT_PIXEL
+    jmp scr_xy_b
+
+; Sends command a (pushed a saved by the caller) with x, y, b, after
+; checking b < 16 and the display.
+scr_xy_b:
+    cmp b, 16
+    jmf scr_xy_b_color
+    pop a
+    stc
+    ret
+scr_xy_b_color:
+    cal scr_check
+    jmc scr_xy_b_none
+    psf
+    cli
+    psh b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, a
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    lod b, [sp + 2]             ; the colour
+    cal scr_byte
+    pop b, c, d
+    pof
+    pop a
+    clc
+    ret
+scr_xy_b_none:
     pop a
     stc
     ret
 
-; ------------------------------------------------------------
-; screen_clear: fills the screen with spaces in colors b
-; ------------------------------------------------------------
-; C = 1 when there is no monitor.
-; DATA_0 and DATA_1 are set once: each cell then only needs its
-; position and the WRITE command.
-
-screen_clear:
-    psh a, d, i, j, x, y
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_clear_none   ; no monitor
-    psh d, b                ; DATA_0 = colors
-    cal mbx_out
-    asp 2
-    inc d
-    mov a, ' '
-    psh d, a                ; DATA_1 = space
-    cal mbx_out
-    asp 2
-    inc d
-    mov i, d                ; i = POS_X port
-    inc d                   ; d = POS_Y port
-    mov j, d
-    inc j                   ; j = CMD port
-    mov a, SCREEN_CMD_WRITE
-    mov y, 0
-screen_clear_row:
-    psh d, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    mov x, 0
-screen_clear_cell:
-    psh i, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    psh j, a                ; CMD = WRITE
-    cal mbx_out
-    asp 2
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf screen_clear_cell   ; x < 42: same row
-    inc y
-    cmp y, SCREEN_ROWS
-    jmf screen_clear_row    ; y < 24: next row
-    pop a, d, i, j, x, y
-    clc
-    ret
-screen_clear_none:
-    pop a, d, i, j, x, y
+; screen_get_pixel: b = the colour of pixel x, y. C = 1: y > 191, no
+; display.
+screen_get_pixel:
+    cmp y, SCREEN_HEIGHT
+    jmf screen_get_pixel_y
     stc
     ret
+screen_get_pixel_y:
+    cal scr_check
+    jmc screen_get_pixel_end
+    psf
+    cli
+    psh a, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, NAT_GET_PIXEL
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    cal scr_recv
+    pop a, c, d
+    pof
+    clc
+screen_get_pixel_end:
+    ret
 
-; ------------------------------------------------------------
-; screen_set_bg: sets the background color of every cell to a (0..15)
-; ------------------------------------------------------------
-; Characters and their colors are kept.
-; C = 1 and nothing changes when a > 15 or there is no monitor.
-
-screen_set_bg:
-    cmp a, 0x0F
-    jms screen_set_bg_err   ; not a color
-    psh a, b, c, d, i, j, x, y
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_set_bg_none  ; no monitor
-    shl a                   ; a = background in the high nibble
+; screen_fill: the whole screen in colour b (CLEAR: the text cells become
+; spaces, the cursor goes to 0, 0). C = 1: b > 15, no display.
+screen_fill:
+    cmp b, 16
+    jmf screen_fill_ok
+    stc
+    ret
+screen_fill_ok:
+    psh a, b
+    mov a, b
+    lod b, screen_colors
+    and b, 0x0F
     shl a
     shl a
     shl a
-    mov i, d
-    add i, 2                ; i = POS_X port
-    mov c, i
-    inc c                   ; c = POS_Y port
-    mov j, c
-    inc j                   ; j = CMD port
-    mov y, 0
-screen_set_bg_row:
-    psh c, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    mov x, 0
-screen_set_bg_cell:
-    psh i, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    mov b, SCREEN_CMD_READ
-    psh j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
-    cal mbx_out
-    asp 2
-    psh d
-    cal mbx_in
-    pop b
-    and b, 0x0F             ; keep the character color
-    or b, a                 ; new background
-    psh d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
-    cal mbx_out
-    asp 2
-    mov b, SCREEN_CMD_WRITE
-    psh j, b                ; CMD = WRITE
-    cal mbx_out
-    asp 2
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf screen_set_bg_cell  ; x < 42: same row
-    inc y
-    cmp y, SCREEN_ROWS
-    jmf screen_set_bg_row   ; y < 24: next row
-    pop a, b, c, d, i, j, x, y
-    clc
+    shl a
+    or b, a                     ; b = colour b behind the text colour
+    cal screen_clear
+    pop a, b
     ret
-screen_set_bg_none:
-    pop a, b, c, d, i, j, x, y
-screen_set_bg_err:
+
+; screen_line: from x, y to i, j in colour b (both ends drawn, clipped).
+; screen_rect / screen_fill_rect: i x j pixels from x, y (outline / filled;
+; nothing when i or j is 0). C = 1: b > 15, no display.
+screen_line:
+    psh a
+    mov a, NAT_LINE
+    jmp scr_xyij_b
+screen_rect:
+    psh a
+    mov a, NAT_RECT
+    jmp scr_xyij_b
+screen_fill_rect:
+    psh a
+    mov a, NAT_FILL_RECT
+    jmp scr_xyij_b
+
+; Sends command a (pushed a saved by the caller) with x, y, i, j, b.
+scr_xyij_b:
+    cmp b, 16
+    jmf scr_xyij_b_color
+    pop a
     stc
     ret
-
-
-; ------------------------------------------------------------
-; screen_set_txt: sets the text color of every cell to a (0..15)
-; ------------------------------------------------------------
-; Background colors are kept.
-; C = 1 and nothing changes when a > 15 or there is no monitor.
-
-screen_set_txt:
-    cmp a, 0x0F
-    jms screen_set_txt_err   ; not a color
-    psh a, b, c, d, i, j, x, y
-    lod d, _monitor_port      ; d = DATA_0 port
-    cmp d, 0
-    jme screen_set_txt_none  ; no monitor
-    mov i, d
-    add i, 2                ; i = POS_X port
-    mov c, i
-    inc c                   ; c = POS_Y port
-    mov j, c
-    inc j                   ; j = CMD port
-    mov y, 0
-screen_set_txt_row:
-    psh c, y                ; POS_Y = row
-    cal mbx_out
-    asp 2
-    mov x, 0
-screen_set_txt_cell:
-    psh i, x                ; POS_X = column
-    cal mbx_out
-    asp 2
-    mov b, SCREEN_CMD_READ
-    psh j, b                ; CMD = READ: DATA_0 = colors, DATA_1 = character
-    cal mbx_out
-    asp 2
-    psh d
-    cal mbx_in
-    pop b
-    and b, 0xF0             ; keep the background color
-    or b, a                 ; new text color
-    psh d, b                ; DATA_0 = new colors (DATA_1 still holds the character)
-    cal mbx_out
-    asp 2
-    mov b, SCREEN_CMD_WRITE
-    psh j, b                ; CMD = WRITE
-    cal mbx_out
-    asp 2
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf screen_set_txt_cell  ; x < 42: same row
-    inc y
-    cmp y, SCREEN_ROWS
-    jmf screen_set_txt_row   ; y < 24: next row
-    pop a, b, c, d, i, j, x, y
+scr_xyij_b_color:
+    cal scr_check
+    jmc scr_xy_b_none
+    psf
+    cli
+    psh b, c, d
+    mov c, MBX_STATUS
+    mov d, MBX_DATA
+    mov b, a
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
+    mov b, i
+    cal scr_byte
+    mov b, j
+    cal scr_byte
+    lod b, [sp + 2]             ; the colour
+    cal scr_byte
+    pop b, c, d
+    pof
+    pop a
     clc
-    ret
-screen_set_txt_none:
-    pop a, b, c, d, i, j, x, y
-screen_set_txt_err:
-    stc
     ret

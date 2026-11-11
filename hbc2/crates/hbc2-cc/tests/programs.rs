@@ -85,8 +85,8 @@ fn screen_text(m: &Machine) -> String {
         .map(|row| {
             let line: String = cells[row * TEXT_COLUMNS..(row + 1) * TEXT_COLUMNS]
                 .iter()
-                .map(|c| match c.ascii {
-                    0x20..=0x7E => c.ascii as char,
+                .map(|c| match c.code {
+                    0x20.. => hbc2_core::charset::to_char(c.code).unwrap_or(' '),
                     _ => ' ',
                 })
                 .collect();

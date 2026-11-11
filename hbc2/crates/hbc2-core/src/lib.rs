@@ -10,6 +10,7 @@
 pub mod alu;
 pub mod board;
 pub mod boot_rom;
+pub mod charset;
 pub mod cpu;
 pub mod iod;
 pub mod iop;
@@ -23,9 +24,9 @@ pub use board::{Board, Ram};
 pub use cpu::{Cpu, CpuState, Flags};
 pub use iod::{Interrupt, Iod};
 pub use iop::{Iop, IopConfig};
-pub use mailbox::Mailbox;
 pub use isa::{AddrMode, Flag, Opcode, Register};
 pub use machine::{Breakpoints, Machine, MachineConfig, MachineError, RunResult, StopReason};
+pub use mailbox::Mailbox;
 pub use trace::{
     ColumnDiff, DiffKind, DiffReport, NoProbe, Probe, TRACE_HEADER, TraceDiff, TraceWriter,
 };

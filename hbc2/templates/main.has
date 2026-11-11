@@ -3,6 +3,7 @@
 
 ; === VARIABLES ===
 .data monitorPort 0             ; first port of each device, 0 = not plugged
+.data displayPort 0             ; the native display (its port: the VSYNC event)
 .data keyboardPort 0
 .data rtcPort 0
 .data eepromPort 0
@@ -17,10 +18,14 @@
 _start:
     cli                         ; no event before the devices' vectors are set
     cal dev_init                ; asks the I/O processor for its devices (2 s at most)
-    mov a, DEV_DISPLAY          ; the first monitor
-    mov b, DEV_ANY
+    mov a, DEV_DISPLAY          ; the first monitor (the old monitor ports)
+    mov b, DEV_VGA
     cal dev_port
     str monitorPort, d
+    mov a, DEV_DISPLAY          ; the first native display (native commands)
+    mov b, DEV_OTHER
+    cal dev_port
+    str displayPort, d
     mov a, DEV_INPUT            ; the first keyboard
     mov b, DEV_KEYBOARD
     cal dev_port

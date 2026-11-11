@@ -11,6 +11,10 @@
 //! - `0x03` (INFO): replies the protocol version, the number of devices N,
 //!   then N descriptors of 6 bytes ([`Peripherals::descriptors`]: class,
 //!   product ID, first port, number of ports);
+//! - the native commands, `0x10` to `0x61` (Peripherals/Native/Reference.md):
+//!   text and graphics on the [`Monitor`](crate::peripherals::Monitor),
+//!   GET_TIME from the RTC, VSYNC on or off. Without a monitor (or an RTC
+//!   for GET_TIME) a command is still read whole, and a read replies zeros;
 //! - every queued interrupt `(port, data)` becomes an event on EVT, in order.
 //!   Plugging a device sends none: the CPU asks with INFO.
 //!
@@ -30,7 +34,8 @@ use std::collections::VecDeque;
 use crate::board::Board;
 use crate::peripherals::Peripherals;
 
-pub const PROTOCOL_VERSION: u8 = 1;
+/// 2: the native commands are understood.
+pub const PROTOCOL_VERSION: u8 = 2;
 
 /// Command bytes (9.3, compat + NOP and INFO).
 pub mod command {
@@ -38,6 +43,72 @@ pub mod command {
     pub const OUT: u8 = 0x01;
     pub const IN: u8 = 0x02;
     pub const INFO: u8 = 0x03;
+
+    // Native commands (Peripherals/Native/Reference.md).
+    pub const PUTC: u8 = 0x10;
+    pub const PUTS: u8 = 0x11;
+    pub const CURSOR: u8 = 0x12;
+    pub const COLOR: u8 = 0x13;
+    pub const CLEAR: u8 = 0x14;
+    pub const SCROLL: u8 = 0x15;
+    pub const DEFCHAR: u8 = 0x16;
+    pub const GET_CHAR: u8 = 0x17;
+    pub const GET_CURSOR: u8 = 0x18;
+    pub const SHOW_CURSOR: u8 = 0x19;
+    pub const TEXT_RESET: u8 = 0x1F;
+    pub const PIXEL: u8 = 0x30;
+    pub const LINE: u8 = 0x31;
+    pub const RECT: u8 = 0x32;
+    pub const FILL_RECT: u8 = 0x33;
+    pub const GET_PIXEL: u8 = 0x34;
+    pub const GET_TIME: u8 = 0x60;
+    pub const VSYNC: u8 = 0x61;
+
+    /// Bytes of the command that starts with `bytes` (command byte
+    /// included), as far as the bytes received tell: a PUTS needs its
+    /// length byte first. Any byte that is no command is a 1-byte NOP.
+    pub fn length(bytes: &[u8]) -> usize {
+        match bytes[0] {
+            OUT => 3,
+            IN => 2,
+            PUTC | CLEAR | SCROLL | SHOW_CURSOR | VSYNC => 2,
+            PUTS => 2 + bytes.get(1).map_or(0, |&n| n as usize),
+            CURSOR | COLOR | GET_CHAR | GET_PIXEL => 3,
+            PIXEL => 4,
+            LINE | RECT | FILL_RECT => 6,
+            DEFCHAR => 10,
+            _ => 1,
+        }
+    }
+
+    /// The command's name, for the debugger (None: no command).
+    pub fn name(byte: u8) -> Option<&'static str> {
+        Some(match byte {
+            NOP => "NOP",
+            OUT => "OUT",
+            IN => "IN",
+            INFO => "INFO",
+            PUTC => "PUTC",
+            PUTS => "PUTS",
+            CURSOR => "CURSOR",
+            COLOR => "COLOR",
+            CLEAR => "CLEAR",
+            SCROLL => "SCROLL",
+            DEFCHAR => "DEFCHAR",
+            GET_CHAR => "GET_CHAR",
+            GET_CURSOR => "GET_CURSOR",
+            SHOW_CURSOR => "SHOW_CURSOR",
+            TEXT_RESET => "TEXT_RESET",
+            PIXEL => "PIXEL",
+            LINE => "LINE",
+            RECT => "RECT",
+            FILL_RECT => "FILL_RECT",
+            GET_PIXEL => "GET_PIXEL",
+            GET_TIME => "GET_TIME",
+            VSYNC => "VSYNC",
+            _ => return None,
+        })
+    }
 }
 
 /// What the I/O processor handled, for the debugger ([`Iop::log`]).
@@ -51,6 +122,15 @@ pub enum LogEntry {
     Info,
     /// `0x00`, or a byte that is no command (ignored).
     Nop(u8),
+    /// A native command: its command byte, its arguments (at most the
+    /// first 6, `length` says how many there were), and its reply.
+    Native {
+        opcode: u8,
+        args: [u8; 6],
+        length: u16,
+        reply: [u8; 6],
+        reply_length: u8,
+    },
     /// An interrupt sent on EVT.
     Event { port: u8, data: u8 },
 }
@@ -232,12 +312,7 @@ impl Iop {
     /// One command byte from TX.
     fn receive(&mut self, byte: u8, board: &mut Board, peripherals: &mut Peripherals) {
         self.command.push(byte);
-        let length = match self.command[0] {
-            command::OUT => 3,
-            command::IN => 2,
-            _ => 1,
-        };
-        if self.command.len() < length {
+        if self.command.len() < command::length(&self.command) {
             return;
         }
         let c = std::mem::take(&mut self.command);
@@ -264,7 +339,77 @@ impl Iop {
                 self.replies.push_back(devices.len() as u8);
                 self.replies.extend(devices.iter().flatten());
             }
+            op if op >= command::PUTC && command::name(op).is_some() => {
+                self.native(&c, peripherals)
+            }
             other => self.record(LogEntry::Nop(other)),
         }
+    }
+
+    /// A native command, whole in `c`.
+    fn native(&mut self, c: &[u8], peripherals: &mut Peripherals) {
+        let arg = |i: usize| c.get(i + 1).copied().unwrap_or(0);
+        let mut reply: Vec<u8> = Vec::new();
+        if c[0] == command::GET_TIME {
+            reply = match &peripherals.rtc {
+                Some(rtc) => {
+                    let t = rtc.now();
+                    let year = (t.year - 1900) as u8;
+                    vec![year, t.month, t.day, t.hour, t.minute, t.second]
+                }
+                None => vec![0; 6],
+            };
+        } else if let Some(m) = &mut peripherals.monitor {
+            match c[0] {
+                command::PUTC => m.putc(arg(0)),
+                command::PUTS => m.puts(&c[2..]),
+                command::CURSOR => m.set_cursor(arg(0), arg(1)),
+                command::COLOR => m.set_colors(arg(0), arg(1)),
+                command::CLEAR => m.clear(arg(0)),
+                command::SCROLL => m.scroll(arg(0)),
+                command::DEFCHAR => {
+                    let mut rows = [0; 8];
+                    rows.copy_from_slice(&c[2..10]);
+                    m.define_char(arg(0), rows);
+                }
+                command::GET_CHAR => {
+                    let (code, colors) = m.get_char(arg(0), arg(1));
+                    reply = vec![code, colors];
+                }
+                command::GET_CURSOR => {
+                    let (x, y) = m.get_cursor();
+                    reply = vec![x, y];
+                }
+                command::SHOW_CURSOR => m.show_cursor(arg(0) != 0),
+                command::TEXT_RESET => m.text_reset(),
+                command::PIXEL => m.pixel(arg(0), arg(1), arg(2)),
+                command::LINE => m.line(arg(0), arg(1), arg(2), arg(3), arg(4)),
+                command::RECT => m.rect(arg(0), arg(1), arg(2), arg(3), arg(4)),
+                command::FILL_RECT => m.fill_rect(arg(0), arg(1), arg(2), arg(3), arg(4)),
+                command::GET_PIXEL => reply = vec![m.get_pixel(arg(0), arg(1))],
+                command::VSYNC => m.set_vsync(arg(0) != 0),
+                _ => {}
+            }
+        } else {
+            reply = match c[0] {
+                command::GET_CHAR | command::GET_CURSOR => vec![0, 0],
+                command::GET_PIXEL => vec![0],
+                _ => vec![],
+            };
+        }
+        let mut args = [0; 6];
+        for (i, a) in args.iter_mut().enumerate() {
+            *a = arg(i);
+        }
+        let mut logged = [0; 6];
+        logged[..reply.len()].copy_from_slice(&reply);
+        self.record(LogEntry::Native {
+            opcode: c[0],
+            args,
+            length: (c.len() - 1) as u16,
+            reply: logged,
+            reply_length: reply.len() as u8,
+        });
+        self.replies.extend(reply);
     }
 }

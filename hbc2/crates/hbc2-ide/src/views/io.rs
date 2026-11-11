@@ -7,7 +7,7 @@ use std::cell::Cell;
 use super::columns::Section;
 use eframe::egui::{self, RichText};
 use hbc2_core::Iod;
-use hbc2_core::iop::{Iop, LOG_SIZE, LogEntry};
+use hbc2_core::iop::{Iop, LOG_SIZE, LogEntry, command};
 use hbc2_core::mailbox::Mailbox;
 use hbc2_core::peripherals::monitor::Mode;
 use hbc2_core::peripherals::{Eeprom, Keyboard, Monitor, Peripheral, PeripheralKind, Rtc};
@@ -215,6 +215,28 @@ fn log_row(entry: LogEntry) -> (&'static str, Option<u8>, String) {
         LogEntry::Nop(0) => ("NOP", None, String::new()),
         LogEntry::Nop(byte) => ("ignored", None, format!("{byte:02X}")),
         LogEntry::Event { port, data } => ("event", Some(port), format!("{data:02X}")),
+        LogEntry::Native {
+            opcode,
+            args,
+            length,
+            reply,
+            reply_length,
+        } => {
+            let shown = (length as usize).min(args.len());
+            let mut text: Vec<String> = args[..shown].iter().map(|a| format!("{a:02X}")).collect();
+            if length as usize > shown {
+                text.push(format!("… ({length} bytes)"));
+            }
+            if reply_length > 0 {
+                text.push("->".into());
+                text.extend(
+                    reply[..reply_length as usize]
+                        .iter()
+                        .map(|r| format!("{r:02X}")),
+                );
+            }
+            (command::name(opcode).unwrap_or("?"), None, text.join(" "))
+        }
     }
 }
 

@@ -1,0 +1,3 @@
+; A breakpoint for bench.c: the bench stops here.
+_mark:
+    ret

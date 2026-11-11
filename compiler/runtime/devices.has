@@ -1,14 +1,18 @@
 ; The devices for C programs (included by crt0.has): the port variables
 ; of the library's drivers, under C names (declared in hbc2.h):
-;     extern unsigned char monitor_port, rtc_port, keyboard_port, eeprom_port;
+;     extern unsigned char monitor_port, display_port, rtc_port,
+;                          keyboard_port, eeprom_port;
 ; 0 = no such device. crt0_devices sets them from the device table that
-; dev_init filled (lib/asm/devices.has): the first display, the first
-; RTC, the first keyboard and the first EEPROM (mass storage with the
-; EEPROM's product ID, 0x0004: an SD card has other commands).
+; dev_init filled (lib/asm/devices.has): the first monitor (display, VGA:
+; the old monitor ports), the first native display (display, other: the
+; native commands, its port is the VSYNC event's), the first RTC, the
+; first keyboard and the first EEPROM (mass storage with the EEPROM's
+; product ID, 0x0004: an SD card has other commands).
 
 .include "../lib/asm/devices.has"
 
 .data _monitor_port 0
+.data _display_port 0
 .data _keyboard_port 0
 .data _rtc_port 0
 .data _eeprom_port 0
@@ -16,9 +20,13 @@
 ; Changes every register but i, and the flags.
 crt0_devices:
     mov a, DEV_DISPLAY
-    mov b, DEV_ANY
+    mov b, DEV_VGA
     cal dev_port
     str _monitor_port, d
+    mov a, DEV_DISPLAY
+    mov b, DEV_OTHER
+    cal dev_port
+    str _display_port, d
     mov a, DEV_SYSTEM
     mov b, DEV_RTC
     cal dev_port

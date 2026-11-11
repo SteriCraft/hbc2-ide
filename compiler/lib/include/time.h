@@ -1,4 +1,5 @@
-// time.h - HBC-2 C library: date and time from the RTC (code in
+// time.h - HBC-2 C library: date and time from the I/O processor's clock,
+// clock() from the native display's frames (code in
 // compiler/lib/asm/time.has).
 // time_t counts the seconds since 1970-01-01 00:00:00, unsigned 32 bits:
 // from 1970 to 2106-02-07 06:28:15. The RTC keeps the host computer's
@@ -20,7 +21,7 @@ typedef unsigned size_t;
 typedef unsigned long time_t;
 typedef long clock_t;
 
-#define CLOCKS_PER_SEC 1
+#define CLOCKS_PER_SEC 60
 
 struct tm {
     int tm_sec;     // 0-59 (60 allowed in mktime)
@@ -34,11 +35,13 @@ struct tm {
     int tm_isdst;   // always 0
 };
 
-// The RTC's date and time, also put at t when t is not NULL.
-// (time_t)-1 when there is no RTC, or when it is set before 1970.
+// The I/O processor's date and time, also put at t when t is not NULL.
+// (time_t)-1 when there is no clock, or when it is set before 1970.
 time_t time(time_t *t);
 
-// Always (clock_t)-1: the HBC-2 does not count the processor time.
+// The native display's frames (CLOCKS_PER_SEC = 60) since the first call
+// to clock() or delay() (hbc2.h): 0 at first. (clock_t)-1 without a
+// native display.
 clock_t clock(void);
 
 // The time of *tm. Its fields may be out of range first (tm_mday 0 is

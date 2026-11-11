@@ -613,11 +613,11 @@ fn templates_assemble_and_find_the_devices() {
     let mut m = template_machine(&p, IopConfig::default());
     let cycles = run_until(&mut m, &p, "loop", 100_000);
     assert!(cycles < 20_000, "INFO answered at once: {cycles} cycles");
-    assert_eq!(ram(&m, &p, "dev_protocol"), 1);
+    assert_eq!(ram(&m, &p, "dev_protocol"), 2);
     assert_eq!(
         ram(&m, &p, "dev_count"),
-        4,
-        "monitor, RTC, keyboard, EEPROM"
+        5,
+        "monitor, RTC, keyboard, EEPROM, native display"
     );
     assert_eq!(ram(&m, &p, "monitorPort"), 1);
     assert_eq!(ram(&m, &p, "rtcPort"), 6);
@@ -635,7 +635,7 @@ fn templates_assemble_and_find_the_devices() {
 
     // The devices' vectors point to dev_ignore: RTC ticks and keys change nothing.
     let ignore = addr(&p, "dev_ignore") as u16;
-    for port in [1u16, 6, 12, 13, 14, 19] {
+    for port in [1u16, 6, 12, 13, 14, 19, 20] {
         assert_eq!(
             m.board.ram.read_u16(0xFE00 + 2 * port),
             ignore,
@@ -643,9 +643,9 @@ fn templates_assemble_and_find_the_devices() {
         );
     }
     assert_eq!(
-        m.board.ram.read_u16(0xFE00 + 2 * 20),
+        m.board.ram.read_u16(0xFE00 + 2 * 21),
         0,
-        "no device on port 20"
+        "no device on port 21"
     );
     for _ in 0..3 {
         m.advance_time(1_000_000_000);
@@ -672,7 +672,7 @@ fn the_template_waits_for_a_slow_io_processor() {
     // The ESP32 boots while the boot ROM copies the program (65,548 cycles).
     let left = 2_000_000 - hbc2_core::isa::HARDWARE_BOOT_CYCLES;
     assert!((left..left + 20_000).contains(&cycles), "{cycles} cycles");
-    assert_eq!(ram(&m, &p, "dev_count"), 4);
+    assert_eq!(ram(&m, &p, "dev_count"), 5);
     assert_eq!(ram(&m, &p, "keyboardPort"), 13);
 
     // The reset button: the CPU starts again, the I/O processor answers at once.
@@ -683,7 +683,7 @@ fn the_template_waits_for_a_slow_io_processor() {
     }
     let cycles = run_until(&mut m, &p, "loop", 100_000);
     assert!(cycles < 20_000, "after a CPU reset: {cycles} cycles");
-    assert_eq!(ram(&m, &p, "dev_count"), 4);
+    assert_eq!(ram(&m, &p, "dev_count"), 5);
     assert_eq!(ram(&m, &p, "monitorPort"), 1);
 }
 
@@ -784,8 +784,8 @@ fn language_documentation_example_prints_hi() {
     m.run(1_000);
     let screen = m.peripherals.monitor.as_ref().unwrap().text_buffer();
     assert_eq!(
-        (screen[0].ascii, screen[1].ascii, screen[2].ascii),
-        (b'H', b'i', 0)
+        (screen[0].code, screen[1].code, screen[2].code),
+        (b'H', b'i', b' ')
     );
     assert_eq!(screen[0].colors, 0x0F);
 }

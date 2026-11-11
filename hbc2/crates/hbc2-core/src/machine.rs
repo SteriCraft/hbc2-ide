@@ -16,6 +16,17 @@ use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
 use crate::trace::{NoProbe, Probe};
 
+/// The HBC-2's clock: emulated time is counted in its cycles.
+pub const CPU_HZ: u64 = 2_000_000;
+/// Frames per second of the native display (the VSYNC event).
+pub const FRAME_RATE: u64 = 60;
+
+/// The cycle at which frame `k` starts (33,333 or 33,334 cycles apart, so
+/// 60 frames are exactly one second at 2 MHz).
+pub const fn frame_start(k: u64) -> u64 {
+    (k * CPU_HZ).div_ceil(FRAME_RATE)
+}
+
 /// Which peripherals are plugged in.
 #[derive(Clone, Debug)]
 pub struct MachineConfig {
@@ -131,6 +142,9 @@ pub struct Machine {
     busy: u32,
     /// The work now running ends on an instruction boundary.
     boundary: bool,
+    /// Frames since power-on (VSYNC), and the cycle the next one starts.
+    frame: u64,
+    next_frame: u64,
 }
 
 impl Machine {
@@ -161,6 +175,8 @@ impl Machine {
             ticks: 0,
             busy: 0,
             boundary: false,
+            frame: 0,
+            next_frame: frame_start(1),
         };
         machine.power_on();
         Ok(machine)
@@ -170,6 +186,8 @@ impl Machine {
     /// state. EEPROM content and breakpoints are kept.
     pub fn power_on(&mut self) {
         self.ticks = 0;
+        self.frame = 0;
+        self.next_frame = frame_start(1);
         // The boot ROM copy. Its end is not a boundary: like a run from a
         // breakpoint, the first instruction runs before any breakpoint stops.
         self.busy = HARDWARE_BOOT_CYCLES as u32;
@@ -201,6 +219,7 @@ impl Machine {
             *m = Mailbox::new();
         }
         self.iop.rst_n();
+        self.peripherals.reset_button();
         match &self.ram_image {
             Some(image) => self.board.ram.as_mut_slice().copy_from_slice(image),
             None => self.board.ram.fill(0),
@@ -210,6 +229,31 @@ impl Machine {
     /// Clock cycles since power-on.
     pub fn ticks(&self) -> u64 {
         self.ticks
+    }
+
+    /// Frames since power-on (the native display's VSYNC count, whole).
+    pub fn frame(&self) -> u64 {
+        self.frame
+    }
+
+    fn vsync_on(&self) -> bool {
+        self.peripherals.monitor.as_ref().is_some_and(|m| m.vsync())
+    }
+
+    /// A new frame began (or several, after a long wait): with VSYNC on,
+    /// the display's port gets the count modulo 256 and its event is queued
+    /// (or the waiting one updated).
+    #[cold]
+    fn new_frame(&mut self) {
+        self.frame = self.ticks * FRAME_RATE / CPU_HZ;
+        self.next_frame = frame_start(self.frame + 1);
+        if let Some(m) = &self.peripherals.monitor
+            && m.vsync()
+            && let Some(port) = m.display_port()
+        {
+            self.board.iod.set_port(port, self.frame as u8);
+            self.board.iod.trigger_or_update_interrupt(port);
+        }
     }
 
     /// True between the first and the last cycle of an instruction (or of
@@ -264,6 +308,9 @@ impl Machine {
             self.board.tick_iod();
         }
         self.ticks += 1;
+        if self.ticks >= self.next_frame {
+            self.new_frame();
+        }
         let busy = self.cpu.cycles as u32 - 1;
         if busy > 0 {
             self.busy = busy;
@@ -279,6 +326,9 @@ impl Machine {
     fn wait(&mut self, cycles: u32) -> bool {
         self.busy -= cycles;
         self.ticks += cycles as u64;
+        if self.ticks >= self.next_frame {
+            self.new_frame();
+        }
         // The CPU drives nothing while it waits: the IOD only follows its
         // queue; the mailbox and the I/O processor run cycle by cycle.
         if self.board.mailbox.is_some() {
@@ -385,7 +435,19 @@ impl Machine {
                     };
                 }
             } else if self.is_idle() {
-                self.ticks += max_ticks - n;
+                // Sleep until the next VSYNC event, or to the end.
+                let left = max_ticks - n;
+                let to_frame = self.next_frame - self.ticks;
+                if self.vsync_on() && to_frame <= left {
+                    self.ticks += to_frame;
+                    n += to_frame;
+                    self.new_frame();
+                    continue;
+                }
+                self.ticks += left;
+                if self.ticks >= self.next_frame {
+                    self.new_frame();
+                }
                 break;
             }
         }

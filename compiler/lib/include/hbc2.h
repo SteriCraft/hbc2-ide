@@ -25,7 +25,8 @@
 #define DEVICE_VGA               0x00       // display: VGA-compatible
 #define DEVICE_RTC               0x03       // system: real-time clock
 #define DEVICE_KEYBOARD          0x00       // input: keyboard
-#define DEVICE_OTHER             0x80       // storage: other (EEPROM, SD card)
+#define DEVICE_OTHER             0x80       // storage: other (EEPROM, SD card);
+                                            // display: other (the native display)
 #define DEVICE_ANY               0xFF       // device_find: any subclass
 
 // Product IDs: which device it is (its ports and commands)
@@ -34,6 +35,7 @@
 #define PRODUCT_KEYBOARD         0x0003
 #define PRODUCT_EEPROM           0x0004
 #define PRODUCT_SD_CARD          0x0005
+#define PRODUCT_DISPLAY          0x0006     // the native display
 
 // One device, as INFO describes it
 struct device {
@@ -55,15 +57,20 @@ const struct device *device_find(unsigned char base_class,
                                  unsigned char subclass, unsigned char n);
 
 // The first port of the devices the library's drivers use, 0 when the
-// device is missing: the first display, RTC and keyboard, and the first
-// EEPROM (PRODUCT_EEPROM). Set at startup (compiler/runtime/devices.has).
+// device is missing: the first monitor (DEVICE_DISPLAY, DEVICE_VGA: the
+// old monitor ports), the first native display (DEVICE_DISPLAY,
+// DEVICE_OTHER: the screen functions below; its port is the VSYNC
+// event's), the first RTC and keyboard, and the first EEPROM
+// (PRODUCT_EEPROM). Set at startup (compiler/runtime/devices.has).
 
 #define MONITOR_PORTS_COUNT      5
+#define DISPLAY_PORTS_COUNT      1
 #define RTC_PORTS_COUNT          7
 #define KEYBOARD_PORTS_COUNT     2
 #define EEPROM_PORTS_COUNT       5
 
 extern unsigned char monitor_port;
+extern unsigned char display_port;
 extern unsigned char rtc_port;
 extern unsigned char keyboard_port;
 extern unsigned char eeprom_port;
@@ -91,12 +98,18 @@ void wait_interrupt(void);  // sti + hlt: sleeps until the next interrupt (enabl
 int set_vector(unsigned char port, void (*handler)(void));
 
 
-// --- Monitor ---------------------------------------------------------
-// Text mode: 42 columns x 24 rows, characters 0x20 (space) to 0x7E (~).
-// Pixel mode: 256 x 192 pixels. Each mode has its own picture; the
-// text routines work in text mode, the pixel routines in pixel mode.
+// --- Screen ------------------------------------------------------------
+// The native display (Documentation/Peripherals/Native/Reference.md):
+// one picture of 256 x 192 pixels, 16 colours. Text is drawn into it in
+// 8 x 8 cells, 32 columns x 24 rows, Windows-1252 characters (0x20-0xFF:
+// "é" in a string is 0xE9). Text and graphics share the picture.
+// The text functions draw in the colours given, then set the text
+// colours back to the terminal's (term_set_colors), and leave the cursor
+// (the terminal's too) after what they drew.
+// Every function returns a non-zero value when there is no native
+// display (display_port is 0).
 
-#define SCREEN_COLUMNS 42
+#define SCREEN_COLUMNS 32
 #define SCREEN_ROWS 24
 #define SCREEN_WIDTH 256
 #define SCREEN_HEIGHT 192
@@ -120,54 +133,65 @@ int set_vector(unsigned char port, void (*handler)(void));
 
 // Colors of a text cell: COLORS(WHITE, BLUE) = white on blue
 #define COLORS(character, background) (((background) << 4) | (character))
+// The text colours at power-on, after a reset and screen_reset()
+#define DEFAULT_COLORS COLORS(BRIGHT_YELLOW, BLUE)
 
-#define PIXEL_MODE 0
-#define TEXT_MODE 1
-
-// The mode last set by screen_set_mode or the terminal (TEXT_MODE at
-// power-on). Read it, don't write it: use screen_set_mode.
-extern unsigned char monitor_mode;
-
-// mode: PIXEL_MODE or TEXT_MODE. Returns a non-zero value if mode is
-// neither, or there is no monitor. The terminal switches back to text
-// mode on its first output, and on term_clear.
-int screen_set_mode(unsigned char mode);
-unsigned char screen_get_mode(void);            // PIXEL_MODE or TEXT_MODE
-
-// Text mode
-
-// Returns a non-zero value if x, y is off the screen, c is not
-// displayable, or there is no monitor.
+// Text
+// c at x, y. Returns a non-zero value if x, y is off the screen or c is a
+// control code (below 0x20).
 int screen_putc(char c, unsigned char x, unsigned char y, unsigned char colors);
 // The cell at x, y: character in the low byte, colors in the high byte;
-// -1 when off the screen or no monitor
+// -1 when off the screen
 int screen_getc(unsigned char x, unsigned char y);
-// Draws length characters from x, y, going on at the start of the next
-// row. Returns how many were not drawn (0 = all).
+// length characters from x, y, as the terminal prints them: on at the
+// start of the next row after column 31, '\n' starts a new row, the
+// screen scrolls after the last row. Returns 0, or length when x, y is
+// off the screen.
 unsigned screen_write(const char *text, unsigned length,
                       unsigned char x, unsigned char y, unsigned char colors);
-// Spaces everywhere. Returns a non-zero value if there is no monitor.
+// Spaces everywhere, cursor at the top left.
 int screen_clear(unsigned char colors);
-// Background / text color of every cell. Returns a non-zero value if
-// color > 15, or there is no monitor.
+// Background / text color of every cell (characters kept). Slow: each
+// cell is read and drawn again (about 0.2 s). Returns a non-zero value
+// if color > 15.
 int screen_set_bg(unsigned char color);
 int screen_set_txt(unsigned char color);
+// The screen moves up rows text rows (graphics too); the rows at the
+// bottom are cleared in the terminal's background.
+int screen_scroll(unsigned char rows);
+// The glyph of code (0x20-0xFF): 8 bytes, the top row first, bit 7 the
+// leftmost pixel. Characters already drawn don't change. Returns a
+// non-zero value for a control code.
+int screen_define_char(unsigned char code, const unsigned char *rows);
+// The default font and colours, cursor at the top left (hidden), the
+// screen cleared in blue.
+int screen_reset(void);
 
-// Pixel mode
-
-// Returns a non-zero value if y > 191, color > 15, or there is no monitor.
+// Graphics: x 0-255, y 0-191; what falls off the screen is clipped.
+// Each returns a non-zero value if color > 15.
+// Also non-zero if y > 191.
 int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color);
-// Returns the color, or -1 if y > 191 or there is no monitor.
+// Returns the color, or -1 if y > 191.
 int screen_get_pixel(unsigned char x, unsigned char y);
-// Returns a non-zero value if color > 15, or there is no monitor.
+// The whole screen (the text cells become spaces, cursor at the top left).
 int screen_fill(unsigned char color);
+// From x0, y0 to x1, y1, both ends drawn.
+int screen_line(unsigned char x0, unsigned char y0,
+                unsigned char x1, unsigned char y1, unsigned char color);
+// width x height pixels from x, y: the outline / filled (nothing if
+// width or height is 0).
+int screen_rect(unsigned char x, unsigned char y, unsigned char width,
+                unsigned char height, unsigned char color);
+int screen_fill_rect(unsigned char x, unsigned char y, unsigned char width,
+                     unsigned char height, unsigned char color);
 
 
 // --- Terminal ---------------------------------------------------------
-// The text console used by putchar, puts and printf (stdio.h): text at
-// a cursor, a new row at the end of a row or on '\n', the screen scrolls
-// on the last row. The first output switches the monitor to text mode
-// and clears the screen.
+// The text console used by putchar, puts and printf (stdio.h), at the
+// native display's cursor: a new row after column 31 or on '\n', '\b'
+// goes back, '\t' to the next column multiple of 8, the screen scrolls
+// after the last row. The first output clears the screen and shows the
+// cursor (blinking). Its colours: DEFAULT_COLORS until term_set_colors.
 
 void term_clear(void);              // clears the screen, cursor at the top left
 
@@ -180,11 +204,23 @@ void term_prompt(void);             // '>' at the start of the row, cursor after
 // the text, 0-terminated, at most 127 characters, kept until the next
 // call. Waits for a keyboard.
 char *term_readline(void);
-void term_update(void);             // cursor blink and keys; called by term_readline
+void term_update(void);             // keys typed; called by term_readline
 
 // Cursor position
-void term_get_cursor_pos(char *row, char *column);   // 0, 0 is top left
+// 0, 0 is top left; column 32 after a character in column 31 (the next
+// one goes on the next row)
+void term_get_cursor_pos(char *row, char *column);
 char term_set_cursor_pos(char row, char column);     // 0, 0 is top left, returns 0 if values are in bound
+
+
+// --- Tick ------------------------------------------------------------
+// The native display's frames, 60 per second (the VSYNC event), counted
+// from the first call to delay() or clock() (time.h, CLOCKS_PER_SEC 60)
+// on. The library then owns the display port's interrupt vector.
+
+// Waits frames sixtieths of a second. Turns interrupts on. Returns at
+// once without a native display.
+void delay(unsigned frames);
 
 
 // --- Real-time clock --------------------------------------------------
@@ -198,7 +234,8 @@ struct rtc_time {
     unsigned char second;           // 0-59
 };
 
-// Returns a non-zero value if there is no RTC.
+// The I/O processor's clock (GET_TIME). Returns a non-zero value if
+// there is no clock.
 int rtc_get(struct rtc_time *time);
 // Returns a non-zero value if there is no RTC, or the date is invalid.
 int rtc_set(const struct rtc_time *time);

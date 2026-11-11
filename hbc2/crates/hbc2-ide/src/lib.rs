@@ -14,7 +14,6 @@ pub mod editor_groups;
 pub mod emulator;
 pub mod find;
 pub mod fold;
-pub mod font;
 pub mod highlight;
 pub mod keymap;
 pub mod multicursor;
