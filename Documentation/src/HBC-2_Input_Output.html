@@ -70,7 +70,7 @@
     <line x1="150" y1="120" x2="830" y2="120" stroke="var(--ctrl)" stroke-width="5"/>
     <text class="l mono" x="700" y="42">données, 8 bits</text>
     <text class="l mono" x="700" y="77">adresse</text>
-    <text class="l mono" x="700" y="112">contrôle (+ rst_n)</text>
+    <text class="l mono" x="700" y="112">contrôle</text>
 
     <!-- row 1: decode, TX, RX, STATUS -->
     <line x1="245" y1="85" x2="245" y2="175" stroke="var(--addr)" stroke-width="2"/><circle cx="245" cy="85" r="4" fill="var(--addr)"/>
@@ -157,6 +157,11 @@
     <text class="l mono" x="170" y="512">INT = evt_s</text>
     <polyline points="150,570 460,570 460,520" fill="none" stroke="var(--irq)" stroke-width="2.5"/>
     <text class="l mono" x="170" y="562">INR : le CPU est prêt</text>
+    <!-- reset -->
+    <text class="mono" x="142" y="596" style="font-size:12px;text-anchor:end">rst_n</text>
+    <polyline points="150,592 830,592 830,520" fill="none" stroke="var(--grey)" stroke-width="2"/>
+    <line x1="600" y1="592" x2="600" y2="520" stroke="var(--grey)" stroke-width="2"/><circle cx="600" cy="592" r="4" fill="var(--grey)"/>
+    <text class="l mono" x="170" y="586">rst_n : remise à zéro des drapeaux, signalée à l'ESP32</text>
     <polyline points="690,440 690,395 740,395 740,382" fill="none" stroke="var(--irq)" stroke-width="2.5"/>
     <text class="l mono" x="696" y="436">VEC</text>
     <text class="l mono" x="745" y="394" style="font-size:10px">/OE</text>
@@ -188,6 +193,7 @@
     <span style="--c:var(--sel)">sélection de puce</span>
     <span style="--c:var(--mcu)">liaison ESP32</span>
     <span style="--c:var(--irq)">interruptions</span>
+    <span style="--c:var(--grey)">remise à zéro</span>
     <span style="--c:transparent">● = connexion</span>
   </div>
   </div>
