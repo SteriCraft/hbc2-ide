@@ -129,7 +129,7 @@ The CPU asks which devices exist; the ESP32 announces nothing. The ESP32 doesn't
 |---|---|
 | `hbc2-core/src/iop.rs` | INFO replies: protocol version (1), N, N descriptors of 6 bytes (class 2 bytes, product ID 2 bytes, first port, number of ports), from `Peripherals::descriptors` in port order. `IopConfig::boot_cycles` (0 by default): the firmware reads nothing until then, so a command waits in TX. `Iop::rst_n` drops a half-received command and the unread replies; ports, queue and devices are kept. |
 | `iod.rs`, `peripherals/` | `Iod::connect` sends no interrupt; owners are product IDs. Each peripheral has `CLASS` and `PRODUCT` instead of `DEVICE_ID`. |
-| `machine.rs` | `Machine::reset`: the reset button (CPU, mailbox card, boot ROM copy; the I/O processor gets `rst_n` only). Not in the IDE yet. |
+| `machine.rs` | `Machine::reset`: the reset button (CPU, mailbox card, boot ROM copy; the I/O processor gets `rst_n` only). In the IDE since 2026-11-11 (see below). |
 | `compiler/lib/asm/devices.has` | `dev_init`: INFO, each byte waited for 2 s at most (24-bit loop, 38 cycles a turn, 105,263 turns = 4,000,000 cycles; `DEV_TIMEOUT_*`), the table (`dev_table`, 16 entries, `dev_count`, `dev_protocol` = 0 without an I/O processor), unset vectors of device ports -> `dev_ignore`. `dev_find` (class, subclass or `DEV_ANY`, n-th), `dev_port`. Copied to `hbc2/templates/devices.has` (test). |
 | crt0 | `cli`, .bss clear, `dev_init`, `crt0_devices` (the four port variables; the EEPROM by product ID), `sti`, `main`. The 32-turn wait and the port-0 handler are gone. |
 | `hbc2.h` | `struct device`, `io_protocol`, `device_count`, `device_get`, `device_find`, `DEVICE_*` classes, `PRODUCT_*`. |
@@ -140,4 +140,4 @@ The CPU asks which devices exist; the ESP32 announces nothing. The ESP32 doesn't
 **Open**
 - The firmware (C4) must do the same: INFO's descriptors, `rst_n` dropping a partial command.
 - The emulator's ESP32 boots in 0 cycles by default (`boot_cycles`); 2,000,000 would be the board's.
-- The IDE has no reset button yet (`Machine::reset` exists).
+- ~~The IDE has no reset button yet~~ Done 2026-11-11, Gianni's decision: the IDE's **Reset** button (Ctrl+F5) now calls `Machine::reset`; a new **Restart** button to its right (Ctrl+Shift+F5) does the power cycle (`Machine::power_on`). The runner has `Runner::reset` next to `power_cycle`.

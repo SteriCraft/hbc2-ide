@@ -193,6 +193,14 @@ impl Worker {
                 let depth = self.machine.cpu.call_depth;
                 self.step_to(Goal::Out { depth });
             }
+            Command::Reset => {
+                self.pause();
+                self.stop = None;
+                self.trace_reset();
+                self.machine.reset();
+                self.forget_copies();
+                self.restart_pacing();
+            }
             Command::PowerCycle => {
                 self.pause();
                 self.stop = None;

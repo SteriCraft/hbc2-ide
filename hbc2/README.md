@@ -67,8 +67,11 @@ next to its executable. The version is the workspace's (`Cargo.toml`).
   background (compiled files go to the hidden `.build/`). Errors point at
   the C lines. The startup code, runtime and library open read-only.
 - **Running.** F5 runs (it builds first when nothing is loaded, or when the
-  sources changed and the program has not started), F6 pauses, Ctrl+F5
-  power-cycles. A failed build never runs.
+  sources changed and the program has not started), F6 pauses. Ctrl+F5 (Reset)
+  is the board's reset button: the CPU starts again from the image, the I/O
+  processor and the peripherals keep running (the screen, the queued
+  events). Ctrl+Shift+F5 (Restart) is a power cycle: the whole machine
+  starts again. A failed build never runs.
 - **Stepping.** One instruction in assembly, one line in C. F10 steps over
   (called routines and interrupt handlers run until they return, unless a
   breakpoint stops them), F11 steps into them, Shift+F11 steps out. In C,

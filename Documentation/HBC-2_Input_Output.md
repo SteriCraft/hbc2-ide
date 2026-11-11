@@ -220,8 +220,8 @@ program starts again, sends INFO, and gets the answer at once.
 * The IDE's I/O view shows the mailbox (TX, RX, STATUS, EVT), the I/O
   processor (device ports, queue) and its log of the last 100 commands and
   events.
-* The reset button is modelled (`Machine::reset`) but the IDE has no button
-  for it yet; it only has power-on.
+* The IDE's **Reset** (Ctrl+F5) is the reset button (`Machine::reset`);
+  **Restart** (Ctrl+Shift+F5) is a power cycle (`Machine::power_on`).
 
 ## Not done yet
 

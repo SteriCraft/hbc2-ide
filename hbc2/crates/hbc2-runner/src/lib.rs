@@ -150,6 +150,9 @@ enum Command {
     StepOver(Vec<u16>),
     /// Runs until the current routine or interrupt handler returns.
     StepOut,
+    /// The reset button (`rst_n`): see `Machine::reset`.
+    Reset,
+    /// Power off and on: see `Machine::power_on`.
     PowerCycle,
     Load(Box<Machine>),
     SetSpeed(Speed),
@@ -299,6 +302,13 @@ impl Runner {
     /// Breakpoints stop it.
     pub fn step_out(&self) {
         self.send(Command::StepOut);
+    }
+
+    /// Presses the reset button (`Machine::reset`): the CPU starts again
+    /// from its image, the I/O processor and the peripherals keep running.
+    /// The runner pauses.
+    pub fn reset(&self) {
+        self.send(Command::Reset);
     }
 
     /// Restarts the machine from its image. The runner pauses.

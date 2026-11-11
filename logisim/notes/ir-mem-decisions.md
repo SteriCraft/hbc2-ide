@@ -71,7 +71,7 @@ The memory map is flat: **64 KiB of RAM at 0000–FFFF** (`RAM_SIZE`), the stack
 
 ### 1.5 Boot in the emulator
 
-`Machine::power_on`: with an EEPROM plugged in, RAM is cleared, then the EEPROM peripheral copies **0000–01FF and FE00–FFFF** from its own memory into RAM (`BOOT_RANGES`) before the CPU runs; the rest of RAM is 0. Without an EEPROM, a 64 KiB RAM image is copied as is. The EEPROM's specification (`Documentation/Peripherals/EEPROM/Specifications.txt`) says the original idea was the EEPROM **holding the CPU through a HALT pin while it dumps the data**, i.e. DMA by a peripheral. The IDE's reset is a power cycle (`worker.rs` calls `power_on`), so the RAM is reloaded on every reset.
+`Machine::power_on`: with an EEPROM plugged in, RAM is cleared, then the EEPROM peripheral copies **0000–01FF and FE00–FFFF** from its own memory into RAM (`BOOT_RANGES`) before the CPU runs; the rest of RAM is 0. Without an EEPROM, a 64 KiB RAM image is copied as is. The EEPROM's specification (`Documentation/Peripherals/EEPROM/Specifications.txt`) says the original idea was the EEPROM **holding the CPU through a HALT pin while it dumps the data**, i.e. DMA by a peripheral. The IDE's reset is a power cycle (`worker.rs` calls `power_on`), so the RAM is reloaded on every reset. (Since 2026-11-11 the IDE has both: Reset calls `Machine::reset`, Restart `power_on`; both reload the RAM.)
 
 ### 1.6 Hardware interrupt handshake (manual, board.rs `tick_iod`, cpu.rs)
 

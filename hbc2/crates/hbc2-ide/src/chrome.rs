@@ -230,6 +230,9 @@ pub fn menu_bar(ui: &mut egui::Ui, state: &mut State) {
                 if ui.add(shortcut_button("Reset", key(Command::Reset))).clicked() {
                     actions.push(Action::Reset);
                 }
+                if ui.add(shortcut_button("Restart", key(Command::Restart))).clicked() {
+                    actions.push(Action::Restart);
+                }
                 let trace_label = if state.snapshot.trace.is_some() {
                     "Stop the trace"
                 } else {
@@ -349,10 +352,23 @@ pub fn toolbar(ui: &mut egui::Ui, state: &mut State) {
             }
             if ui
                 .button("⟲ Reset")
-                .on_hover_text(keys.with_key("Reset the machine: reload its image, paused", Command::Reset))
+                .on_hover_text(keys.with_key(
+                    "The reset button: the CPU starts again from the image, paused. The I/O processor and the peripherals keep running",
+                    Command::Reset,
+                ))
                 .clicked()
             {
                 actions.push(Action::Reset);
+            }
+            if ui
+                .button("⟳ Restart")
+                .on_hover_text(keys.with_key(
+                    "Power off and on: the whole machine starts again from the image, paused",
+                    Command::Restart,
+                ))
+                .clicked()
+            {
+                actions.push(Action::Restart);
             }
             trace_button(ui, &s, actions);
             ui.separator();
@@ -523,7 +539,11 @@ pub fn welcome(ui: &mut egui::Ui, state: &mut State) {
             "Step into: stop in the routines called",
         ),
         (key(Command::StepOut), "Step out: until the routine returns"),
-        (key(Command::Reset), "Reset"),
+        (
+            key(Command::Reset),
+            "Reset: the CPU only (the reset button)",
+        ),
+        (key(Command::Restart), "Restart: power off and on"),
         (key(Command::Save), "Save"),
         (key(Command::CloseTab), "Close the tab"),
         (keys.close_chord('R'), "Close the other tabs"),

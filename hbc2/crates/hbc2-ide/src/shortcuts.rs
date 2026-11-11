@@ -64,10 +64,11 @@ pub enum Command {
     /// A second shortcut for Step out.
     StepOut2,
     Reset,
+    Restart,
 }
 
 impl Command {
-    pub const ALL: [Command; 20] = [
+    pub const ALL: [Command; 21] = [
         Command::OpenProject,
         Command::Save,
         Command::SaveAll,
@@ -88,6 +89,7 @@ impl Command {
         Command::StepOut,
         Command::StepOut2,
         Command::Reset,
+        Command::Restart,
     ];
 
     /// Its name in the settings file (never changes).
@@ -113,6 +115,7 @@ impl Command {
             Command::StepOut => "step_out",
             Command::StepOut2 => "step_out_2",
             Command::Reset => "reset",
+            Command::Restart => "restart",
         }
     }
 
@@ -138,6 +141,7 @@ impl Command {
             Command::StepOut => "Step out",
             Command::StepOut2 => "Step out (2nd)",
             Command::Reset => "Reset",
+            Command::Restart => "Restart",
         }
     }
 
@@ -148,7 +152,9 @@ impl Command {
             Find | FindInFiles | SelectNext | SelectEvery | DuplicateLines | FoldAll
             | UnfoldAll => Category::Editor,
             Build | Build2 => Category::Build,
-            Run | Pause | StepOver | StepInto | StepOut | StepOut2 | Reset => Category::Emulator,
+            Run | Pause | StepOver | StepInto | StepOut | StepOut2 | Reset | Restart => {
+                Category::Emulator
+            }
         }
     }
 
@@ -177,6 +183,7 @@ impl Command {
             Command::StepOut => (Modifiers::SHIFT, Key::F11),
             Command::StepOut2 => (Modifiers::SHIFT, Key::F10),
             Command::Reset => (CTRL, Key::F5),
+            Command::Restart => (ctrl_shift, Key::F5),
         };
         Some(KeyboardShortcut::new(modifiers, key))
     }

@@ -249,6 +249,27 @@ fn load_exec_and_power_cycle() {
 }
 
 #[test]
+fn reset_button_keeps_the_clock_running() {
+    let runner = counter();
+    runner.load(machine(KEYBOARD, no_peripherals()));
+    runner.step(10);
+    let before = runner.sync().ticks;
+
+    runner.exec(|m| m.board.ram.write(0x8000, 0x42));
+    runner.run();
+    runner.reset();
+    let s = runner.sync();
+    assert!(
+        s.ticks >= before,
+        "a reset is not a power cycle: ticks go on ({before} -> {})",
+        s.ticks
+    );
+    assert_eq!(s.state, RunState::Paused, "a reset pauses");
+    assert_eq!(s.board.ram.read(0x8000), 0, "RAM image reloaded");
+    assert_eq!(s.cpu.pc, PROGRAM_START);
+}
+
+#[test]
 fn monitor_copy_is_shared_while_unchanged() {
     let config = MachineConfig {
         monitor: true,

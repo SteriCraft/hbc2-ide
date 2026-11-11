@@ -102,7 +102,10 @@ pub enum Action {
     StepInto,
     /// Shift+F11: until the current routine returns.
     StepOut,
+    /// The reset button: the CPU only (`Machine::reset`).
     Reset,
+    /// Power off and on (`Machine::power_on`).
+    Restart,
     ExportImage,
     ExportBootRom,
     LoadImage,
@@ -686,6 +689,7 @@ impl Ide {
             (C::StepOut2, Action::StepOut),
             (C::StepOver, Action::StepOver),
             (C::StepInto, Action::StepInto),
+            (C::Restart, Action::Restart),
             (C::Reset, Action::Reset),
             (C::SaveAll, Action::SaveAll),
             (C::Save, Action::Save),
@@ -1324,6 +1328,13 @@ impl Ide {
                 state.emulator.reset();
                 state.followed = None;
                 state.console.info("The machine was reset.");
+            }
+            Action::Restart => {
+                state.emulator.restart();
+                state.followed = None;
+                state
+                    .console
+                    .info("The machine was restarted (power off and on).");
             }
             Action::ExportImage => state.export_image(),
             Action::ExportBootRom => state.export_boot_rom(),

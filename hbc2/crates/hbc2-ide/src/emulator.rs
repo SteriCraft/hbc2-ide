@@ -199,8 +199,15 @@ impl Emulator {
         self.runner.step_out();
     }
 
-    /// Restarts the machine from its image, paused.
+    /// The reset button: the CPU starts again from the image, paused. The
+    /// I/O processor and the peripherals keep running.
     pub fn reset(&mut self) {
+        self.runner.reset();
+        self.baseline = None;
+    }
+
+    /// Power off and on: the whole machine starts again from its image, paused.
+    pub fn restart(&mut self) {
         self.runner.power_cycle();
         self.baseline = None;
     }
