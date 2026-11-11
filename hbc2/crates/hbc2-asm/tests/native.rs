@@ -150,6 +150,20 @@ fn every_command_does_what_the_monitor_does() {
         0x0A,
     ]);
     bytes.extend([cmd::FILL_RECT, 250, 186, 255, 255, 0x09, cmd::VSYNC, 1]);
+    bytes.extend([
+        cmd::FILL_RECT,
+        0,
+        140,
+        0,
+        4,
+        0x03,
+        cmd::RECT,
+        10,
+        0,
+        20,
+        0,
+        0x06,
+    ]); // 0 = 256
     bytes.extend([cmd::NOP, 0x1A, 0x40, 0x50, 0x70, 0x80, 0xFF]); // ignored, 1 byte each
     bytes.extend([cmd::PUTC, b'z']);
     let (m, _) = send(&bytes, 0, MachineConfig::default());
@@ -170,6 +184,8 @@ fn every_command_does_what_the_monitor_does() {
     want.line(0, 100, 99, 120, 0x0E);
     want.rect(20, 20, 30, 10, 0x0A);
     want.fill_rect(250, 186, 255, 255, 0x09);
+    want.fill_rect(0, 140, 0, 4, 0x03);
+    want.rect(10, 0, 20, 0, 0x06);
     want.set_vsync(true);
     want.putc(b'z');
     same_screen(monitor(&m), &want);

@@ -37,6 +37,10 @@ int pixels(void)
     if (screen_fill_rect(50, 50, 10, 5, MAGENTA) || screen_get_pixel(55, 52) != MAGENTA
         || screen_get_pixel(59, 55) != BLUE)
         return 72;
+    /* a size of 0 is 256: a full-width band */
+    if (screen_fill_rect(0, 60, 0, 2, RED) || screen_get_pixel(255, 61) != RED
+        || screen_get_pixel(0, 62) == RED)
+        return 73;
     if (screen_fill(BLUE) || screen_get_pixel(100, 100) != BLUE || screen_fill(16) != 1)
         return 7;
     return 0;
@@ -54,6 +58,8 @@ int cells(void)
         return 11;
     if (screen_getc(0, 0) != (color << 8 | 'A'))
         return 12;
+    if (screen_fill(BLACK) || screen_getc(0, 0) != (color << 8 | 'A'))  /* cells kept */
+        return 62;
     if (screen_putc('A', 32, 0, color) != 1 || screen_putc('A', 0, 24, color) != 1)
         return 13;
     if (screen_putc(7, 0, 0, color) != 1)       /* a control code */

@@ -11,9 +11,15 @@
 ; (compiler/runtime/devices.has), 0 when there is no native display.
 ; Every routine sets C = 1 and sends nothing without one.
 ;
-; Each command is sent with interrupts off (the flags are saved and
-; restored), straight to the mailbox: c = STATUS, d = DATA while sending.
+; Interrupts: each routine saves the caller's flags (psf) and restores
+; them at the end (pof). In between, interrupts are off for ONE command
+; at a time (a read: the command and its reply), then allowed again if
+; the caller allowed them (scr_open). The longest window with interrupts
+; off is one PUTS of 255 characters (about 13,500 cycles, 6.8 ms).
+; Commands go straight to the mailbox: c = STATUS, d = DATA while sending.
 ; Every register is restored, except outputs. Flags are changed.
+; A handler must not draw: its commands would land between two of the
+; interrupted call's, with the I/O processor's cursor and colours moved.
 ;
 ; screen_colors holds the text colours of the terminal (bg << 4 | fg):
 ; the routines that draw text in other colours set them back afterwards.
@@ -22,6 +28,7 @@
 .define SCREEN_ROWS 24
 .define SCREEN_HEIGHT 192
 .define SCREEN_DEFAULT_COLORS 0x1E  ; bright yellow on blue
+.define SCR_FLAG_I 0x04         ; the Interrupt flag in the byte psf pushes
 
 .define NAT_PUTC 0x10           ; native commands
 .define NAT_PUTS 0x11
@@ -44,6 +51,7 @@
 
 .data screen_colors 0x1E        ; the terminal's text colours
 .data scr_count 0               ; bytes left in the PUTS being sent
+.data scr_iflag 0               ; the flags of the routine's caller (scr_mark)
 
 
 ; ------------------------------------------------------------
@@ -63,6 +71,27 @@ scr_check_none:
     stc
     ret
 
+; Called right after the routine's psf: keeps the caller's flags for
+; scr_open. Keeps every register.
+scr_mark:
+    psh a
+    lod a, [sp + 3]             ; the byte psf pushed (above the return address)
+    str scr_iflag, a
+    pop a
+    ret
+
+; After a command (and its reply): interrupts on again if the caller had
+; them on. Keeps every register; changes the flags.
+scr_open:
+    psh a
+    lod a, scr_iflag
+    and a, SCR_FLAG_I
+    pop a
+    jmz scr_open_end
+    sti                         ; (from after the next instruction)
+scr_open_end:
+    ret
+
 ; Sends b once TX is free (c = STATUS, d = DATA). Changes a.
 scr_byte:
     in a, c
@@ -79,8 +108,9 @@ scr_recv:
     in b, d
     ret
 
-; Sends COLOR for the colours in x (bg << 4 | fg). Changes a, b.
+; COLOR for the colours in x (bg << 4 | fg): one command. Changes a, b.
 scr_color:
+    cli
     mov b, NAT_COLOR
     cal scr_byte
     mov b, x
@@ -92,27 +122,29 @@ scr_color:
     shr b
     shr b
     cal scr_byte
+    cal scr_open
     ret
 
-; Sends COLOR screen_colors. Changes a, b, x.
+; COLOR screen_colors. Changes a, b, x.
 scr_color_back:
     lod x, screen_colors
     cal scr_color
     ret
 
-; Sends CURSOR x y. Changes a, b.
+; CURSOR x y: one command. Changes a, b.
 scr_cursor:
+    cli
     mov b, NAT_CURSOR
     cal scr_byte
     mov b, x
     cal scr_byte
     mov b, y
     cal scr_byte
+    cal scr_open
     ret
 
 ; Sends the [x:y] bytes at [i:j] as PUTS commands of 255 bytes at most,
-; with interrupts off (the caller's). [i:j] advances past the text.
-; Changes a, b, x, y.
+; one command at a time. [i:j] advances past the text. Changes a, b, x, y.
 scr_stream:
     mov a, x
     or a, y
@@ -129,6 +161,7 @@ scr_stream_go:
     sub y, b                    ; [x:y] -= b
     sbb x, 0
     str scr_count, b
+    cli
     psh b
     mov b, NAT_PUTS
     cal scr_byte
@@ -144,8 +177,11 @@ scr_stream_wait:
     add j, 1
     adc i, 0
     dec scr_count
-    jmz scr_stream
+    jmz scr_stream_done
     jmp scr_stream_next
+scr_stream_done:
+    cal scr_open                ; between two PUTS
+    jmp scr_stream
 scr_stream_end:
     ret
 
@@ -172,17 +208,19 @@ screen_putc_err:
     ret
 screen_putc_ok:
     psf
-    cli
+    cal scr_mark
     psh a, b, c, d, x
     mov c, MBX_STATUS
     mov d, MBX_DATA
     cal scr_cursor
     lod x, [sp + 3]             ; x = b, the colours
     cal scr_color
+    cli
     mov b, NAT_PUTC
     cal scr_byte
     lod b, [sp + 4]             ; a, the character
     cal scr_byte
+    cal scr_open
     cal scr_color_back
     pop a, b, c, d, x
     pof
@@ -205,7 +243,7 @@ screen_getc_err:
     ret
 screen_getc_ok:
     psf
-    cli
+    cli                         ; one command and its reply
     psh c, d
     mov c, MBX_STATUS
     mov d, MBX_DATA
@@ -241,7 +279,7 @@ screen_write_err:
     ret
 screen_write_ok:
     psf
-    cli
+    cal scr_mark
     psh a, b, c, d, i, j, x, y
     mov a, c                    ; [x:y] = the length (after the cursor)
     mov b, d
@@ -281,7 +319,7 @@ screen_puts_counted:
     cal scr_check
     jmc screen_puts_none
     psf
-    cli
+    cal scr_mark
     psh b, c, d
     mov c, MBX_STATUS
     mov d, MBX_DATA
@@ -324,12 +362,13 @@ screen_clear:
     cal scr_check
     jmc screen_clear_end
     psf
-    cli
+    cal scr_mark
     psh a, b, c, d, x
     mov c, MBX_STATUS
     mov d, MBX_DATA
     mov x, b
     cal scr_color               ; the spaces' colours
+    cli
     mov b, NAT_CLEAR
     cal scr_byte
     mov b, x
@@ -338,6 +377,7 @@ screen_clear:
     shr b
     shr b
     cal scr_byte                ; the background
+    cal scr_open
     cal scr_color_back
     pop a, b, c, d, x
     pof
@@ -352,7 +392,7 @@ screen_set_colors:
     cal scr_check
     jmc screen_set_colors_end
     psf
-    cli
+    cal scr_mark
     psh a, b, c, d, x
     mov c, MBX_STATUS
     mov d, MBX_DATA
@@ -366,7 +406,8 @@ screen_set_colors_end:
 
 ; screen_set_bg / screen_set_txt: a = new background / character colour
 ; (0-15) of every cell, characters kept. The cursor goes back where it
-; was (a pending wrap is lost). C = 1: a > 15 or no display.
+; was (a pending wrap is lost). Each cell is read and drawn again: 4
+; commands, interrupts allowed between them. C = 1: a > 15 or no display.
 screen_set_bg:
     psh b
     mov b, 0x0F                 ; keep the character colour
@@ -387,7 +428,7 @@ scr_recolor_ok:
     cal scr_check
     jmc scr_recolor_err
     psf
-    cli
+    cal scr_mark
     psh a, c, d, i, j, x, y
     cmp b, 0x0F
     jme scr_recolor_bg
@@ -402,17 +443,20 @@ scr_recolor_go:
     mov j, b                    ; j = the bits kept
     mov c, MBX_STATUS
     mov d, MBX_DATA
+    cli
     mov b, NAT_GET_CURSOR
     cal scr_byte
     cal scr_recv
     mov x, b
     cal scr_recv
     mov y, b
+    cal scr_open
     psh x, y                    ; the cursor, to put back
     mov y, 0
 scr_recolor_row:
     mov x, 0
 scr_recolor_cell:
+    cli
     mov b, NAT_GET_CHAR
     cal scr_byte
     mov b, x
@@ -422,6 +466,7 @@ scr_recolor_cell:
     cal scr_recv
     psh b                       ; the character
     cal scr_recv                ; b = its colours
+    cal scr_open
     and b, j
     or b, i                     ; b = the new colours
     psh b
@@ -431,17 +476,20 @@ scr_recolor_cell:
     mov x, b
     cal scr_color
     pop x
-    mov b, NAT_PUTC
-    cal scr_byte
     pop b
     cmp b, 0x20
     jmf scr_recolor_control
-    cal scr_byte                ; the character again, in the new colours
-    jmp scr_recolor_next
+    jmp scr_recolor_putc
 scr_recolor_control:
     mov b, ' '                  ; a control code (old ports): drawn blank
+scr_recolor_putc:
+    psh b
+    cli
+    mov b, NAT_PUTC
     cal scr_byte
-scr_recolor_next:
+    pop b
+    cal scr_byte                ; the character again, in the new colours
+    cal scr_open
     inc x
     cmp x, SCREEN_COLUMNS
     jmf scr_recolor_cell
@@ -519,7 +567,12 @@ screen_cursor_ok:
     psh a, b, c, d
     mov c, MBX_STATUS
     mov d, MBX_DATA
-    cal scr_cursor
+    mov b, NAT_CURSOR
+    cal scr_byte
+    mov b, x
+    cal scr_byte
+    mov b, y
+    cal scr_byte
     pop a, b, c, d
     pof
     clc
@@ -607,7 +660,7 @@ screen_reset_end:
 
 
 ; ------------------------------------------------------------
-; Graphics
+; Graphics (each routine sends one command)
 ; ------------------------------------------------------------
 
 ; screen_put_pixel: pixel x, y in colour b. C = 1: b > 15, y > 191, no
@@ -684,30 +737,21 @@ screen_get_pixel_y:
 screen_get_pixel_end:
     ret
 
-; screen_fill: the whole screen in colour b (CLEAR: the text cells become
-; spaces, the cursor goes to 0, 0). C = 1: b > 15, no display.
+; screen_fill: the whole picture in colour b (FILL_RECT 0, 0, 256, 256:
+; the text cells and the cursor don't change). C = 1: b > 15, no display.
 screen_fill:
-    cmp b, 16
-    jmf screen_fill_ok
-    stc
-    ret
-screen_fill_ok:
-    psh a, b
-    mov a, b
-    lod b, screen_colors
-    and b, 0x0F
-    shl a
-    shl a
-    shl a
-    shl a
-    or b, a                     ; b = colour b behind the text colour
-    cal screen_clear
-    pop a, b
+    psh i, j, x, y
+    mov x, 0
+    mov y, 0
+    mov i, 0                    ; 0 = 256
+    mov j, 0
+    cal screen_fill_rect
+    pop i, j, x, y
     ret
 
 ; screen_line: from x, y to i, j in colour b (both ends drawn, clipped).
 ; screen_rect / screen_fill_rect: i x j pixels from x, y (outline / filled;
-; nothing when i or j is 0). C = 1: b > 15, no display.
+; a size of 0 means 256). C = 1: b > 15, no display.
 screen_line:
     psh a
     mov a, NAT_LINE

@@ -1,0 +1,10 @@
+; unsigned char iflag(void): 1 when the Interrupt flag is set (bit 2 of
+; the byte psf pushes), else 0.
+_iflag:
+    psf
+    pop b
+    and b, 0x04
+    shr b
+    shr b
+    mov a, 0
+    ret

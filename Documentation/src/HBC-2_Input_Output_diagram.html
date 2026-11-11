@@ -308,8 +308,8 @@
         <tr><th>OCTETS</th><th>COMMANDE</th><th>RÉPONSE</th></tr>
         <tr><td class="m">0x30 x y c</td><td>PIXEL</td><td>—</td></tr>
         <tr><td class="m">0x31 x₀ y₀ x₁ y₁ c</td><td>LINE : les deux extrémités</td><td>—</td></tr>
-        <tr><td class="m">0x32 x y w h c</td><td>RECT : contour</td><td>—</td></tr>
-        <tr><td class="m">0x33 x y w h c</td><td>FILL_RECT : rempli</td><td>—</td></tr>
+        <tr><td class="m">0x32 x y w h c</td><td>RECT : contour (taille 0 = 256)</td><td>—</td></tr>
+        <tr><td class="m">0x33 x y w h c</td><td>FILL_RECT : rempli (taille 0 = 256)</td><td>—</td></tr>
         <tr><td class="m">0x34 x y</td><td>GET_PIXEL</td><td>couleur</td></tr>
         <tr><td class="m">0x40</td><td>BLIT (réservé)</td><td></td></tr>
       </table>

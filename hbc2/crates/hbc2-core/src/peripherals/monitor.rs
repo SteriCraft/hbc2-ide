@@ -132,6 +132,12 @@ impl std::fmt::Debug for Monitor {
     }
 }
 
+/// A width or height byte: 0 means 256 (RECT, FILL_RECT, later BLIT and
+/// the sprites).
+pub fn size(byte: u8) -> usize {
+    if byte == 0 { 256 } else { byte as usize }
+}
+
 impl Monitor {
     /// The screen at power-on: blue, spaces, default font and colours.
     pub fn new() -> Monitor {
@@ -451,13 +457,11 @@ impl Monitor {
         self.generation += 1;
     }
 
-    /// RECT: the outline of w × h pixels from (x, y), clipped.
+    /// RECT: the outline of w × h pixels from (x, y), clipped. A size of 0
+    /// means 256 (a byte can't hold 256; there are no empty rectangles).
     pub fn rect(&mut self, x: u8, y: u8, w: u8, h: u8, color: u8) {
-        if w == 0 || h == 0 {
-            return;
-        }
         let (x0, y0) = (x as usize, y as usize);
-        let (x1, y1) = (x0 + w as usize - 1, y0 + h as usize - 1);
+        let (x1, y1) = (x0 + size(w) - 1, y0 + size(h) - 1);
         for px in x0..=x1 {
             self.set_pixel(px, y0, color);
             self.set_pixel(px, y1, color);
@@ -469,11 +473,11 @@ impl Monitor {
         self.generation += 1;
     }
 
-    /// FILL_RECT: w × h pixels from (x, y), clipped.
+    /// FILL_RECT: w × h pixels from (x, y), clipped; a size of 0 means 256.
     pub fn fill_rect(&mut self, x: u8, y: u8, w: u8, h: u8, color: u8) {
         let x0 = x as usize;
-        let x1 = (x0 + w as usize).min(WIDTH);
-        for py in y as usize..(y as usize + h as usize).min(HEIGHT) {
+        let x1 = (x0 + size(w)).min(WIDTH);
+        for py in y as usize..(y as usize + size(h)).min(HEIGHT) {
             self.pixels[py * WIDTH + x0..py * WIDTH + x1].fill(color & 0x0F);
         }
         self.generation += 1;

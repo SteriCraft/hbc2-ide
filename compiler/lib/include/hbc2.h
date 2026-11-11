@@ -173,13 +173,13 @@ int screen_reset(void);
 int screen_put_pixel(unsigned char x, unsigned char y, unsigned char color);
 // Returns the color, or -1 if y > 191.
 int screen_get_pixel(unsigned char x, unsigned char y);
-// The whole screen (the text cells become spaces, cursor at the top left).
+// The whole picture (the text cells and the cursor don't change).
 int screen_fill(unsigned char color);
 // From x0, y0 to x1, y1, both ends drawn.
 int screen_line(unsigned char x0, unsigned char y0,
                 unsigned char x1, unsigned char y1, unsigned char color);
-// width x height pixels from x, y: the outline / filled (nothing if
-// width or height is 0).
+// width x height pixels from x, y: the outline / filled. A size of 0
+// means 256: screen_fill_rect(0, y, 0, 8, c) is a full-width band.
 int screen_rect(unsigned char x, unsigned char y, unsigned char width,
                 unsigned char height, unsigned char color);
 int screen_fill_rect(unsigned char x, unsigned char y, unsigned char width,
@@ -218,8 +218,9 @@ char term_set_cursor_pos(char row, char column);     // 0, 0 is top left, return
 // from the first call to delay() or clock() (time.h, CLOCKS_PER_SEC 60)
 // on. The library then owns the display port's interrupt vector.
 
-// Waits frames sixtieths of a second. Turns interrupts on. Returns at
-// once without a native display.
+// Waits frames sixtieths of a second. Interrupts are on while it waits
+// (the frames come as interrupts); afterwards the I flag is back as it
+// was. Returns at once without a native display.
 void delay(unsigned frames);
 
 

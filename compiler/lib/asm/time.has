@@ -615,12 +615,15 @@ _clock:
     ret
 
 ; void delay(unsigned frames): waits that many sixtieths of a second
-; (hbc2.h). Turns interrupts on. Returns at once without a display.
+; (hbc2.h). Interrupts are on while it waits (the frames come as
+; interrupts), then the flags are back as the caller had them, the I flag
+; included. Returns at once without a display.
 _delay:
+    psf                         ; the caller's flags
     cal lib_tick_start
     jmc lib_delay_end
-    lod x, [sp + 2]             ; [x:y] = frames
-    lod y, [sp + 3]
+    lod x, [sp + 3]             ; [x:y] = frames (above the flags)
+    lod y, [sp + 4]
     psf
     cli
     lod c, lib_ticks + 2        ; [c:d] = the tick to reach (16 bits)
@@ -642,6 +645,7 @@ lib_delay_wait:
     hlt                         ; until the next interrupt
     jmp lib_delay_wait
 lib_delay_end:
+    pof                         ; the I flag back as it was
     ret
 
 ; time_t time(time_t *t): the I/O processor's date and time (GET_TIME),

@@ -186,10 +186,12 @@ native commands. Version 1 (today's emulator) doesn't.
 * **`LINE`** draws both end points. It is drawn from its leftmost end
   (the top one when vertical): the same pixels whichever end comes first,
   so drawing a line again in the background colour erases it.
-* **`RECT`** / **`FILL_RECT`**: w or h = 0 draws nothing. The rectangle is
-  w × h pixels from (x, y), clipped at the right and bottom edges. w is at
-  most 255, so one rectangle can't cover the full width of 256: fill the
-  whole screen with `CLEAR`, a full-width band with two `FILL_RECT`s.
+* **`RECT`** / **`FILL_RECT`**: the rectangle is w × h pixels from (x, y),
+  clipped at the right and bottom edges. **A size of 0 means 256** (a byte
+  can't hold 256, and an empty rectangle is no use): `FILL_RECT 0 0 0 0 c`
+  fills the whole picture, `FILL_RECT 0 y 0 8 c` a full-width band.
+* **Sizes:** the same rule (0 = 256) holds for every width and height of a
+  command, `BLIT` and the sprites included when they are specified.
 * **`GET_PIXEL`** replies with the colour 0–15; off screen, 0.
 * Graphics don't change the text cells, the cursor or the text colours.
 
@@ -305,9 +307,19 @@ vectors not yet set.
 
 * Each command is sent **with interrupts off** (as `OUT` / `IN`, see the
   [protocol](../../HBC-2_Input_Output.md#the-protocol)), so a handler's
-  command never lands in the middle of another. A `PUTS` of 255 characters
-  keeps interrupts off about 4.6 ms: keys wait in the queue, VSYNC events
-  merge (above), nothing is lost. The library may split long strings.
+  command never lands in the middle of another. A read keeps them off
+  until its reply is in. **Only one command at a time:** between two
+  commands of the same library call, interrupts are allowed again if the
+  caller allowed them (the caller's flags are saved by `psf`, put back by
+  `pof` at the end).
+* The longest stretch with interrupts off is then **one `PUTS` of 255
+  characters: 13,361 cycles, 6.7 ms**, measured (`hbc2-cc/tests/windows.rs`).
+  Every other library call stays under 250 cycles at a time. Keys wait in
+  the I/O processor's queue and VSYNC events merge meanwhile: nothing is
+  lost. (Before 2026-11-11 a whole call ran with interrupts off: 21 ms for
+  a full screen, 0.27 s for `screen_set_bg`.)
+* A handler must not draw: its commands would come between two of the
+  interrupted call's, with the cursor and the text colours moved.
 * Commands without a reply are streamed: the CPU only waits for `TX_FREE`
   before each byte.
 * The I/O processor runs the commands in order: a read (`GET_CHAR`,
@@ -334,11 +346,14 @@ from `hbc2/`):
 
 | | Before | After | Faster |
 |---|---|---|---|
-| Clear the screen (`screen_clear`) | 420,018 cycles, 210 ms | 546 cycles, 0.27 ms | × 770 |
-| One full row (`screen_write`: 42 → 32 characters) | 48,838 cycles, 24.4 ms | 2,529 cycles, 1.26 ms | × 19 (× 15 per character) |
-| A full screen (`screen_write`: 1,008 → 768 characters) | 1,168,593 cycles, 584 ms | 41,134 cycles, 20.6 ms | × 28 (× 22 per character) |
+| Clear the screen (`screen_clear`) | 420,018 cycles, 210 ms | 699 cycles, 0.35 ms | × 600 |
+| One full row (`screen_write`: 42 → 32 characters) | 48,838 cycles, 24.4 ms | 2,728 cycles, 1.36 ms | × 18 (× 14 per character) |
+| A full screen (`screen_write`: 1,008 → 768 characters) | 1,168,593 cycles, 584 ms | 41,471 cycles, 20.7 ms | × 28 (× 21 per character) |
 | A 100-pixel line (100 × `screen_put_pixel` → `screen_line`) | 101,758 cycles, 50.9 ms | 434 cycles, 0.22 ms | × 234 |
-| One row through the terminal (`puts`: 41 → 31 characters + `\n`) | 101,231 cycles, 50.6 ms | 3,459 cycles, 1.73 ms | × 29 |
+| One row through the terminal (`puts`: 41 → 31 characters + `\n`) | 101,231 cycles, 50.6 ms | 3,535 cycles, 1.77 ms | × 29 |
+
+(With interrupts allowed between commands, 2026-11-11: about 150 cycles
+more per call than with one window for the whole call.)
 
 ## In the emulator
 
@@ -366,8 +381,9 @@ sets C = 1 and sends nothing without a native display (`_display_port` =
 | `screen_write` ([c:d] characters at [i:j]) | `screen_write` | `CURSOR`, `COLOR`, `PUTS`…, `COLOR` back |
 | `screen_puts` (0-terminated, at the cursor) | `puts`, the terminal | `PUTS`… |
 | `screen_out` (a at the cursor) | `putchar`, the terminal | `PUTC` |
-| `screen_clear`, `screen_fill` | `screen_clear`, `screen_fill` | `COLOR`, `CLEAR`, `COLOR` back |
-| `screen_set_bg`, `screen_set_txt` | the same | `GET_CHAR` + `CURSOR` + `COLOR` + `PUTC` per cell (~0.2 s) |
+| `screen_clear` | `screen_clear` | `COLOR`, `CLEAR`, `COLOR` back |
+| `screen_fill` | `screen_fill` | `FILL_RECT 0 0 0 0` (the text cells stay) |
+| `screen_set_bg`, `screen_set_txt` | the same | `GET_CHAR` + `CURSOR` + `COLOR` + `PUTC` per cell: 0.27 s (see `RECOLOR` below) |
 | `screen_set_colors` | `term_set_colors` | `COLOR` |
 | `screen_scroll`, `screen_cursor`, `screen_get_cursor`, `screen_show_cursor`, `screen_defchar`, `screen_reset` | `screen_scroll`, `term_set_cursor_pos`, `term_get_cursor_pos`, —, `screen_define_char`, `screen_reset` | `SCROLL`, `CURSOR`, `GET_CURSOR`, `SHOW_CURSOR`, `DEFCHAR`, `TEXT_RESET` |
 | `screen_put_pixel`, `screen_get_pixel`, `screen_line`, `screen_rect`, `screen_fill_rect` | the same | `PIXEL`, `GET_PIXEL`, `LINE`, `RECT`, `FILL_RECT` |
@@ -381,6 +397,8 @@ sets C = 1 and sends nothing without a native display (`_display_port` =
 * `clock()` and `delay()` turn VSYNC on at their first call and point the
   display port's vector to the library's handler, which adds the frames
   since the last event (merged events included) to a 32-bit counter.
+* `delay()` saves the caller's flags: interrupts are on while it waits
+  (the frames are interrupts), then the I flag is back as it was.
 * `screen_set_mode`, `screen_get_mode`, `monitor_mode`, `PIXEL_MODE` and
   `TEXT_MODE` are gone from `hbc2.h`.
 
@@ -404,5 +422,31 @@ Found while implementing (2026-11-11):
 
 * `LINE` draws from its leftmost end, so both directions give the same
   pixels (Bresenham alone doesn't).
-* `FILL_RECT`'s w and h are bytes: a full-width (256) rectangle takes two
-  commands, or `CLEAR` for the whole screen.
+* `FILL_RECT`'s w and h are bytes: a full-width (256) rectangle took two
+  commands. Settled by decision 8.
+
+## Decisions, second round (Gianni, 2026-11-11)
+
+8. A size of 0 means 256 (`RECT`, `FILL_RECT`; later `BLIT` and the
+   sprites).
+9. The library keeps interrupts off for one mailbox command at a time, not
+   for a whole call (longest: one `PUTS` of 255, 6.7 ms).
+10. `delay()` saves and restores the I flag.
+
+## Proposal: `RECOLOR` (not implemented)
+
+`screen_set_bg` / `screen_set_txt` still take 0.27 s: 768 cells × 4
+commands (13 bytes and a reply each). One command would do it:
+
+| Opcode | Name | Arguments | Reply | Bytes | CPU cost | FabGL |
+|---|---|---|---|---|---|---|
+| `0x1A` | `RECOLOR` | which, c | | 3 | 78 µs | `drawGlyph` for each cell, in its new colours |
+
+* which = 0: every text cell's background becomes c; 1: every cell's
+  character colour becomes c (the low 4 bits of c).
+* Each cell is drawn again from the text cells (the glyphs of the current
+  font), as `PUTC` would draw it; pixels drawn over the text are replaced.
+  The cursor, `COLOR` and the font don't change.
+* The library's `screen_set_bg` / `screen_set_txt` become this one
+  command: from 0.27 s to under 0.1 ms of CPU time, plus the ESP32's
+  drawing time (768 glyphs).

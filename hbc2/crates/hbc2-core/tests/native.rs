@@ -326,14 +326,37 @@ fn pixels_lines_rectangles() {
     assert_eq!(a.pixel_buffer().iter().filter(|&&p| p == 3).count(), 12);
 
     // RECT / FILL_RECT
+    // A size of 0 means 256: the full width, or down to the bottom.
     let mut a = fresh();
-    a.rect(10, 10, 0, 5, 3);
-    a.rect(10, 10, 5, 0, 3);
-    a.fill_rect(10, 10, 0, 5, 3);
-    assert!(
-        a.pixel_buffer().iter().all(|&p| p == 0),
-        "w or h 0: nothing"
+    a.fill_rect(0, 10, 0, 2, 3);
+    assert_eq!(
+        a.pixel_buffer().iter().filter(|&&p| p == 3).count(),
+        2 * 256
     );
+    a.fill_rect(5, 0, 1, 0, 4);
+    assert_eq!(a.pixel_buffer().iter().filter(|&&p| p == 4).count(), 192);
+    let mut a = fresh();
+    a.fill_rect(0, 0, 0, 0, 6);
+    assert!(a.pixel_buffer().iter().all(|&p| p == 6), "0, 0, 0, 0: all");
+    let mut a = fresh();
+    a.rect(0, 0, 0, 0, 3);
+    // The top row and both side columns; the bottom edge is off screen.
+    assert_eq!(
+        a.pixel_buffer().iter().filter(|&&p| p == 3).count(),
+        256 + 2 * 191
+    );
+    let mut a = fresh();
+    a.rect(0, 50, 0, 3, 3);
+    assert_eq!(
+        a.get_pixel(255, 51),
+        3,
+        "w = 0: the right edge is column 255"
+    );
+    assert_eq!(
+        a.pixel_buffer().iter().filter(|&&p| p == 3).count(),
+        2 * 256 + 2
+    );
+    let mut a = fresh();
     a.rect(10, 10, 4, 3, 3);
     assert_eq!(a.pixel_buffer().iter().filter(|&&p| p == 3).count(), 10);
     assert_eq!(a.get_pixel(11, 11), 0, "inside stays");
