@@ -131,6 +131,8 @@ order. Events come on EVT and never mix with replies.
 | `0x03` | INFO: the devices | protocol version, N, then N × 6 bytes |
 
 * Any other command byte is ignored, as a NOP.
+* Native commands (text, graphics, VSYNC, time), drafted for protocol
+  version 2: [Peripherals/Native/Reference.md](Peripherals/Native/Reference.md).
 * Writing a device's command port (`CMD`) with OUT runs the command each
   time, a few microseconds later, but always before the ESP32 reads the next
   command: an IN after an OUT sees its result.
