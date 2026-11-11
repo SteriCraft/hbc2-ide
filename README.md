@@ -1,4 +1,4 @@
-![project_logo](https://github.com/SteriCraft/hbc2-ide/blob/main/docs/documentation/html/logo.png?raw=true)
+![project_logo](Documentation/images/logo.png)
 
 # Home Brew Computer 2 - Integrated Development Environment
 This repository hosts all of my HBC-2 project files.
