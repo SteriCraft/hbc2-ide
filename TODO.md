@@ -44,9 +44,6 @@ history keeps them). Detailed notes are linked; this file only lists.
 - **Backend:** `x *= k` / `x /= k` in place, like `<<=`.
 - **Build the C tools from cargo** (`cc` crate, one tiny bin crate per tool),
   so `cargo build` does everything without `compiler/build.cmd`.
-- **Run FCC's own test programs** (upstream `test/`, not copied yet), **last**:
-  once every intended language feature above is in, so the most of them
-  can run. They test the compiler on C code we didn't write.
 
 ## Hardware
 

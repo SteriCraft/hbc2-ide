@@ -8,7 +8,12 @@ Compiler licence: GPLv3 (see README.md, "Licence"). `copt.c` comes from Z88DK
 
 Only the parts shared by every target were copied (plus `target-6800.c` and
 `backend-default.c`, used as references); the other processor targets, the
-runtime libraries and the tests were left out. HBC-2 files added here:
+runtime libraries were left out. The test programs of `test/tests/` and
+`test/wtests/` (the `input*.c` with their `out.*` files, `cprintf.c`,
+`LICENCE`) are in `../tests/fcc/`, without the processor emulators and
+scripts; `hbc2/crates/hbc2-cc/tests/fcc.rs` runs them and
+`../tests/fcc/support.c` stands in for the emulators' output. HBC-2 files
+added here:
 `target-hbc2.c` (parser target), `backend-hbc2.c` (code generator).
 
 Changes to the upstream files (the Windows build itself needs none: it goes
