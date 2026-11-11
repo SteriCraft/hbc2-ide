@@ -9,12 +9,12 @@ definition is used everywhere, the library's left out.
 
 | Header | Content | Code |
 |---|---|---|
-| `hbc2.h` | device ports, `in`/`out`, interrupts, monitor, terminal, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
+| `hbc2.h` | device ports, `in`/`out`, interrupts, screen (text and graphics on the native display), terminal, `delay`, RTC, keyboard, EEPROM (`eeprom_read`, `eeprom_write`, `eeprom_load`, `eeprom_save`), random-number extras (`srand_rtc`, `rand_range`) | `asm/hbc2.has` (wrappers; the EEPROM functions are written there) |
 | `stdio.h` | `putchar`, `puts`, `printf`, `vprintf`, `perror` (output on the terminal), `sprintf`, `vsprintf` (into a buffer), `getchar`, `gets`, `scanf` (lines typed), `sscanf` (from a string) | `asm/stdio.has`, `asm/printf.has`, `asm/printf_float.has`, `asm/scanf.has`, `asm/errno.has` (`perror`) |
 | `stdarg.h` | `va_list`, `va_start`, `va_arg`, `va_end` | |
 | `string.h` | `strlen strcpy strncpy strcat strncat strcmp strncmp strchr strrchr strstr strspn strcspn strpbrk strtok memcpy memmove memset memcmp memchr strerror` | `asm/string.has`, `asm/errno.has` (`strerror`) |
 | `errno.h` | `errno`, `EDOM`, `ERANGE` (set by `strtol`, `strtoul`) | `asm/errno.has` |
-| `time.h` | `time_t` (seconds since 1970, unsigned: to 2106), `struct tm`, `time`, `clock` (always -1), `mktime`, `localtime`, `gmtime` (the same: no time zone), `asctime`, `ctime`, `strftime` (C89 conversions and `%e`); no `difftime` (a `double`) | `asm/time.has` |
+| `time.h` | `time_t` (seconds since 1970, unsigned: to 2106), `struct tm`, `time` (the I/O processor's clock, `GET_TIME`), `clock` (the native display's frames, `CLOCKS_PER_SEC` 60), `mktime`, `localtime`, `gmtime` (the same: no time zone), `asctime`, `ctime`, `strftime` (C89 conversions and `%e`); no `difftime` (a `double`) | `asm/time.has` |
 | `limits.h` | `CHAR_BIT`, `MB_LEN_MAX`, the `_MIN`/`_MAX` of `char`, `short`, `int`, `long` | |
 | `ctype.h` | `isalnum isalpha islower isupper isdigit isxdigit isspace isblank ispunct iscntrl isprint isgraph tolower toupper` | `asm/ctype.has` |
 | `stddef.h` | `NULL`, `size_t`, `ptrdiff_t`, `offsetof` | |
@@ -36,11 +36,11 @@ struct return.
   of the library goes through them: `out P, V` is written
   `psh P, V` / `cal mbx_out` / `asp 2`, and `in R, P` is written
   `psh P` / `cal mbx_in` / `pop R`.
-* `asm/screen.has`, `asm/terminal.has` — **copies** of the monitor driver
-  and the terminal of `design_projects/ASM_p/lib/monitor`. The
-  changes are listed at the top of each file (the port variables have their
-  C names, and `in` / `out` go through `mbx_in` / `mbx_out`). When the originals change, copy them again and redo the
-  changes.
+* `asm/screen.has`, `asm/terminal.has` — the screen driver and the
+  terminal on the native display's commands
+  (`Documentation/Peripherals/Native/Reference.md`, 2026-11-11). They no
+  longer follow `design_projects/ASM_p/lib/monitor`, which still uses the
+  old monitor ports (they keep working, mapped onto the same picture).
 * `asm/math/` — **copy** of the math library,
   `design_projects/ASM_p/lib/math`, without the 6 files C never reaches
   (signed arithmetic, logic and shifts: listed at the top of its

@@ -76,11 +76,15 @@ names (`a b c d i j x y`) cannot be used as names.
 |---|---|
 | `42`, `0x2A`, `0b0010_1010` | Number: decimal, hexadecimal or binary. `_` can separate digits. |
 | `-1` | Negative number (8-bit values only: -128 to -1, stored as two's complement). |
-| `'A'`, `'\n'` | Character: its ASCII code. |
-| `"Hello"` | String (`.data` only): its ASCII codes, with no terminator. |
+| `'A'`, `'\n'`, `'é'` | Character: its code in the HBC-2's character set, Windows-1252 (ASCII, then `é` = `0xE9`, `œ` = `0x9C`, `€` = `0x80`…). |
+| `"Hello"` | String (`.data` only): its Windows-1252 codes, with no terminator. |
 | `$0x9000` | Memory address. |
 
-Escape sequences in characters and strings: `\n` `\r` `\t` `\0` `\\` `\'` `\"` `\xHH`.
+Escape sequences in characters and strings: `\n` `\r` `\t` `\b` `\0` `\\` `\'` `\"` `\xHH`.
+
+Source files are UTF-8. A character with no Windows-1252 code (`→`, `✓`…) is an
+error in a literal (comments may hold anything); so is a control character typed
+as is (a tab: write `\t`).
 
 ## Operands
 

@@ -176,13 +176,14 @@
     <text class="n" x="1102" y="312">envoie les interruptions sur EVT</text>
     <text class="n" x="1102" y="345">garde le modèle de l'ancien IOD :</text>
     <text class="n" x="1102" y="361">verrous des ports, file d'événements ;</text>
-    <text class="n" x="1102" y="377">donne la liste des périphériques (INFO)</text>
+    <text class="n" x="1102" y="377">donne la liste des périphériques (INFO) ;</text>
+    <text class="n" x="1102" y="393">dessine texte et images (cmd. natives)</text>
     <text class="n" x="1102" y="425">attend au moins 1 µs après qu'un</text>
     <text class="n" x="1102" y="441">drapeau RX / EVT est revenu à 0</text>
     <text class="n" x="1102" y="457">avant de le réécrire (règle I15)</text>
     <line x1="1102" y1="510" x2="1102" y2="545" stroke="var(--grey)" stroke-width="2"/>
     <rect class="soft" x="985" y="545" width="235" height="70" rx="3"/>
-    <text class="n" x="1102" y="567">VGA (moniteur) · clavier PS/2</text>
+    <text class="n" x="1102" y="567">VGA (affichage natif) · clavier PS/2</text>
     <text class="n" x="1102" y="584">carte SD (SPI partagé avec la carte)</text>
     <text class="n" x="1102" y="601">horloge · EEPROM (fichier)</text>
   </svg>
@@ -239,7 +240,8 @@
         <tr><td class="m">0x00</td><td>NOP</td><td>—</td></tr>
         <tr><td class="m">0x01 p v</td><td>OUT : port p = v</td><td>—</td></tr>
         <tr><td class="m">0x02 p</td><td>IN : lit le port p</td><td>1 octet</td></tr>
-        <tr><td class="m">0x03</td><td>INFO</td><td>protocole, N, N × 6 octets (classe, produit, port, nb)</td></tr>
+        <tr><td class="m">0x03</td><td>INFO</td><td>protocole (2), N, N × 6 octets (classe, produit, port, nb)</td></tr>
+        <tr><td class="m">0x10–0x7F</td><td>commandes natives : texte, graphismes, VSYNC, heure (page 3)</td><td>les lectures seulement</td></tr>
       </table>
       <p class="note">Les ports p des périphériques sont dans l'ESP32, plus sur le bus. Au démarrage, le CPU envoie
         INFO et attend 2 s au plus (l'ESP32 démarre en 1 s environ) ; sans réponse, aucun périphérique.
@@ -270,6 +272,59 @@
     </div>
   </div>
 
+</section>
+
+<!-- ====================================================== page 3 -->
+<section class="page">
+  <h1>Commandes natives (protocole 2)</h1>
+  <p class="lead">L'ESP32 dessine lui-même : une image de 256 × 192 pixels, 16 couleurs, du texte en cellules
+    de 8 × 8 (32 colonnes × 24 lignes, caractères Windows-1252). Une commande = un octet de commande et ses
+    arguments ; seules les lectures répondent sur RX. Coût CPU : environ 26 µs par octet (mesuré dans l'émulateur).</p>
+  <div class="cols">
+    <div>
+      <h2>Texte (0x10–0x2F)</h2>
+      <table>
+        <tr><th>OCTETS</th><th>COMMANDE</th><th>RÉPONSE</th></tr>
+        <tr><td class="m">0x10 c</td><td>PUTC : caractère ou code de contrôle au curseur</td><td>—</td></tr>
+        <tr><td class="m">0x11 n c₁…cₙ</td><td>PUTS : n caractères (0–255)</td><td>—</td></tr>
+        <tr><td class="m">0x12 x y</td><td>CURSOR : colonne 0–31, ligne 0–23</td><td>—</td></tr>
+        <tr><td class="m">0x13 fg bg</td><td>COLOR : couleurs du texte</td><td>—</td></tr>
+        <tr><td class="m">0x14 bg</td><td>CLEAR : tout l'écran, curseur en 0, 0</td><td>—</td></tr>
+        <tr><td class="m">0x15 n</td><td>SCROLL : monte de n lignes</td><td>—</td></tr>
+        <tr><td class="m">0x16 code r₀…r₇</td><td>DEFCHAR : dessin d'un caractère (0x20–0xFF)</td><td>—</td></tr>
+        <tr><td class="m">0x17 x y</td><td>GET_CHAR</td><td>caractère, couleurs</td></tr>
+        <tr><td class="m">0x18</td><td>GET_CURSOR</td><td>x (32 : retour différé), y</td></tr>
+        <tr><td class="m">0x19 on</td><td>SHOW_CURSOR : curseur clignotant</td><td>—</td></tr>
+        <tr><td class="m">0x1F</td><td>TEXT_RESET : police, couleurs, curseur, écran bleu</td><td>—</td></tr>
+      </table>
+      <p class="note">Codes de contrôle : <code>\b</code> recule, <code>\t</code> colonne multiple de 8,
+        <code>\n</code> ligne suivante, <code>\r</code> début de ligne. Retour à la ligne différé :
+        écrire la dernière cellule ne fait pas défiler, le caractère suivant si. Couleurs au démarrage :
+        jaune vif (14) sur bleu (1).</p>
+    </div>
+    <div>
+      <h2>Graphismes (0x30–0x4F)</h2>
+      <table>
+        <tr><th>OCTETS</th><th>COMMANDE</th><th>RÉPONSE</th></tr>
+        <tr><td class="m">0x30 x y c</td><td>PIXEL</td><td>—</td></tr>
+        <tr><td class="m">0x31 x₀ y₀ x₁ y₁ c</td><td>LINE : les deux extrémités</td><td>—</td></tr>
+        <tr><td class="m">0x32 x y w h c</td><td>RECT : contour</td><td>—</td></tr>
+        <tr><td class="m">0x33 x y w h c</td><td>FILL_RECT : rempli</td><td>—</td></tr>
+        <tr><td class="m">0x34 x y</td><td>GET_PIXEL</td><td>couleur</td></tr>
+        <tr><td class="m">0x40</td><td>BLIT (réservé)</td><td></td></tr>
+      </table>
+      <h2 style="margin-top:14px">Temps (0x60–0x6F) et réservés</h2>
+      <table>
+        <tr><th>OCTETS</th><th>COMMANDE</th><th>RÉPONSE</th></tr>
+        <tr><td class="m">0x60</td><td>GET_TIME</td><td>année − 1900, mois, jour, h, min, s</td></tr>
+        <tr><td class="m">0x61 on</td><td>VSYNC : un événement par image (60 Hz), compteur d'images en donnée</td><td>—</td></tr>
+        <tr><td class="m">0x50–0x5F</td><td>sprites (réservé)</td><td></td></tr>
+        <tr><td class="m">0x70–0x7F</td><td>SD_READ, SD_WRITE (réservé)</td><td></td></tr>
+      </table>
+      <p class="note">L'affichage natif a un descripteur : classe 03 80, produit 0x0006, 1 port (celui de
+        l'événement VSYNC). Les 5 ports de l'ancien moniteur (03 00) donnent accès à la même image.</p>
+    </div>
+  </div>
 </section>
 
 </body>

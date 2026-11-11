@@ -18,9 +18,9 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 ## IDE and emulator (`hbc2/`)
 
-- **Native ESP32 commands** (PUTS, PIXEL, GET_TIME, SD…; proposal 9.3), for
-  screen speed: added to the I/O processor model together with the firmware
-  (hardware, C4), so both have the same set.
+- **Native ESP32 commands:** text, graphics, VSYNC, GET_TIME done in the
+  emulator and the library (2026-11-11, Peripherals/Native/Reference.md).
+  Left: BLIT, sprites, SD_READ / SD_WRITE, and the firmware itself (C4).
 - **ESP32 timing in the emulator:** the I/O processor model answers after 8
   CPU cycles per action (2 for the 1 µs rule). These are guesses: replace
   them with the firmware's measured times.

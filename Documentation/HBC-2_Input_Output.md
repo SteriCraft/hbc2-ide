@@ -112,9 +112,10 @@ The firmware keeps the model of the old IOD:
   means "no such device".
 * A **queue of 256 events**, oldest first. An event that arrives while the
   queue is full is lost. Events go to the mailbox one at a time.
-* The devices: VGA monitor, PS/2 keyboard, real-time clock (NTP once at
-  start-up, or an I²C clock chip: still open), EEPROM (kept in a file), and later
-  the SD card itself.
+* The devices: the VGA screen (native display, and the old monitor ports
+  mapped onto it), PS/2 keyboard, real-time clock (NTP once at start-up, or
+  an I²C clock chip: still open), EEPROM (kept in a file), and later the SD
+  card itself.
 
 Plugging a device sends no interrupt; the CPU asks for the list (INFO).
 
@@ -129,10 +130,14 @@ order. Events come on EVT and never mix with replies.
 | `0x01` p v | OUT: device port p = v | none |
 | `0x02` p | IN: read device port p | 1 byte: the value of port p |
 | `0x03` | INFO: the devices | protocol version, N, then N × 6 bytes |
+| `0x10`–`0x7F` | native commands: text, graphics, VSYNC, time ([reference](Peripherals/Native/Reference.md)) | only the reads |
 
 * Any other command byte is ignored, as a NOP.
-* Native commands (text, graphics, VSYNC, time), drafted for protocol
-  version 2: [Peripherals/Native/Reference.md](Peripherals/Native/Reference.md).
+* The native commands (protocol version 2): the I/O processor draws text
+  and graphics itself, counts the frames (VSYNC) and keeps the time. One
+  character is 2 bytes (`PUTC`), a row of text 34 (`PUTS`), clearing the
+  screen 2 (`CLEAR`). See
+  [Peripherals/Native/Reference.md](Peripherals/Native/Reference.md).
 * Writing a device's command port (`CMD`) with OUT runs the command each
   time, a few microseconds later, but always before the ESP32 reads the next
   command: an IN after an OUT sees its result.
@@ -157,7 +162,7 @@ order. Events come on EVT and never mix with replies.
 
 Reply, one byte at a time:
 
-1. the protocol version (`1`);
+1. the protocol version (`2`: the native commands);
 2. N, the number of devices;
 3. N descriptors of 6 bytes, in port order:
 
@@ -170,11 +175,12 @@ Reply, one byte at a time:
 
 | Device | Class | Product ID | Ports |
 |---|---|---|---|
-| Monitor | `03 00` (display, VGA) | `0x0001` | 5 |
+| Monitor (the old ports) | `03 00` (display, VGA) | `0x0001` | 5 |
 | Real-time clock | `08 03` (system, RTC) | `0x0002` | 7 |
 | Keyboard | `09 00` (input, keyboard) | `0x0003` | 2 |
 | EEPROM | `01 80` (storage, other) | `0x0004` | 5 |
 | SD card (reserved) | `01 80` | `0x0005` | |
+| Native display | `03 80` (display, other) | `0x0006` | 1 (the VSYNC event) |
 
 The class tells what a device does; the product ID tells which device it is
 (its ports and commands). Programs find devices by class, never by fixed port
@@ -217,7 +223,9 @@ program starts again, sends INFO, and gets the answer at once.
 ## In the emulator
 
 * The I/O processor answers at once: its boot time is 0 cycles by default
-  (`IopConfig::boot_cycles`).
+  (`IopConfig::boot_cycles`). It runs a native command as soon as its last
+  byte arrives; the ESP32's drawing time is not modelled.
+* The VSYNC event comes every 2,000,000 / 60 CPU cycles (emulated time).
 * Nothing answers on ports `0x40`–`0xFF`; `in` reads `0xFF`.
 * The IDE's I/O view shows the mailbox (TX, RX, STATUS, EVT), the I/O
   processor (device ports, queue) and its log of the last 100 commands and
@@ -227,6 +235,8 @@ program starts again, sends INFO, and gets the answer at once.
 
 ## Not done yet
 
-* The ESP32 firmware: the commands above, INFO's descriptors, dropping a
-  half-received command on `rst_n`, the events, then native commands (text,
-  drawing, SD card). On the Arduino Mega test rig first, then the TTGO VGA32.
+* The ESP32 firmware: the commands above (the native ones on FabGL),
+  INFO's descriptors, dropping a half-received command on `rst_n`, the
+  events. On the Arduino Mega test rig first, then the TTGO VGA32. Its FabGL
+  checks are item B6 of `logisim/notes/breadboard-checks.md`.
+* Native commands still reserved: `BLIT`, sprites, `SD_READ` / `SD_WRITE`.

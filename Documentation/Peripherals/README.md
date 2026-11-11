@@ -5,13 +5,19 @@ talks to them and receives their interrupts. Each device has its own page:
 
 | Device | Class | Product ID | Ports | Interrupts | Page |
 |---|---|---|---|---|---|
-| Monitor | `03 00` | `0x0001` | 5 | none | [Monitor](Monitor/Reference.md) |
+| Native display | `03 80` | `0x0006` | 1 | VSYNC, every frame (60 Hz) when turned on | [Native commands](Native/Reference.md) |
+| Monitor (the old ports of the same screen) | `03 00` | `0x0001` | 5 | none | [Monitor](Monitor/Reference.md) |
 | Real-Time Clock | `08 03` | `0x0002` | 7 | once per second, on its first port | [RTC](RTC/Reference.md) |
 | Keyboard | `09 00` | `0x0003` | 2 | key pressed (first port), key released (second port) | [Keyboard](Keyboard/Reference.md) |
 | EEPROM | `01 80` | `0x0004` | 5 | none | [EEPROM](EEPROM/Reference.md) |
 
 A program asks the I/O processor which devices there are (see
 [Detecting the devices](#detecting-the-devices)) and finds them by class.
+
+The screen is drawn with the I/O processor's **native commands** (text,
+graphics, the VSYNC tick, the time): command bytes sent through the
+mailbox, see [Native commands](Native/Reference.md). The monitor's 5 ports
+are the older, slower way to the same picture.
 
 ## The I/O Driver (IOD)
 
@@ -147,7 +153,7 @@ A vector at a port known in advance can also be written by the assembler:
 At startup the program **asks** the I/O processor for its devices with the
 command **INFO** (`0x03`). The reply comes on RX, one byte at a time:
 
-1. the protocol version (1 byte, `1` today);
+1. the protocol version (1 byte, `2` today: the native commands);
 2. N, the number of devices (1 byte);
 3. N descriptors of 6 bytes each, in port order:
 
@@ -196,15 +202,16 @@ _start:
 
 | Variable | Holds |
 |---|---|
-| `monitorPort` | the first display's first port (0 if none) |
+| `monitorPort` | the first monitor's first port (0 if none) |
+| `displayPort` | the native display's port (0 if none: no native commands) |
 | `rtcPort` | the first RTC's first port (0 if none) |
 | `keyboardPort` | the first keyboard's first port (0 if none) |
 | `eepromPort` | the first storage device's first port (0 if none) |
 
 C programs get the same at startup (`compiler/runtime/crt0.has`): see
 `hbc2.h` for `device_find()`, `device_get()`, `device_count()`,
-`io_protocol()` and the variables `monitor_port`, `rtc_port`,
-`keyboard_port`, `eeprom_port`.
+`io_protocol()` and the variables `monitor_port`, `display_port`,
+`rtc_port`, `keyboard_port`, `eeprom_port`.
 
 Interrupts only come from the devices' events (a key, a clock tick...).
 
@@ -214,7 +221,8 @@ The class is the PCI class code (base class, subclass). The ones in use:
 
 | Class | Meaning | `devices.has` | `hbc2.h` |
 |---|---|---|---|
-| `03 00` | display, VGA-compatible | `DEV_DISPLAY`, `DEV_VGA` | `DEVICE_DISPLAY`, `DEVICE_VGA` |
+| `03 00` | display, VGA-compatible: the monitor ports | `DEV_DISPLAY`, `DEV_VGA` | `DEVICE_DISPLAY`, `DEVICE_VGA` |
+| `03 80` | display, other: the native display | `DEV_DISPLAY`, `DEV_OTHER` | `DEVICE_DISPLAY`, `DEVICE_OTHER` |
 | `09 00` | input device, keyboard | `DEV_INPUT`, `DEV_KEYBOARD` | `DEVICE_INPUT`, `DEVICE_KEYBOARD` |
 | `08 03` | system peripheral, real-time clock | `DEV_SYSTEM`, `DEV_RTC` | `DEVICE_SYSTEM`, `DEVICE_RTC` |
 | `01 80` | mass storage, other | `DEV_STORAGE`, `DEV_OTHER` | `DEVICE_STORAGE`, `DEVICE_OTHER` |
@@ -230,11 +238,12 @@ ports and commands). Our own numbering; 0 is never used:
 | `0x0003` | Keyboard |
 | `0x0004` | EEPROM |
 | `0x0005` | SD card (reserved, not in the emulator yet) |
+| `0x0006` | Native display |
 
 ### Port numbers in the emulator
 
-The emulator plugs the devices in this order: monitor, RTC, keyboard, EEPROM.
-With all four, their ports are:
+The emulator plugs the devices in this order: monitor, RTC, keyboard, EEPROM,
+native display. With all five, their ports are:
 
 | Device | Ports |
 |---|---|
@@ -242,7 +251,8 @@ With all four, their ports are:
 | RTC | 6-12 |
 | Keyboard | 13-14 |
 | EEPROM | 15-19 |
+| Native display | 20 |
 
-Each device can be unplugged in the IDE's **Peripherals** menu, which moves the next ones down: always use the detected ports rather than these numbers.
+Each device can be unplugged in the IDE's **Peripherals** menu, which moves the next ones down: always use the detected ports rather than these numbers. The monitor and the native display are one screen: unplugging the monitor removes both.
 
 In the emulator the I/O processor answers at once (no boot time).

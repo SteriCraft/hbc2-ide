@@ -1,7 +1,8 @@
 # Native commands reference
 
-**Status: spec approved 2026-11-11 (decisions at the end). Not implemented
-yet.**
+**Status:** approved and implemented in the emulator, the IDE and the
+library on 2026-11-11 (decisions at the end). The ESP32 firmware is still
+to write.
 
 The I/O processor (the ESP32 behind the mailbox) is a small video card,
 modelled on the BBC Micro's VDU commands and the Agon Light's VDP (FabGL).
@@ -95,9 +96,12 @@ comes.
 ## Commands
 
 Bytes = command byte + arguments. CPU cost = (bytes sent + bytes replied)
-× ~18 µs, the time for the CPU to move one byte through the mailbox (a
-send loop: wait for `TX_FREE`, `out`); a reply byte costs about the same
-(wait for `RX_AVAIL`, `in`). The time the ESP32 needs to draw is not
+× ~26 µs, the time the CPU takes to move one byte through the mailbox,
+**measured** in the emulator (52 cycles per byte in the library's `PUTS`
+loop: wait for `TX_FREE`, `out`, next byte; a reply byte costs about the
+same: wait for `RX_AVAIL`, `in`). Through the library's routines a short
+command costs a little more (the call, saving registers: `screen_line` is
+434 cycles, 217 µs, for 6 bytes). The time the ESP32 needs to draw is not
 included: during a long drawing it simply reads the next byte later, and the
 CPU waits on `TX_FREE` (nothing is lost).
 
@@ -107,9 +111,9 @@ All values are bytes. Colours use their low 4 bits (the high 4 are ignored).
 
 | Opcode | Name | Arguments | Reply | Bytes | CPU cost |
 |---|---|---|---|---|---|
-| `0x00` | `NOP` | | | 1 | 18 µs |
-| `0x01` | `OUT` | port, value | | 3 | 54 µs |
-| `0x02` | `IN` | port | value | 2 + 1 | 54 µs |
+| `0x00` | `NOP` | | | 1 | 26 µs |
+| `0x01` | `OUT` | port, value | | 3 | 78 µs |
+| `0x02` | `IN` | port | value | 2 + 1 | 78 µs |
 | `0x03` | `INFO` | | version, N, N × 6 | 1 + 2 + 6N | |
 | `0x04`–`0x0F` | reserved | | | | |
 
@@ -120,23 +124,23 @@ native commands. Version 1 (today's emulator) doesn't.
 
 | Opcode | Name | Arguments | Reply | Bytes | CPU cost | FabGL |
 |---|---|---|---|---|---|---|
-| `0x10` | `PUTC` | c | | 2 | 36 µs | `drawGlyph` at the cursor, or the control code |
-| `0x11` | `PUTS` | n, c₁ … cₙ | | 2 + n | 36 µs + 18 µs per char | `drawGlyph` per character |
-| `0x12` | `CURSOR` | x, y | | 3 | 54 µs | (cursor kept by the firmware) |
-| `0x13` | `COLOR` | fg, bg | | 3 | 54 µs | `setPenColor`, `setBrushColor` |
-| `0x14` | `CLEAR` | bg | | 2 | 36 µs | `setBrushColor` + `clear` |
-| `0x15` | `SCROLL` | n | | 2 | 36 µs | `setBrushColor(bg)` + `scroll(0, -8n)` |
-| `0x16` | `DEFCHAR` | code, 8 rows | | 10 | 180 µs | (RAM font copy) |
-| `0x17` | `GET_CHAR` | x, y | char, colours | 3 + 2 | 90 µs | (text cells) |
-| `0x18` | `GET_CURSOR` | | x, y | 1 + 2 | 54 µs | (cursor) |
-| `0x19` | `SHOW_CURSOR` | on | | 2 | 36 µs | blinking underline, by the firmware |
+| `0x10` | `PUTC` | c | | 2 | 52 µs | `drawGlyph` at the cursor, or the control code |
+| `0x11` | `PUTS` | n, c₁ … cₙ | | 2 + n | 52 µs + 26 µs per char | `drawGlyph` per character |
+| `0x12` | `CURSOR` | x, y | | 3 | 78 µs | (cursor kept by the firmware) |
+| `0x13` | `COLOR` | fg, bg | | 3 | 78 µs | `setPenColor`, `setBrushColor` |
+| `0x14` | `CLEAR` | bg | | 2 | 52 µs | `setBrushColor` + `clear` |
+| `0x15` | `SCROLL` | n | | 2 | 52 µs | `setBrushColor(bg)` + `scroll(0, -8n)` |
+| `0x16` | `DEFCHAR` | code, 8 rows | | 10 | 260 µs | (RAM font copy) |
+| `0x17` | `GET_CHAR` | x, y | char, colours | 3 + 2 | 130 µs | (text cells) |
+| `0x18` | `GET_CURSOR` | | x, y | 1 + 2 | 78 µs | (cursor) |
+| `0x19` | `SHOW_CURSOR` | on | | 2 | 52 µs | blinking underline, by the firmware |
 | `0x1A`–`0x1E` | reserved | | | | | |
-| `0x1F` | `TEXT_RESET` | | | 1 | 18 µs | default font, colours, cursor; `clear` |
+| `0x1F` | `TEXT_RESET` | | | 1 | 26 µs | default font, colours, cursor; `clear` |
 
 * **`PUTC c`** draws character c at the cursor in the text colours and
   moves the cursor, or runs control code c.
 * **`PUTS n c₁ … cₙ`**: the same for n characters (0 to 255; 0 does
-  nothing). A full row of 32 characters is 34 bytes, about 0.6 ms.
+  nothing). A full row of 32 characters is 34 bytes, about 0.9 ms.
 * **`CURSOR x y`** moves the cursor to column x (0–31), row y (0–23) and
   cancels a pending wrap. Off the grid, the command is ignored.
 * **`COLOR fg bg`** sets the text colours for the next characters: fg for
@@ -168,20 +172,24 @@ native commands. Version 1 (today's emulator) doesn't.
 
 | Opcode | Name | Arguments | Reply | Bytes | CPU cost | FabGL |
 |---|---|---|---|---|---|---|
-| `0x30` | `PIXEL` | x, y, c | | 4 | 72 µs | `setPixel(x, y, c)` |
-| `0x31` | `LINE` | x₀, y₀, x₁, y₁, c | | 6 | 108 µs | `setPenColor` + `drawLine` |
-| `0x32` | `RECT` | x, y, w, h, c | | 6 | 108 µs | `setPenColor` + `drawRectangle(x, y, x+w-1, y+h-1)` |
-| `0x33` | `FILL_RECT` | x, y, w, h, c | | 6 | 108 µs | `setBrushColor` + `fillRectangle(x, y, x+w-1, y+h-1)` |
-| `0x34` | `GET_PIXEL` | x, y | c | 3 + 1 | 72 µs | `waitCompletion` + `getPixel` (RGB → palette index) |
+| `0x30` | `PIXEL` | x, y, c | | 4 | 104 µs | `setPixel(x, y, c)` |
+| `0x31` | `LINE` | x₀, y₀, x₁, y₁, c | | 6 | 156 µs | `setPenColor` + `drawLine` |
+| `0x32` | `RECT` | x, y, w, h, c | | 6 | 156 µs | `setPenColor` + `drawRectangle(x, y, x+w-1, y+h-1)` |
+| `0x33` | `FILL_RECT` | x, y, w, h, c | | 6 | 156 µs | `setBrushColor` + `fillRectangle(x, y, x+w-1, y+h-1)` |
+| `0x34` | `GET_PIXEL` | x, y | c | 3 + 1 | 104 µs | `waitCompletion` + `getPixel` (RGB → palette index) |
 | `0x35`–`0x3F` | reserved | | | | | |
 | `0x40` | `BLIT` | reserved | | | | `drawBitmap` |
 | `0x41`–`0x4F` | reserved | | | | | |
 
 * x is 0–255, all on screen; y is 0–191 on screen, 192–255 off screen.
   Whatever falls off the screen is clipped, nothing wraps around.
-* **`LINE`** draws both end points.
+* **`LINE`** draws both end points. It is drawn from its leftmost end
+  (the top one when vertical): the same pixels whichever end comes first,
+  so drawing a line again in the background colour erases it.
 * **`RECT`** / **`FILL_RECT`**: w or h = 0 draws nothing. The rectangle is
-  w × h pixels from (x, y), clipped at the right and bottom edges.
+  w × h pixels from (x, y), clipped at the right and bottom edges. w is at
+  most 255, so one rectangle can't cover the full width of 256: fill the
+  whole screen with `CLEAR`, a full-width band with two `FILL_RECT`s.
 * **`GET_PIXEL`** replies with the colour 0–15; off screen, 0.
 * Graphics don't change the text cells, the cursor or the text colours.
 
@@ -191,8 +199,8 @@ native commands. Version 1 (today's emulator) doesn't.
 
 | Opcode | Name | Arguments | Reply | Bytes | CPU cost | ESP32 |
 |---|---|---|---|---|---|---|
-| `0x60` | `GET_TIME` | | year, month, day, hour, minute, second | 1 + 6 | 126 µs | its clock (NTP or a clock chip, still open) |
-| `0x61` | `VSYNC` | on | | 2 | 36 µs | frame counter, counted on the VGA controller's vertical blank |
+| `0x60` | `GET_TIME` | | year, month, day, hour, minute, second | 1 + 6 | 182 µs | its clock (NTP or a clock chip, still open) |
+| `0x61` | `VSYNC` | on | | 2 | 52 µs | frame counter, counted on the VGA controller's vertical blank |
 | `0x62`–`0x6F` | reserved | | | | | |
 
 * **`GET_TIME`**: the values are the RTC's ports (year since 1900, month
@@ -308,20 +316,73 @@ vectors not yet set.
 ### Examples (bytes sent)
 
 ```
-11 05 48 65 6C 6C 6F        PUTS "Hello"            7 bytes, ~126 µs
+11 05 48 65 6C 6C 6F        PUTS "Hello"            7 bytes, ~0.2 ms
 13 0F 01                    COLOR white on blue     3 bytes
 12 00 17                    CURSOR 0, 23            3 bytes
-14 01                       CLEAR blue              2 bytes, ~36 µs (today ~0.3 s)
-31 00 00 63 00 0C           LINE (0,0)-(99,0) red   6 bytes, ~108 µs
+14 01                       CLEAR blue              2 bytes (the old ports: 0.2 s)
+31 00 00 63 00 0C           LINE (0,0)-(99,0) red   6 bytes, ~0.2 ms
 60                          GET_TIME -> 7E 0B 0B 0E 1E 00 (2026-11-11 14:30:00)
 ```
 
-## In the emulator (step 2)
+### Measured speed-ups
 
-* The ESP32 model (`hbc2-core` `iop.rs`) runs the commands at once; each
-  byte takes the I/O processor's usual service time (8 cycles). The time the
-  ESP32 needs to draw is not modelled.
-* The IDE's Monitor view shows the picture.
+The C library before (the old monitor ports through the mailbox, 42 × 24)
+and after (the native commands, 32 × 24), in the emulator at 2 MHz
+(`compiler/bench/screen`, run with
+`cargo run --release -p hbc2-cc --example screen_bench ../compiler/bench/screen`
+from `hbc2/`):
+
+| | Before | After | Faster |
+|---|---|---|---|
+| Clear the screen (`screen_clear`) | 420,018 cycles, 210 ms | 546 cycles, 0.27 ms | × 770 |
+| One full row (`screen_write`: 42 → 32 characters) | 48,838 cycles, 24.4 ms | 2,529 cycles, 1.26 ms | × 19 (× 15 per character) |
+| A full screen (`screen_write`: 1,008 → 768 characters) | 1,168,593 cycles, 584 ms | 41,134 cycles, 20.6 ms | × 28 (× 22 per character) |
+| A 100-pixel line (100 × `screen_put_pixel` → `screen_line`) | 101,758 cycles, 50.9 ms | 434 cycles, 0.22 ms | × 234 |
+| One row through the terminal (`puts`: 41 → 31 characters + `\n`) | 101,231 cycles, 50.6 ms | 3,459 cycles, 1.73 ms | × 29 |
+
+## In the emulator
+
+* The ESP32 model (`hbc2-core` `iop.rs`) runs a command as soon as its last
+  byte arrives; each byte takes the I/O processor's usual service time (8
+  cycles). The time the ESP32 needs to draw is not modelled.
+* The screen is `hbc2-core` `peripherals/monitor.rs`; its font
+  (`peripherals/font.rs`) is generated by `hbc2-core/font/gen_font.py`.
+* The IDE's Monitor view shows the picture and the blinking cursor; its I/O
+  view logs each native command with its first arguments and its reply.
+* Tests: `hbc2-core/tests/native.rs` (every command on the screen, VSYNC),
+  `hbc2-asm/tests/native.rs` (the bytes through the mailbox).
+
+## In the library
+
+`compiler/lib/asm/screen.has` sends the commands straight to the mailbox,
+with interrupts off for each call, and keeps every register. Every routine
+sets C = 1 and sends nothing without a native display (`_display_port` =
+0).
+
+| Assembly | C (`hbc2.h`) | Commands |
+|---|---|---|
+| `screen_putc` (a at cell x, y, colours b) | `screen_putc` | `CURSOR`, `COLOR`, `PUTC`, `COLOR` back |
+| `screen_getc` | `screen_getc` | `GET_CHAR` |
+| `screen_write` ([c:d] characters at [i:j]) | `screen_write` | `CURSOR`, `COLOR`, `PUTS`…, `COLOR` back |
+| `screen_puts` (0-terminated, at the cursor) | `puts`, the terminal | `PUTS`… |
+| `screen_out` (a at the cursor) | `putchar`, the terminal | `PUTC` |
+| `screen_clear`, `screen_fill` | `screen_clear`, `screen_fill` | `COLOR`, `CLEAR`, `COLOR` back |
+| `screen_set_bg`, `screen_set_txt` | the same | `GET_CHAR` + `CURSOR` + `COLOR` + `PUTC` per cell (~0.2 s) |
+| `screen_set_colors` | `term_set_colors` | `COLOR` |
+| `screen_scroll`, `screen_cursor`, `screen_get_cursor`, `screen_show_cursor`, `screen_defchar`, `screen_reset` | `screen_scroll`, `term_set_cursor_pos`, `term_get_cursor_pos`, —, `screen_define_char`, `screen_reset` | `SCROLL`, `CURSOR`, `GET_CURSOR`, `SHOW_CURSOR`, `DEFCHAR`, `TEXT_RESET` |
+| `screen_put_pixel`, `screen_get_pixel`, `screen_line`, `screen_rect`, `screen_fill_rect` | the same | `PIXEL`, `GET_PIXEL`, `LINE`, `RECT`, `FILL_RECT` |
+| `screen_vsync` | `clock()`, `delay()` | `VSYNC` |
+| `lib_get_time` (`time.has`) | `time()`, `rtc_get` | `GET_TIME` |
+
+* The terminal (`terminal.has`) prints at the I/O processor's cursor and
+  lets it wrap, scroll and blink the cursor; it keeps only the keyboard
+  queue and the AZERTY tables (the accented keys now type `é è ç à ù ° £ µ
+  § ¨ ¤`).
+* `clock()` and `delay()` turn VSYNC on at their first call and point the
+  display port's vector to the library's handler, which adds the frames
+  since the last event (merged events included) to a 32-bit counter.
+* `screen_set_mode`, `screen_get_mode`, `monitor_mode`, `PIXEL_MODE` and
+  `TEXT_MODE` are gone from `hbc2.h`.
 
 ## Decisions (Gianni, 2026-11-11)
 
@@ -338,3 +399,10 @@ vectors not yet set.
 7. The FabGL points to check on the board (vertical-blank hook, 256 × 192
    modeline at 60 Hz, `drawLine`'s pixels, `GET_PIXEL` read-back) are item
    B6 of `logisim/notes/breadboard-checks.md`.
+
+Found while implementing (2026-11-11):
+
+* `LINE` draws from its leftmost end, so both directions give the same
+  pixels (Bresenham alone doesn't).
+* `FILL_RECT`'s w and h are bytes: a full-width (256) rectangle takes two
+  commands, or `CLEAR` for the whole screen.

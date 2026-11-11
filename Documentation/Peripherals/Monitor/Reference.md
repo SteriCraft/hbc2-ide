@@ -1,15 +1,19 @@
 # Monitor reference
 
-A screen with two modes: **text** (42 × 24 coloured characters) and **pixel**
-(256 × 192 coloured pixels), both with a 16-colour palette.
+The old monitor ports, kept so that older programs run. Since 2026-11-11
+they reach the **native display**'s picture
+([Native commands reference](../Native/Reference.md)): one picture of
+256 × 192 pixels, 16 colours, with text in 8 × 8 cells, **32 × 24**. New
+programs use the native commands, which are much faster (one character:
+2 bytes instead of 5 port writes).
 
 | | |
 |---|---|
 | Class | `03 00` (display, VGA) |
 | Product ID | `0x0001` |
 | Ports | 5 |
-| Interrupts | none |
-| Mode at power-on | text, every cell black with character code 0 (blank) |
+| Interrupts | none (the VSYNC event is the native display's) |
+| At power-on | the picture is blue, every text cell a space in bright yellow on blue; the ports are in text mode |
 
 See the [peripherals overview](../README.md) for ports, interrupts and how
 to find the monitor's first port (`monitorPort` in the project template).
@@ -29,10 +33,10 @@ to find the monitor's first port (`monitorPort` in the project template).
 | Value | Name | What it does |
 |---|---|---|
 | 0 | `NOP` | Nothing |
-| 1 | `WRITE` | Writes `DATA_0` (and `DATA_1` in text mode) at (`POS_X`, `POS_Y`) |
+| 1 | `WRITE` | Text mode: draws `DATA_1` in the colours `DATA_0` in cell (`POS_X`, `POS_Y`). Pixel mode: sets pixel (`POS_X`, `POS_Y`) to `DATA_0`. |
 | 2 | `READ` | Puts what is at (`POS_X`, `POS_Y`) on `DATA_0` and `DATA_1` |
-| 3 | `SWITCH_TO_PIXEL_MODE` | Shows the pixel screen |
-| 4 | `SWITCH_TO_TEXT_MODE` | Shows the text screen |
+| 3 | `SWITCH_TO_PIXEL_MODE` | `WRITE` and `READ` reach the pixels |
+| 4 | `SWITCH_TO_TEXT_MODE` | `WRITE` and `READ` reach the text cells |
 | other | | Nothing |
 
 A command runs each time the CPU writes `CMD`, with the values the other
@@ -41,29 +45,30 @@ runs the command again. The other ports keep their values too, so a program
 only rewrites the ones that change (for example only `POS_X` and `DATA_1`
 to write the next character of a line).
 
+There is **one picture**: switching mode changes nothing on screen, it only
+chooses what `WRITE` and `READ` reach. Text drawn with `WRITE` is pixels of
+the picture, and pixels drawn over a character don't change its cell.
+
 ## Text mode
 
-* 42 columns (`POS_X` 0-41) × 24 rows (`POS_Y` 0-23). Cell (0, 0) is the top
-  left corner.
-* Each character is 6 × 8 pixels, so the text screen is 252 × 192 pixels.
-* Each cell holds two bytes:
-  * colours: background in the high 4 bits, character colour in the low 4
-    bits (`0x1F` = white on blue),
-  * the character code.
-* **Displayable characters:** codes `0x20` (space) to `0x7E` (`~`), 95 characters:
+* 32 columns (`POS_X` 0-31) × 24 rows (`POS_Y` 0-23). Cell (0, 0) is the top
+  left corner, at pixel (0, 0); cell (x, y) is at pixel (8x, 8y).
+* Each cell holds the colours (background in the high 4 bits, character
+  colour in the low 4 bits: `0x1F` = white on blue) and the character code.
+* **Characters:** Windows-1252, the native display's font: ASCII `0x20`–`0x7E`,
+  Latin-1 `0xA0`–`0xFF` (`é` = `0xE9`), and `€ œ Œ Ÿ` and the typographic
+  quotes in `0x80`–`0x9F`. A control code (below `0x20`) is stored as
+  written and drawn blank.
 
-  ```
-   !"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\]^_`abcdefghijklmnopqrstuvwxyz{|}~
-  ```
+**WRITE** draws the character in the cell and stores it. It doesn't move
+the native display's cursor or change its text colours. A position off the
+grid (`POS_X` > 31 or `POS_Y` > 23) is ignored.
 
-  Any other code is stored as written but shows as an empty cell in the
-  background colour.
+**READ** puts the cell's colours on `DATA_0` and its character on `DATA_1`
+(the native `GET_CHAR`). A position off the grid reads as `0x00` on both.
 
-**WRITE** stores `DATA_0` (colours) and `DATA_1` (character) in the cell.
-A position off the grid (`POS_X` > 41 or `POS_Y` > 23) is ignored.
-
-**READ** puts the cell's colours on `DATA_0` and its character on `DATA_1`.
-A position off the grid reads as `0x00` on both.
+Columns 32-41 of the old 42-column screen are gone: programs written for it
+lose what they put there.
 
 ## Pixel mode
 
@@ -71,18 +76,11 @@ A position off the grid reads as `0x00` on both.
   (`POS_Y` 0-191). Pixel (0, 0) is the top left corner.
 * Each pixel has a colour from 0 to 15.
 
-**WRITE** sets the pixel to the low 4 bits of `DATA_0` (the high 4 bits are
-ignored). `DATA_1` is not used. `POS_Y` > 191 is ignored.
+**WRITE** sets the pixel to the low 4 bits of `DATA_0` (the native `PIXEL`).
+`DATA_1` is not used. `POS_Y` > 191 is ignored.
 
-**READ** puts the pixel's colour (0-15) on `DATA_0` and `0x00` on `DATA_1`.
-`POS_Y` > 191 reads as `0x00`.
-
-## Switching modes
-
-The text screen and the pixel screen are two separate memories. Switching
-mode only changes which one is shown: neither is cleared, and `WRITE` and
-`READ` work on the memory of the current mode. Switching to the mode already
-shown does nothing visible.
+**READ** puts the pixel's colour (0-15) on `DATA_0` and `0x00` on `DATA_1`
+(the native `GET_PIXEL`). `POS_Y` > 191 reads as `0x00`.
 
 ## Palette
 
@@ -175,7 +173,7 @@ see [Reading and writing ports](../README.md#reading-and-writing-ports)).
 ### Draw a pixel
 
 ```
-; Switches to pixel mode and draws a bright red pixel at (100, 50).
+; Draws a bright red pixel at (100, 50).
     lod d, monitorPort
     add d, 4                ; d = CMD
     mov a, 3                ; SWITCH_TO_PIXEL_MODE
@@ -206,6 +204,7 @@ see [Reading and writing ports](../README.md#reading-and-writing-ports)).
 
 ## In the IDE
 
-The screen is shown in the **Monitor** view. Pixel mode keeps one byte per pixel in the emulator; the real hardware would
-pack two pixels per byte (24,576 bytes), which a program cannot see either
-way.
+The picture is shown in the **Monitor** view, with the native display's
+blinking cursor when a program shows it. The emulator keeps one byte per
+pixel; the board keeps 4 bits per pixel (24,576 bytes), which a program
+cannot see either way.
