@@ -172,7 +172,7 @@ fn bench_program() -> Vec<u8> {
     // After CLI (1 byte) and three MOV r, value (3 bytes each).
     let loop_start = PROGRAM_START + 1 + 3 * 3;
     let program = [
-        encode::none(O::Cli),           // ignore the plug-in interrupts
+        encode::none(O::Cli),           // no interrupts
         encode::reg_imm8(O::Mov, D, 5), // D = monitor CMD port (monitor is plugged first, ports 1-5)
         encode::reg_imm8(O::Mov, J, 1), // J = monitor WRITE command
         encode::reg_imm8(O::Mov, A, 0),

@@ -13,9 +13,8 @@ history keeps them). Detailed notes are linked; this file only lists.
   the **I/O protocol** (the command bytes NOP, OUT `0x01 p v`, IN `0x02 p`,
   INFO `0x03` and its reply, and the TX_FREE / RX_AVAIL handshake), now
   that the INFO start-up is done (2026-11-11; reference:
-  `Documentation/Peripherals/README.md`, "Detecting the devices"). The IVT
-  row for port `0x00` still says "reserved: the plug-in interrupts": no
-  device has port 0 now. Then export `HBC-2_Instruction_Manual.pdf`.
+  `Documentation/Peripherals/README.md`, "Detecting the devices"). Then
+  export `HBC-2_Instruction_Manual.pdf`.
 
 ## IDE and emulator (`hbc2/`)
 

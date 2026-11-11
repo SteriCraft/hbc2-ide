@@ -6,7 +6,7 @@ use hbc2_core::{Machine, MachineConfig, Register};
 pub use hbc2_core::Opcode as O;
 pub use hbc2_core::Register::*;
 
-/// No peripherals: no plug-in interrupts, so tests see only their own program.
+/// No peripherals: no interrupts, so tests see only their own program.
 pub fn bare() -> MachineConfig {
     MachineConfig {
         monitor: false,

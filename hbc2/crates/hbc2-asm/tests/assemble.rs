@@ -46,7 +46,7 @@ fn addr(p: &Program, name: &str) -> u32 {
 use Opcode as O;
 use Register::*;
 
-/// No peripherals, so no plug-in interrupts.
+/// No peripherals, so no interrupts.
 fn bare() -> MachineConfig {
     MachineConfig {
         monitor: false,
