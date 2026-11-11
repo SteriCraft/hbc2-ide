@@ -80,6 +80,8 @@ int cells(void)
         return 50;
     if (screen_set_bg(16) != 1 || screen_set_txt(16) != 1)
         return 51;
+    if (screen_getc(31, 2) != (COLORS(BRIGHT_YELLOW, GREEN) << 8 | ' '))    /* every cell */
+        return 74;
     /* DEFCHAR: '~' becomes a frame, cell 5, 5 is at pixel 40, 40 */
     if (screen_define_char('~', frame) || screen_define_char('\n', frame) != 1)
         return 52;

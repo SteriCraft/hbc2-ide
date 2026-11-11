@@ -77,7 +77,8 @@ fn interrupts_are_off_for_one_command_at_a_time() {
     // One PUTS of 255 characters: about 52 cycles a byte.
     assert!(write < 14_500, "screen_write: {write} cycles off");
     assert!(write > 12_000, "one PUTS of 255 is the longest: {write}");
-    // screen_set_bg: one GET_CHAR (5 bytes with its reply) at most.
-    assert!(recolor < 1_000, "screen_set_bg: {recolor} cycles off");
+    // screen_set_bg: one RECOLOR, 3 bytes.
+    assert!(recolor < 500, "screen_set_bg: {recolor} cycles off");
+    assert!(recolor_cycles < 1_000, "screen_set_bg: {recolor_cycles} cycles");
     assert!(others < 1_000, "{others} cycles off");
 }

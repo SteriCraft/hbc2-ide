@@ -164,7 +164,7 @@ fn every_command_does_what_the_monitor_does() {
         0,
         0x06,
     ]); // 0 = 256
-    bytes.extend([cmd::NOP, 0x1A, 0x40, 0x50, 0x70, 0x80, 0xFF]); // ignored, 1 byte each
+    bytes.extend([cmd::NOP, 0x1B, 0x40, 0x50, 0x70, 0x80, 0xFF]); // ignored, 1 byte each
     bytes.extend([cmd::PUTC, b'z']);
     let (m, _) = send(&bytes, 0, MachineConfig::default());
 
@@ -220,6 +220,34 @@ fn every_command_does_what_the_monitor_does() {
     let mut want = Monitor::new();
     want.text_reset();
     same_screen(monitor(&m), &want);
+}
+
+#[test]
+fn recolor_is_three_bytes() {
+    let (m, _) = send(
+        &[
+            cmd::PUTC,
+            b'Q',
+            cmd::RECOLOR,
+            0,
+            2,
+            cmd::RECOLOR,
+            1,
+            4,
+            cmd::PUTC,
+            b'R',
+        ],
+        0,
+        MachineConfig::default(),
+    );
+    let mut want = Monitor::new();
+    want.putc(b'Q');
+    want.recolor(0, 2);
+    want.recolor(1, 4);
+    want.putc(b'R');
+    same_screen(monitor(&m), &want);
+    assert_eq!(monitor(&m).get_char(0, 0), (b'Q', 0x24));
+    assert_eq!(monitor(&m).get_char(1, 0), (b'R', 0x1E), "COLOR kept");
 }
 
 #[test]

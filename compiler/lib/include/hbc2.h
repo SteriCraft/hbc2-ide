@@ -151,9 +151,10 @@ unsigned screen_write(const char *text, unsigned length,
                       unsigned char x, unsigned char y, unsigned char colors);
 // Spaces everywhere, cursor at the top left.
 int screen_clear(unsigned char colors);
-// Background / text color of every cell (characters kept). Slow: each
-// cell is read and drawn again (about 0.2 s). Returns a non-zero value
-// if color > 15.
+// Background / text color of every cell (characters and cursor kept):
+// one RECOLOR command, the I/O processor draws every cell again. Pixels
+// drawn over the text are replaced. Returns a non-zero value if
+// color > 15.
 int screen_set_bg(unsigned char color);
 int screen_set_txt(unsigned char color);
 // The screen moves up rows text rows (graphics too); the rows at the

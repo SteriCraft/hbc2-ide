@@ -409,6 +409,24 @@ impl Monitor {
         self.generation += 1;
     }
 
+    /// RECOLOR: which = 0 sets every text cell's background to c, 1 every
+    /// cell's character colour (the low 4 bits of c); each cell is drawn
+    /// again from the current font. Another `which` does nothing.
+    pub fn recolor(&mut self, which: u8, c: u8) {
+        let (keep, new) = match which {
+            0 => (0x0F, (c & 0x0F) << 4),
+            1 => (0xF0, c & 0x0F),
+            _ => return,
+        };
+        for y in 0..TEXT_ROWS as u8 {
+            for x in 0..TEXT_COLUMNS as u8 {
+                let cell = self.cells[x as usize + y as usize * TEXT_COLUMNS];
+                self.draw_cell(x, y, cell.code, cell.colors & keep | new);
+            }
+        }
+        self.generation += 1;
+    }
+
     /// TEXT_RESET: default font, colours and cursor, the screen cleared.
     pub fn text_reset(&mut self) {
         self.default_text_state();

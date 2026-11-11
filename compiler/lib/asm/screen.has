@@ -40,6 +40,7 @@
 .define NAT_GET_CHAR 0x17
 .define NAT_GET_CURSOR 0x18
 .define NAT_SHOW_CURSOR 0x19
+.define NAT_RECOLOR 0x1A
 .define NAT_TEXT_RESET 0x1F
 .define NAT_PIXEL 0x30
 .define NAT_LINE 0x31
@@ -405,18 +406,17 @@ screen_set_colors_end:
     ret
 
 ; screen_set_bg / screen_set_txt: a = new background / character colour
-; (0-15) of every cell, characters kept. The cursor goes back where it
-; was (a pending wrap is lost). Each cell is read and drawn again: 4
-; commands, interrupts allowed between them. C = 1: a > 15 or no display.
+; (0-15) of every cell, characters and cursor kept: one RECOLOR command.
+; C = 1: a > 15 or no display.
 screen_set_bg:
     psh b
-    mov b, 0x0F                 ; keep the character colour
+    mov b, 0                    ; RECOLOR 0: the backgrounds
     jmp scr_recolor
 screen_set_txt:
     psh b
-    mov b, 0xF0                 ; keep the background
+    mov b, 1                    ; RECOLOR 1: the character colours
     jmp scr_recolor
-; b = the bits of the old colours to keep, a = the new colour.
+; b = which, a = the new colour.
 scr_recolor:
     cmp a, 16
     jmf scr_recolor_ok
@@ -428,82 +428,19 @@ scr_recolor_ok:
     cal scr_check
     jmc scr_recolor_err
     psf
-    cal scr_mark
-    psh a, c, d, i, j, x, y
-    cmp b, 0x0F
-    jme scr_recolor_bg
-    jmp scr_recolor_go          ; text colour: a stays in the low nibble
-scr_recolor_bg:
-    shl a                       ; background: in the high nibble
-    shl a
-    shl a
-    shl a
-scr_recolor_go:
-    mov i, a                    ; i = the new colour, in place
-    mov j, b                    ; j = the bits kept
+    cli
+    psh a, c, d, x, y
+    mov x, b
+    mov y, a
     mov c, MBX_STATUS
     mov d, MBX_DATA
-    cli
-    mov b, NAT_GET_CURSOR
-    cal scr_byte
-    cal scr_recv
-    mov x, b
-    cal scr_recv
-    mov y, b
-    cal scr_open
-    psh x, y                    ; the cursor, to put back
-    mov y, 0
-scr_recolor_row:
-    mov x, 0
-scr_recolor_cell:
-    cli
-    mov b, NAT_GET_CHAR
+    mov b, NAT_RECOLOR
     cal scr_byte
     mov b, x
     cal scr_byte
     mov b, y
     cal scr_byte
-    cal scr_recv
-    psh b                       ; the character
-    cal scr_recv                ; b = its colours
-    cal scr_open
-    and b, j
-    or b, i                     ; b = the new colours
-    psh b
-    cal scr_cursor
-    pop b
-    psh x
-    mov x, b
-    cal scr_color
-    pop x
-    pop b
-    cmp b, 0x20
-    jmf scr_recolor_control
-    jmp scr_recolor_putc
-scr_recolor_control:
-    mov b, ' '                  ; a control code (old ports): drawn blank
-scr_recolor_putc:
-    psh b
-    cli
-    mov b, NAT_PUTC
-    cal scr_byte
-    pop b
-    cal scr_byte                ; the character again, in the new colours
-    cal scr_open
-    inc x
-    cmp x, SCREEN_COLUMNS
-    jmf scr_recolor_cell
-    inc y
-    cmp y, SCREEN_ROWS
-    jmf scr_recolor_row
-    pop x, y
-    cmp x, SCREEN_COLUMNS
-    jmf scr_recolor_cursor
-    mov x, 31                   ; a pending wrap: back on the last column
-scr_recolor_cursor:
-    cal scr_cursor
-    cal scr_color_back
-    pop a, c, d, i, j, x, y
+    pop a, c, d, x, y
     pof
     pop b
     clc

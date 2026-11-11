@@ -55,6 +55,7 @@ pub mod command {
     pub const GET_CHAR: u8 = 0x17;
     pub const GET_CURSOR: u8 = 0x18;
     pub const SHOW_CURSOR: u8 = 0x19;
+    pub const RECOLOR: u8 = 0x1A;
     pub const TEXT_RESET: u8 = 0x1F;
     pub const PIXEL: u8 = 0x30;
     pub const LINE: u8 = 0x31;
@@ -73,7 +74,7 @@ pub mod command {
             IN => 2,
             PUTC | CLEAR | SCROLL | SHOW_CURSOR | VSYNC => 2,
             PUTS => 2 + bytes.get(1).map_or(0, |&n| n as usize),
-            CURSOR | COLOR | GET_CHAR | GET_PIXEL => 3,
+            CURSOR | COLOR | GET_CHAR | GET_PIXEL | RECOLOR => 3,
             PIXEL => 4,
             LINE | RECT | FILL_RECT => 6,
             DEFCHAR => 10,
@@ -98,6 +99,7 @@ pub mod command {
             GET_CHAR => "GET_CHAR",
             GET_CURSOR => "GET_CURSOR",
             SHOW_CURSOR => "SHOW_CURSOR",
+            RECOLOR => "RECOLOR",
             TEXT_RESET => "TEXT_RESET",
             PIXEL => "PIXEL",
             LINE => "LINE",
@@ -381,6 +383,7 @@ impl Iop {
                     reply = vec![x, y];
                 }
                 command::SHOW_CURSOR => m.show_cursor(arg(0) != 0),
+                command::RECOLOR => m.recolor(arg(0), arg(1)),
                 command::TEXT_RESET => m.text_reset(),
                 command::PIXEL => m.pixel(arg(0), arg(1), arg(2)),
                 command::LINE => m.line(arg(0), arg(1), arg(2), arg(3), arg(4)),

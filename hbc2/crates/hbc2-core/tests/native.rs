@@ -289,6 +289,46 @@ fn get_char_off_the_grid() {
 }
 
 #[test]
+fn recolor_keeps_the_characters_and_the_cursor() {
+    let mut m = fresh(); // white on black
+    m.puts(b"Hi");
+    m.set_colors(4, 2); // red on green
+    m.putc(b'!');
+    m.pixel(100, 100, 7); // over cell (12, 12), a space
+    m.set_cursor(0, 5);
+    m.puts(&[b'x'; 32]); // a pending wrap
+    let cursor = m.get_cursor();
+    assert_eq!(cursor, (32, 5));
+
+    m.recolor(0, 0x13); // backgrounds: cyan (low 4 bits)
+    assert_eq!(m.get_char(0, 0), (b'H', 0x3F));
+    assert_eq!(m.get_char(2, 0), (b'!', 0x34));
+    assert_eq!(m.get_pixel(100, 100), 3, "pixels over the text replaced");
+    assert_eq!(m.get_cursor(), cursor, "cursor and pending wrap kept");
+    assert_eq!(m.colors(), (4, 2), "COLOR kept");
+
+    m.recolor(1, 13); // characters: bright magenta
+    assert_eq!(m.get_char(2, 0), (b'!', 0x3D));
+    assert_eq!(cell_bits(&m, 0, 0, 13), DEFAULT_FONT[b'H' as usize]);
+    assert_eq!(
+        cell_bits(&m, 1, 0, 3),
+        DEFAULT_FONT[b'i' as usize].map(|r| !r)
+    );
+
+    // Drawn from the current font.
+    let frame = [0xFF, 0x81, 0x81, 0x81, 0x81, 0x81, 0x81, 0xFF];
+    m.define_char(b'H', frame);
+    m.recolor(1, 15);
+    assert_eq!(cell_bits(&m, 0, 0, 15), frame);
+
+    // Another `which`: nothing.
+    let before = m.pixel_buffer().to_vec();
+    m.recolor(2, 5);
+    assert_eq!(m.pixel_buffer(), &before[..]);
+    assert_eq!(m.get_char(0, 0), (b'H', 0x3F));
+}
+
+#[test]
 fn pixels_lines_rectangles() {
     let mut m = fresh();
     m.pixel(255, 191, 0x1C);

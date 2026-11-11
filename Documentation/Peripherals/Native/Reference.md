@@ -134,7 +134,8 @@ native commands. Version 1 (today's emulator) doesn't.
 | `0x17` | `GET_CHAR` | x, y | char, colours | 3 + 2 | 130 µs | (text cells) |
 | `0x18` | `GET_CURSOR` | | x, y | 1 + 2 | 78 µs | (cursor) |
 | `0x19` | `SHOW_CURSOR` | on | | 2 | 52 µs | blinking underline, by the firmware |
-| `0x1A`–`0x1E` | reserved | | | | | |
+| `0x1A` | `RECOLOR` | which, c | | 3 | 78 µs | `drawGlyph` for each cell, in its new colours |
+| `0x1B`–`0x1E` | reserved | | | | | |
 | `0x1F` | `TEXT_RESET` | | | 1 | 26 µs | default font, colours, cursor; `clear` |
 
 * **`PUTC c`** draws character c at the cursor in the text colours and
@@ -165,6 +166,12 @@ native commands. Version 1 (today's emulator) doesn't.
 * **`SHOW_CURSOR on`**: 1 shows the cursor as an underline that blinks
   twice a second, drawn by the firmware without changing the cell; 0 hides
   it (default). The terminal no longer needs the RTC to blink its cursor.
+* **`RECOLOR which c`**: which = 0 sets the background of every text cell
+  to c, 1 the character colour of every cell (the low 4 bits of c); any
+  other value does nothing. Each cell is drawn again from its character
+  and the current font, as `PUTC` would draw it: pixels drawn over the
+  text are replaced. The characters, the cursor (a pending wrap too),
+  `COLOR` and the font don't change. 768 glyphs for the ESP32 to draw.
 * **`TEXT_RESET`** restores the default font and colours (14 on 1), hides
   the cursor, clears the screen in blue and moves the cursor to (0, 0).
 
@@ -317,7 +324,7 @@ vectors not yet set.
   Every other library call stays under 250 cycles at a time. Keys wait in
   the I/O processor's queue and VSYNC events merge meanwhile: nothing is
   lost. (Before 2026-11-11 a whole call ran with interrupts off: 21 ms for
-  a full screen, 0.27 s for `screen_set_bg`.)
+  a full screen, 0.27 s for `screen_set_bg`, now one `RECOLOR`.)
 * A handler must not draw: its commands would come between two of the
   interrupted call's, with the cursor and the text colours moved.
 * Commands without a reply are streamed: the CPU only waits for `TX_FREE`
@@ -351,6 +358,7 @@ from `hbc2/`):
 | A full screen (`screen_write`: 1,008 → 768 characters) | 1,168,593 cycles, 584 ms | 41,471 cycles, 20.7 ms | × 28 (× 21 per character) |
 | A 100-pixel line (100 × `screen_put_pixel` → `screen_line`) | 101,758 cycles, 50.9 ms | 434 cycles, 0.22 ms | × 234 |
 | One row through the terminal (`puts`: 41 → 31 characters + `\n`) | 101,231 cycles, 50.6 ms | 3,535 cycles, 1.77 ms | × 29 |
+| Recolour every cell (`screen_set_bg`: 4 native commands per cell → `RECOLOR`) | 546,461 cycles, 273 ms | 303 cycles, 0.15 ms | × 1,800 |
 
 (With interrupts allowed between commands, 2026-11-11: about 150 cycles
 more per call than with one window for the whole call.)
@@ -370,7 +378,7 @@ more per call than with one window for the whole call.)
 ## In the library
 
 `compiler/lib/asm/screen.has` sends the commands straight to the mailbox,
-with interrupts off for each call, and keeps every register. Every routine
+with interrupts off for one command at a time, and keeps every register. Every routine
 sets C = 1 and sends nothing without a native display (`_display_port` =
 0).
 
@@ -383,7 +391,7 @@ sets C = 1 and sends nothing without a native display (`_display_port` =
 | `screen_out` (a at the cursor) | `putchar`, the terminal | `PUTC` |
 | `screen_clear` | `screen_clear` | `COLOR`, `CLEAR`, `COLOR` back |
 | `screen_fill` | `screen_fill` | `FILL_RECT 0 0 0 0` (the text cells stay) |
-| `screen_set_bg`, `screen_set_txt` | the same | `GET_CHAR` + `CURSOR` + `COLOR` + `PUTC` per cell: 0.27 s (see `RECOLOR` below) |
+| `screen_set_bg`, `screen_set_txt` | the same | `RECOLOR 0 c`, `RECOLOR 1 c` |
 | `screen_set_colors` | `term_set_colors` | `COLOR` |
 | `screen_scroll`, `screen_cursor`, `screen_get_cursor`, `screen_show_cursor`, `screen_defchar`, `screen_reset` | `screen_scroll`, `term_set_cursor_pos`, `term_get_cursor_pos`, —, `screen_define_char`, `screen_reset` | `SCROLL`, `CURSOR`, `GET_CURSOR`, `SHOW_CURSOR`, `DEFCHAR`, `TEXT_RESET` |
 | `screen_put_pixel`, `screen_get_pixel`, `screen_line`, `screen_rect`, `screen_fill_rect` | the same | `PIXEL`, `GET_PIXEL`, `LINE`, `RECT`, `FILL_RECT` |
@@ -433,20 +441,9 @@ Found while implementing (2026-11-11):
    for a whole call (longest: one `PUTS` of 255, 6.7 ms).
 10. `delay()` saves and restores the I flag.
 
-## Proposal: `RECOLOR` (not implemented)
+## Decisions, third round (Gianni, 2026-11-11)
 
-`screen_set_bg` / `screen_set_txt` still take 0.27 s: 768 cells × 4
-commands (13 bytes and a reply each). One command would do it:
-
-| Opcode | Name | Arguments | Reply | Bytes | CPU cost | FabGL |
-|---|---|---|---|---|---|---|
-| `0x1A` | `RECOLOR` | which, c | | 3 | 78 µs | `drawGlyph` for each cell, in its new colours |
-
-* which = 0: every text cell's background becomes c; 1: every cell's
-  character colour becomes c (the low 4 bits of c).
-* Each cell is drawn again from the text cells (the glyphs of the current
-  font), as `PUTC` would draw it; pixels drawn over the text are replaced.
-  The cursor, `COLOR` and the font don't change.
-* The library's `screen_set_bg` / `screen_set_txt` become this one
-  command: from 0.27 s to under 0.1 ms of CPU time, plus the ESP32's
-  drawing time (768 glyphs).
+11. `PUTS` keeps up to 255 characters (6.7 ms with interrupts off).
+12. `RECOLOR` (`0x1A`, which, c) is added: `screen_set_bg` /
+    `screen_set_txt` are one command, 303 cycles instead of 0.27 s
+    (`hbc2-cc/tests/windows.rs`), plus the ESP32's time to draw 768 glyphs.
