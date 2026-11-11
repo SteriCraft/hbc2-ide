@@ -116,10 +116,10 @@
       <circ-port dir="in" pin="220,780" x="1080" y="40"/>
       <circ-port dir="in" pin="220,840" x="1200" y="40"/>
       <circ-port dir="in" pin="220,920" x="1310" y="40"/>
-      <circ-port dir="out" pin="3000,1100" x="760" y="270"/>
-      <circ-port dir="out" pin="3000,440" x="1490" y="100"/>
-      <circ-port dir="out" pin="3000,660" x="1490" y="130"/>
-      <circ-port dir="out" pin="3000,880" x="1490" y="160"/>
+      <circ-port dir="out" pin="3310,1100" x="760" y="270"/>
+      <circ-port dir="out" pin="3310,440" x="1490" y="100"/>
+      <circ-port dir="out" pin="3310,660" x="1490" y="130"/>
+      <circ-port dir="out" pin="3310,880" x="1490" y="160"/>
     </appear>
     <comp lib="0" loc="(1070,1030)" name="Tunnel">
       <a name="label" val="addr_base_oe_n_1"/>
@@ -1772,145 +1772,145 @@
     <comp lib="0" loc="(280,950)" name="Tunnel">
       <a name="label" val="addr_pc_oe_n_1"/>
     </comp>
-    <comp lib="0" loc="(2940,1010)" name="Tunnel">
+    <comp lib="0" loc="(3230,1010)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="addr_bus_out_6"/>
     </comp>
-    <comp lib="0" loc="(2940,1030)" name="Tunnel">
+    <comp lib="0" loc="(3230,1030)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="addr_bus_out_7"/>
     </comp>
-    <comp lib="0" loc="(2940,450)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_0"/>
-    </comp>
-    <comp lib="0" loc="(2940,470)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_1"/>
-    </comp>
-    <comp lib="0" loc="(2940,490)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_2"/>
-    </comp>
-    <comp lib="0" loc="(2940,510)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_3"/>
-    </comp>
-    <comp lib="0" loc="(2940,530)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_4"/>
-    </comp>
-    <comp lib="0" loc="(2940,550)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_5"/>
-    </comp>
-    <comp lib="0" loc="(2940,570)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_6"/>
-    </comp>
-    <comp lib="0" loc="(2940,590)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_hi_7"/>
-    </comp>
-    <comp lib="0" loc="(2940,670)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_0"/>
-    </comp>
-    <comp lib="0" loc="(2940,690)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_1"/>
-    </comp>
-    <comp lib="0" loc="(2940,710)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_2"/>
-    </comp>
-    <comp lib="0" loc="(2940,730)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_3"/>
-    </comp>
-    <comp lib="0" loc="(2940,750)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_4"/>
-    </comp>
-    <comp lib="0" loc="(2940,770)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_5"/>
-    </comp>
-    <comp lib="0" loc="(2940,790)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_6"/>
-    </comp>
-    <comp lib="0" loc="(2940,810)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_addr_lo_7"/>
-    </comp>
-    <comp lib="0" loc="(2940,890)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_0"/>
-    </comp>
-    <comp lib="0" loc="(2940,910)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_1"/>
-    </comp>
-    <comp lib="0" loc="(2940,930)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_2"/>
-    </comp>
-    <comp lib="0" loc="(2940,950)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_3"/>
-    </comp>
-    <comp lib="0" loc="(2940,970)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_4"/>
-    </comp>
-    <comp lib="0" loc="(2940,990)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="addr_bus_out_5"/>
-    </comp>
-    <comp lib="0" loc="(2980,1100)" name="Tunnel">
+    <comp lib="0" loc="(3230,1100)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="addr_cout"/>
     </comp>
-    <comp lib="0" loc="(2980,440)" name="Splitter">
+    <comp lib="0" loc="(3230,450)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_0"/>
+    </comp>
+    <comp lib="0" loc="(3230,470)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_1"/>
+    </comp>
+    <comp lib="0" loc="(3230,490)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_2"/>
+    </comp>
+    <comp lib="0" loc="(3230,510)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_3"/>
+    </comp>
+    <comp lib="0" loc="(3230,530)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_4"/>
+    </comp>
+    <comp lib="0" loc="(3230,550)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_5"/>
+    </comp>
+    <comp lib="0" loc="(3230,570)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_6"/>
+    </comp>
+    <comp lib="0" loc="(3230,590)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_hi_7"/>
+    </comp>
+    <comp lib="0" loc="(3230,670)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_0"/>
+    </comp>
+    <comp lib="0" loc="(3230,690)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_1"/>
+    </comp>
+    <comp lib="0" loc="(3230,710)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_2"/>
+    </comp>
+    <comp lib="0" loc="(3230,730)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_3"/>
+    </comp>
+    <comp lib="0" loc="(3230,750)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_4"/>
+    </comp>
+    <comp lib="0" loc="(3230,770)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_5"/>
+    </comp>
+    <comp lib="0" loc="(3230,790)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_6"/>
+    </comp>
+    <comp lib="0" loc="(3230,810)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_addr_lo_7"/>
+    </comp>
+    <comp lib="0" loc="(3230,890)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_0"/>
+    </comp>
+    <comp lib="0" loc="(3230,910)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_1"/>
+    </comp>
+    <comp lib="0" loc="(3230,930)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_2"/>
+    </comp>
+    <comp lib="0" loc="(3230,950)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_3"/>
+    </comp>
+    <comp lib="0" loc="(3230,970)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_4"/>
+    </comp>
+    <comp lib="0" loc="(3230,990)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="addr_bus_out_5"/>
+    </comp>
+    <comp lib="0" loc="(3290,440)" name="Splitter">
       <a name="facing" val="west"/>
       <a name="fanout" val="8"/>
       <a name="incoming" val="8"/>
       <a name="spacing" val="2"/>
     </comp>
-    <comp lib="0" loc="(2980,660)" name="Splitter">
+    <comp lib="0" loc="(3290,660)" name="Splitter">
       <a name="facing" val="west"/>
       <a name="fanout" val="8"/>
       <a name="incoming" val="8"/>
       <a name="spacing" val="2"/>
     </comp>
-    <comp lib="0" loc="(2980,880)" name="Splitter">
+    <comp lib="0" loc="(3290,880)" name="Splitter">
       <a name="facing" val="west"/>
       <a name="fanout" val="8"/>
       <a name="incoming" val="8"/>
       <a name="spacing" val="2"/>
     </comp>
-    <comp lib="0" loc="(3000,1100)" name="Pin">
+    <comp lib="0" loc="(3310,1100)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="addr_cout"/>
       <a name="type" val="output"/>
     </comp>
-    <comp lib="0" loc="(3000,440)" name="Pin">
+    <comp lib="0" loc="(3310,440)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="addr_bus_addr_hi"/>
       <a name="type" val="output"/>
       <a name="width" val="8"/>
     </comp>
-    <comp lib="0" loc="(3000,660)" name="Pin">
+    <comp lib="0" loc="(3310,660)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="addr_bus_addr_lo"/>
       <a name="type" val="output"/>
       <a name="width" val="8"/>
     </comp>
-    <comp lib="0" loc="(3000,880)" name="Pin">
+    <comp lib="0" loc="(3310,880)" name="Pin">
       <a name="appearance" val="NewPins"/>
       <a name="facing" val="west"/>
       <a name="label" val="addr_bus_out"/>
@@ -3064,34 +3064,34 @@
     <wire from="(2730,870)" to="(2750,870)"/>
     <wire from="(2730,890)" to="(2750,890)"/>
     <wire from="(2730,910)" to="(2750,910)"/>
-    <wire from="(2940,1010)" to="(2960,1010)"/>
-    <wire from="(2940,1030)" to="(2960,1030)"/>
-    <wire from="(2940,450)" to="(2960,450)"/>
-    <wire from="(2940,470)" to="(2960,470)"/>
-    <wire from="(2940,490)" to="(2960,490)"/>
-    <wire from="(2940,510)" to="(2960,510)"/>
-    <wire from="(2940,530)" to="(2960,530)"/>
-    <wire from="(2940,550)" to="(2960,550)"/>
-    <wire from="(2940,570)" to="(2960,570)"/>
-    <wire from="(2940,590)" to="(2960,590)"/>
-    <wire from="(2940,670)" to="(2960,670)"/>
-    <wire from="(2940,690)" to="(2960,690)"/>
-    <wire from="(2940,710)" to="(2960,710)"/>
-    <wire from="(2940,730)" to="(2960,730)"/>
-    <wire from="(2940,750)" to="(2960,750)"/>
-    <wire from="(2940,770)" to="(2960,770)"/>
-    <wire from="(2940,790)" to="(2960,790)"/>
-    <wire from="(2940,810)" to="(2960,810)"/>
-    <wire from="(2940,890)" to="(2960,890)"/>
-    <wire from="(2940,910)" to="(2960,910)"/>
-    <wire from="(2940,930)" to="(2960,930)"/>
-    <wire from="(2940,950)" to="(2960,950)"/>
-    <wire from="(2940,970)" to="(2960,970)"/>
-    <wire from="(2940,990)" to="(2960,990)"/>
-    <wire from="(2980,1100)" to="(3000,1100)"/>
-    <wire from="(2980,440)" to="(3000,440)"/>
-    <wire from="(2980,660)" to="(3000,660)"/>
-    <wire from="(2980,880)" to="(3000,880)"/>
+    <wire from="(3230,1010)" to="(3270,1010)"/>
+    <wire from="(3230,1030)" to="(3270,1030)"/>
+    <wire from="(3230,1100)" to="(3310,1100)"/>
+    <wire from="(3230,450)" to="(3270,450)"/>
+    <wire from="(3230,470)" to="(3270,470)"/>
+    <wire from="(3230,490)" to="(3270,490)"/>
+    <wire from="(3230,510)" to="(3270,510)"/>
+    <wire from="(3230,530)" to="(3270,530)"/>
+    <wire from="(3230,550)" to="(3270,550)"/>
+    <wire from="(3230,570)" to="(3270,570)"/>
+    <wire from="(3230,590)" to="(3270,590)"/>
+    <wire from="(3230,670)" to="(3270,670)"/>
+    <wire from="(3230,690)" to="(3270,690)"/>
+    <wire from="(3230,710)" to="(3270,710)"/>
+    <wire from="(3230,730)" to="(3270,730)"/>
+    <wire from="(3230,750)" to="(3270,750)"/>
+    <wire from="(3230,770)" to="(3270,770)"/>
+    <wire from="(3230,790)" to="(3270,790)"/>
+    <wire from="(3230,810)" to="(3270,810)"/>
+    <wire from="(3230,890)" to="(3270,890)"/>
+    <wire from="(3230,910)" to="(3270,910)"/>
+    <wire from="(3230,930)" to="(3270,930)"/>
+    <wire from="(3230,950)" to="(3270,950)"/>
+    <wire from="(3230,970)" to="(3270,970)"/>
+    <wire from="(3230,990)" to="(3270,990)"/>
+    <wire from="(3290,440)" to="(3310,440)"/>
+    <wire from="(3290,660)" to="(3310,660)"/>
+    <wire from="(3290,880)" to="(3310,880)"/>
     <wire from="(530,1010)" to="(550,1010)"/>
     <wire from="(530,1030)" to="(550,1030)"/>
     <wire from="(530,1050)" to="(550,1050)"/>
