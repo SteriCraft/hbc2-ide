@@ -94,10 +94,11 @@ for _t in ("7400", "7408", "7432", "7486", "7402", "7410", "7411", "7427"):
 
 
 def chip_type(value: str) -> str:
-    """74HCT11 -> 7411, 74ACT574 -> 74574; other parts lower-cased."""
+    """74HCT11 -> 7411, 74ACT574 -> 74574; other parts lower-cased,
+    with a package/speed suffix dropped (AS6C1008-xxP -> as6c1008)."""
     v = value.strip()
     m = re.match(r"^(?:SN)?74[A-Z]*?(\d+)", v, re.I)
-    return "74" + m.group(1) if m else v.lower()
+    return "74" + m.group(1) if m else v.split("-")[0].lower()
 
 
 # ---------------------------------------------------------------- loading
