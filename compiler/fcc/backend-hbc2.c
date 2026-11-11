@@ -1663,13 +1663,47 @@ static int power_of_2(unsigned long v)
 	return m;
 }
 
+/* Can [a:b] *= k be done inline (shifts and adds, when short)? */
+static unsigned mul_const_ok(unsigned k)
+{
+	unsigned top, bits, i;
+	if (k == 0)
+		return 0;
+	if (power_of_2(k) >= 0)
+		return 1;
+	for (top = 15; !(k & (1U << top)); top--)
+		;
+	for (bits = 0, i = 0; i < 16; i++)
+		bits += (k >> i) & 1;
+	return 2 + 2 * top + 2 * (bits - 1) <= 12;
+}
+
+/* [a:b] *= k (mul_const_ok(k)) */
+static void mul_const(unsigned k)
+{
+	unsigned top, i;
+	int m = power_of_2(k);
+	if (m >= 0) {
+		if (m)
+			shift_left(2, m);
+		return;
+	}
+	for (top = 15; !(k & (1U << top)); top--)
+		;
+	puts("\tmov c, a\n\tmov d, b");
+	for (i = top; i-- > 0;) {
+		puts("\tshl b\n\tadc a, a");
+		if (k & (1U << i))
+			puts("\tadd b, d\n\tadc a, c");
+	}
+}
+
 /* 16-bit multiply by a constant: shifts and adds when short */
 static unsigned direct_mul(struct node *n)
 {
 	struct node *l = n->left;
 	struct node *r = n->right;
-	unsigned k, top, bits, i;
-	int m;
+	unsigned k;
 
 	if (!simple_size(n->type) || get_size(n->type) != 2)
 		return 0;
@@ -1682,39 +1716,48 @@ static unsigned direct_mul(struct node *n)
 	if (get_size(l->type) != 2)
 		return 0;
 	k = WORD(r->value);
-	if (k == 0)
-		return 0;
-	m = power_of_2(k);
-	if (m >= 0) {
-		codegen_lr(l);
-		if (m)
-			shift_left(2, m);
-		finish(2);
-		return 1;
-	}
-	for (top = 15; !(k & (1U << top)); top--)
-		;
-	for (bits = 0, i = 0; i < 16; i++)
-		bits += (k >> i) & 1;
-	if (2 + 2 * top + 2 * (bits - 1) > 12)
+	if (!mul_const_ok(k))
 		return 0;
 	codegen_lr(l);
-	puts("\tmov c, a\n\tmov d, b");
-	for (i = top; i-- > 0;) {
-		puts("\tshl b\n\tadc a, a");
-		if (k & (1U << i))
-			puts("\tadd b, d\n\tadc a, c");
-	}
+	mul_const(k);
 	finish(2);
 	return 1;
+}
+
+/* Unsigned / or % (div = 0) of size s by v inline: log2 of v, or -1 */
+static int divmod_const_ok(unsigned div, unsigned s, unsigned long v)
+{
+	int m = power_of_2(v & ((s == 4) ? 0xFFFFFFFFUL : 0xFFFFUL));
+	if (m >= 0 && div && s == 4 && m % 8)
+		return -1;
+	return m;
+}
+
+/* The working registers (size s) / or % (div = 0) 2^m, unsigned */
+static void divmod_const(unsigned div, unsigned s, unsigned m)
+{
+	unsigned i, started = 0;
+	unsigned long mask = (1UL << m) - 1;
+	struct opbyte o;
+
+	if (div) {
+		if (m)
+			shift_right(s, m, 0);
+		return;
+	}
+	for (i = s; i-- > 0;) {
+		o.is_const = 1;
+		o.value = BYTE(mask >> (8 * (s - 1 - i)));
+		snprintf(o.text, sizeof(o.text), "%u", o.value);
+		alu_byte(OP_AND, regs_of(s)[i], &o, &started);
+	}
 }
 
 /* Unsigned / and % by a power of two */
 static unsigned direct_divmod(struct node *n)
 {
 	struct node *r = n->right;
-	unsigned s, i, started = 0;
-	struct opbyte o;
+	unsigned s, div = n->op == T_SLASH;
 	int m;
 
 	if (r->op != T_CONSTANT || !simple_size(n->type) || is_signed(n->type))
@@ -1722,25 +1765,11 @@ static unsigned direct_divmod(struct node *n)
 	s = get_size(n->type);
 	if (s < 2 || get_size(n->left->type) != s)
 		return 0;
-	m = power_of_2(r->value & ((s == 4) ? 0xFFFFFFFFUL : 0xFFFFUL));
+	m = divmod_const_ok(div, s, r->value);
 	if (m < 0)
 		return 0;
-	if (n->op == T_SLASH) {
-		if (s == 4 && m % 8)
-			return 0;
-		codegen_lr(n->left);
-		if (m)
-			shift_right(s, m, 0);
-	} else {
-		unsigned long mask = (1UL << m) - 1;
-		codegen_lr(n->left);
-		for (i = s; i-- > 0;) {
-			o.is_const = 1;
-			o.value = BYTE(mask >> (8 * (s - 1 - i)));
-			snprintf(o.text, sizeof(o.text), "%u", o.value);
-			alu_byte(OP_AND, regs_of(s)[i], &o, &started);
-		}
-	}
+	codegen_lr(n->left);
+	divmod_const(div, s, m);
 	finish(s);
 	return 1;
 }
@@ -1922,6 +1951,50 @@ static unsigned direct_shifteq(struct node *n)
 		else
 			shift_right(s, k, is_signed(n->type));
 	}
+	for (i = 0; i < s; i++) {
+		mem_text(buf, sizeof(buf), &m, i);
+		printf("\tstr %s, %s\n", buf, w[i]);
+	}
+	finish(s);
+	return 1;
+}
+
+/* x *= k, x /= k, x %= k (k constant, the cases direct_mul and
+   direct_divmod do inline): load, compute, store */
+static unsigned direct_muldiveq(struct node *n)
+{
+	struct node *r = n->right;
+	struct node m;
+	const char **w;
+	char buf[64];
+	unsigned s, i, div = n->op == T_SLASHEQ;
+	int k = 0;
+
+	if (r->op != T_CONSTANT || !simple_size(n->type))
+		return 0;
+	s = get_size(n->type);
+	if (n->op == T_STAREQ) {
+		if (s != 2 || !mul_const_ok(WORD(r->value)))
+			return 0;
+	} else {
+		if (s < 2 || is_signed(n->type))
+			return 0;
+		k = divmod_const_ok(div, s, r->value);
+		if (k < 0)
+			return 0;
+	}
+	/* checked first: eq_target loads [x:y] for a pointer */
+	if (!eq_target(n, s, 1, &m))
+		return 0;
+	w = regs_of(s);
+	for (i = 0; i < s; i++) {
+		mem_text(buf, sizeof(buf), &m, i);
+		printf("\tlod %s, %s\n", w[i], buf);
+	}
+	if (n->op == T_STAREQ)
+		mul_const(WORD(r->value));
+	else
+		divmod_const(div, s, k);
 	for (i = 0; i < s; i++) {
 		mem_text(buf, sizeof(buf), &m, i);
 		printf("\tstr %s, %s\n", buf, w[i]);
@@ -2153,6 +2226,10 @@ unsigned gen_shortcut(struct node *n)
 	case T_SHLEQ:
 	case T_SHREQ:
 		return direct_shifteq(n);
+	case T_STAREQ:
+	case T_SLASHEQ:
+	case T_PERCENTEQ:
+		return direct_muldiveq(n);
 	case T_DEREF:
 		return direct_deref(n);
 	case T_EQ:

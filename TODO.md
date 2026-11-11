@@ -36,14 +36,9 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 ## C compiler (`compiler/`, tracking file `compiler/ROADMAP.md`)
 
-- **Language:** nothing left that is planned (bitfields and K&R
-  definitions: dropped by Gianni, 2026-11-11; ABI.md 12).
-- **Backend:** carry what the registers hold across loop labels (a dataflow
-  version of `reloads.rs`; in bench.c's loops the paths into a loop label
-  rarely agree: small gain expected).
-- **Backend:** `x *= k` / `x /= k` in place, like `<<=`.
-- **Build the C tools from cargo** (`cc` crate, one tiny bin crate per tool),
-  so `cargo build` does everything without `compiler/build.cmd`.
+- Nothing planned. Dropped by Gianni (2026-11-11): bitfields and K&R
+  definitions (ABI.md 12), building the C tools from cargo, carrying
+  register contents across loop labels (small gain expected).
 
 ## Hardware
 
