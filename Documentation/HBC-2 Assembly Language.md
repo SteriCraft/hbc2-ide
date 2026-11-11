@@ -418,7 +418,7 @@ program's definition.
 ## `.define`
 
 ```
-.define MONITOR_ID 0x4A
+.define SCREEN_COLUMNS 42
 .define VECTOR $0xFE02
 ```
 
@@ -428,7 +428,7 @@ can use other defines. A name can only be defined once.
 ## `.include`
 
 ```
-.include "interruptHandler.has"
+.include "devices.has"
 .include "lib/math.has"
 ```
 
@@ -443,7 +443,8 @@ does not matter: `Lib/Math.has` and `lib/math.has` are the same file.
 `in` and `out` reach the **mailbox** card, not the devices. The devices
 (monitor, RTC, keyboard, EEPROM) are behind an I/O processor, which gives
 them their ports and raises their interrupts as before (see
-`Peripherals/README.md`). The mailbox has two ports:
+`Peripherals/README.md`). The program asks it which devices there are (the
+command INFO, below). The mailbox has two ports:
 
 | Port | `in` | `out` |
 |---|---|---|
@@ -474,6 +475,22 @@ command is read: an `in` after an `out` sees its result. The C library uses
 these routines for `in()` / `out()` and all its drivers. A new assembly
 project in the IDE gets its own copy of `mailbox.has`, already included by
 `main.has`.
+
+The command `0x03` (INFO) asks for the devices: the I/O processor replies
+the protocol version, the number of devices, then 6 bytes per device (class,
+product ID, first port, number of ports). `compiler/lib/asm/devices.has`
+sends it at startup, waits 2 s at most, and finds devices by class:
+
+```
+    cal dev_init            ; the device table (empty without an I/O processor)
+    mov a, DEV_INPUT        ; d = the first keyboard's first port,
+    mov b, DEV_KEYBOARD     ;   0 when there is none
+    cal dev_port
+```
+
+A new assembly project gets a copy of `devices.has` too ("Find the devices
+at startup", on by default), and its `main.has` calls `dev_init`. See
+`Peripherals/README.md`, "Detecting the devices".
 
 ## Boot ROM for the hardware CPU
 

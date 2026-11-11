@@ -334,7 +334,7 @@ The bits are set to 1 when the CPU can go ahead, so a polling loop is `in` / `an
 | **INT** | NOR(/`evt_pend_s`, VEC) (74HCT02): from a flip-flop on `clk` (I5), low in the vector step (I6, F5). The flag clears at the end of the vector step, so the next event can rise INT from step n + 2 at the earliest (I6). |
 | Vector step | /VEC (175 /Q) enables: the EVT port 595 onto `bus_addr` A0–A7, a 74HCT541 with inputs tied low onto A8–A15 (F2), and the EVT data 595 onto `bus_data` (→ I, F3). The CPU's latch outputs are off then (C12). |
 | IN RX / STATUS | /Y2 → the RX 595's /OE. /Y3 → the 74HCT244's /OE (inputs = the four `_s` flags, set to 1 when ready, bits 4–7 tied low). |
-| Reset | `rst_n` clears every toggle, so every flag = 0: RX empty, TX free, no event, READY = 0. The MCU sees `rst_n` (level-shifted, below), resets its protocol state, sends the plug-in events again, then sets READY. |
+| Reset | `rst_n` clears every toggle, so every flag = 0: RX empty, TX free, no event, READY = 0. The MCU sees `rst_n` (level-shifted, below), resets its protocol state, sends the plug-in events again, then sets READY. (READY dropped in 9.8, the plug-in events by D6: it only drops a half-received command.) |
 
 #### Chip list (CPU side, one card)
 
@@ -440,18 +440,18 @@ A single byte stream runs CPU → MCU on TX. Replies come back on RX in order, a
 | `0x02` p | IN | 1 byte | `Iod::port(p)` |
 
 **Events.** Every `Iod::trigger_interrupt(p)` becomes an event (p, d) in the MCU's queue (256 entries, dropped when full, as now). The events are:
-- the two port-0 plug-in interrupts (first port, then ID), sent after start-up and after each CPU reset;
+- ~~the two port-0 plug-in interrupts (first port, then ID), sent after start-up and after each CPU reset~~ (dropped by D6: the CPU asks with INFO);
 - the RTC's one-second interrupt on its first port;
 - the keyboard's pressed and released scan codes, on its two ports. The ESP32 maps PS/2 to the HBC-2 scan codes of `keymap.rs` (AZERTY, ASCII-like).
 
-Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, keyboard 13–14, EEPROM 15–19). `devices.has` and `interruptHandler.has` work unchanged.
+Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, keyboard 13–14, EEPROM 15–19). The program learns it from INFO (D6, 9.10).
 
 **Native commands (v1, added next to compat):**
 
 | Byte | Command | Arguments | Reply |
 |---|---|---|---|
 | `0x00` | NOP | — | — |
-| `0x03` | INFO | — | protocol version, firmware version, devices bitmap (3 bytes) |
+| `0x03` | INFO | — | protocol version, N, then N descriptors of 6 bytes: class (PCI base class, subclass), product ID (2 bytes), first port, number of ports (D6, 9.10) |
 | `0x10` | PUTS | n, n bytes (n = 0 → 256) | — (ANSI / VT100 subset on a FabGL text terminal; or into the monitor's text mode while it is shown, Q-C5) |
 | `0x11` | CURSOR | x, y | — |
 | `0x12` | COLORS | fg / bg (nibbles) | — |
@@ -464,9 +464,9 @@ Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, key
 | `0x31` | SET_TIME | 6 bytes | 1 (ok) / 0 (invalid), as the RTC's SET_TIME |
 | `0x40` | SD_READ | 4-byte block number | status, then 512 bytes if status = 0 |
 | `0x41` | SD_WRITE | 4-byte block number, 512 bytes | status |
-| `0x50` | SOUND | frequency (2 bytes), duration (×10 ms), volume | — |
+| ~~`0x50`~~ | ~~SOUND~~ | dropped (D7: no audio) | — |
 
-**Storage:** the EEPROM device (1 MiB, ID `0xE1`, same ports) stays as a compat device backed by a file `eeprom.bin` on the SD card. **Its power-on copy into RAM goes** (F9): the ESP32 can't write the CPU's RAM, and the boot ROM loads programs. SD_READ / SD_WRITE give raw blocks, and a FAT library on the CPU side can come later.
+**Storage:** the EEPROM device (1 MiB, product ID `0x0004`, same ports) stays as a compat device backed by a file `eeprom.bin` on the SD card. **Its power-on copy into RAM goes** (F9): the ESP32 can't write the CPU's RAM, and the boot ROM loads programs. SD_READ / SD_WRITE give raw blocks, and a FAT library on the CPU side can come later.
 
 ### 9.4 ESP32 board and pins
 
@@ -478,14 +478,14 @@ Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, key
 | PS/2 keyboard (CLK, DAT) | 33, 32 |
 | PS/2 mouse (CLK, DAT) | 26, 27 |
 | SD (SPI: MISO, MOSI, SCK, CS) | 2, 12, 14, 13 |
-| Audio | 25 |
+| Audio | 25 (not used: D7) |
 | PSRAM (WROVER) | 16, 17 |
 | Strapping / USB serial | 0, 1, 3 (and 2, 12, 15 are strapping too) |
 
 **The mailbox needs, with the CTRL 595 design:**
 - SCK, MOSI and MISO, shared with the SD card (14, 12, 2);
 - **1 output**, RCLK;
-- **4 inputs**: `tx_full`, `rx_full`, `evt_pend`, `rst_n`. The input-only GPIOs 34, 35, 36 and 39 are the natural place. One source says IO36 is a button on this board, to confirm.
+- **4 inputs**: `tx_full`, `rx_full`, `evt_pend`, `rst_n`. The input-only GPIOs 34, 35, 36 and 39 are the natural place. One source says IO36 is a button on this board; since D7 (no audio) the fourth input can take 25 instead, so 36 doesn't matter.
 
 RCLK could take 26 or 27, giving up the mouse port, or GPIO 0, which is fine once booted if nothing pulls it low at reset. So **it fits on one TTGO VGA32 without the mouse**, if 34 / 35 / 39 and one more input are free on the schematic.
 
@@ -534,8 +534,8 @@ Section 5b (clean break) is mostly moot: old programs keep working once rebuilt 
 | Q-C4 | Emulated ESP32 speed. | A configurable service time, default 4 µs per byte (8 cycles), and READY after a configurable start-up delay (default 0 in the IDE, "realistic" 500 ms as an option). Measure the real figures in step C3 and set the defaults from them. |
 | Q-C5 | VGA mode for the old monitor. | 640 × 480 × 16 colours (FabGL VGA16Controller), the 256 × 192 monitor drawn ×2 (512 × 384, centred). Its 42 × 24 text mode is drawn with the 6 × 8 font. A native 80 × 25 terminal as mode 1. |
 | Q-C6 | Time source. | NTP once at start-up, then Wi-Fi off. A DS3231 on I²C later. The RTC device keeps its ports and the one-second interrupt either way. |
-| Q-C7 | The ESP32 starts later than the CPU (CPU boot copy about 33 ms; ESP32 + FabGL a few hundred ms). | crt0 waits for READY. The MCU sets READY only once its plug-in events are queued, so the existing device wait then finds the devices. |
-| Q-C8 | `rst_n` to the MCU. | Yes, as an input. The MCU resets its protocol state and sends the plug-in events again, as the emulator does at power-on. |
+| Q-C7 | The ESP32 starts later than the CPU (CPU boot copy about 33 ms; ESP32 + FabGL a few hundred ms). | crt0 waits for READY. The MCU sets READY only once its plug-in events are queued, so the existing device wait then finds the devices. **Superseded by D6: crt0 sends INFO, which waits in TX while the ESP32 boots; 2 s timeout.** |
+| Q-C8 | `rst_n` to the MCU. | Yes, as an input. The MCU resets its protocol state and sends the plug-in events again, as the emulator does at power-on. **Superseded by D6: the MCU drops a half-received command and its unread replies, and sends nothing; crt0 asks INFO again.** |
 | Q-C9 | Second I/O processor (Arduino Nano). | Not now. `0x10–0x1F` stays decoded and free. |
 | Q-C10 | Metastability of the asynchronous flags. | One `clk` stage (500 ns to settle) is enough at 2 MHz. Note it in iod-requirements, no second stage. |
 | Q-C11 | 74AHCT595 in a 74HCT design. | Accept it as the rig already does (no DIP 74HCT595 from TI). Add its figures to chips.md in step C1. |
@@ -611,13 +611,13 @@ The 595 chain: RX's SER and the EVT port 595's SER both take MOSI, and the EVT d
 - 0, 2, 4, 5, 12–15, 18, 19, 21–23, 25–27, 32–36, 39;
 - not 6–11 (flash), 16 and 17 (PSRAM), or 1 and 3 (USB serial).
 
-VGA needs 8, PS/2 keyboard 2, SD 4 and audio 1, so 15 are taken.
+VGA needs 8, PS/2 keyboard 2, SD 4 and audio 1, so 15 are taken. **Since D7 there is no audio: 14 taken, and the C-min mailbox uses 21 of 22, one spare.**
 
 | Mailbox | Its pins | Total | Fits? |
 |---|---|---|---|
 | Section 9 (CTRL 595) | 1 out + 4 in | 20 | yes, even with the PS/2 mouse port (22) |
 | GPIO pulses, separate ACK and READY (Q-C3 as first written) | 5 out + 4 in | 24 | **no** |
-| **GPIO pulses, MBX_SEL as ACK, no READY** | 3 out + 4 in | 22 | **yes, exactly, without the mouse port**. On the TTGO: outputs 26, 27 (the mouse port's) and 0 (MBX_SEL: idle high, like GPIO0's boot pull-up); inputs 34, 35, 39 and 36. 36 must be free on the TTGO schematic; if it's the board's button, give up audio (25) instead. |
+| **GPIO pulses, MBX_SEL as ACK, no READY** | 3 out + 4 in | 22 | **yes, exactly, without the mouse port**. On the TTGO: outputs 26, 27 (the mouse port's) and 0 (MBX_SEL: idle high, like GPIO0's boot pull-up); inputs 34, 35, 39 and 36. 36 must be free on the TTGO schematic; if it's the board's button, give up audio (25) instead. **D7: audio is given up anyway; the fourth input goes on 25.** |
 
 **3. Interrupt channel (vectored kept).** The vector step needs the IOD to drive the low byte of `bus_addr`, which the IVT adds, and `bus_data`, which loads I (F2, F3, I6).
 
@@ -677,7 +677,7 @@ C-min's chips:
 | D2 | **Q-C1 accepted**: I3 / I6 "off within 100 ns after the edge" (was 50). The overlap is measured on the breadboard. | iod-requirements.md I3 / I6, breadboard-checks.md B5 |
 | D3 | **A8–A15 pulled to 0** (10 kΩ network on the I/O card) in the vector step. The IOD drives A0–A7 and `bus_data` only. One possible reason against has to be checked on the breadboard: the latch loads 0000 at the same edge as it turns off, so A8–A15 may keep a 1 and decay through 10 kΩ, which is a slow edge on the RAM / ROM address pins. Fallback: put the 74HCT541 back (+1 chip). | iod-requirements.md I6, control-requirements.md C21, B5 (b) |
 | D4 | **The PS/2 mouse port is dropped.** Later, a **CH9350** module (USB keyboard and mouse to one serial line) can replace the PS/2 keyboard and free a GPIO. **Any second microcontroller goes behind the ESP32, never on the CPU bus**, so the decode's second select (`/Y4–/Y7`) stays unused. | here |
-| D5 | READY is dropped (9.8). Q-C7 becomes: the program waits for the plug-in events, as `init.has` already does. | 9.6 Q-C7 |
+| D5 | READY is dropped (9.8). Q-C7 becomes: the program waits for the plug-in events, as `init.has` already does. **Amended by D6 (9.10): the program asks with INFO.** | 9.6 Q-C7 |
 
 **Logisim modelling of D3.** Logisim resolves each circuit's nets on their own: a Pull Resistor inside the `iod` module would make its output pin drive 0 strongly onto A8–A15, and fight the address latch. So the module doesn't touch A8–A15 at all, and in the simulation they float in the vector step, as with the old stub (the CPU doesn't read them). The pull-downs exist only on the board.
 
@@ -693,5 +693,22 @@ C-min's chips:
 3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests. Done 2026-11-11 (iod-decisions.md, C3): compat + NOP + INFO, behind `MachineConfig::mailbox` (off by default until C5).
 **Gianni, 2026-11-11, after C3:** the library part of C5 comes next. For the docs, Claude lists what has to change and Gianni edits them himself, except the I/O diagram (`HBC-2_Input_Output.pdf`), which Claude redraws. C4 waits until some hardware is built (weeks away).
 
-4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. **Check GPIO 36 on the board's schematic before wiring.**
+4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. (The GPIO 36 question is gone with D7: the fourth input goes on 25.)
 5. **C5. Library, templates and docs** (9.5). Library part done 2026-11-11 (iod-decisions.md, C5): `mbx_out` / `mbx_in`, the mailbox on by default, the I/O diagram redrawn, the list of doc changes for Gianni. Open: the EEPROM target, a `mailbox.has` template, the IDE panel.
+
+### 9.10 Decisions (Gianni, 2026-11-11, after C5)
+
+| # | Decision | Where |
+|---|---|---|
+| D6 | **The CPU asks the I/O processor which devices exist (INFO), instead of port-0 plug-in announcements.** INFO's reply: protocol version, N, then N descriptors of 6 bytes: class (2 bytes, PCI base class + subclass), product ID (2 bytes, our own numbering, replaces the one-byte device IDs), first port, number of ports. At startup the program sends INFO and waits; the command waits in TX while the ESP32 boots (about 1 s), so no READY bit and no reset holding. Timeout about 2 s, a software loop counted in CPU cycles; on a timeout the device table stays empty. Programs find devices by class. Interrupts are only for events (key, clock tick...). After a CPU-only reset the same sequence runs and the ESP32 answers at once; it still drops a half-received command when it sees `rst_n`. **The ESP32 doesn't hold the CPU's reset.** | `iop.rs`, `compiler/lib/asm/devices.has`, crt0, `hbc2.h`, `Peripherals/README.md` |
+| D7 | **No mouse and no audio on the ESP32.** Mailbox budget: 21 of 22 GPIOs, one spare. The fourth mailbox input takes 25 (the audio pin), so GPIO 36 needn't be free. SOUND (`0x50`) is out of the native table. | 9.4, 9.8 |
+
+Classes and product IDs in use (D6):
+
+| Device | Class | Product ID |
+|---|---|---|
+| Monitor | `03 00` display, VGA | `0x0001` |
+| RTC | `08 03` system, real-time clock | `0x0002` |
+| Keyboard | `09 00` input, keyboard | `0x0003` |
+| EEPROM | `01 80` mass storage, other | `0x0004` |
+| SD card (reserved) | `01 80` mass storage, other | `0x0005` |

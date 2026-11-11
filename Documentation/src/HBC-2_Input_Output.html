@@ -175,8 +175,8 @@
     <text class="n" x="1102" y="296">répond sur RX,</text>
     <text class="n" x="1102" y="312">envoie les interruptions sur EVT</text>
     <text class="n" x="1102" y="345">garde le modèle de l'ancien IOD :</text>
-    <text class="n" x="1102" y="361">verrous des ports, détection</text>
-    <text class="n" x="1102" y="377">au port 0, file d'événements</text>
+    <text class="n" x="1102" y="361">verrous des ports, file d'événements ;</text>
+    <text class="n" x="1102" y="377">donne la liste des périphériques (INFO)</text>
     <text class="n" x="1102" y="425">attend au moins 1 µs après qu'un</text>
     <text class="n" x="1102" y="441">drapeau RX / EVT est revenu à 0</text>
     <text class="n" x="1102" y="457">avant de le réécrire (règle I15)</text>
@@ -184,7 +184,7 @@
     <rect class="soft" x="985" y="545" width="235" height="70" rx="3"/>
     <text class="n" x="1102" y="567">VGA (moniteur) · clavier PS/2</text>
     <text class="n" x="1102" y="584">carte SD (SPI partagé avec la carte)</text>
-    <text class="n" x="1102" y="601">horloge · EEPROM (fichier) · son</text>
+    <text class="n" x="1102" y="601">horloge · EEPROM (fichier)</text>
   </svg>
   <div class="legend">
     <span style="--c:var(--data)">données</span>
@@ -239,11 +239,11 @@
         <tr><td class="m">0x00</td><td>NOP</td><td>—</td></tr>
         <tr><td class="m">0x01 p v</td><td>OUT : port p = v</td><td>—</td></tr>
         <tr><td class="m">0x02 p</td><td>IN : lit le port p</td><td>1 octet</td></tr>
-        <tr><td class="m">0x03</td><td>INFO</td><td>3 octets : protocole, firmware, périphériques</td></tr>
+        <tr><td class="m">0x03</td><td>INFO</td><td>protocole, N, N × 6 octets (classe, produit, port, nb)</td></tr>
       </table>
-      <p class="note">Les ports p sont ceux de l'ancien IOD (moniteur, horloge, clavier, EEPROM, attribués au démarrage) :
-        ils existent dans l'ESP32, plus sur le bus. La bibliothèque envoie chaque commande interruptions coupées
-        (<code>mbx_out</code>, <code>mbx_in</code>). D'autres commandes (texte, dessin, carte SD…) viendront avec le firmware.</p>
+      <p class="note">Les ports p des périphériques sont dans l'ESP32, plus sur le bus. Au démarrage, le CPU envoie
+        INFO et attend 2 s au plus (l'ESP32 démarre en 1 s environ) ; sans réponse, aucun périphérique.
+        Commandes envoyées interruptions coupées (<code>mbx_out</code>, <code>mbx_in</code>).</p>
       <h2 style="margin-top:14px">Envoi d'un octet (OUT 0x00)</h2>
       <ol>
         <li>Le CPU lit STATUS jusqu'à TX_FREE = 1.</li>

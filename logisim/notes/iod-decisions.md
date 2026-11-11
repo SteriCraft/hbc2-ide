@@ -60,7 +60,7 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 | File | What |
 |---|---|
 | `hbc2-core/src/mailbox.rs` | The card, chip by chip: one function per edge or level (`clk_rise`, `mbx_sel_rise`, `rclk_rx_rise`, `rclk_evt_rise`, `sck_rise`, `settle`), the outputs, and the 138 decode. On top: the CPU side, one step at a time (`cpu_in`, `cpu_out`, `clock`), and the MCU side (`mcu_write_rx`, `mcu_write_evt`, `mcu_read_tx`). |
-| `hbc2-core/src/iop.rs` | The ESP32 firmware model. It polls once per CPU cycle, after the `clk` edge. Compat commands `0x01 p v` (OUT) and `0x02 p` (IN), plus `0x00` NOP and `0x03` INFO (protocol 1, firmware 0 = emulator, devices bitmap); other bytes are ignored. Every queued `Iod` interrupt becomes an event, in order. It keeps I15 (`rule_cycles`, default 2 = 1 µs) and takes `service_cycles` per action (default 8 = 4 µs, Q-C4). |
+| `hbc2-core/src/iop.rs` | The ESP32 firmware model. It polls once per CPU cycle, after the `clk` edge. Compat commands `0x01 p v` (OUT) and `0x02 p` (IN), plus `0x00` NOP and `0x03` INFO (protocol 1, firmware 0 = emulator, devices bitmap; replaced on 2026-11-11 by the descriptors of D6, see "Device list by INFO" below); other bytes are ignored. Every queued `Iod` interrupt becomes an event, in order. It keeps I15 (`rule_cycles`, default 2 = 1 µs) and takes `service_cycles` per action (default 8 = 4 µs, Q-C4). |
 | `board.rs`, `machine.rs` | `MachineConfig::mailbox: Option<IopConfig>`. **None (the default) is the old IOD**, unchanged: the shipped library still uses `in` / `out` directly until C5. With Some, IN / OUT go to the card, INT and the vector step's (port, data) come from it, and the card and the IOP run cycle by cycle, also during an instruction's wait cycles (skipped while nothing can change). |
 | `cpu.rs` | Two lines: IN and OUT call `board.io_read` / `board.io_write` instead of the IOD directly. With no mailbox they do exactly what they did. (9.5 said "cpu.rs doesn't change": the CPU's behaviour and the hardware don't.) |
 | `hbc2-cli/src/vectors/iod.rs` | `hbc2 vectors iod`: C2's 4 sequences, driving `mailbox.rs`'s chip functions from pin rows (edges found as Logisim does). `designs/iod.py --test` now uses them; the Python `Card` model is removed. |
@@ -119,4 +119,25 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 - **Assembly projects:** ~~open~~ **done.** A new assembly project gets `mailbox.has` (`hbc2/templates/mailbox.has`, a copy of the library's, checked by a test), included by `main.has`.
 - **IDE mailbox panel** (9.5): ~~open~~ **done.** The I/O view has the mailbox card (STATUS, the flags, TX / RX / EVT) and the I/O processor (command so far, replies waiting, byte and event counts, and a log of its last 100 commands and events with the device of each port: `Iop::log`). The snapshot carries the `Iop`.
 - **Screen speed** (above): native commands with C4.
-- **Start-up on the hardware:** crt0 waits a fixed 32 loop turns for the plug-in interrupts (init.has). In the emulator the I/O processor is ready at power-on and all of them are handled during the `.bss` clear (checked with the wait cut to 1 turn). On the board the ESP32 starts after the CPU, so `main` would start with every port at 0. D5 assumed init.has waits for the events; it doesn't. Proposal: crt0 sends INFO (`mbx_in` blocks until the ESP32 answers) and waits until every device in INFO's bitmap has its port.
+- **Start-up on the hardware:** ~~open~~ **done** (D6, "Device list by INFO" below). Was: crt0 waits a fixed 32 loop turns for the plug-in interrupts (init.has). In the emulator the I/O processor is ready at power-on and all of them are handled during the `.bss` clear (checked with the wait cut to 1 turn). On the board the ESP32 starts after the CPU, so `main` would start with every port at 0. D5 assumed init.has waits for the events; it doesn't. Proposal: crt0 sends INFO (`mbx_in` blocks until the ESP32 answers) and waits until every device in INFO's bitmap has its port.
+
+## Device list by INFO (D6, D7: Gianni, 2026-11-11)
+
+The CPU asks which devices exist; the ESP32 announces nothing. The ESP32 doesn't hold the CPU's reset. No mouse and no audio (the mailbox takes 21 of 22 GPIOs, one spare; the GPIO 36 question is gone). io-redesign-proposal.md 9.10.
+
+| Part | What |
+|---|---|
+| `hbc2-core/src/iop.rs` | INFO replies: protocol version (1), N, N descriptors of 6 bytes (class 2 bytes, product ID 2 bytes, first port, number of ports), from `Peripherals::descriptors` in port order. `IopConfig::boot_cycles` (0 by default): the firmware reads nothing until then, so a command waits in TX. `Iop::rst_n` drops a half-received command and the unread replies; ports, queue and devices are kept. |
+| `iod.rs`, `peripherals/` | `Iod::connect` sends no interrupt; owners are product IDs. Each peripheral has `CLASS` and `PRODUCT` instead of `DEVICE_ID`. |
+| `machine.rs` | `Machine::reset`: the reset button (CPU, mailbox card, boot ROM copy; the I/O processor gets `rst_n` only). Not in the IDE yet. |
+| `compiler/lib/asm/devices.has` | `dev_init`: INFO, each byte waited for 2 s at most (24-bit loop, 38 cycles a turn, 105,263 turns = 4,000,000 cycles; `DEV_TIMEOUT_*`), the table (`dev_table`, 16 entries, `dev_count`, `dev_protocol` = 0 without an I/O processor), unset vectors of device ports -> `dev_ignore`. `dev_find` (class, subclass or `DEV_ANY`, n-th), `dev_port`. Copied to `hbc2/templates/devices.has` (test). |
+| crt0 | `cli`, .bss clear, `dev_init`, `crt0_devices` (the four port variables; the EEPROM by product ID), `sti`, `main`. The 32-turn wait and the port-0 handler are gone. |
+| `hbc2.h` | `struct device`, `io_protocol`, `device_count`, `device_get`, `device_find`, `DEVICE_*` classes, `PRODUCT_*`. |
+| Template | `main.has` calls `dev_init` and sets `monitorPort`, `keyboardPort`, `rtcPort`, `eepromPort`; `interruptHandler.has` is gone. The New project option is "Find the devices at startup (devices.has)". |
+
+**Tests:** ESP32 ready at once (startup under 20,000 cycles), a 1 s boot, absent (timeout at 4.0 M cycles, empty table), a CPU reset after it (answers at once), `dev_find` by class, `compiler/tests/devices.c`, the reset dropping a half-received command. Every compiler test program passes. The empty C program grew from 269 to 604 bytes.
+
+**Open**
+- The firmware (C4) must do the same: INFO's descriptors, `rst_n` dropping a partial command.
+- The emulator's ESP32 boots in 0 cycles by default (`boot_cycles`); 2,000,000 would be the board's.
+- The IDE has no reset button yet (`Machine::reset` exists).

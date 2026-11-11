@@ -5,9 +5,10 @@ and write it through its ports.
 
 | | |
 |---|---|
-| ID | `0xE1` |
+| Class | `01 80` (mass storage, other) |
+| Product ID | `0x0004` |
 | Ports | 5 |
-| Interrupts | none (only the two plug-in interrupts on port 0) |
+| Interrupts | none |
 | Size | 1 MiB: addresses `$0x00000` to `$0xFFFFF` (20 bits) |
 
 See the [peripherals overview](../README.md) for ports, interrupts and how

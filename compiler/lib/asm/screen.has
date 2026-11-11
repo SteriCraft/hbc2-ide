@@ -225,8 +225,8 @@ screen_fill_err:
 ; ============================================================
 ; Text mode: 42 columns (x = 0..41) by 24 rows (y = 0..23).
 ; Displayable characters: ASCII 0x20 (space) to 0x7E ('~').
-; Uses _monitor_port, set by interruptHandler.has when the monitor is
-; plugged (0 = no monitor: port 0 is never given to a peripheral).
+; Uses _monitor_port, set at startup from INFO (runtime/devices.has;
+; 0 = no monitor: port 0 is never given to a peripheral).
 ; Every register is restored. Flags are changed.
 
 ; ------------------------------------------------------------

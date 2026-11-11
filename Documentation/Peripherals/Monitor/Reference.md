@@ -5,9 +5,10 @@ A screen with two modes: **text** (42 × 24 coloured characters) and **pixel**
 
 | | |
 |---|---|
-| ID | `0x4A` |
+| Class | `03 00` (display, VGA) |
+| Product ID | `0x0001` |
 | Ports | 5 |
-| Interrupts | none (only the two plug-in interrupts on port 0) |
+| Interrupts | none |
 | Mode at power-on | text, every cell black with character code 0 (blank) |
 
 See the [peripherals overview](../README.md) for ports, interrupts and how

@@ -9,27 +9,27 @@ history keeps them). Detailed notes are linked; this file only lists.
   later. The old Qt Doxygen site (`docs/`) is gone; the logo is now
   `Documentation/images/logo.png`.
 - **Instruction Manual** (`Documentation/src/HBC-2_IDE_Instruction_Manual.odt`,
-  Gianni edits it): the IOD chapter becomes the mailbox card (ports, STATUS,
-  TX / RX / EVT, the vector step with A8–A15 pulled down) and the ESP32
-  behind it. Also check it for the removed EEPROM target. List of changes:
-  `logisim/notes/iod-decisions.md`, "Docs to change".
+  Gianni edits it): the mailbox chapter is mostly done (2026-11-11). Left:
+  the **I/O protocol** (the command bytes NOP, OUT `0x01 p v`, IN `0x02 p`,
+  INFO `0x03` and its reply, and the TX_FREE / RX_AVAIL handshake), now
+  that the INFO start-up is done (2026-11-11; reference:
+  `Documentation/Peripherals/README.md`, "Detecting the devices"). The IVT
+  row for port `0x00` still says "reserved: the plug-in interrupts": no
+  device has port 0 now. Then export `HBC-2_Instruction_Manual.pdf`.
 
 ## IDE and emulator (`hbc2/`)
 
-- **Start-up on the hardware:** crt0 waits a fixed 32 turns for the plug-in
-  interrupts; on the board the ESP32 starts after the CPU. Gianni is looking
-  into it. Proposal: crt0 sends INFO and waits until every device in INFO's
-  bitmap has its port (iod-decisions.md, "Open after C5").
 - **Native ESP32 commands** (PUTS, PIXEL, GET_TIME, SD…; proposal 9.3), for
   screen speed: added to the I/O processor model together with the firmware
   (hardware, C4), so both have the same set.
 - **ESP32 timing in the emulator:** the I/O processor model answers after 8
   CPU cycles per action (2 for the 1 µs rule). These are guesses: replace
   them with the firmware's measured times.
-- **Reset button:** the emulator only has power-on, which resets the CPU,
-  the mailbox card and the I/O processor together. On the board, `rst_n`
-  resets the CPU and the card while the ESP32 keeps running (its queue, the
-  ports it gave out). Model that reset, so programs can be tested for it.
+- **Reset button in the IDE:** `Machine::reset` models `rst_n` (the CPU
+  and the mailbox card; the ESP32 keeps running and only drops a
+  half-received command). The IDE only has power-on: add a button.
+- **ESP32 boot time in the IDE:** `IopConfig::boot_cycles` is 0 by default
+  (programs start at once); the board's is about 1 s. Maybe an option.
 - **Later: load programs over USB.** A small loader in the boot ROM asks the
   ESP32 for the program; the IDE sends it over USB. Saves burning the two
   AT28C256 for every test. Not designed yet.
@@ -76,9 +76,10 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 ### ESP32 (step C4 of io-redesign-proposal.md 9.9, once hardware is built)
 
-- **Firmware:** the compat commands, NOP, INFO, the plug-in events, then the
-  native commands. On the Mega rig first, then the TTGO VGA32. **Check
-  GPIO 36 on the board's schematic before wiring.**
+- **Firmware:** the compat commands, NOP, INFO (descriptors: class,
+  product ID, first port, number of ports), dropping a half-received
+  command on `rst_n`, the events, then the native commands. No plug-in
+  events, no mouse, no audio. On the Mega rig first, then the TTGO VGA32.
 
 ### KiCad (`kicad/`, Gianni)
 

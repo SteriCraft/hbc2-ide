@@ -24,9 +24,9 @@ machine does is defined by the documents in `../Documentation/`:
 | `hbc2-ide` | The IDE (egui): editor, build, emulator controls, views of the CPU, memory, disassembly, I/O and devices. |
 
 `templates/` holds the files of a new assembly project (`main.has`,
-`mailbox.has`, `interruptHandler.has`) and of a C project (`main.c`).
-`mailbox.has` is a copy of `../compiler/lib/asm/mailbox.has`; a test checks
-they match.
+`mailbox.has`, `devices.has`; `main_bare.has` without the devices) and of a
+C project (`main.c`). `mailbox.has` and `devices.has` are copies of the C
+library's (`../compiler/lib/asm/`); a test checks they match.
 
 ## Commands
 

@@ -18,7 +18,7 @@ The test benches use a simplified IOD stub (ir-mem-decisions.md M5): its queue a
 
 ## Target design for the `iod` module: the C-min mailbox (Gianni, 2026-11-11)
 
-Decided 2026-11-11 (io-redesign-proposal.md sections 9 and 9.8): the IOD is a **mailbox of latches and flip-flops** in front of an ESP32 I/O processor, which runs today's IOD model (port latches, peripherals, plug-in interrupts, event queue) behind a byte protocol. The VIA / 16C550 target of 2026-11-10 is withdrawn (its timing fails, section 8). The CPU and the microcode don't change.
+Decided 2026-11-11 (io-redesign-proposal.md sections 9 and 9.8): the IOD is a **mailbox of latches and flip-flops** in front of an ESP32 I/O processor, which runs today's IOD model (port latches, peripherals, event queue) behind a byte protocol; the CPU asks it for its devices with INFO (no plug-in interrupts since 2026-11-11, proposal 9.10). The VIA / 16C550 target of 2026-11-10 is withdrawn (its timing fails, section 8). The CPU and the microcode don't change.
 
 ### Chips (12, one card)
 

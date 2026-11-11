@@ -5,7 +5,8 @@ released.
 
 | | |
 |---|---|
-| ID | `0xAA` |
+| Class | `09 00` (input device, keyboard) |
+| Product ID | `0x0003` |
 | Ports | 2 |
 | Interrupts | key pressed (first port), key released (second port) |
 | Commands | none |

@@ -240,29 +240,30 @@ to `crt0_init` (`init.has`):
 crt0_init:
     wsp $0xFE00                 ; stack (the reset value, set again for a restart)
     ...                         ; clears the .bss area (__bss_start to __bss_end)
-    ...                         ; waits for the devices to be detected
+    ...                         ; asks the I/O processor for its devices
+    sti
     cal _main
 __exit:                         ; [a:b] = main's return value, or exit's argument
     hlt
     jmp __exit
 ```
 
-* Interrupts stay as the reset leaves them: enabled.
-* **Device detection:** the startup code includes `devices.has`, a copy of the
-  port-0 handler of the project template, with its vector at `$0xFE00`. It
-  stores each device's first port in `monitor_port`, `rtc_port`,
-  `keyboard_port`, `eeprom_port` (`hbc2.h`; 0 = not plugged), and points the
-  RTC and keyboard vectors to a handler that does nothing. The interrupts of
-  the devices plugged at power-on are queued in the I/O processor, which
-  sends them through the mailbox one after the other. In the emulator they
-  are all handled while `crt0` clears the `.bss` area, so it only waits a few
-  loop turns (one was enough in tests; it waits 32) before calling `main`.
-  A C program therefore must not set the port-0 vector itself (no
-  `interruptHandler.has` of the project template).
+* Interrupts are off (`cli`) until the devices are found, then on (`sti`)
+  when `main` is called.
+* **Devices:** the startup code calls `dev_init` (`lib/asm/devices.has`),
+  which sends INFO to the I/O processor and fills the device table from the
+  reply. It waits 2 s at most per byte (the ESP32 boots in about 1 s after
+  power-on; the command waits in TX meanwhile); without an answer the table
+  is empty and `io_protocol()` is 0. `dev_init` points the vectors of every
+  device port still at `$0x0000` to a handler that does nothing. Then
+  `runtime/devices.has` stores the first port of the first display, RTC,
+  keyboard and EEPROM in `monitor_port`, `rtc_port`, `keyboard_port`,
+  `eeprom_port` (`hbc2.h`; 0 = not plugged). Programs find other devices
+  with `device_find()` (by class) and `device_get()`.
 * **Other interrupt vectors** are set by the program while it runs, with
   `set_vector(port, handler)` (`hbc2.h`), from `main`. The RTC and keyboard
   vectors can't be fixed in an assembly file (`.data` at `$0xFE00 + 2n`):
-  their ports are given by the IOD at power-on, and detection points them
+  their ports are given by the I/O processor, and `dev_init` points them
   to the handler that does nothing. See section 10.
 * `hlt` waits for an interrupt, or stops the CPU for good when interrupts
   are off. Interrupts are on from reset, so `__exit` loops: once the program
@@ -331,7 +332,7 @@ int main(void)
 ```
 
 `set_vector` writes the vector at `$0xFE00 + 2 * port` with interrupts off.
-Port 0 (device detection) is refused. A C function can't be a handler: it
+Port 0 (no device has it: a port variable at 0) is refused. A C function can't be a handler: it
 ends with `ret`, not `irt`. Test: `tests/multi/vector`.
 
 The runtime helpers keep no state in global variables, so compiled code can

@@ -4,7 +4,8 @@ Keeps the date and time, and interrupts the CPU once per second.
 
 | | |
 |---|---|
-| ID | `0x95` |
+| Class | `08 03` (system peripheral, real-time clock) |
+| Product ID | `0x0002` |
 | Ports | 7 |
 | Interrupts | once per second, on its first port (`YEAR`) |
 | Time | the host computer's local time (its time zone, daylight saving time included) |

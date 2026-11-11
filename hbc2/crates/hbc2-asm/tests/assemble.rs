@@ -622,6 +622,7 @@ fn templates_assemble_and_find_the_devices() {
     assert_eq!(ram(&m, &p, "monitorPort"), 1);
     assert_eq!(ram(&m, &p, "rtcPort"), 6);
     assert_eq!(ram(&m, &p, "keyboardPort"), 13);
+    assert_eq!(ram(&m, &p, "eepromPort"), 15);
     let table = addr(&p, "dev_table") as u16;
     let eeprom: Vec<u8> = (18..24).map(|k| m.board.ram.read(table + k)).collect();
     assert_eq!(

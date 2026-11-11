@@ -5,6 +5,7 @@
 .data monitorPort 0             ; first port of each device, 0 = not plugged
 .data keyboardPort 0
 .data rtcPort 0
+.data eepromPort 0
 
 
 ; === LIBRARIES ===
@@ -28,6 +29,10 @@ _start:
     mov b, DEV_RTC
     cal dev_port
     str rtcPort, d
+    mov a, DEV_STORAGE          ; the first storage device: the EEPROM (an SD
+    mov b, DEV_OTHER            ; card would be one too: its product ID differs)
+    cal dev_port
+    str eepromPort, d
     sti
 loop:
     nop
