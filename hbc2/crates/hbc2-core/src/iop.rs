@@ -42,6 +42,24 @@ pub mod device {
     pub const EEPROM: u8 = 0x08;
 }
 
+/// What the I/O processor handled, for the debugger ([`Iop::log`]).
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub enum LogEntry {
+    /// `0x01 p v`.
+    Out { port: u8, value: u8 },
+    /// `0x02 p`, and the value replied.
+    In { port: u8, value: u8 },
+    /// `0x03`.
+    Info,
+    /// `0x00`, or a byte that is no command (ignored).
+    Nop(u8),
+    /// An interrupt sent on EVT.
+    Event { port: u8, data: u8 },
+}
+
+/// Entries kept in [`Iop::log`].
+pub const LOG_SIZE: usize = 100;
+
 /// How fast the emulated MCU is, in CPU clock cycles (500 ns each).
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub struct IopConfig {
@@ -55,7 +73,10 @@ pub struct IopConfig {
 
 impl Default for IopConfig {
     fn default() -> Self {
-        IopConfig { service_cycles: 8, rule_cycles: 2 }
+        IopConfig {
+            service_cycles: 8,
+            rule_cycles: 2,
+        }
     }
 }
 
@@ -76,6 +97,11 @@ pub struct Iop {
     pub tx_bytes: u64,
     pub rx_bytes: u64,
     pub events: u64,
+    /// The last commands and events, oldest first (at most [`LOG_SIZE`]).
+    pub log: VecDeque<LogEntry>,
+    /// Entries logged since power-on (the first kept is number
+    /// `logged - log.len()`).
+    pub logged: u64,
 }
 
 fn age(a: &mut Option<u32>, flag: bool, cycles: u32) {
@@ -88,7 +114,10 @@ fn age(a: &mut Option<u32>, flag: bool, cycles: u32) {
 
 impl Iop {
     pub fn new(config: IopConfig) -> Iop {
-        Iop { config, ..Iop::default() }
+        Iop {
+            config,
+            ..Iop::default()
+        }
     }
 
     /// `rst_n` (I16) or power-on: drops any partial command and reply.
@@ -104,6 +133,14 @@ impl Iop {
     /// Reply bytes waiting for RX.
     pub fn replies(&self) -> impl ExactSizeIterator<Item = &u8> {
         self.replies.iter()
+    }
+
+    fn record(&mut self, entry: LogEntry) {
+        if self.log.len() == LOG_SIZE {
+            self.log.pop_front();
+        }
+        self.log.push_back(entry);
+        self.logged += 1;
     }
 
     /// Nothing to do until the CPU or a peripheral acts: every cycle until
@@ -153,6 +190,10 @@ impl Iop {
             m.mcu_write_evt(event.port, event.data);
             self.evt_age = None;
             self.events += 1;
+            self.record(LogEntry::Event {
+                port: event.port,
+                data: event.data,
+            });
             self.busy = service;
         } else if m.tx_full {
             let byte = m.mcu_read_tx();
@@ -180,17 +221,27 @@ impl Iop {
                 if let Some(port) = board.iod.take_pending_write() {
                     peripherals.port_written(port, board);
                 }
+                self.record(LogEntry::Out {
+                    port: c[1],
+                    value: c[2],
+                });
             }
-            command::IN => self.replies.push_back(board.iod.port(c[1])),
+            command::IN => {
+                let value = board.iod.port(c[1]);
+                self.replies.push_back(value);
+                self.record(LogEntry::In { port: c[1], value });
+            }
             command::INFO => {
+                self.record(LogEntry::Info);
                 let bit = |on: bool, b: u8| if on { b } else { 0 };
                 let devices = bit(peripherals.monitor.is_some(), device::MONITOR)
                     | bit(peripherals.rtc.is_some(), device::RTC)
                     | bit(peripherals.keyboard.is_some(), device::KEYBOARD)
                     | bit(peripherals.eeprom.is_some(), device::EEPROM);
-                self.replies.extend([PROTOCOL_VERSION, FIRMWARE_VERSION, devices]);
+                self.replies
+                    .extend([PROTOCOL_VERSION, FIRMWARE_VERSION, devices]);
             }
-            _ => {}
+            other => self.record(LogEntry::Nop(other)),
         }
     }
 }

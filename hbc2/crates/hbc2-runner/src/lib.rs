@@ -30,7 +30,7 @@ use std::sync::{Arc, Mutex};
 use std::thread::JoinHandle;
 
 use hbc2_core::peripherals::{Eeprom, Keyboard, Monitor, Rtc};
-use hbc2_core::{Board, Breakpoints, Cpu, Machine, StopReason};
+use hbc2_core::{Board, Breakpoints, Cpu, Iop, Machine, StopReason};
 
 /// Target clock frequency.
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
@@ -86,8 +86,10 @@ pub struct Snapshot {
     /// Clock cycles since power-on.
     pub ticks: u64,
     pub cpu: Cpu,
-    /// RAM, IOD, buses and interrupt lines.
+    /// RAM, IOD, the mailbox card, buses and interrupt lines.
     pub board: Board,
+    /// The I/O processor, when the board has the mailbox card.
+    pub iop: Option<Iop>,
     pub breakpoints: Breakpoints,
     pub monitor: Option<Arc<Monitor>>,
     pub rtc: Option<Rtc>,

@@ -367,6 +367,21 @@ fn info_reports_the_protocol_and_the_devices() {
         "version 1, the emulator's firmware, monitor + RTC + keyboard"
     );
     assert_eq!(m.iop.partial_command(), &[] as &[u8]);
+
+    // The debugger's log: the last LOG_SIZE commands and events.
+    use hbc2_core::iop::{LOG_SIZE, LogEntry};
+    let log: Vec<LogEntry> = m.iop.log.iter().copied().collect();
+    assert_eq!(log.len(), LOG_SIZE);
+    assert!(m.iop.logged > LOG_SIZE as u64, "the oldest were dropped");
+    assert_eq!(log.last(), Some(&LogEntry::Info), "INFO came last");
+    assert!(
+        log.contains(&LogEntry::In {
+            port: 1,
+            value: 0x12
+        }),
+        "an IN from the monitor, with its reply"
+    );
+    assert!(log.contains(&LogEntry::Out { port: 3, value: 4 }));
 }
 
 /// Breaking the firmware rule (I15): the second of two back-to-back events

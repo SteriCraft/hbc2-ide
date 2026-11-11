@@ -477,6 +477,12 @@ impl Worker {
             ticks: self.machine.ticks(),
             cpu: self.machine.cpu.clone(),
             board: self.machine.board.clone(),
+            iop: self
+                .machine
+                .board
+                .mailbox
+                .is_some()
+                .then(|| self.machine.iop.clone()),
             breakpoints: self.machine.breakpoints.clone(),
             monitor,
             rtc: peripherals.rtc.clone(),
