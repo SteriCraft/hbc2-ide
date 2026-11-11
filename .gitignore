@@ -38,6 +38,7 @@ installer/output/
 
 # KiCad local history (a git repository of its own)
 kicad/**/.history/
+kicad/**/_restore_backup_*/
 
 # KiCad lock files, present while a project is open
 kicad/**/~*.lck
