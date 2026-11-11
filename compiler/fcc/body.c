@@ -103,21 +103,43 @@ static void for_statement(void)
 {
 	unsigned oldbrk = break_tag;
 	unsigned oldcont = cont_tag;
+	struct symbol *ltop = NULL;
+	unsigned argsave, locsave;
 
 	break_tag = next_tag++;
 	cont_tag = break_tag;
 
 	next_token();
-	header(H_FOR, cont_tag, break_tag);
 	require(T_LPAREN);
-	expression_or_null(0, NORETURN);
-	require(T_SEMICOLON);
+	/* HBC-2: C99 for (int i = 0; ...): the declaration has a block of its
+	   own around the loop. Its initial values are written before the
+	   loop (the backend's H_FOR takes one expression first: a null one) */
+	if (is_modifier() || is_storage_word() || is_type_word() || is_typedef()) {
+		/* C: only auto and register objects here */
+		if (token == T_STATIC || token == T_EXTERN || token == T_TYPEDEF)
+			error("invalid storage class");
+		ltop = mark_local_symbols();
+		block_depth++;
+		mark_storage(&argsave, &locsave);
+		declaration(S_AUTO);	/* reads the ; */
+		header(H_FOR, cont_tag, break_tag);
+		write_tree(typed_tree(T_NULL, VOID, NULL, NULL));
+	} else {
+		header(H_FOR, cont_tag, break_tag);
+		expression_or_null(0, NORETURN);
+		require(T_SEMICOLON);
+	}
 	expression_or_null(1, CCONLY);
 	require(T_SEMICOLON);
 	expression_or_null(0, NORETURN);
 	require(T_RPAREN);
 	statement_block(0);
 	footer(H_FOR, cont_tag, break_tag);
+	if (ltop) {
+		pop_local_symbols(ltop);
+		pop_storage(&argsave, &locsave);
+		block_depth--;
+	}
 
 	break_tag = oldbrk;
 	cont_tag = oldcont;

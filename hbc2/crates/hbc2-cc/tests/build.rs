@@ -141,6 +141,18 @@ fn errors() {
     assert!(e.contains("main.c:10:1: error: duplicate name"), "{e}");
     assert!(!e.contains("main.c:8:"), "{e}");
 
+    // for (static int i…): only auto / register in the first clause of for
+    let e = build(
+        "forstatic",
+        &[(
+            "main.c",
+            "int main(void)\n{\n  int r = 0;\n  for (static int i = 0; i < 3; i++)\n    r++;\n  return r;\n}\n",
+        )],
+        library,
+    )
+    .unwrap_err();
+    assert!(e.contains("main.c:4:1: error: invalid storage class"), "{e}");
+
     // neither .c nor .has
     let e = build("kind", &[("notes.txt", "")], library).unwrap_err();
     assert!(e.contains("not a .c or .has file"), "{e}");

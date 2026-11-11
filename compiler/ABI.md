@@ -414,6 +414,9 @@ The Fuzix Compiler Kit compiles C89, without:
   `a = *p`, `struct s v = w;`),
 * K&R function definitions (`int f(a) int a; { … }`).
 
+From C99 it takes declarations after statements (in any block) and in the
+first clause of `for` (`for (int i = 0; …)`, `i` known in the loop only).
+
 Other limits:
 
 * Variables have block scope (a block's locals hide the outer names and

@@ -86,3 +86,8 @@ through `../msvc/compat.h`, a forced include):
   `type_iterator.c` (`type_parse_function`: the arguments one deeper, the
   same depth as the body's outer `{ }`). Tags, typedefs and enum
   constants keep their file-wide scope.
+* `for (int i = 0; …)` (HBC-2, 2026-11-11): `body.c` (`for_statement`):
+  a declaration in the first clause gets a block of its own around the
+  loop; its initial values are written before `H_FOR`, which then gets a
+  null first expression (no backend change). `static`, `extern` and
+  `typedef` there are an error.
