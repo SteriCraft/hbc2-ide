@@ -23,15 +23,29 @@ fn logging_handler() -> Vec<hbc2_core::isa::Instruction> {
 /// Address of the JMP above, after CLI (1 byte), MOV (3) and STI (1).
 const SELF_LOOP: u16 = 5;
 
-fn monitor_only() -> MachineConfig {
-    MachineConfig {
-        monitor: true,
-        ..bare()
-    }
+/// Queues an interrupt on `port` carrying `data` (a device would).
+fn queue(m: &mut hbc2_core::Machine, port: u8, data: u8) {
+    m.board.iod.set_port(port, data);
+    assert!(m.board.iod.trigger_interrupt(port));
 }
 
 #[test]
-fn plugging_a_peripheral_sends_port_then_id_on_port_0() {
+fn plugging_a_peripheral_sends_no_interrupt() {
+    let m = Image::new()
+        .program(&[none(O::Cli), none(O::Hlt)])
+        .build(MachineConfig {
+            monitor: true,
+            keyboard: true,
+            ..bare()
+        });
+    assert!(
+        !m.board.iod.has_pending_interrupt(),
+        "the CPU asks with INFO"
+    );
+}
+
+#[test]
+fn queued_interrupts_reach_the_handler_in_order() {
     let mut m = Image::new()
         .program(&[
             none(O::Cli),
@@ -39,13 +53,16 @@ fn plugging_a_peripheral_sends_port_then_id_on_port_0() {
             none(O::Sti),
             imm16(O::Jmp, SELF_LOOP), // jumps to itself
         ])
-        .vector(0, 0xF000)
+        .vector(1, 0xF000)
+        .vector(2, 0xF000)
         .code(0xF000, &logging_handler())
-        .build(monitor_only());
+        .build(bare());
+    queue(&mut m, 1, 0x11);
+    queue(&mut m, 2, 0x22);
     m.run(200);
     assert_eq!(ram(&m, 0x9000), 2, "two interrupts");
-    assert_eq!(ram(&m, 0x9010), 1, "first: monitor's first port");
-    assert_eq!(ram(&m, 0x9011), 0x4A, "second: monitor's ID");
+    assert_eq!(ram(&m, 0x9010), 0x11, "first: port 1's data");
+    assert_eq!(ram(&m, 0x9011), 0x22, "second: port 2's data");
     assert_eq!(m.cpu.reg(I), 0x77, "IRT restores I");
     assert_eq!(m.cpu.sp, STACK_RESET);
     assert!(m.cpu.flag(Flag::Interrupt));
@@ -62,7 +79,8 @@ fn interrupt_entry_pushes_i_then_pc() {
         ])
         .vector(0, 0xF000)
         .code(0xF000, &[none(O::Irt)])
-        .build(monitor_only());
+        .build(bare());
+    queue(&mut m, 0, 1);
     m.breakpoints.set(0xF000, true);
     let result = m.run(100);
     assert_eq!(result.stop, Some(StopReason::Breakpoint(0xF000)));
@@ -83,7 +101,8 @@ fn hardware_interrupt_entry_takes_nine_cycles() {
     let mut m = Image::new()
         .program(&[imm16(O::Jmp, 0x0000)])
         .vector(0, 0xF000)
-        .build(monitor_only());
+        .build(bare());
+    queue(&mut m, 0, 1);
     m.tick(); // JMP runs; the IOD raises INT at the end of the cycle
     assert!(m.board.int);
     assert_eq!(m.step(), 4, "the rest of JMP Imm16 (5 cycles)");
@@ -97,14 +116,12 @@ fn interrupts_wait_while_the_flag_is_clear() {
     let mut m = Image::new()
         .program(&[none(O::Cli), imm16(O::Jmp, 0x0001)])
         .vector(0, 0xF000)
-        .build(monitor_only());
+        .build(bare());
+    queue(&mut m, 0, 1);
+    queue(&mut m, 0, 2);
     m.run(1000);
     assert_ne!(m.cpu.pc, 0xF000);
-    assert_eq!(
-        m.board.iod.queue().len(),
-        2,
-        "both plug-in interrupts still queued"
-    );
+    assert_eq!(m.board.iod.queue().len(), 2, "both interrupts still queued");
 }
 
 #[test]
@@ -244,18 +261,17 @@ fn hlt_wakes_up_on_interrupt() {
             none(O::Hlt), // at 4: HLT (1 byte) + MOV (3)
             imm16(O::Jmp, 0x0004),
         ])
-        .vector(0, 0xF100) // plug-in interrupts: ignored
-        .code(0xF100, &[none(O::Irt)])
         .vector(1, 0xF000) // keyboard "pressed" port
         .code(0xF000, &[reg(O::Mov, A, I), none(O::Irt)])
         .build(config);
     m.run(100);
     assert!(m.cpu.is_halted());
-    assert_eq!(m.cpu.reg(B), 1, "plug-in interrupts woke it once already");
+    assert_eq!(m.cpu.reg(B), 0, "nothing woke it yet");
 
     m.key_event(0x2A, true);
     m.run(100);
     assert_eq!(m.cpu.reg(A), 0x2A);
+    assert_eq!(m.cpu.reg(B), 1, "woken up, then halted again");
     assert!(m.cpu.is_halted());
 }
 

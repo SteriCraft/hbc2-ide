@@ -602,7 +602,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 own_folder,
                 name,
                 language,
-                interrupt_handler,
+                devices,
                 error,
             } => {
                 ui.set_max_width(560.0);
@@ -645,7 +645,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                 ui.add_space(10.0);
 
                 if *language == Language::Assembly {
-                    ui.checkbox(interrupt_handler, "Include a default interrupt handler");
+                    ui.checkbox(devices, "Find the devices at startup (devices.has)");
                 } else {
                     ui.label(
                         RichText::new(
@@ -695,7 +695,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                             state.actions.push(Action::CreateProject(
                                 parent.clone(),
                                 *language,
-                                *interrupt_handler,
+                                *devices,
                             ));
                         }
                     } else if create {
@@ -716,7 +716,7 @@ pub fn dialogs(ctx: &egui::Context, state: &mut State) {
                                         .push(Action::CreateProject(
                                             root,
                                             *language,
-                                            *interrupt_handler,
+                                            *devices,
                                         ));
                                 }
                             }

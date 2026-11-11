@@ -298,8 +298,8 @@ fn sizes() {
             .collect();
         assert!(kept.is_empty(), "{name}: compare helpers kept: {kept:?}");
     }
-    // crt0, device detection, exit and main only
-    assert!(empty.bytes_used < 400, "{}", empty.bytes_used);
+    // crt0, INFO and the device table (devices.has), exit and main only
+    assert!(empty.bytes_used < 700, "{}", empty.bytes_used);
     assert!(!has(&empty, "_puts") && !has(&empty, "_printf"));
     assert!(has(&hello, "_puts") && !has(&hello, "_printf"));
     assert!(has(&formatted, "_printf") && !has(&formatted, "_puts"));

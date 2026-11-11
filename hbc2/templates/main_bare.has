@@ -1,0 +1,15 @@
+; === DEFINES ===
+
+
+; === VARIABLES ===
+
+
+; === LIBRARIES ===
+.include "mailbox.has"          ; mbx_out / mbx_in: the devices' ports (see the file)
+
+
+; === PROGRAM ===
+_start:
+    nop
+    nop
+    jmp _start

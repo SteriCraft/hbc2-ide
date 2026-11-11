@@ -176,12 +176,35 @@ impl Machine {
         self.boundary = false;
         self.cpu.reset();
         self.board.reset();
-        self.iop.reset();
+        self.iop.power_on();
         match &self.ram_image {
             Some(image) => self.board.ram.as_mut_slice().copy_from_slice(image),
             None => self.board.ram.fill(0),
         }
         self.peripherals.power_on(&mut self.board);
+    }
+
+    /// The reset button (`rst_n`): the CPU and the mailbox card start again
+    /// and the boot ROM copies the program again, but the I/O processor
+    /// keeps running: it only drops the command it was receiving and its
+    /// unread replies ([`Iop::rst_n`]). Its ports, its event queue and the
+    /// peripherals are kept. Without a mailbox, the IOD is kept too.
+    pub fn reset(&mut self) {
+        self.busy = HARDWARE_BOOT_CYCLES as u32;
+        self.boundary = false;
+        self.cpu.reset();
+        self.board.address_bus = 0;
+        self.board.data_bus = 0;
+        self.board.int = false;
+        self.board.inr = false;
+        if let Some(m) = &mut self.board.mailbox {
+            *m = Mailbox::new();
+        }
+        self.iop.rst_n();
+        match &self.ram_image {
+            Some(image) => self.board.ram.as_mut_slice().copy_from_slice(image),
+            None => self.board.ram.fill(0),
+        }
     }
 
     /// Clock cycles since power-on.

@@ -1,15 +1,6 @@
 ; C startup code for a program loaded into RAM, at $0x0000 (see
 ; compiler/ABI.md, section 8).
 
-; Variables of devices.has. .data, not .bss: the handler may run before
-; init.has clears the .bss area.
-.data devices_second 0          ; 1 when the next interrupt is the ID
-.data devices_pending 0         ; first port, kept between the 2 interrupts
-.data _monitor_port 0
-.data _keyboard_port 0
-.data _rtc_port 0
-.data _eeprom_port 0
-
 _start:
     jmp crt0_init
 

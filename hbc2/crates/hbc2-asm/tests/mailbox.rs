@@ -11,7 +11,7 @@ use hbc2_core::isa::IVT_START;
 use hbc2_core::peripherals::{monitor, rtc};
 use hbc2_core::{IopConfig, Machine, MachineConfig, Register};
 
-/// Ports with a logging handler: port 0 (plug-in), monitor 1-5, RTC 6-12,
+/// Ports with a logging handler: port 0 (no device), monitor 1-5, RTC 6-12,
 /// keyboard 13-14.
 const HANDLED: u8 = 15;
 const LOG: u16 = 0x9000;
@@ -57,21 +57,36 @@ io_in:
     pop c
     pof
     ret
-; INFO: the 3 reply bytes to info0..info2, d = 1
+; INFO: the reply (version, N, N descriptors) to info, d = 1
 io_info:
     psf
     cli
-    psh c
+    psh c, x, y
     mov c, 0x03
     cal mbx_send
+    mov x, info.msb
+    mov y, info.lsb
     cal mbx_recv
-    str info0, d
+    str [x:y], d        ; version
+    inc y
     cal mbx_recv
-    str info1, d
+    str [x:y], d        ; N
+    inc y
+    mov c, d
+    shl c
+    add c, d
+    shl c               ; c = 6 N bytes
+io_info_byte:
+    cmp c, 0
+    jme io_info_end
     cal mbx_recv
-    str info2, d
+    str [x:y], d
+    inc y
+    dec c
+    jmp io_info_byte
+io_info_end:
     mov d, 1
-    pop c
+    pop c, x, y
     pof
     ret
 ; c -> TX, once TX is free (status bit 1); mirrors 0x21 / 0x20 on purpose
@@ -106,12 +121,6 @@ fn program(io: &str) -> String {
 ; every interrupt logs (port, I) at 0x9000 + 2n, n counted in evn
 _start:
     sti
-wait_plug:
-    lod a, evn
-    cmp a, 12           ; 3 devices: 6 events on port 0
-    jme plugged
-    jmp wait_plug
-plugged:
     mov b, {cmd}
     mov a, {text}
     cal io_out
@@ -168,7 +177,7 @@ read:
     str infok, d
 keys:
     lod a, evn
-    cmp a, 16           ; two key events
+    cmp a, 4            ; two key events
     jme done
     jmp keys
 done:
@@ -208,11 +217,10 @@ evc:                    ; a = port; flags and a pushed by the stub
         s += &format!("ev{p:02X}:\n    psf\n    psh a\n    mov a, {p}\n    jmp evc\n");
     }
     s += io;
-    for v in [
-        "evn", "rd0", "rd1", "year", "second", "free", "infok", "info0", "info1", "info2",
-    ] {
+    for v in ["evn", "rd0", "rd1", "year", "second", "free", "infok"] {
         s += &format!(".data {v} 0\n");
     }
+    s += ".bss info 32\n";
     for p in 0..HANDLED {
         s += &format!(
             ".data16 v{p:02X} ${:#06X} ev{p:02X}\n",
@@ -312,14 +320,8 @@ fn run(io: &str, mailbox: Option<IopConfig>) -> (Outcome, Program) {
 fn the_mailbox_runs_the_iod_protocol() {
     let (direct, _) = run(DIRECT, None);
     let (mbx, _) = run(MAILBOX, Some(IopConfig::default()));
-    // Plug-in (port 0: first port, ID) x 3, then the key press (port 13) and release (14).
-    assert_eq!(
-        direct.log,
-        [
-            0, 1, 0, 0x4A, 0, 6, 0, 0x95, 0, 13, 0, 0xAA, 13, 0x41, 14, 0x41
-        ],
-        "the old IOD's events"
-    );
+    // No plug-in events: the key press (port 13) and release (14) only.
+    assert_eq!(direct.log, [13, 0x41, 14, 0x41], "the old IOD's events");
     assert_eq!(
         mbx.log, direct.log,
         "the same events, in order, with the same data in I"
@@ -353,18 +355,19 @@ fn info_reports_the_protocol_and_the_devices() {
     let mut m = Machine::new(config(Some(IopConfig::default())), Some(&p.image)).unwrap();
     run_to(&mut m, &p, "keys", 2_000_000);
     assert_eq!(var(&m, &p, "infok"), 1);
+    let info = p.symbol("info").unwrap().address as u16;
+    let reply: Vec<u8> = (0..20).map(|k| m.board.ram.read(info + k)).collect();
+    #[rustfmt::skip]
     assert_eq!(
-        [
-            var(&m, &p, "info0"),
-            var(&m, &p, "info1"),
-            var(&m, &p, "info2")
-        ],
+        reply,
         [
             hbc2_core::iop::PROTOCOL_VERSION,
-            hbc2_core::iop::FIRMWARE_VERSION,
-            0x07
+            3,
+            0x03, 0x00, 0x00, 0x01, 1, 5,  // display, the monitor, ports 1-5
+            0x08, 0x03, 0x00, 0x02, 6, 7,  // RTC, ports 6-12
+            0x09, 0x00, 0x00, 0x03, 13, 2, // keyboard, ports 13-14
         ],
-        "version 1, the emulator's firmware, monitor + RTC + keyboard"
+        "version 1, 3 devices: class, product ID, first port, number of ports"
     );
     assert_eq!(m.iop.partial_command(), &[] as &[u8]);
 
@@ -389,36 +392,38 @@ fn info_reports_the_protocol_and_the_devices() {
 #[test]
 fn breaking_the_rule_loses_events() {
     let p = asm(&program(MAILBOX));
-    let eager = IopConfig {
-        service_cycles: 1,
-        rule_cycles: 0,
-    };
-    let mut m = Machine::new(config(Some(eager)), Some(&p.image)).unwrap();
-    m.run(500_000);
-    let n = var(&m, &p, "evn");
-    assert!(
-        n < 12,
-        "with the rule broken, some of the 6 plug-in events are lost ({} logged)",
-        n / 2
-    );
-    assert!(n >= 2, "the first one arrives");
-    assert_eq!(
-        m.iop.events, 6,
-        "the MCU wrote all 6: the others were cleared by the CPU's evt_clr"
-    );
-    assert!(
-        m.cpu.pc < p.symbol("plugged").unwrap().address as u16,
-        "still waiting for the devices"
-    );
-
-    // With the rule (and the same fast MCU), all arrive.
+    // A fast MCU that keeps the rule, until the program waits for keys (the
+    // replies to IN would be lost too without it).
     let fast = IopConfig {
         service_cycles: 1,
         rule_cycles: 2,
+        boot_cycles: 0,
     };
     let mut m = Machine::new(config(Some(fast)), Some(&p.image)).unwrap();
     run_to(&mut m, &p, "keys", 2_000_000);
-    assert_eq!(var(&m, &p, "evn"), 12);
+    m.iop.config.rule_cycles = 0;
+    assert!(m.key_event(0x41, true) && m.key_event(0x41, false));
+    m.run(100_000);
+    assert_eq!(
+        var(&m, &p, "evn"),
+        2,
+        "with the rule broken, the second key event is lost"
+    );
+    assert_eq!(
+        m.iop.events, 2,
+        "the MCU wrote both: the second was cleared by the CPU's evt_clr"
+    );
+    assert!(
+        m.cpu.pc < p.symbol("done").unwrap().address as u16,
+        "still waiting for the second key event"
+    );
+
+    // With the rule (and the same fast MCU), both arrive.
+    let mut m = Machine::new(config(Some(fast)), Some(&p.image)).unwrap();
+    run_to(&mut m, &p, "keys", 2_000_000);
+    assert!(m.key_event(0x41, true) && m.key_event(0x41, false));
+    run_to(&mut m, &p, "done", 200_000);
+    assert_eq!(var(&m, &p, "evn"), 4);
 }
 
 /// A halted CPU with nothing to do is idle, so `run` doesn't simulate the

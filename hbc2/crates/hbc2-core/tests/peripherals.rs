@@ -19,7 +19,7 @@ fn program(parts: &[&[Instruction]]) -> Vec<Instruction> {
     v
 }
 
-/// Port-0 handler (plug-in interrupts) that just returns.
+/// Port-0 handler that just returns.
 const IGNORE_HANDLER: u16 = 0xFF00;
 
 fn run(config: MachineConfig, parts: &[&[Instruction]]) -> Machine {
@@ -34,7 +34,7 @@ fn run(config: MachineConfig, parts: &[&[Instruction]]) -> Machine {
 }
 
 #[test]
-fn ports_are_allocated_in_order_and_announced() {
+fn ports_are_allocated_in_order_and_described() {
     let m = Machine::new(
         MachineConfig {
             eeprom: Some(Eeprom::blank()),
@@ -49,18 +49,15 @@ fn ports_are_allocated_in_order_and_announced() {
     assert_eq!(p.rtc.as_ref().unwrap().first_port(), Some(6));
     assert_eq!(p.keyboard.as_ref().unwrap().first_port(), Some(13));
     assert_eq!(p.eeprom.as_ref().unwrap().first_port(), Some(15));
-    let announced: Vec<(u8, u8)> = m.board.iod.queue().map(|i| (i.port, i.data)).collect();
+    assert_eq!(m.board.iod.queue().len(), 0, "no plug-in interrupts");
+    // INFO's descriptors: class, product ID, first port, number of ports.
     assert_eq!(
-        announced,
+        p.descriptors(),
         [
-            (0, 1),
-            (0, 0x4A),
-            (0, 6),
-            (0, 0x95),
-            (0, 13),
-            (0, 0xAA),
-            (0, 15),
-            (0, 0xE1)
+            [0x03, 0x00, 0x00, 0x01, 1, 5],
+            [0x08, 0x03, 0x00, 0x02, 6, 7],
+            [0x09, 0x00, 0x00, 0x03, 13, 2],
+            [0x01, 0x80, 0x00, 0x04, 15, 5],
         ]
     );
 }
@@ -171,13 +168,7 @@ fn keyboard_press_and_release_use_two_ports() {
     m.run(10);
     assert!(m.key_event(0x10, true));
     assert!(m.key_event(0x10, false));
-    let queue: Vec<(u8, u8)> = m
-        .board
-        .iod
-        .queue()
-        .skip(2)
-        .map(|i| (i.port, i.data))
-        .collect();
+    let queue: Vec<(u8, u8)> = m.board.iod.queue().map(|i| (i.port, i.data)).collect();
     assert_eq!(queue, [(1, 0x10), (2, 0x10)]);
 }
 
@@ -273,11 +264,7 @@ fn rtc_interrupts_every_second() {
         .program(&[none(O::Cli), imm16(O::Jmp, 0x0001)])
         .build(rtc_only());
     m.advance_time(500_000_000);
-    assert_eq!(
-        m.board.iod.queue().len(),
-        2,
-        "only the plug-in interrupts so far"
-    );
+    assert_eq!(m.board.iod.queue().len(), 0, "no tick yet");
     m.advance_time(600_000_000);
     let last = *m.board.iod.queue().last().unwrap();
     assert_eq!(last.port, RTC + rtc::port::YEAR);
@@ -339,4 +326,39 @@ fn rtc_new_year() {
     m.advance_time(1_000_000_000);
     let now = m.peripherals.rtc.as_ref().unwrap().now();
     assert_eq!((now.year, now.month, now.day), (2000, 1, 1));
+}
+
+// ----- The I/O processor and the reset button
+
+#[test]
+fn reset_drops_a_half_received_command_and_keeps_the_rest() {
+    use hbc2_core::IopConfig;
+    use hbc2_core::peripherals::product;
+    let config = MachineConfig {
+        mailbox: Some(IopConfig {
+            boot_cycles: 100_000,
+            ..IopConfig::default()
+        }),
+        ..MachineConfig::default()
+    };
+    let mut m = Machine::new(config, None).unwrap(); // RAM of NOPs
+    m.finish_boot();
+    let left = m.iop.boot_cycles_left();
+    assert!(left > 0, "still booting after the CPU's boot");
+    m.run(left as u64 + 10);
+    m.board.io_write(0x00, 0x01); // OUT, its port and value never come
+    m.run(50);
+    assert_eq!(m.iop.partial_command(), [0x01]);
+    m.advance_time(1_000_000_000); // an RTC tick waits in the queue
+
+    m.reset();
+    assert_eq!(m.iop.partial_command(), [] as [u8; 0], "dropped at rst_n");
+    assert_eq!(m.iop.boot_cycles_left(), 0, "the firmware keeps running");
+    assert_eq!(m.board.iod.owner(1), product::MONITOR, "ports kept");
+    assert!(m.board.iod.has_pending_interrupt(), "queue kept");
+    let mbx = m.board.mailbox.as_ref().unwrap();
+    assert!(
+        !mbx.tx_full && !mbx.rx_full && !mbx.evt_pend,
+        "the card is reset"
+    );
 }

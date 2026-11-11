@@ -3,7 +3,7 @@ use std::path::Path;
 use hbc2_asm::encode::{Kind, forms};
 use hbc2_asm::{MemoryFiles, Options, Program, SymbolKind, assemble, assemble_with, disassemble};
 use hbc2_core::isa::{Instruction, STACK_RESET, encode};
-use hbc2_core::{Flag, Machine, MachineConfig, Opcode, Register};
+use hbc2_core::{Flag, IopConfig, Machine, MachineConfig, Opcode, Register};
 
 fn build(files: MemoryFiles) -> Result<Program, Vec<String>> {
     assemble(Path::new("main.has"), &files)
@@ -553,11 +553,10 @@ _start:
     );
 }
 
-#[test]
-fn templates_assemble_and_detect_peripherals() {
-    // The IDE copies these files into a new assembly project.
+/// The assembly project template (main.has, mailbox.has, devices.has).
+fn template() -> Program {
     let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
-    let p = hbc2_asm::assemble_file(templates.join("main.has")).unwrap_or_else(|e| {
+    hbc2_asm::assemble_file(templates.join("main.has")).unwrap_or_else(|e| {
         panic!(
             "{}",
             e.iter()
@@ -565,86 +564,210 @@ fn templates_assemble_and_detect_peripherals() {
                 .collect::<Vec<_>>()
                 .join("\n")
         )
-    });
-    let text = |path: std::path::PathBuf| std::fs::read_to_string(path).unwrap().replace('\r', "");
-    assert_eq!(
-        text(templates.join("mailbox.has")),
-        text(templates.join("../../compiler/lib/asm/mailbox.has")),
-        "templates/mailbox.has is a copy of the C library's"
-    );
-    assert_eq!(addr(&p, "_iod_interrupt_handler"), 0xF000);
-    assert_eq!(
-        &p.image[0xFE00..0xFE02],
-        [0xF0, 0x00],
-        "vector built from .msb/.lsb"
-    );
+    })
+}
 
-    let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
+fn template_machine(p: &Program, iop: IopConfig) -> Machine {
+    let config = MachineConfig {
+        mailbox: Some(iop),
+        ..MachineConfig::default()
+    };
+    let mut m = Machine::new(config, Some(&p.image)).unwrap();
     m.finish_boot();
-    m.run(10_000);
-    let ram = |name: &str| m.board.ram.read(addr(&p, name) as u16);
-    assert_eq!(ram("monitorPort"), 1);
-    assert_eq!(ram("rtcPort"), 6);
-    assert_eq!(ram("keyboardPort"), 13);
-    assert_eq!(ram("firstInterrupt"), 0);
+    m
+}
+
+/// Runs until the PC is at `label`; returns the cycles it took.
+fn run_until(m: &mut Machine, p: &Program, label: &str, max: u64) -> u64 {
+    let at = addr(p, label) as u16;
+    let start = m.ticks();
+    while m.cpu.pc != at {
+        assert!(
+            m.ticks() - start < max,
+            "{label} not reached in {max} cycles"
+        );
+        m.step();
+    }
+    m.ticks() - start
+}
+
+fn ram(m: &Machine, p: &Program, name: &str) -> u8 {
+    m.board.ram.read(addr(p, name) as u16)
 }
 
 #[test]
-fn template_handler_preserves_the_main_program_state() {
-    let handler = std::fs::read_to_string(
-        Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates/interruptHandler.has"),
-    )
-    .unwrap();
-    // Registers and flags are set up before interrupts are allowed in.
-    let main = "
-.include \"interruptHandler.has\"
-_start:
-    cli
-    mov a, 0x55
-    mov b, 0x66
-    stc
-    ste
-    sti
-loop:
-    jmp loop
-";
-    let files = MemoryFiles::new()
-        .with("main.has", main)
-        .with("interruptHandler.has", handler);
-    let p = build(files).unwrap_or_else(|e| panic!("{}", e.join("\n")));
+fn templates_assemble_and_find_the_devices() {
+    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+    let text = |path: std::path::PathBuf| std::fs::read_to_string(path).unwrap().replace('\r', "");
+    for file in ["mailbox.has", "devices.has"] {
+        assert_eq!(
+            text(templates.join(file)),
+            text(templates.join("../../compiler/lib/asm").join(file)),
+            "templates/{file} is a copy of the C library's"
+        );
+    }
+    hbc2_asm::assemble_file(templates.join("main_bare.has")).expect("main_bare.has assembles");
 
-    let mut m = Machine::new(MachineConfig::default(), Some(&p.image)).unwrap();
-    m.finish_boot();
-    m.run(10_000);
+    // The I/O processor answers at once.
+    let p = template();
+    let mut m = template_machine(&p, IopConfig::default());
+    let cycles = run_until(&mut m, &p, "loop", 100_000);
+    assert!(cycles < 20_000, "INFO answered at once: {cycles} cycles");
+    assert_eq!(ram(&m, &p, "dev_protocol"), 1);
     assert_eq!(
-        m.board.iod.queue().len(),
-        0,
-        "all plug-in interrupts handled"
+        ram(&m, &p, "dev_count"),
+        4,
+        "monitor, RTC, keyboard, EEPROM"
     );
-    assert_eq!(m.board.ram.read(addr(&p, "keyboardPort") as u16), 13);
+    assert_eq!(ram(&m, &p, "monitorPort"), 1);
+    assert_eq!(ram(&m, &p, "rtcPort"), 6);
+    assert_eq!(ram(&m, &p, "keyboardPort"), 13);
+    let table = addr(&p, "dev_table") as u16;
+    let eeprom: Vec<u8> = (18..24).map(|k| m.board.ram.read(table + k)).collect();
     assert_eq!(
-        (m.cpu.reg(Register::A), m.cpu.reg(Register::B)),
-        (0x55, 0x66)
+        eeprom,
+        [0x01, 0x80, 0x00, 0x04, 15, 5],
+        "the EEPROM's descriptor"
     );
-    assert!(m.cpu.flag(Flag::Carry) && m.cpu.flag(Flag::Equal));
-    assert!(m.cpu.flag(Flag::Interrupt));
+    assert!(m.cpu.flag(Flag::Interrupt), "sti");
     assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
 
-    // The RTC (ports 6-12) gets the default handler, so its ticks change nothing.
-    assert_eq!(m.board.ram.read(addr(&p, "rtcPort") as u16), 6);
-    let entry = 0xFE00 + 2 * 6;
-    let handler = addr(&p, "_rtc_default_handler") as u16;
-    assert_eq!(m.board.ram.read_u16(entry), handler);
+    // The devices' vectors point to dev_ignore: RTC ticks and keys change nothing.
+    let ignore = addr(&p, "dev_ignore") as u16;
+    for port in [1u16, 6, 12, 13, 14, 19] {
+        assert_eq!(
+            m.board.ram.read_u16(0xFE00 + 2 * port),
+            ignore,
+            "port {port}"
+        );
+    }
+    assert_eq!(
+        m.board.ram.read_u16(0xFE00 + 2 * 20),
+        0,
+        "no device on port 20"
+    );
     for _ in 0..3 {
         m.advance_time(1_000_000_000);
         m.run(1_000);
     }
-    assert_eq!(m.cpu.sp, STACK_RESET, "RTC ticks leave the stack balanced");
-    assert_eq!(
-        (m.cpu.reg(Register::A), m.cpu.reg(Register::B)),
-        (0x55, 0x66)
+    m.key_event(0x41, true);
+    m.key_event(0x41, false);
+    m.run(10_000);
+    assert_eq!(m.iop.events, 5, "3 ticks and 2 keys");
+    assert_eq!(m.cpu.sp, STACK_RESET, "events left the stack balanced");
+    assert!((addr(&p, "loop") as u16..addr(&p, "loop") as u16 + 6).contains(&m.cpu.pc));
+}
+
+#[test]
+fn the_template_waits_for_a_slow_io_processor() {
+    // 1 s of boot (the ESP32 on the board): INFO waits in TX meanwhile.
+    let p = template();
+    let slow = IopConfig {
+        boot_cycles: 2_000_000,
+        ..IopConfig::default()
+    };
+    let mut m = template_machine(&p, slow);
+    let cycles = run_until(&mut m, &p, "loop", 3_000_000);
+    // The ESP32 boots while the boot ROM copies the program (65,548 cycles).
+    let left = 2_000_000 - hbc2_core::isa::HARDWARE_BOOT_CYCLES;
+    assert!((left..left + 20_000).contains(&cycles), "{cycles} cycles");
+    assert_eq!(ram(&m, &p, "dev_count"), 4);
+    assert_eq!(ram(&m, &p, "keyboardPort"), 13);
+
+    // The reset button: the CPU starts again, the I/O processor answers at once.
+    m.reset();
+    m.finish_boot();
+    while m.mid_instruction() {
+        m.tick();
+    }
+    let cycles = run_until(&mut m, &p, "loop", 100_000);
+    assert!(cycles < 20_000, "after a CPU reset: {cycles} cycles");
+    assert_eq!(ram(&m, &p, "dev_count"), 4);
+    assert_eq!(ram(&m, &p, "monitorPort"), 1);
+}
+
+#[test]
+fn the_template_times_out_without_an_io_processor() {
+    // An I/O processor that never boots: 2 s, then no devices.
+    let p = template();
+    let absent = IopConfig {
+        boot_cycles: u32::MAX,
+        ..IopConfig::default()
+    };
+    let mut m = template_machine(&p, absent);
+    let cycles = run_until(&mut m, &p, "loop", 5_000_000);
+    assert!(
+        (4_000_000..4_100_000).contains(&cycles),
+        "the timeout is 2 s at 2 MHz: {cycles} cycles"
     );
-    assert_eq!(m.board.iod.queue().len(), 0, "RTC ticks handled");
+    assert_eq!(ram(&m, &p, "dev_protocol"), 0, "no I/O processor");
+    assert_eq!(ram(&m, &p, "dev_count"), 0);
+    assert_eq!(ram(&m, &p, "monitorPort"), 0);
+    assert_eq!(ram(&m, &p, "keyboardPort"), 0);
+    assert_eq!(m.cpu.sp, STACK_RESET, "stack balanced");
+}
+
+#[test]
+fn dev_find_finds_devices_by_class() {
+    let main = r#"
+.include "devices.has"
+_start:
+    cal dev_init
+    mov a, DEV_STORAGE      ; the first storage device
+    mov b, DEV_ANY
+    mov c, 0
+    cal dev_find
+    str found0, d
+    mov a, DEV_INPUT        ; the second keyboard: none
+    mov b, DEV_KEYBOARD
+    mov c, 1
+    cal dev_find
+    mov a, 0
+    adc a, 0
+    str none1, a            ; C = 1
+    str port1, d            ; d = 0
+    mov a, DEV_SYSTEM       ; the RTC: [x:y] = its descriptor
+    mov b, DEV_RTC
+    mov c, 0
+    cal dev_find
+    str rtc_hi, x
+    str rtc_lo, y
+    mov a, DEV_DISPLAY      ; any subclass
+    mov b, DEV_ANY
+    cal dev_port
+    str display, d
+    mov a, DEV_NETWORK      ; none
+    mov b, DEV_ANY
+    cal dev_port
+    str network, d
+done:
+    jmp done
+.data found0 0xFF
+.data none1 0
+.data port1 0xFF
+.data rtc_hi 0
+.data rtc_lo 0
+.data display 0
+.data network 0xFF
+"#;
+    let lib = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../../compiler/lib/asm");
+    let read = |f: &str| std::fs::read_to_string(lib.join(f)).unwrap();
+    let files = MemoryFiles::new()
+        .with("main.has", main)
+        .with("devices.has", read("devices.has"))
+        .with("mailbox.has", read("mailbox.has"));
+    let p = build(files).unwrap_or_else(|e| panic!("{}", e.join("\n")));
+    let mut m = template_machine(&p, IopConfig::default());
+    run_until(&mut m, &p, "done", 100_000);
+    assert_eq!(ram(&m, &p, "found0"), 15, "the EEPROM");
+    assert_eq!((ram(&m, &p, "none1"), ram(&m, &p, "port1")), (1, 0));
+    let rtc = addr(&p, "dev_table") as u16 + 6;
+    assert_eq!(
+        u16::from_be_bytes([ram(&m, &p, "rtc_hi"), ram(&m, &p, "rtc_lo")]),
+        rtc
+    );
+    assert_eq!(ram(&m, &p, "display"), 1);
+    assert_eq!(ram(&m, &p, "network"), 0);
 }
 
 #[test]

@@ -10,13 +10,53 @@
 
 
 // --- Devices ---------------------------------------------------------
-// The first port of each device, 0 when it is not plugged. Set at
-// startup (compiler/runtime/devices.has).
+// At startup the library asks the I/O processor (the ESP32 behind the
+// mailbox) for its devices, with INFO: each device has a class (PCI base
+// class and subclass), a product ID, a first port and a number of ports.
+// It waits at most 2 s for the answer; without one there is no device and
+// io_protocol() is 0. Assembly in compiler/lib/asm/devices.has.
 
-#define MONITOR_ID               0x4A
-#define RTC_ID                   0x95
-#define KEYBOARD_ID              0xAA
-#define EEPROM_ID                0xE1
+// Base classes and subclasses (Peripherals/README.md, "Device classes")
+#define DEVICE_STORAGE           0x01       // mass storage
+#define DEVICE_NETWORK           0x02
+#define DEVICE_DISPLAY           0x03
+#define DEVICE_SYSTEM            0x08       // system peripheral
+#define DEVICE_INPUT             0x09       // input device
+#define DEVICE_VGA               0x00       // display: VGA-compatible
+#define DEVICE_RTC               0x03       // system: real-time clock
+#define DEVICE_KEYBOARD          0x00       // input: keyboard
+#define DEVICE_OTHER             0x80       // storage: other (EEPROM, SD card)
+#define DEVICE_ANY               0xFF       // device_find: any subclass
+
+// Product IDs: which device it is (its ports and commands)
+#define PRODUCT_MONITOR          0x0001
+#define PRODUCT_RTC              0x0002
+#define PRODUCT_KEYBOARD         0x0003
+#define PRODUCT_EEPROM           0x0004
+#define PRODUCT_SD_CARD          0x0005
+
+// One device, as INFO describes it
+struct device {
+    unsigned char base_class;
+    unsigned char subclass;
+    unsigned int product;
+    unsigned char first_port;
+    unsigned char ports;                    // number of ports
+};
+
+unsigned char io_protocol(void);    // INFO's protocol version, 0: no I/O processor
+unsigned char device_count(void);   // devices found (16 at most)
+// The index-th device (0 = the first), 0 when there are fewer.
+const struct device *device_get(unsigned char index);
+// The n-th device (0 = the first) of a class, 0 when there is none.
+// subclass can be DEVICE_ANY. device_find(DEVICE_INPUT, DEVICE_KEYBOARD, 0)
+// is the first keyboard.
+const struct device *device_find(unsigned char base_class,
+                                 unsigned char subclass, unsigned char n);
+
+// The first port of the devices the library's drivers use, 0 when the
+// device is missing: the first display, RTC and keyboard, and the first
+// EEPROM (PRODUCT_EEPROM). Set at startup (compiler/runtime/devices.has).
 
 #define MONITOR_PORTS_COUNT      5
 #define RTC_PORTS_COUNT          7
@@ -39,13 +79,13 @@ void interrupts_on(void);                       // sti
 void wait_interrupt(void);  // sti + hlt: sleeps until the next interrupt (enables them)
 
 // Points the interrupt vector of port to handler, with interrupts off
-// while it is written. Returns a non-zero value if port is 0 (refused:
-// device detection, kept by the startup code). The handler is an
-// assembly routine that ends with irt, declared in C as "void name(void);" (label _name): see
-// compiler/ABI.md, section 10. Not a C function: those end with ret.
-// Call it from main, once the device is detected (rtc_port etc. not 0):
-// until then the startup code points the RTC and keyboard vectors to a
-// handler that does nothing. The keyboard has 2 ports: keyboard_port for
+// while it is written. Returns a non-zero value if port is 0 (refused: no
+// device has port 0, a port variable is 0 when the device is missing).
+// The handler is an assembly routine that ends with irt, declared in C as
+// "void name(void);" (label _name): see compiler/ABI.md, section 10. Not
+// a C function: those end with ret. The startup code points the vectors
+// of every device's ports to a handler that does nothing, unless the
+// program set them already. The keyboard has 2 ports: keyboard_port for
 // keys pressed, keyboard_port + 1 for keys released. The terminal and
 // key_event install their own keyboard handlers.
 int set_vector(unsigned char port, void (*handler)(void));

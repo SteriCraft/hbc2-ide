@@ -188,7 +188,8 @@ impl Monitor {
 }
 
 impl Peripheral for Monitor {
-    const DEVICE_ID: u8 = 0x4A;
+    const CLASS: u16 = super::class::DISPLAY;
+    const PRODUCT: u16 = super::product::MONITOR;
     const PORT_COUNT: u8 = 5;
     const NAME: &'static str = "Monitor";
 

@@ -2,15 +2,33 @@
 
 
 ; === VARIABLES ===
+.data monitorPort 0             ; first port of each device, 0 = not plugged
+.data keyboardPort 0
+.data rtcPort 0
 
 
 ; === LIBRARIES ===
-.include "interruptHandler.has"
 .include "mailbox.has"          ; mbx_out / mbx_in: the devices' ports (see the file)
+.include "devices.has"          ; dev_init / dev_port / dev_find: the devices (see the file)
 
 
 ; === PROGRAM ===
 _start:
+    cli                         ; no event before the devices' vectors are set
+    cal dev_init                ; asks the I/O processor for its devices (2 s at most)
+    mov a, DEV_DISPLAY          ; the first monitor
+    mov b, DEV_ANY
+    cal dev_port
+    str monitorPort, d
+    mov a, DEV_INPUT            ; the first keyboard
+    mov b, DEV_KEYBOARD
+    cal dev_port
+    str keyboardPort, d
+    mov a, DEV_SYSTEM           ; the first real-time clock
+    mov b, DEV_RTC
+    cal dev_port
+    str rtcPort, d
+    sti
+loop:
     nop
-    nop
-    jmp _start
+    jmp loop

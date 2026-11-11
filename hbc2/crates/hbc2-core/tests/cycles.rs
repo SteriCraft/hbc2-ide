@@ -9,7 +9,7 @@ use hbc2_core::isa::{
     HALT_LOOP_CYCLES, HARDWARE_BOOT_CYCLES, HARDWARE_INTERRUPT_CYCLES, Instruction,
     SOFTWARE_INTERRUPT_CYCLES, encode::*,
 };
-use hbc2_core::{Machine, MachineConfig, StopReason};
+use hbc2_core::{Machine, StopReason};
 
 #[test]
 fn the_first_instruction_starts_after_the_boot() {
@@ -32,11 +32,11 @@ fn the_first_instruction_starts_after_the_boot() {
 
 #[test]
 fn no_interrupt_before_the_first_instruction() {
-    // The peripherals announce themselves at power-on: INT is up when the
-    // boot ends, but the first fetch has no interrupt check (as on the hardware).
+    // An interrupt waits from power-on: INT is up when the boot ends, but
+    // the first fetch has no interrupt check (as on the hardware).
     let image = Image::new().program(&[none(O::Cli), none(O::Hlt)]).0;
-    let mut m = Machine::new(MachineConfig::default(), Some(&image)).unwrap();
-    assert!(m.board.iod.has_pending_interrupt());
+    let mut m = Machine::new(bare(), Some(&image)).unwrap();
+    assert!(m.board.iod.trigger_interrupt(0x20));
     m.run(HARDWARE_BOOT_CYCLES + 100);
     assert!(m.cpu.is_stopped(), "CLI ran first, then HLT");
     assert_eq!(m.cpu.pc, 2);

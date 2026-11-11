@@ -40,7 +40,8 @@ impl Keyboard {
 }
 
 impl Peripheral for Keyboard {
-    const DEVICE_ID: u8 = 0xAA;
+    const CLASS: u16 = super::class::KEYBOARD;
+    const PRODUCT: u16 = super::product::KEYBOARD;
     const PORT_COUNT: u8 = 2;
     const NAME: &'static str = "Keyboard";
 

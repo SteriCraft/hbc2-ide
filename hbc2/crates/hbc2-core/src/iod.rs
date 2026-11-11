@@ -1,13 +1,16 @@
-//! The I/O Driver chip (IOD): 256 I/O ports and a 256-entry FIFO interrupt queue.
+//! The I/O Driver chip (IOD): 256 I/O ports and a 256-entry FIFO interrupt
+//! queue. With the mailbox, the I/O processor's state (its ports and its
+//! event queue).
 //!
-//! Port 0 is reserved for IOD <-> CPU communication. When a peripheral is
-//! plugged in, the IOD sends two interrupts on port 0: first the peripheral's
-//! first port number, then the peripheral's ID.
+//! Port 0 is never given to a device, so a port variable at 0 means "no
+//! such device". Plugging a device sends no interrupt: the CPU asks the
+//! I/O processor for its devices with INFO.
 
 use std::collections::VecDeque;
 
 pub const PORT_COUNT: usize = 256;
 pub const QUEUE_CAPACITY: usize = 256;
+/// Never given to a device: 0 in a port variable means "not plugged".
 pub const RESERVED_PORT: u8 = 0;
 
 /// One queued interrupt: the port that raised it and the data that comes with it.
@@ -21,8 +24,8 @@ pub struct Interrupt {
 pub struct Iod {
     /// Data latch of each port.
     ports: [u8; PORT_COUNT],
-    /// Device ID owning each port (0 = free).
-    owners: [u8; PORT_COUNT],
+    /// Product ID of the device owning each port (0 = free).
+    owners: [u16; PORT_COUNT],
     queue: VecDeque<Interrupt>,
     /// Port written by the last `OUT`, waiting to be delivered to its peripheral.
     pending_write: Option<u8>,
@@ -73,8 +76,8 @@ impl Iod {
         self.pending_write.take()
     }
 
-    /// Device ID owning a port (0 = free).
-    pub fn owner(&self, port: u8) -> u8 {
+    /// Product ID of the device owning a port (0 = free).
+    pub fn owner(&self, port: u8) -> u16 {
         self.owners[port as usize]
     }
 
@@ -82,7 +85,7 @@ impl Iod {
         &self.ports
     }
 
-    pub fn owners(&self) -> &[u8; PORT_COUNT] {
+    pub fn owners(&self) -> &[u16; PORT_COUNT] {
         &self.owners
     }
 
@@ -113,23 +116,16 @@ impl Iod {
     }
 
     /// Plugs a peripheral: allocates `count` consecutive ports starting at the
-    /// first free port (port 0 excluded), then sends the two port-0 interrupts.
-    /// Returns the first allocated port, or `None` if there is no room.
-    pub fn connect(&mut self, device_id: u8, count: u8) -> Option<u8> {
+    /// first free port (port 0 excluded). Returns the first allocated port,
+    /// or `None` if there is no room.
+    pub fn connect(&mut self, product: u16, count: u8) -> Option<u8> {
         let first = (1..PORT_COUNT).find(|&p| self.owners[p] == 0)?;
         if count == 0 || PORT_COUNT - first < count as usize {
             return None;
         }
         for p in first..first + count as usize {
-            self.owners[p] = device_id;
+            self.owners[p] = product;
         }
-        let first = first as u8;
-
-        self.ports[RESERVED_PORT as usize] = first;
-        self.trigger_interrupt(RESERVED_PORT);
-        self.ports[RESERVED_PORT as usize] = device_id;
-        self.trigger_interrupt(RESERVED_PORT);
-
-        Some(first)
+        Some(first as u8)
     }
 }

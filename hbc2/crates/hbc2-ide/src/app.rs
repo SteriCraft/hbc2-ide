@@ -149,7 +149,7 @@ pub enum Dialog {
         own_folder: bool,
         name: String,
         language: Language,
-        interrupt_handler: bool,
+        devices: bool,
         error: Option<String>,
     },
     NewFile {
@@ -1060,12 +1060,12 @@ impl Ide {
                     own_folder: state.settings.general.project_folder,
                     name: "newProject".into(),
                     language: Language::Assembly,
-                    interrupt_handler: true,
+                    devices: true,
                     error: None,
                 });
             }
-            Action::CreateProject(dir, language, interrupt_handler) => {
-                match Project::create(&dir, language, interrupt_handler) {
+            Action::CreateProject(dir, language, devices) => {
+                match Project::create(&dir, language, devices) {
                     Ok(project) => {
                         let root = project.root.clone();
                         let peripherals = state.settings.emulator.new_project_peripherals;

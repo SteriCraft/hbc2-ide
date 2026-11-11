@@ -213,7 +213,8 @@ impl Rtc {
 }
 
 impl Peripheral for Rtc {
-    const DEVICE_ID: u8 = 0x95;
+    const CLASS: u16 = super::class::RTC;
+    const PRODUCT: u16 = super::product::RTC;
     const PORT_COUNT: u8 = 7;
     const NAME: &'static str = "Real-Time Clock";
 

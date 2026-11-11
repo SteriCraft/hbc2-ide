@@ -8,10 +8,14 @@ use std::path::{Path, PathBuf};
 pub const ENTRY_FILE: &str = "main.has";
 pub const C_ENTRY_FILE: &str = "main.c";
 pub const C_MAIN_TEMPLATE: &str = include_str!("../../../templates/main.c");
+/// `main.has` with the devices found at startup (INFO, `devices.has`).
 pub const MAIN_TEMPLATE: &str = include_str!("../../../templates/main.has");
-pub const INTERRUPT_HANDLER_FILE: &str = "interruptHandler.has";
-pub const INTERRUPT_HANDLER_TEMPLATE: &str =
-    include_str!("../../../templates/interruptHandler.has");
+/// `main.has` without them.
+pub const MAIN_BARE_TEMPLATE: &str = include_str!("../../../templates/main_bare.has");
+/// The devices asked to the I/O processor at startup (`dev_init`,
+/// `dev_find`): the same file as the C library's (a test checks it).
+pub const DEVICES_FILE: &str = "devices.has";
+pub const DEVICES_TEMPLATE: &str = include_str!("../../../templates/devices.has");
 /// The devices' IN and OUT through the I/O mailbox (`mbx_in`, `mbx_out`),
 /// copied into every assembly project. The same file as the C library's
 /// (a test checks it).
@@ -87,20 +91,21 @@ impl Project {
 
     /// Creates the entry file from its template in `root` (created if
     /// needed): `main.c` for C, otherwise `main.has` and `mailbox.has`, with
-    /// `interruptHandler.has` when `interrupt_handler` is set. Then opens
-    /// it. Existing files are kept.
-    pub fn create(root: &Path, language: Language, interrupt_handler: bool) -> io::Result<Project> {
+    /// `devices.has` (and a `main.has` that finds the devices) when
+    /// `devices` is set. Then opens it. Existing files are kept.
+    pub fn create(root: &Path, language: Language, devices: bool) -> io::Result<Project> {
         std::fs::create_dir_all(root)?;
-        let main = main_source(interrupt_handler);
+        let main = if devices {
+            MAIN_TEMPLATE
+        } else {
+            MAIN_BARE_TEMPLATE
+        };
         let mut files = match language {
             Language::C => vec![(C_ENTRY_FILE, C_MAIN_TEMPLATE)],
-            Language::Assembly => vec![
-                (ENTRY_FILE, main.as_str()),
-                (MAILBOX_FILE, MAILBOX_TEMPLATE),
-            ],
+            Language::Assembly => vec![(ENTRY_FILE, main), (MAILBOX_FILE, MAILBOX_TEMPLATE)],
         };
-        if interrupt_handler && language == Language::Assembly {
-            files.push((INTERRUPT_HANDLER_FILE, INTERRUPT_HANDLER_TEMPLATE));
+        if devices && language == Language::Assembly {
+            files.push((DEVICES_FILE, DEVICES_TEMPLATE));
         }
         for (name, content) in files {
             let path = root.join(name);
@@ -197,19 +202,6 @@ pub fn has_extension(path: &Path, extensions: &[&str]) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
         .is_some_and(|e| extensions.iter().any(|x| e.eq_ignore_ascii_case(x)))
-}
-
-/// The `main.has` template, without its `.include` of the interrupt handler
-/// when the project has none.
-fn main_source(interrupt_handler: bool) -> String {
-    if interrupt_handler {
-        return MAIN_TEMPLATE.to_string();
-    }
-    let include = format!(".include \"{INTERRUPT_HANDLER_FILE}\"");
-    MAIN_TEMPLATE
-        .split_inclusive('\n')
-        .filter(|line| line.trim() != include)
-        .collect()
 }
 
 /// Name of the folder, inside the user's Documents, where project dialogs open.
@@ -313,17 +305,13 @@ mod tests {
         let bare = Project::create(&dir.join("bare"), Language::Assembly, false).unwrap();
         assert_eq!(bare.files, vec![bare.root.join(MAILBOX_FILE), bare.entry()]);
         let main = std::fs::read_to_string(bare.entry()).unwrap();
-        assert!(!main.contains(INTERRUPT_HANDLER_FILE));
+        assert!(!main.contains(DEVICES_FILE));
         assert!(main.contains(MAILBOX_FILE));
         assert!(main.contains("_start:"));
 
         let c = Project::create(&dir.join("c"), Language::C, true).unwrap();
         assert_eq!(c.language, Language::C);
-        assert_eq!(
-            c.files,
-            vec![c.root.join(C_ENTRY_FILE)],
-            "no interrupt handler"
-        );
+        assert_eq!(c.files, vec![c.root.join(C_ENTRY_FILE)], "no devices.has");
         std::fs::write(c.root.join("a.c"), "").unwrap();
         std::fs::write(c.root.join("a.h"), "").unwrap();
         std::fs::write(c.root.join("b.has"), "").unwrap();

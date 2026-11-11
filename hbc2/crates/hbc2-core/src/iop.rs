@@ -7,9 +7,17 @@
 //! - `0x01 p v` (OUT): `Iod::cpu_write(p, v)`, then the owning peripheral
 //!   reacts, exactly as an `out` did with the old IOD;
 //! - `0x02 p` (IN): replies `Iod::port(p)` on RX;
-//! - `0x00` (NOP), `0x03` (INFO: protocol version, firmware version, devices);
-//!   any other byte is ignored, as a NOP;
+//! - `0x00` (NOP); any other byte is ignored, as a NOP;
+//! - `0x03` (INFO): replies the protocol version, the number of devices N,
+//!   then N descriptors of 6 bytes ([`Peripherals::descriptors`]: class,
+//!   product ID, first port, number of ports);
 //! - every queued interrupt `(port, data)` becomes an event on EVT, in order.
+//!   Plugging a device sends none: the CPU asks with INFO.
+//!
+//! After power-on the firmware boots for `boot_cycles` before it looks at
+//! the mailbox: a command written meanwhile waits in TX. `rst_n` resets the
+//! CPU and the card only: the MCU drops the command it was receiving and
+//! its replies, and keeps the rest (ports, queue, devices).
 //!
 //! The MCU polls the mailbox once per CPU clock cycle, after the `clk` edge.
 //! It keeps the firmware rule (I15): RX or EVT is written only when its flag
@@ -23,8 +31,6 @@ use crate::board::Board;
 use crate::peripherals::Peripherals;
 
 pub const PROTOCOL_VERSION: u8 = 1;
-/// INFO's firmware version byte: 0 = the emulator's model.
-pub const FIRMWARE_VERSION: u8 = 0;
 
 /// Command bytes (9.3, compat + NOP and INFO).
 pub mod command {
@@ -32,14 +38,6 @@ pub mod command {
     pub const OUT: u8 = 0x01;
     pub const IN: u8 = 0x02;
     pub const INFO: u8 = 0x03;
-}
-
-/// INFO's devices bitmap.
-pub mod device {
-    pub const MONITOR: u8 = 0x01;
-    pub const RTC: u8 = 0x02;
-    pub const KEYBOARD: u8 = 0x04;
-    pub const EEPROM: u8 = 0x08;
 }
 
 /// What the I/O processor handled, for the debugger ([`Iop::log`]).
@@ -69,6 +67,10 @@ pub struct IopConfig {
     /// (I15: 1 us, 2 cycles). 0 breaks the rule, for tests: a write in the
     /// CPU's clear step is lost.
     pub rule_cycles: u32,
+    /// Cycles from power-on until the firmware first looks at the mailbox
+    /// (the ESP32's boot: about 1 s, 2,000,000 cycles, on the board). 0 by
+    /// default, so programs start at once in the emulator.
+    pub boot_cycles: u32,
 }
 
 impl Default for IopConfig {
@@ -76,6 +78,7 @@ impl Default for IopConfig {
         IopConfig {
             service_cycles: 8,
             rule_cycles: 2,
+            boot_cycles: 0,
         }
     }
 }
@@ -83,6 +86,8 @@ impl Default for IopConfig {
 #[derive(Clone, Debug, Default)]
 pub struct Iop {
     pub config: IopConfig,
+    /// Cycles left before the firmware has booted.
+    booting: u32,
     /// Cycles left in the action now running.
     busy: u32,
     /// The command being received.
@@ -116,13 +121,29 @@ impl Iop {
     pub fn new(config: IopConfig) -> Iop {
         Iop {
             config,
+            booting: config.boot_cycles,
             ..Iop::default()
         }
     }
 
-    /// `rst_n` (I16) or power-on: drops any partial command and reply.
-    pub fn reset(&mut self) {
+    /// Power-on: the firmware boots again, from nothing.
+    pub fn power_on(&mut self) {
         *self = Iop::new(self.config);
+    }
+
+    /// `rst_n` (I16): the firmware keeps running (and booting, if it was),
+    /// but drops any partial command and the replies not read yet.
+    pub fn rst_n(&mut self) {
+        self.command.clear();
+        self.replies.clear();
+        self.busy = 0;
+        self.rx_age = None;
+        self.evt_age = None;
+    }
+
+    /// Cycles left before the firmware has booted (0 once it runs).
+    pub fn boot_cycles_left(&self) -> u32 {
+        self.booting
     }
 
     /// The command bytes received so far (an incomplete command).
@@ -147,7 +168,8 @@ impl Iop {
     /// then leaves the MCU as it is (but for the ages, see [`Iop::skip`]).
     pub fn idle(&self, board: &Board) -> bool {
         let Some(m) = &board.mailbox else { return true };
-        self.busy == 0
+        self.booting == 0
+            && self.busy == 0
             && !m.tx_full
             && (self.replies.is_empty() || m.rx_full)
             && (!board.iod.has_pending_interrupt() || m.evt_pend)
@@ -168,6 +190,10 @@ impl Iop {
         let Some(m) = &mut board.mailbox else { return };
         age(&mut self.rx_age, m.rx_full, 1);
         age(&mut self.evt_age, m.evt_pend, 1);
+        if self.booting > 0 {
+            self.booting -= 1;
+            return;
+        }
         if self.busy > 0 {
             self.busy -= 1;
             return;
@@ -233,13 +259,10 @@ impl Iop {
             }
             command::INFO => {
                 self.record(LogEntry::Info);
-                let bit = |on: bool, b: u8| if on { b } else { 0 };
-                let devices = bit(peripherals.monitor.is_some(), device::MONITOR)
-                    | bit(peripherals.rtc.is_some(), device::RTC)
-                    | bit(peripherals.keyboard.is_some(), device::KEYBOARD)
-                    | bit(peripherals.eeprom.is_some(), device::EEPROM);
-                self.replies
-                    .extend([PROTOCOL_VERSION, FIRMWARE_VERSION, devices]);
+                let devices = peripherals.descriptors();
+                self.replies.push_back(PROTOCOL_VERSION);
+                self.replies.push_back(devices.len() as u8);
+                self.replies.extend(devices.iter().flatten());
             }
             other => self.record(LogEntry::Nop(other)),
         }

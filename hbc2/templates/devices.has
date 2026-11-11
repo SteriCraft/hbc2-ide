@@ -1,0 +1,261 @@
+; ============================================================
+; The devices: asked to the I/O processor at startup (INFO)
+; ============================================================
+;
+; dev_init sends INFO (command 0x03) and fills dev_table from the reply:
+;
+;   protocol version, N, then N descriptors of 6 bytes:
+;   class (PCI base class, subclass), product ID (2 bytes, most
+;   significant first), first port, number of ports.
+;
+; The I/O processor (an ESP32) may still be booting (about 1 s after
+; power-on): the command just waits in TX. Each byte is waited for at
+; most DEV_TIMEOUT (2 s). On a timeout dev_protocol and dev_count stay 0:
+; there is no I/O processor, and no device.
+;
+; Then dev_find finds a device by its class ("the first keyboard"):
+;
+;   mov a, DEV_INPUT            ; base class
+;   mov b, DEV_KEYBOARD         ; subclass (DEV_ANY: any)
+;   mov c, 0                    ; 0 = the first one, 1 = the second...
+;   cal dev_find                ; C = 0: d = its first port
+;
+; or, for the first one, dev_port (d = 0 when there is none):
+;
+;   mov a, DEV_INPUT
+;   mov b, DEV_KEYBOARD
+;   cal dev_port
+;   str keyboardPort, d
+;
+; Device classes (Peripherals/README.md, "Device classes"):
+;
+;   class   device                 product IDs
+;   03 00   display (VGA)          0x0001 monitor
+;   08 03   real-time clock        0x0002 RTC
+;   09 00   keyboard               0x0003 keyboard
+;   01 80   mass storage (other)   0x0004 EEPROM, 0x0005 SD card
+;
+; Interrupts now only come from the devices (a key, a clock tick...).
+; dev_init points the vector of every port of every device to an
+; empty handler (dev_ignore) when the program left it at $0x0000, so an
+; event the program doesn't handle doesn't restart it.
+
+.include "mailbox.has"
+
+.define DEV_STORAGE 0x01        ; base classes
+.define DEV_NETWORK 0x02
+.define DEV_DISPLAY 0x03
+.define DEV_SYSTEM 0x08
+.define DEV_INPUT 0x09
+.define DEV_VGA 0x00            ; subclasses
+.define DEV_RTC 0x03
+.define DEV_KEYBOARD 0x00
+.define DEV_OTHER 0x80
+.define DEV_ANY 0xFF            ; dev_find: any subclass
+
+.define DEV_SIZE 6              ; a descriptor
+.define DEV_MAX 16              ; descriptors kept; the others are read and dropped
+.define DEV_TABLE_SIZE 102      ; (DEV_MAX + 1) * DEV_SIZE: the last one is scratch
+
+; The timeout: turns of the loop in dev_wait, 38 cycles each, as a 24-bit
+; count. 105,263 turns = 4,000,000 cycles = 2 s at 2 MHz.
+.define DEV_TIMEOUT_HI 0x01
+.define DEV_TIMEOUT_MID 0x9B
+.define DEV_TIMEOUT_LO 0x2F
+
+.bss dev_protocol 1             ; INFO's protocol version, 0 = no I/O processor
+.bss dev_count 1                ; descriptors in dev_table
+.bss dev_table DEV_TABLE_SIZE
+
+; Asks the I/O processor for its devices. Changes every register but i;
+; keeps the flags (interrupts stay off meanwhile).
+dev_init:
+    psf
+    cli
+    mov a, 0
+    str dev_protocol, a
+    str dev_count, a
+    mov b, MBX_TX_FREE          ; TX is free after a reset, unless a CPU
+    cal dev_wait                ; restart left a byte nobody reads
+    jmc dev_init_fail
+    mov d, MBX_DATA
+    mov a, MBX_CMD_INFO
+    out d, a
+    cal dev_recv                ; the protocol version
+    jmc dev_init_fail
+    mov j, a
+    cal dev_recv                ; N
+    jmc dev_init_fail
+    mov c, a                    ; c = descriptors left
+    mov x, dev_table.msb
+    mov y, dev_table.lsb
+dev_init_next:
+    cmp c, 0
+    jme dev_init_read
+    psh x, y
+    cal dev_read
+    pop x, y
+    jmc dev_init_fail
+    lod a, dev_count
+    cmp a, DEV_MAX
+    jme dev_init_full           ; table full: the next ones go to the scratch
+    inc a
+    str dev_count, a
+    add y, DEV_SIZE
+    adc x, 0
+dev_init_full:
+    dec c
+    jmp dev_init_next
+dev_init_read:
+    str dev_protocol, j
+    cal dev_vectors
+    pof
+    ret
+dev_init_fail:
+    mov a, 0
+    str dev_count, a
+    pof
+    ret
+
+; Reads one descriptor (DEV_SIZE bytes) to [x:y]. C = 1 on a timeout.
+; Changes a, b, d, j, x, y.
+dev_read:
+    psh j
+    mov j, DEV_SIZE
+dev_read_byte:
+    cal dev_recv
+    jmc dev_read_end
+    str [x:y], a
+    add y, 1
+    adc x, 0
+    dec j
+    jmz dev_read_done
+    jmp dev_read_byte
+dev_read_done:
+    clc
+dev_read_end:
+    pop j
+    ret
+
+; a = the next byte from the I/O processor; C = 1 on a timeout.
+; Changes b and d.
+dev_recv:
+    mov b, MBX_RX_AVAIL
+    cal dev_wait
+    jmc dev_recv_end
+    mov d, MBX_DATA
+    in a, d
+    clc
+dev_recv_end:
+    ret
+
+; Waits until STATUS has a bit of b set, for DEV_TIMEOUT at most.
+; C = 1 on a timeout. Changes a and d.
+dev_wait:
+    psh c, x, y
+    mov d, MBX_STATUS
+    mov c, DEV_TIMEOUT_HI
+    mov x, DEV_TIMEOUT_MID
+    mov y, DEV_TIMEOUT_LO
+dev_wait_loop:                  ; 38 cycles a turn:
+    in a, d                     ;  4
+    and a, b                    ;  4
+    jmz dev_wait_next           ;  5
+    clc
+    jmp dev_wait_end
+dev_wait_next:
+    sub y, 1                    ;  5   [c:x:y] - 1, C = 1 below 0
+    sbb x, 0                    ;  5
+    sbb c, 0                    ;  5
+    jmc dev_wait_end            ;  5   timeout
+    jmp dev_wait_loop           ;  5
+dev_wait_end:
+    pop c, x, y
+    ret
+
+; Points the vectors of the devices' ports that are still $0x0000 to
+; dev_ignore. Changes a, b, c, d, x, y.
+dev_vectors:
+    lod c, dev_count
+    mov x, dev_table.msb
+    mov y, dev_table.lsb
+dev_vectors_device:
+    cmp c, 0
+    jme dev_vectors_end
+    lod a, [x:y + 4]            ; first port
+    lod b, [x:y + 5]            ; number of ports
+    psh x, y
+dev_vectors_port:
+    cmp b, 0
+    jme dev_vectors_next
+    mov x, 0xFE
+    mov y, a
+    shl y                       ; C = 1 for port 128 or more: entry in $0xFFxx
+    adc x, 0                    ; [x:y] = vector of the port = $0xFE00 + 2 * port
+    lod d, [x:y]
+    or d, [x:y + 1]
+    jmz dev_vectors_set
+    jmp dev_vectors_skip
+dev_vectors_set:
+    mov d, dev_ignore.msb
+    str [x:y], d
+    mov d, dev_ignore.lsb
+    str [x:y + 1], d
+dev_vectors_skip:
+    inc a
+    dec b
+    jmp dev_vectors_port
+dev_vectors_next:
+    pop x, y
+    add y, DEV_SIZE
+    adc x, 0
+    dec c
+    jmp dev_vectors_device
+dev_vectors_end:
+    ret
+
+; The handler of the events nobody asked for.
+dev_ignore:
+    irt
+
+; d = the first port of the first device of base class a and subclass b
+; (DEV_ANY: any subclass), as dev_find with c = 0. Changes c, d, x, y.
+dev_port:
+    mov c, 0
+
+; Finds the c-th device (0 = the first) of base class a and subclass b
+; (DEV_ANY: any subclass). C = 0 when found: [x:y] = its descriptor in
+; dev_table, d = its first port. C = 1 and d = 0 when there is none.
+; Changes c, d, x, y.
+dev_find:
+    lod d, dev_count            ; d = descriptors left
+    mov x, dev_table.msb
+    mov y, dev_table.lsb
+dev_find_loop:
+    cmp d, 0
+    jme dev_find_none
+    cmp a, [x:y]
+    jme dev_find_class
+    jmp dev_find_next
+dev_find_class:
+    cmp b, DEV_ANY
+    jme dev_find_match
+    cmp b, [x:y + 1]
+    jme dev_find_match
+    jmp dev_find_next
+dev_find_match:
+    cmp c, 0
+    jme dev_find_found
+    dec c
+dev_find_next:
+    add y, DEV_SIZE
+    adc x, 0
+    dec d
+    jmp dev_find_loop
+dev_find_none:
+    stc                         ; d = 0 here
+    ret
+dev_find_found:
+    lod d, [x:y + 4]
+    clc
+    ret

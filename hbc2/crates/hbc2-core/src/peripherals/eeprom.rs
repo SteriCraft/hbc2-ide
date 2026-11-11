@@ -89,7 +89,8 @@ impl Eeprom {
 }
 
 impl Peripheral for Eeprom {
-    const DEVICE_ID: u8 = 0xE1;
+    const CLASS: u16 = super::class::STORAGE_OTHER;
+    const PRODUCT: u16 = super::product::EEPROM;
     const PORT_COUNT: u8 = 5;
     const NAME: &'static str = "EEPROM";
 

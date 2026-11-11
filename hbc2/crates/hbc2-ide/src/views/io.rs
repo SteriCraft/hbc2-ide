@@ -7,17 +7,16 @@ use std::cell::Cell;
 use super::columns::Section;
 use eframe::egui::{self, RichText};
 use hbc2_core::Iod;
-use hbc2_core::iod::RESERVED_PORT;
 use hbc2_core::iop::{Iop, LOG_SIZE, LogEntry};
 use hbc2_core::mailbox::Mailbox;
 use hbc2_core::peripherals::monitor::Mode;
 use hbc2_core::peripherals::{Eeprom, Keyboard, Monitor, Peripheral, PeripheralKind, Rtc};
 use hbc2_runner::{RunState, Snapshot};
 
-fn owner_name(id: u8) -> String {
-    match PeripheralKind::from_device_id(id) {
+fn owner_name(product: u16) -> String {
+    match PeripheralKind::from_product(product) {
         Some(kind) => kind.name().to_string(),
-        None => format!("device {id:02X}"),
+        None => format!("product {product:04X}"),
     }
 }
 
@@ -181,6 +180,12 @@ fn io_processor(ui: &mut egui::Ui, iop: &Iop) {
         .num_columns(2)
         .striped(true)
         .show(ui, |ui| {
+            if iop.boot_cycles_left() > 0 {
+                ui.label("Booting")
+                    .on_hover_text("The firmware doesn't read the mailbox yet");
+                ui.label(mono(format!("{} cycles left", iop.boot_cycles_left())));
+                ui.end_row();
+            }
             ui.label("Command so far")
                 .on_hover_text("The bytes of a command not complete yet");
             ui.label(mono(hex_bytes(iop.partial_command().iter().copied())));
@@ -221,15 +226,9 @@ fn io_log(ui: &mut egui::Ui, iop: &Iop, iod: &Iod) {
         ui.label(RichText::new("Empty").weak());
         return;
     }
-    let device = |port: u8| {
-        if port == RESERVED_PORT {
-            "plug-in".to_string()
-        } else {
-            match iod.owner(port) {
-                0 => String::new(),
-                owner => owner_name(owner),
-            }
-        }
+    let device = |port: u8| match iod.owner(port) {
+        0 => String::new(),
+        owner => owner_name(owner),
     };
     egui::ScrollArea::vertical()
         .id_salt("log")
@@ -344,15 +343,11 @@ fn port_latches(ui: &mut egui::Ui, iod: &Iod, mailbox: bool) {
                 ui.end_row();
                 for port in 0..=255u8 {
                     let owner = iod.owner(port);
-                    if owner == 0 && port != RESERVED_PORT {
+                    if owner == 0 {
                         continue;
                     }
                     ui.label(mono(port.to_string()));
-                    ui.label(if port == RESERVED_PORT {
-                        "IOD".to_string()
-                    } else {
-                        owner_name(owner)
-                    });
+                    ui.label(owner_name(owner));
                     ui.label(mono(format!("{:02X}", iod.port(port))));
                     ui.end_row();
                 }

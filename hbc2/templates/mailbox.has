@@ -4,15 +4,17 @@
 ;
 ; The CPU's ports belong to the mailbox card (logisim/notes/
 ; iod-requirements.md I10-I16). The devices (monitor, RTC, keyboard,
-; EEPROM) are behind the I/O processor, an ESP32, which runs them as
-; the old IOD did. A device port is read or written with a command
+; EEPROM) are behind the I/O processor, an ESP32, which gives them
+; their ports. A device port is read or written with a command
 ; (io-redesign-proposal.md 9.3):
 ;
 ;   0x01 p v   OUT: port p = v
 ;   0x02 p     IN: the I/O processor replies with port p's value
+;   0x03       INFO: the devices (devices.has)
 ;
-; The interrupts (device detection on port 0, RTC, keyboard) come as
-; before, with the port number and the data byte.
+; The interrupts (RTC, keyboard) come as before, with the port number
+; and the data byte. Which devices exist and where their ports are is
+; asked with INFO (devices.has), not announced.
 ;
 ; How to call (every register and every flag is kept):
 ;

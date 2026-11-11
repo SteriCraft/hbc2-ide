@@ -59,7 +59,7 @@ _wait_interrupt:
 _set_vector:
     lod a, [sp + 2]             ; port
     cmp a, 0
-    jme lib_vector_refused      ; port 0: device detection (devices.has)
+    jme lib_vector_refused      ; port 0: no device (a port variable at 0)
     mov x, 0xFE
     mov y, a
     shl y                       ; C = 1 for port 128 or more: entry in $0xFFxx
@@ -77,6 +77,53 @@ _set_vector:
 lib_vector_refused:
     mov a, 0
     mov b, 1
+    ret
+
+; --- Devices (devices.has) -----------------------------------------------
+
+; unsigned char io_protocol(void)
+_io_protocol:
+    lod b, dev_protocol
+    ret
+
+; unsigned char device_count(void)
+_device_count:
+    lod b, dev_count
+    ret
+
+; const struct device *device_get(unsigned char index)
+_device_get:
+    lod c, [sp + 2]
+    lod d, dev_count
+    mov a, c
+    sub a, d                    ; C = 1 when index < count
+    jmc lib_device_at
+    jmp lib_device_none
+lib_device_at:
+    mov d, c
+    shl d
+    add d, c
+    shl d                       ; d = 6 * index (at most 90)
+    mov a, dev_table.msb
+    mov b, dev_table.lsb
+    add b, d
+    adc a, 0                    ; [a:b] = dev_table + 6 * index
+    ret
+
+; const struct device *device_find(unsigned char base_class,
+;                                  unsigned char subclass, unsigned char n)
+_device_find:
+    lod a, [sp + 2]
+    lod b, [sp + 3]
+    lod c, [sp + 4]
+    cal dev_find
+    jmc lib_device_none
+    mov a, x
+    mov b, y
+    ret
+lib_device_none:
+    mov a, 0
+    mov b, 0
     ret
 
 ; --- Monitor -------------------------------------------------------------

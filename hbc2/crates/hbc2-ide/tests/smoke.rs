@@ -11,7 +11,7 @@ use hbc2_ide::settings::Settings;
 use hbc2_ide::tabs::Tab;
 use hbc2_runner::{RunState, Speed};
 
-const PROGRAM: &str = r#".include "interruptHandler.has"
+const PROGRAM: &str = r#".include "devices.has"
 
 _start:
     mov d, 1        ; monitor DATA_0 (the monitor is plugged first: ports 1-5)
@@ -329,7 +329,7 @@ fn unsaved_changes_are_asked_about() {
 fn tab_menu_closes_groups_of_tabs() {
     let dir = temp_project("tabgroups");
     let main = dir.join("main.has");
-    let handler = dir.join("interruptHandler.has");
+    let handler = dir.join("devices.has");
     let other = dir.join("other.has");
     std::fs::write(&other, "").unwrap();
     let mut h = Harness::new();
