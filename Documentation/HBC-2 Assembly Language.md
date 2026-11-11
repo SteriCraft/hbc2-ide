@@ -476,7 +476,9 @@ the command, and keeps every register and flag:
 
 A command takes effect a few microseconds later, but always before the next
 command is read: an `in` after an `out` sees its result. The C library uses
-these routines for `in()` / `out()` and all its drivers.
+these routines for `in()` / `out()` and all its drivers. A new assembly
+project in the IDE gets its own copy of `mailbox.has`, already included by
+`main.has`.
 
 ## EEPROM target
 
