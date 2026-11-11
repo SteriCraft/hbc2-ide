@@ -15,6 +15,7 @@ static void symbol_bss(struct symbol *);
 struct symbol symtab[MAXSYM];
 struct symbol *last_sym = symtab - 1;
 struct symbol *local_top = symtab;
+unsigned block_depth;
 
 struct symbol *symbol_ref(unsigned type)
 {
@@ -150,6 +151,7 @@ struct symbol *update_symbol(register struct symbol *sym, unsigned name, unsigne
 	sym->type = type;
 	sym->infonext = storage;
 	sym->data.idx = 0;
+	sym->depth = block_depth;
 	return sym;
 }
 
@@ -177,9 +179,14 @@ struct symbol *update_symbol_by_name(unsigned name, unsigned storage,
 	   it - we create a local one masking it */
 	if (sym && global == 0 && sym->infonext >= S_STATIC)
 		sym = NULL;
-	/* Local symbols don't duplicate. TODO awareness of block level */
-	if (sym && !global)
-		error("duplicate name");
+	/* Local symbols don't duplicate in the same block. HBC-2: a local of
+	   an outer block is hidden by a new one (block scope) */
+	if (sym && !global) {
+		if (sym->depth == block_depth)
+			error("duplicate name");
+		else
+			sym = NULL;
+	}
 	return update_symbol(sym, name, storage, type);
 }
 

@@ -416,7 +416,10 @@ The Fuzix Compiler Kit compiles C89, without:
 
 Other limits:
 
-* Local variables have function-wide scope, not block scope.
+* Variables have block scope (a block's locals hide the outer names and
+  sibling blocks share their stack room), but struct / union tags,
+  `typedef` names and `enum` constants declared in a block stay visible
+  to the end of the file.
 * `i += f` with an integer `i` and a float `f` converts `f` to the type of
   `i` first (FCC), where C computes in float: with `i = 1`, `i += -0.5`
   adds 0 and leaves 1, C gives `(int)(1 - 0.5)` = 0. Write `i = i + f`.

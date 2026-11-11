@@ -77,3 +77,12 @@ through `../msvc/compat.h`, a forced include):
     constants (`fold_float_binary`) are folded with the host's float, so
     `float f = 1;`, `int i = 2.5;` and `1.0f / 0.0f` (`INFINITY`) are
     constants. A NaN result is 0x7FC00000.
+* Block scope (HBC-2, 2026-11-11): `symbol.h` / `symbol.c` (a `depth`
+  field set by `update_symbol`, the global `block_depth`;
+  `update_symbol_by_name` reports "duplicate name" only for a local of the
+  same depth and hides a local of an outer block), `body.c`
+  (`statement_block`: depth + 1 inside `{ }`, and `mark_storage` /
+  `pop_storage` around the block, so sibling blocks share stack room),
+  `type_iterator.c` (`type_parse_function`: the arguments one deeper, the
+  same depth as the body's outer `{ }`). Tags, typedefs and enum
+  constants keep their file-wide scope.

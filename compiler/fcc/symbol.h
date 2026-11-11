@@ -7,7 +7,12 @@ struct symbol
         unsigned *idx;		/* Index into object specific data */
         int offset;		/* Offset for locals */
     } data;
+    unsigned depth;		/* HBC-2: block depth of a local (block scope) */
 };
+
+/* HBC-2: block depth, 0 at file level; the arguments of a function and
+   its outer { } are one deeper, each inner { } one more */
+extern unsigned block_depth;
 
 #define INITIALIZED	0x0800
 #define S_FREE		0x0000	/* Unused */

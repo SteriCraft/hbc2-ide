@@ -124,6 +124,23 @@ fn errors() {
     assert!(e.contains("cannot assign to an array"), "{e}");
     assert!(!e.contains("main.c:7:"), "{e}");
 
+    // block scope: a name declared twice in the same block (an argument
+    // and the function's outer block count as one) is an error; hiding a
+    // name of an outer block is not (tests/blockscope.c)
+    let e = build(
+        "scope",
+        &[(
+            "main.c",
+            "int f(int n)\n{\n  int n = 1;\n  return n;\n}\nint main(void)\n{\n  int a = 1;\n  { int b; int b; { int a = 3; } }\n  int a = 2;\n  return a + f(1);\n}\n",
+        )],
+        library,
+    )
+    .unwrap_err();
+    assert!(e.contains("main.c:3:1: error: duplicate name"), "{e}");
+    assert!(e.contains("main.c:9:1: error: duplicate name"), "{e}");
+    assert!(e.contains("main.c:10:1: error: duplicate name"), "{e}");
+    assert!(!e.contains("main.c:8:"), "{e}");
+
     // neither .c nor .has
     let e = build("kind", &[("notes.txt", "")], library).unwrap_err();
     assert!(e.contains("not a .c or .has file"), "{e}");

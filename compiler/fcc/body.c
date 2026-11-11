@@ -314,6 +314,7 @@ static void declaration_block(void)
 void statement_block(unsigned need_brack)
 {
 	struct symbol *ltop;
+	unsigned argsave, locsave;
 	if (token == T_EOF) {
 		fatal("unexpected EOF");
 		return;
@@ -341,6 +342,11 @@ void statement_block(unsigned need_brack)
 	}
 	next_token();
 	ltop = mark_local_symbols();
+	/* HBC-2: block scope. The block's locals hide the outer ones and
+	   their stack room is free again after the }: the next block reuses
+	   it (the frame is the deepest nesting, not the sum) */
+	block_depth++;
+	mark_storage(&argsave, &locsave);
 	/* declarations */
 	declaration_block();
 
@@ -351,6 +357,8 @@ void statement_block(unsigned need_brack)
 		declaration_block();
 	}
 	pop_local_symbols(ltop);
+	pop_storage(&argsave, &locsave);
+	block_depth--;
 	/* HBC-2: the end of the function (its return) is on the line of } */
 	if (need_brack)
 		line_header();

@@ -286,7 +286,11 @@ void type_parse_function(unsigned ptr)
 		reg_load[i++] = 0;
 
 	mark_storage(&argsave, &locsave);
+	/* HBC-2: the arguments are one block deeper (the body's outer { }
+	   has the same depth, so a local can't take an argument's name) */
+	block_depth++;
 	parse_function_arguments(tplt);
+	block_depth--;
 	/* We work outwards so this will end up with the frame size of
 	   the outer function in the cases of function expressions
 	   with function arguments. This is what we want as we'll need
