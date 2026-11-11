@@ -30,10 +30,16 @@ struct return.
 
 * `include/` — the headers.
 * `lib.has` — includes the assembly files below.
+* `asm/mailbox.has` — `mbx_out` and `mbx_in`: a device port written or
+  read through the I/O mailbox (one command to the I/O processor, with
+  interrupts off). They keep every register and flag. Every `in` / `out`
+  of the library goes through them: `out P, V` is written
+  `psh P, V` / `cal mbx_out` / `asp 2`, and `in R, P` is written
+  `psh P` / `cal mbx_in` / `pop R`.
 * `asm/screen.has`, `asm/terminal.has` — **copies** of the monitor driver
   and the terminal of `design_projects/ASM_p/lib/monitor`. The
   changes are listed at the top of each file (the port variables have their
-  C names). When the originals change, copy them again and redo the
+  C names, and `in` / `out` go through `mbx_in` / `mbx_out`). When the originals change, copy them again and redo the
   changes.
 * `asm/math/` — **copy** of the math library,
   `design_projects/ASM_p/lib/math`, without the 6 files C never reaches

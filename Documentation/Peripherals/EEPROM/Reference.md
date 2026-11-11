@@ -88,6 +88,10 @@ This example:
 3. copies `main` (at `$0x0200` in the EEPROM) to `$0x0200` in RAM,
 4. jumps to it.
 
+It reaches the EEPROM's ports with `mbx_out` and `mbx_in` (see
+[Reading and writing ports](../README.md#reading-and-writing-ports)), which
+have to be in the first 512 bytes as well.
+
 ```
 ; ===== Copied at power-on: the first 512 bytes and the vector table =====
 
@@ -118,7 +122,9 @@ boot_copy:
     mov i, j
     add i, 2                ; i = ADDR_0
     mov a, 0
-    out i, a                ; addresses $0x0xxxx
+    psh i, a                ; addresses $0x0xxxx
+    cal mbx_out
+    asp 2
 boot_copy_loop:
     cmp x, c
     jme boot_copy_lsb
@@ -129,14 +135,22 @@ boot_copy_lsb:
 boot_copy_byte:
     mov i, j
     add i, 3                ; i = ADDR_1
-    out i, x
+    psh i, x
+    cal mbx_out
+    asp 2
     inc i                   ; i = ADDR_2
-    out i, y
+    psh i, y
+    cal mbx_out
+    asp 2
     mov a, 1                ; READ
-    out j, a
+    psh j, a
+    cal mbx_out
+    asp 2
     mov i, j
     inc i                   ; i = DATA
-    in a, i
+    psh i
+    cal mbx_in
+    pop a
     str [x:y], a
     add y, 1                ; next address
     adc x, 0
@@ -174,6 +188,10 @@ boot_iod_end:
     pof
     irt
 
+; mbx_out and mbx_in (a copy of compiler/lib/asm/mailbox.has next to this
+; file). Placed automatically, so in the first 512 bytes too.
+.include "mailbox.has"
+
 ; ===== Copied by the boot loader =====
 
 main: $0x0200
@@ -200,18 +218,28 @@ their vectors in the image if their ports are known.
     lod d, eepromPort
     add d, 2                ; d = ADDR_0
     mov a, 0x01
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = ADDR_1
     mov a, 0x23
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = ADDR_2
     mov a, 0x45
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     lod d, eepromPort       ; d = CMD
     mov a, 1                ; READ
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = DATA
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
 ```
 
 ```
@@ -219,10 +247,14 @@ their vectors in the image if their ports are known.
     lod d, eepromPort
     inc d                   ; d = DATA
     mov a, 0x55
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     dec d                   ; d = CMD
     mov a, 2                ; WRITE
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
 ```
 
 ## From C

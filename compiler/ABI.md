@@ -254,8 +254,9 @@ __exit:                         ; [a:b] = main's return value, or exit's argumen
   stores each device's first port in `monitor_port`, `rtc_port`,
   `keyboard_port`, `eeprom_port` (`hbc2.h`; 0 = not plugged), and points the
   RTC and keyboard vectors to a handler that does nothing. The interrupts of
-  the devices plugged at power-on are already waiting in the IOD queue: the
-  CPU takes them between the first instructions, so `crt0` only waits a few
+  the devices plugged at power-on are queued in the I/O processor, which
+  sends them through the mailbox one after the other. In the emulator they
+  are all handled while `crt0` clears the `.bss` area, so it only waits a few
   loop turns (one was enough in tests; it waits 32) before calling `main`.
   A C program therefore must not set the port-0 vector itself (no
   `interruptHandler.has` of the project template).

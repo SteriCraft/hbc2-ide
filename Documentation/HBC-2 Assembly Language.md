@@ -4,7 +4,9 @@ This is the language of the HBC-2 assembler (`hbc2 asm`, and later the IDE).
 For what each instruction does, see the *HBC-2 Instruction Manual*.
 
 ```
-; Prints "Hi" in the top-left corner of the monitor (monitor on ports 1-5)
+; Prints "Hi" in the top-left corner of the monitor (monitor on ports 1-5).
+; The monitor is behind the I/O mailbox: put sends it the command
+; "OUT: port d = b" (see "Devices and the I/O mailbox" below).
 .define MONITOR_CMD 5
 .define WRITE 1
 
@@ -14,7 +16,7 @@ _start:
     cli                            ; no interrupt handler in this example
     mov d, 1                       ; monitor DATA_0 port: colours
     mov b, 0x0F                    ; white on black
-    out d, b
+    cal put
     mov x, message.msb             ; [x:y] = address of message
     mov y, message.lsb
     mov c, 0                       ; c = column
@@ -23,17 +25,34 @@ next_char:
     cmp a, 0
     jme done
     mov d, 2                       ; monitor DATA_1 port: character
-    out d, a
+    mov b, a
+    cal put
     mov d, 3                       ; monitor POS_X port: column
-    out d, c
+    mov b, c
+    cal put
     mov d, MONITOR_CMD
     mov b, WRITE
-    out d, b                       ; write the character
+    cal put                        ; write the character
     inc c
     inc y
     jmp next_char
 done:
     jmp done
+
+put:                               ; port d = b (changes a, i and the flags)
+    mov a, 0x01                    ; the command: 0x01, the port, the value
+    cal send
+    mov a, d
+    cal send
+    mov a, b                       ; and on into send, which returns
+send:                              ; sends a to the mailbox once it is free
+    mov i, 1
+    in i, i                        ; port 1: STATUS
+    and i, 2                       ; bit 1: TX_FREE
+    jmz send
+    mov i, 0
+    out i, a                       ; port 0: TX
+    ret
 ```
 
 ## Lines
@@ -423,6 +442,41 @@ contains the `.include`. A file is included once only: later `.include`s of
 the same file are ignored, so libraries can include each other freely.
 `..` goes up one folder: `.include "../lib/math.has"`. On Windows, letter case
 does not matter: `Lib/Math.has` and `lib/math.has` are the same file.
+
+## Devices and the I/O mailbox
+
+`in` and `out` reach the **mailbox** card, not the devices. The devices
+(monitor, RTC, keyboard, EEPROM) are behind an I/O processor, which gives
+them their ports and raises their interrupts as before (see
+`Peripherals/README.md`). The mailbox has two ports:
+
+| Port | `in` | `out` |
+|---|---|---|
+| `0x00` | RX: the next byte from the I/O processor | TX: one byte for the I/O processor |
+| `0x01` | STATUS: bit 0 RX_AVAIL, bit 1 TX_FREE, bit 2 EVT_PEND | nothing |
+
+Ports `0x04` and `0x05`, `0x08` and `0x09`... up to `0x3C` and `0x3D` are
+copies of them. Nothing answers on the other ports.
+
+A device port is written with the command `0x01, port, value` and read with
+`0x02, port`, which the I/O processor answers with one byte on RX. Each byte
+goes to TX once STATUS shows TX_FREE, and the answer is read once it shows
+RX_AVAIL. `compiler/lib/asm/mailbox.has` does it, with interrupts off during
+the command, and keeps every register and flag:
+
+```
+    psh d, a                ; out d, a to a device:
+    cal mbx_out             ;   port d = a
+    asp 2
+
+    psh d                   ; in a, d from a device:
+    cal mbx_in              ;   a = port d
+    pop a
+```
+
+A command takes effect a few microseconds later, but always before the next
+command is read: an `in` after an `out` sees its result. The C library uses
+these routines for `in()` / `out()` and all its drivers.
 
 ## EEPROM target
 

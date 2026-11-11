@@ -15,8 +15,9 @@ Every device also sends two interrupts on port 0 when it is plugged in (see
 
 ## The I/O Driver (IOD)
 
-The CPU does not talk to the devices directly: it goes through the IOD, a
-chip with **256 ports** numbered `0x00` to `0xFF`.
+The CPU does not talk to the devices directly. Its `in` and `out` reach the
+**I/O mailbox**, a small card in front of an **I/O processor** (an ESP32).
+The I/O processor runs the IOD: **256 ports** numbered `0x00` to `0xFF`.
 
 * **Port 0** is reserved for the IOD itself. No device ever gets it.
 * Each device gets a block of **consecutive ports** when it is plugged in, the
@@ -24,20 +25,36 @@ chip with **256 ports** numbered `0x00` to `0xFF`.
 * Each port is an 8-bit **latch**: it holds the last value written to it, by
   the CPU or by the device.
 
+The diagram `HBC-2_Input_Output.pdf` shows the mailbox and its ports.
+
 ### Reading and writing ports
 
+A program asks the I/O processor to read or write a port with a command
+through the mailbox (see "Devices and the I/O mailbox" in the *HBC-2 Assembly
+Language* manual). The routines of `compiler/lib/asm/mailbox.has` do it and
+keep every register and flag. The C library uses them; an assembly program
+can include the file:
+
 ```
-    out d, a        ; port number in d, value in a: the port now holds a
-    in a, d         ; a = the value the port number d holds
+    psh d, a        ; port number in d, value in a:
+    cal mbx_out     ;   the port now holds a
+    asp 2
+
+    psh d           ; a = the value the port number d holds
+    cal mbx_in
+    pop a
 ```
 
-* `out` stores the value in the port. If the port is a device's command port
-  (`CMD`), the device runs the command right away, before the next
-  instruction. Writing any other port only stores the value, for the next
-  command to use.
-* `in` reads what the port holds. It never triggers anything.
+* `mbx_out` stores the value in the port. If the port is a device's command
+  port (`CMD`), the device runs the command. It does so a few microseconds
+  after `mbx_out` returns, but always before the I/O processor reads the next
+  command: an `mbx_in` that follows sees the result. Writing any other port
+  only stores the value, for the next command to use.
+* `mbx_in` reads what the port holds. It never triggers anything.
 * A command runs **each time** its `CMD` port is written, even with the same
   value as before.
+* A plain `out d, a` or `in a, d` doesn't reach the devices: it goes to the
+  mailbox's own ports (`0x00`, `0x01` and their copies).
 
 Most programs keep each device's first port in a variable and add an offset
 to reach the others, as the examples in these pages do:
@@ -50,12 +67,12 @@ to reach the others, as the examples in these pages do:
 ### Interrupts
 
 A device raises an interrupt **on one of its ports**, with one byte of data
-(the value of that port at that moment). The IOD keeps the interrupts in a
-**queue of 256**, oldest first; interrupts that arrive while the queue is
-full are lost.
+(the value of that port at that moment). The I/O processor keeps the
+interrupts in a **queue of 256**, oldest first; interrupts that arrive while
+the queue is full are lost. It hands them to the mailbox one at a time.
 
-The CPU takes the next interrupt from the queue when its Interrupt flag (I)
-is set, between two instructions. For an interrupt on port `n`, it:
+The CPU takes the waiting interrupt when its Interrupt flag (I) is set,
+between two instructions. For an interrupt on port `n`, it:
 
 1. pushes register `I`, then the address of the next instruction (`PC`),
 2. puts the interrupt's data byte in `I`,

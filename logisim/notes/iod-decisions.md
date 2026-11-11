@@ -98,7 +98,7 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 
 **Cost:** one `mbx_out` takes about **210 CPU cycles** (measured: 100 calls in a loop, about 105 µs each at 2 MHz), against 4 for a raw `out`. Most of it is CPU instructions (the STATUS polling, `psf` / `psh` / `cal`), not the I/O processor's 3 × 8 cycles. A monitor text cell (5 OUTs) is now about 0.5 ms, a full 42 × 24 screen clear about 2.5 s. The native commands (PUTS, CLEAR, RECT…, 9.3) are the fix, with C4.
 
-**Docs to change (Gianni edits them; `HBC-2_Input_Output.pdf` is redrawn, source in `Documentation/src/HBC-2_Input_Output.html`):**
+**Docs to change.** Gianni, later on 2026-11-11: Claude edits them all except the `.odt` (the Instruction Manual), which Gianni edits. **Done** for every row below but the Instruction Manual; the Assembly Language manual's example now sends `0x01 p v` itself and its test is back on the default config; the EEPROM loader example includes `mailbox.has` (checked: it assembles in the first 512 bytes and copies `main` through the mailbox). `HBC-2_Input_Output.pdf` is redrawn (source `Documentation/src/HBC-2_Input_Output.html`; Gianni added `rst_n`).
 
 | Doc | Where | What changes |
 |---|---|---|

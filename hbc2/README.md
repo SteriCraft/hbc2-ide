@@ -9,7 +9,7 @@ is in the git history.
 
 | Crate | Role |
 |---|---|
-| `hbc2-core` | CPU, RAM, IOD, peripherals (monitor, keyboard, RTC, EEPROM) and `Machine`. No GUI, no threads, no dependencies. |
+| `hbc2-core` | CPU, RAM, the I/O mailbox card and the I/O processor model (which runs the IOD), peripherals (monitor, keyboard, RTC, EEPROM) and `Machine`. No GUI, no threads, no dependencies. |
 | `hbc2-asm` | Assembler and disassembler for `.has` files. The language is described in `../Documentation/HBC-2 Assembly Language.md`. |
 | `hbc2-runner` | Runs a machine on its own thread at a chosen clock speed (1 Hz to "as fast as possible"). Commands in, state snapshots out. |
 | `hbc2-cc` | C compiler driver: runs the Fuzix Compiler Kit stages of `../compiler` (built by `../compiler/build.cmd`) and assembles the result with the C runtime and library. |
@@ -94,7 +94,10 @@ next to its executable. The version is the workspace's (`Cargo.toml`).
 - One `Machine::tick()` is one clock cycle: it runs one whole instruction, or
   one step of the interrupt handshake, or nothing when halted.
 - Peripherals are event-driven: a command runs once, when the CPU writes the
-  peripheral's CMD port. Nothing runs on every cycle except the CPU and IOD.
+  peripheral's CMD port. Nothing else runs on every cycle but the CPU, the
+  mailbox card and the I/O processor model, and those two are skipped while
+  they have nothing to do. Without the mailbox (`MachineConfig::mailbox` =
+  None, the CPU tests) the CPU talks to the IOD directly, as the first design did.
 - The machine is a plain value owned by whoever drives it. `hbc2-runner` moves
   it onto one emulator thread: other threads send commands through a channel
   and read the latest snapshot (a copy of the state, published about 60 times

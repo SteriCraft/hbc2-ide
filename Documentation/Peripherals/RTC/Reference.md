@@ -62,7 +62,7 @@ there. Power-on goes back to the host's time.
 
 Every second, the RTC puts the current date and time on ports 0-5, then
 sends an interrupt on its first port. The interrupt's data (in `I` in the
-handler) is the `YEAR` value; the handler reads the other ports with `in`.
+handler) is the `YEAR` value; the handler reads the other ports with `mbx_in`.
 
 The project template points this vector to a handler that does nothing, so
 the RTC can be left alone. To use it, install a handler on `rtcPort` (see
@@ -80,6 +80,8 @@ interrupt.
 ## Examples
 
 These examples use `rtcPort` from the project template.
+They reach the ports with `mbx_out` and `mbx_in` (`compiler/lib/asm/mailbox.has`,
+see [Reading and writing ports](../README.md#reading-and-writing-ports)).
 
 ### Read the time
 
@@ -88,13 +90,21 @@ These examples use `rtcPort` from the project template.
     lod d, rtcPort
     add d, 6                ; d = CMD
     mov a, 1                ; GET_TIME
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     sub d, 3                ; d = HOUR
-    in a, d
+    psh d
+    cal mbx_in
+    pop a
     inc d                   ; d = MINUTE
-    in b, d
+    psh d
+    cal mbx_in
+    pop b
     inc d                   ; d = SECOND
-    in c, d
+    psh d
+    cal mbx_in
+    pop c
 ```
 
 ### Set the time
@@ -104,27 +114,43 @@ These examples use `rtcPort` from the project template.
 set_clock:
     lod d, rtcPort          ; d = YEAR
     mov a, 126              ; 2026 - 1900
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = MONTH
     mov a, 10
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = DAY
     mov a, 30
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = HOUR
     mov a, 14
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = MINUTE
     mov a, 5
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = SECOND
     mov a, 0
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = CMD
     mov a, 2                ; SET_TIME
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     lod d, rtcPort
-    in a, d                 ; a = 1 if set, 0 if refused
+    psh d                   ; a = 1 if set, 0 if refused
+    cal mbx_in
+    pop a
     clc
     cmp a, 1
     jme set_clock_done
@@ -146,7 +172,9 @@ rtc_tick:                   ; once per second
     psh a, b
     lod b, rtcPort
     add b, 5                ; b = SECOND
-    in a, b
+    psh b
+    cal mbx_in
+    pop a
     str seconds, a
     pop a, b
     pof

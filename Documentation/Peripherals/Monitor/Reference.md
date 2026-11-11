@@ -107,6 +107,8 @@ shown does nothing visible.
 ## Examples
 
 These examples use `monitorPort` from the project template.
+They reach the ports with `mbx_out` and `mbx_in` (`compiler/lib/asm/mailbox.has`,
+see [Reading and writing ports](../README.md#reading-and-writing-ports)).
 
 ### Write a character
 
@@ -114,19 +116,29 @@ These examples use `monitorPort` from the project template.
 ; Writes 'A' in white on blue at column 3, row 2.
     lod d, monitorPort      ; d = DATA_0
     mov a, 0x1F             ; blue background, white character
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = DATA_1
     mov a, 'A'
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = POS_X
     mov a, 3
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = POS_Y
     mov a, 2
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = CMD
     mov a, 1                ; WRITE
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
 ```
 
 ### Read a character back
@@ -136,17 +148,27 @@ These examples use `monitorPort` from the project template.
     lod d, monitorPort
     add d, 2                ; d = POS_X
     mov a, 3
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = POS_Y
     mov a, 2
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = CMD
     mov a, 2                ; READ
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     lod d, monitorPort      ; d = DATA_0
-    in b, d                 ; b = colours
+    psh d                   ; b = colours
+    cal mbx_in
+    pop b
     inc d                   ; d = DATA_1
-    in a, d                 ; a = character
+    psh d                   ; a = character
+    cal mbx_in
+    pop a
 ```
 
 ### Draw a pixel
@@ -156,19 +178,29 @@ These examples use `monitorPort` from the project template.
     lod d, monitorPort
     add d, 4                ; d = CMD
     mov a, 3                ; SWITCH_TO_PIXEL_MODE
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     lod d, monitorPort      ; d = DATA_0
     mov a, 0x0C             ; bright red
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     add d, 2                ; d = POS_X
     mov a, 100
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = POS_Y
     mov a, 50
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
     inc d                   ; d = CMD
     mov a, 1                ; WRITE
-    out d, a
+    psh d, a
+    cal mbx_out
+    asp 2
 ```
 
 ## In the IDE
