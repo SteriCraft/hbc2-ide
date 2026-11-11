@@ -12,10 +12,11 @@ pub const MAIN_TEMPLATE: &str = include_str!("../../../templates/main.has");
 pub const INTERRUPT_HANDLER_FILE: &str = "interruptHandler.has";
 pub const INTERRUPT_HANDLER_TEMPLATE: &str =
     include_str!("../../../templates/interruptHandler.has");
-/// The devices' IN and OUT through the I/O mailbox (`mbx_in`, `mbx_out`):
-/// the C library's own file, copied into every assembly project.
+/// The devices' IN and OUT through the I/O mailbox (`mbx_in`, `mbx_out`),
+/// copied into every assembly project. The same file as the C library's
+/// (a test checks it).
 pub const MAILBOX_FILE: &str = "mailbox.has";
-pub const MAILBOX_TEMPLATE: &str = include_str!("../../../../compiler/lib/asm/mailbox.has");
+pub const MAILBOX_TEMPLATE: &str = include_str!("../../../templates/mailbox.has");
 /// Content of a `.has` file created with "New file".
 pub const NEW_FILE_TEMPLATE: &str = "\
 ; === DEFINES ===

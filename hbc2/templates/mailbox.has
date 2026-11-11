@@ -1,0 +1,92 @@
+; ============================================================
+; The I/O mailbox: IN and OUT to the devices
+; ============================================================
+;
+; The CPU's ports belong to the mailbox card (logisim/notes/
+; iod-requirements.md I10-I16). The devices (monitor, RTC, keyboard,
+; EEPROM) are behind the I/O processor, an ESP32, which runs them as
+; the old IOD did. A device port is read or written with a command
+; (io-redesign-proposal.md 9.3):
+;
+;   0x01 p v   OUT: port p = v
+;   0x02 p     IN: the I/O processor replies with port p's value
+;
+; The interrupts (device detection on port 0, RTC, keyboard) come as
+; before, with the port number and the data byte.
+;
+; How to call (every register and every flag is kept):
+;
+;   out P, V   ->   psh P, V        IN: in R, P   ->   psh P
+;                   cal mbx_out                        cal mbx_in
+;                   asp 2                              pop R
+;
+; A command is sent with interrupts off, so a handler's commands never
+; land in the middle of another one, and an IN gets its own reply.
+; The flags are restored at the end, the interrupt mask included.
+
+.define MBX_DATA 0x00           ; OUT: TX (to the I/O processor), IN: RX
+.define MBX_STATUS 0x01         ; IN only
+.define MBX_RX_AVAIL 0x01       ; STATUS bits
+.define MBX_TX_FREE 0x02
+.define MBX_EVT_PEND 0x04
+
+.define MBX_CMD_NOP 0x00
+.define MBX_CMD_OUT 0x01
+.define MBX_CMD_IN 0x02
+.define MBX_CMD_INFO 0x03
+
+; OUT to a device port. Stack: [sp + 3] = port, [sp + 2] = value.
+mbx_out:
+    psf
+    cli
+    psh a, b                    ; [sp + 5] = value, [sp + 6] = port
+    mov b, MBX_CMD_OUT
+    cal mbx_send
+    lod b, [sp + 6]
+    cal mbx_send
+    lod b, [sp + 5]
+    cal mbx_send
+    pop a, b
+    pof
+    ret
+
+; IN from a device port. Stack: [sp + 2] = port, replaced by the value.
+mbx_in:
+    psf
+    cli
+    psh a, b                    ; [sp + 5] = port
+    mov b, MBX_CMD_IN
+    cal mbx_send
+    lod b, [sp + 5]
+    cal mbx_send
+    cal mbx_recv
+    str [sp + 5], b
+    pop a, b
+    pof
+    ret
+
+; Sends b to the I/O processor once TX is free. Changes a and the flags.
+mbx_send:
+    psh c
+    mov c, MBX_STATUS
+mbx_send_wait:
+    in a, c
+    and a, MBX_TX_FREE
+    jmz mbx_send_wait
+    mov c, MBX_DATA
+    out c, b
+    pop c
+    ret
+
+; b = the next byte from the I/O processor. Changes a and the flags.
+mbx_recv:
+    psh c
+    mov c, MBX_STATUS
+mbx_recv_wait:
+    in a, c
+    and a, MBX_RX_AVAIL
+    jmz mbx_recv_wait
+    mov c, MBX_DATA
+    in b, c
+    pop c
+    ret

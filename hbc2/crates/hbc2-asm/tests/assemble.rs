@@ -555,25 +555,23 @@ _start:
 
 #[test]
 fn templates_assemble_and_detect_peripherals() {
-    // The IDE copies these three files into a new assembly project.
-    let root = Path::new(env!("CARGO_MANIFEST_DIR")).join("../..");
-    let read = |path: &str| std::fs::read_to_string(root.join(path)).unwrap();
-    let files = MemoryFiles::new()
-        .with("main.has", read("templates/main.has"))
-        .with(
-            "interruptHandler.has",
-            read("templates/interruptHandler.has"),
-        )
-        .with("mailbox.has", read("../compiler/lib/asm/mailbox.has"));
-    let p = build(files).unwrap_or_else(|e| {
+    // The IDE copies these files into a new assembly project.
+    let templates = Path::new(env!("CARGO_MANIFEST_DIR")).join("../../templates");
+    let p = hbc2_asm::assemble_file(templates.join("main.has")).unwrap_or_else(|e| {
         panic!(
             "{}",
-            e.join(
-                "
-"
-            )
+            e.iter()
+                .map(ToString::to_string)
+                .collect::<Vec<_>>()
+                .join("\n")
         )
     });
+    let text = |path: std::path::PathBuf| std::fs::read_to_string(path).unwrap().replace('\r', "");
+    assert_eq!(
+        text(templates.join("mailbox.has")),
+        text(templates.join("../../compiler/lib/asm/mailbox.has")),
+        "templates/mailbox.has is a copy of the C library's"
+    );
     assert_eq!(addr(&p, "_iod_interrupt_handler"), 0xF000);
     assert_eq!(
         &p.image[0xFE00..0xFE02],
