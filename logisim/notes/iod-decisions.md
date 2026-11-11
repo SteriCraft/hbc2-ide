@@ -82,3 +82,39 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 - **Native commands** (PUTS, PIXEL, GET_TIME, SD…, 9.3) aren't in the model yet. They'll be added together with the firmware, so both get the same set; INFO's version byte tells them apart.
 - **Not switched on yet:** the IDE, the runner and the compiler tests still use the old IOD (`mailbox: None`). Turning the mailbox on needs the library changes (C5). The IDE's mailbox panel comes then too.
 - **`rst_n` without a power cycle:** the machine has only power-on, which resets the card and the IOP together.
+
+## C5: the library on the mailbox (2026-11-11)
+
+| File | What |
+|---|---|
+| `compiler/lib/asm/mailbox.has` (new, first in `lib.has`) | `mbx_out` / `mbx_in`: one compat command each (`0x01 p v`, `0x02 p` + the reply), sent with interrupts off (`psf` / `cli` / `pof`, so the I flag comes back as it was). They keep every register and every flag. Calls: `out P, V` → `psh P, V` / `cal mbx_out` / `asp 2`; `in R, P` → `psh P` / `cal mbx_in` / `pop R` (the reply replaces the pushed port). Defines `MBX_DATA`, `MBX_STATUS`, the STATUS bits and the command bytes. |
+| `hbc2.has` (30), `screen.has` (46), `terminal.has` (11), `time.has` (7), `math/misc/random.has` (5) | Every `in` / `out` replaced as above, by a script: 99 sites, no other change. `in()` / `out()` in C keep their signatures. |
+| `compiler/runtime/boot.has` | Its own copies, `boot_out` / `boot_in`: the library's `mbx_*` sit past `$0x0200` and aren't copied yet when it runs. Their `boot_` names put them under hbc2-cc's 512-byte check. The EEPROM target still works in the emulator (see open points). |
+| `MachineConfig::default()`, the IDE (`emulator.rs`) | `mailbox: Some(IopConfig::default())`. So the IDE, `hbc2 run` / `bench` / `trace --peripherals`, the runner and the compiler's program tests all use the mailbox. Tests of the CPU itself (`bare()` configs, emutrace, the helper calls in hbc2-cc's helpers.rs) keep the old IOD. |
+| `hbc2-asm/tests/assemble.rs` | The Assembly Language manual's first example still writes the monitor with raw `out`: its test runs on the old IOD (`mailbox: None`) until the manual changes. |
+| `hbc2-ide/tests/smoke.rs` | The smoke test's program sends its three OUTs as `0x01 p v` commands. |
+
+**Tests:** the whole workspace, 331 tests, pass. Among them, all compiler test programs run through the mailbox: the 5 `.screen` comparisons (text and pixels through `mbx_out`), the `.keys` inputs (keyboard events through EVT), `eeprom.c` built for the EEPROM target (boot.has's copy loop through the mailbox), `time.c`, `random.c`, `multi/vector`.
+
+**Cost:** one `mbx_out` takes about **210 CPU cycles** (measured: 100 calls in a loop, about 105 µs each at 2 MHz), against 4 for a raw `out`. Most of it is CPU instructions (the STATUS polling, `psf` / `psh` / `cal`), not the I/O processor's 3 × 8 cycles. A monitor text cell (5 OUTs) is now about 0.5 ms, a full 42 × 24 screen clear about 2.5 s. The native commands (PUTS, CLEAR, RECT…, 9.3) are the fix, with C4.
+
+**Docs to change (Gianni edits them; `HBC-2_Input_Output.pdf` is redrawn, source in `Documentation/src/HBC-2_Input_Output.html`):**
+
+| Doc | Where | What changes |
+|---|---|---|
+| `Documentation/HBC-2 Assembly Language.md` | opening example, lines 7-31 | Raw `out` to the monitor's ports 1-5 no longer reaches the monitor. Rewrite with `mbx_out` (and `.include` of `mailbox.has`, or a few lines sending `0x01 p v`). Then put `language_documentation_example_prints_hi` back on the default config. |
+| | line 78, the `in out` row (94) | Still true for the CPU, but the ports are the mailbox's now: `0x00` data, `0x01` STATUS (mirrors in `0x00-0x3F`). Device ports are reached with `mbx_out` / `mbx_in`. |
+| | "EEPROM target" (427-440), lines 303 and 456 | Depends on the EEPROM decision below. |
+| `Documentation/Peripherals/README.md` | "The I/O Driver (IOD)", lines 16-60 | The IOD (latches, port numbers, plug-in, queue) now lives in the I/O processor; the CPU reaches it through the mailbox. The `out d, a` / `in a, d` example becomes the `mbx_out` / `mbx_in` calls. "The device runs the command right away, before the next instruction" becomes: a few µs later, and before the next command is read, so an IN after an OUT sees its result. |
+| | Interrupts (from line 53) | The 256-entry queue is in the I/O processor, delivered one at a time through EVT. Same vector, I = data, same handlers. |
+| `Peripherals/Monitor/Reference.md` (15 `in` / `out`), `RTC/Reference.md` (13), `EEPROM/Reference.md` (12) | the examples | Raw `in` / `out` → the `mbx_*` calls. Ports, offsets and commands don't change. EEPROM: the power-on copy, per the decision below. Keyboard: no change. |
+| `Documentation/src/HBC-2_IDE_Instruction_Manual.odt` → `HBC-2_Instruction_Manual.pdf` | IOD chapter | "256 ports, port 0 reserved for CPU <> IOD", IOD, queue → the mailbox card (ports, STATUS, TX / RX / EVT, the vector step with A8-A15 pulled down) and the ESP32 behind it. The instruction pages (IN, OUT, INT / INR) don't change. |
+| `compiler/ABI.md` | §8 line 257; §8 EEPROM target (262+) | "already waiting in the IOD queue" → in the I/O processor's queue. EEPROM: per the decision. |
+| `compiler/lib/README.md` | file list (32+) | Add `asm/mailbox.has`; `screen.has` / `terminal.has` / `hbc2.has` do their I/O through it. |
+| `hbc2/README.md` | line 12 (`hbc2-core`), line 97 | hbc2-core also has the mailbox card and the I/O processor model. "Nothing runs on every cycle except the CPU and IOD" → the mailbox card and the I/O processor also run each cycle, skipped while idle. |
+
+**Open after C5 (library part)**
+- **EEPROM target:** it still works in the emulator, but the hardware can't do its power-on copy (F9; 9.5 removes `Target::Eeprom`, `boot.has`, the CLI and IDE options). Not removed yet: it's a user-visible feature, Gianni to decide.
+- **Assembly projects:** the IDE templates have no mailbox routines, so a new assembly project writing devices with raw `in` / `out` silently does nothing. Proposal: ship `mailbox.has` as a template next to `interruptHandler.has`.
+- **IDE mailbox panel** (9.5): not done. The I/O view still shows the I/O processor's latches and queue (`board.iod`), which stay right.
+- **Screen speed** (above): native commands with C4.

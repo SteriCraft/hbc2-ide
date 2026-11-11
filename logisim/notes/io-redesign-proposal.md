@@ -694,4 +694,4 @@ C-min's chips:
 **Gianni, 2026-11-11, after C3:** the library part of C5 comes next. For the docs, Claude lists what has to change and Gianni edits them himself, except the I/O diagram (`HBC-2_Input_Output.pdf`), which Claude redraws. C4 waits until some hardware is built (weeks away).
 
 4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. **Check GPIO 36 on the board's schematic before wiring.**
-5. **C5. Library, templates and docs** (9.5).
+5. **C5. Library, templates and docs** (9.5). Library part done 2026-11-11 (iod-decisions.md, C5): `mbx_out` / `mbx_in`, the mailbox on by default, the I/O diagram redrawn, the list of doc changes for Gianni. Open: the EEPROM target, a `mailbox.has` template, the IDE panel.
