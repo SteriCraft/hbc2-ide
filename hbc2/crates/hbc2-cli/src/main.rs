@@ -506,6 +506,7 @@ fn trace(args: &[String]) -> Result<(), String> {
             rtc: false,
             keyboard: false,
             eeprom: None,
+            mailbox: None,
         }
     };
     let mut machine = Machine::new(config, Some(&ram)).map_err(|e| e.to_string())?;

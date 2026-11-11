@@ -178,7 +178,7 @@ fn trace(args: &[String]) -> Result<(), String> {
     }
     ins.sort_by_key(|x| x.0);
     let ram = std::fs::read(path).map_err(|e| format!("{path}: {e}"))?;
-    let config = MachineConfig { monitor: false, rtc: false, keyboard: false, eeprom: None };
+    let config = MachineConfig { monitor: false, rtc: false, keyboard: false, eeprom: None, mailbox: None };
     let mut m = Machine::new(config, Some(&ram)).map_err(|e| e.to_string())?;
     let file = std::fs::File::create(out).map_err(|e| format!("{out}: {e}"))?;
     let mut w = TraceWriter::new(std::io::BufWriter::new(file), Some(max));

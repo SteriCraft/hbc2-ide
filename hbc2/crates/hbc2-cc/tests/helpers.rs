@@ -58,6 +58,7 @@ fn call(helper: &str, regs: &[(Register, u8)], memory: &[(u16, u8)]) -> Machine 
         rtc: false,
         keyboard: false,
         eeprom: None,
+        mailbox: None,
     };
     let mut m = Machine::new(config, Some(&program().image)).unwrap();
     for &(r, v) in regs {
@@ -515,6 +516,7 @@ fn switch_case(helper: &str, width: usize, cases: &[u32], value: u32) -> u16 {
         rtc: false,
         keyboard: false,
         eeprom: None,
+        mailbox: None,
     };
     let mut m = Machine::new(config, Some(&program().image)).unwrap();
     for &(r, v) in &regs {

@@ -802,6 +802,7 @@ const SEQ_MODULES: &[SeqModule] = &[
 
 mod addr;
 mod cu;
+mod iod;
 mod ir;
 mod mem;
 mod mem_cpu;
@@ -810,9 +811,10 @@ mod regs;
 /// Every sequential module: the flag register, the register section
 /// (vectors/regs.rs), the address section (vectors/addr.rs) and the
 /// instruction register (vectors/ir.rs), memory (vectors/mem.rs,
-/// mem_cpu.rs) and the control unit (vectors/cu.rs).
+/// mem_cpu.rs), the control unit (vectors/cu.rs) and the I/O mailbox
+/// (vectors/iod.rs).
 fn seq_modules() -> impl Iterator<Item = &'static SeqModule> {
-    SEQ_MODULES.iter().chain(regs::MODULES).chain(addr::MODULES).chain(ir::MODULES).chain(mem::MODULES).chain(mem_cpu::MODULES).chain(cu::MODULES)
+    SEQ_MODULES.iter().chain(regs::MODULES).chain(addr::MODULES).chain(ir::MODULES).chain(mem::MODULES).chain(mem_cpu::MODULES).chain(cu::MODULES).chain(iod::MODULES)
 }
 
 fn names() -> String {

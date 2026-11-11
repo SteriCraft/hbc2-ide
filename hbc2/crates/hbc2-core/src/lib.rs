@@ -12,14 +12,18 @@ pub mod board;
 pub mod boot_rom;
 pub mod cpu;
 pub mod iod;
+pub mod iop;
 pub mod isa;
 pub mod machine;
+pub mod mailbox;
 pub mod peripherals;
 pub mod trace;
 
 pub use board::{Board, Ram};
 pub use cpu::{Cpu, CpuState, Flags};
 pub use iod::{Interrupt, Iod};
+pub use iop::{Iop, IopConfig};
+pub use mailbox::Mailbox;
 pub use isa::{AddrMode, Flag, Opcode, Register};
 pub use machine::{Breakpoints, Machine, MachineConfig, MachineError, RunResult, StopReason};
 pub use trace::{

@@ -22,7 +22,7 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 
 | Test | Result |
 |---|---|
-| `python designs/iod.py --test`: 4 sequences from the cycle-level model in iod.py (`Card`) | **13,816 rows pass**. (1) every port 0–255, IN and OUT, IE on and off: who drives `bus_data`, what loads TX; (2) both handshakes, 40 rounds, MISO bit by bit, STATUS at each stage, and the 1 µs rule broken at random: an RX written during the clear step is lost; (3) 30 events: INT, the vector step (A0–A7 = p, `bus_data` = d, INT 0), EVT cleared in the next step, events written during the clear lost; (4) reset with every flag set: all clear, latches kept. Buses always checked (value or float). |
+| `python designs/iod.py --test`: 4 sequences, now from the emulator (C3, below; C2 used a Python model, 13,816 rows) | **13,740 rows pass**. (1) every port 0–255, IN and OUT, IE on and off: who drives `bus_data`, what loads TX; (2) both handshakes, 40 rounds, MISO bit by bit, STATUS at each stage, and the 1 µs rule broken at random: an RX written during the clear step is lost; (3) 30 events: INT, the vector step (A0–A7 = p, `bus_data` = d, INT 0), EVT cleared in the next step, events written during the clear lost; (4) reset with every flag set: all clear, latches kept. Buses always checked (value or float). |
 | Three wiring mutants of the module (rx_clr from /Y3, INT never cleared, A5 decoded instead of A6) | all caught (5,422 / 582 / 6,678 failing rows) |
 | `cputest.py run tests/iod/mbx.has --bench iod` (the real CPU, the MCU keeps the rule) | **PASS**: no contention; the trace is identical to the emulator's (1,398 lines, interrupts placed by line and by cycle); 12 interrupts; x = 0 (no wrong byte, event data in I checked by the handler), y = 0C (12 events), c = 0 (no reply lost) |
 | `cputest.py run tests/iod/mbx.has --bench iod_eager` (the MCU writes as soon as the flag reads 0) | **PASS** with the expected losses: x = 0, y = 08, c = 04. The 4 second replies and 4 second events were written during the CPU's clear and lost, exactly the race I15 rules out. |
@@ -44,7 +44,7 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 |---|---|---|
 | K1 | `main`'s test output `flags` is renamed `flag_reg` (cpu.circ: the output pin and the two tunnels; designs/cpu.py; cputest; both benches). No logic changes. | The layout commit 287c727 had lost the three `flags` labels: Logisim-evolution strips a label equal to the name of a circuit in the project (the `flags` module), as with `clk` (cu-decisions.md U10). The pin had been unconnected since then, and cputest reads the flags from it. `flag_reg` matches no circuit name. |
 | K2 | A8–A15 pull-downs are **not modelled** in Logisim (they float in the vector step, as with the old stub). | A Pull Resistor inside `iod` would make its output pin drive 0 strongly onto `bus_addr` and fight the latch. A pull in `main` would put a component in `main`. The CPU never reads A8–A15 in the vector step. Board only: io-redesign-proposal.md 9.9 D3, breadboard check B5 (b). |
-| K3 | The module test's reference is the cycle-level model in designs/iod.py, not the emulator. | The emulator gets its mailbox in step C3. Then `hbc2 vectors iod` replaces the model (conventions.md), and these sequences become emulator tests. |
+| K3 | ~~The module test's reference is the cycle-level model in designs/iod.py.~~ Done in C3: the reference is now the emulator (`hbc2 vectors iod`), and the Python model is gone. | conventions.md: the emulator's own code is the reference. |
 | K4 | Logisim's 74LVC244 is a 74244 instance: `bom.py` counts it with the STATUS 74HCT244 (qty 2; chips.md lists both references in the row). | One Logisim chip, two orderable parts. |
 | K5 | The test MCU reads MISO after MBX_SEL falls (QH shows bit 7 right after the load), then 7 SCK rises. It shifts 16 bits for every write: a reply sends V twice, so the RX 595 keeps the last 8. | One state machine for RX and EVT. |
 
@@ -54,3 +54,31 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 - **The 165's data hold after SH/LD** isn't given by TI. The strobe rises by 410.5 ns and `bus_data` is held to 500, so about 90 ns of margin.
 - **MBX_SEL rising while SCK is low** is a clock edge on the real 165 (CLK and CLK INH are ORed). It shifts a byte already read, which is harmless. The Logisim chip's behaviour there isn't checked.
 - **Reset at CPU level** (above).
+
+## C3: the emulator (2026-11-11)
+
+| File | What |
+|---|---|
+| `hbc2-core/src/mailbox.rs` | The card, chip by chip: one function per edge or level (`clk_rise`, `mbx_sel_rise`, `rclk_rx_rise`, `rclk_evt_rise`, `sck_rise`, `settle`), the outputs, and the 138 decode. On top: the CPU side, one step at a time (`cpu_in`, `cpu_out`, `clock`), and the MCU side (`mcu_write_rx`, `mcu_write_evt`, `mcu_read_tx`). |
+| `hbc2-core/src/iop.rs` | The ESP32 firmware model. It polls once per CPU cycle, after the `clk` edge. Compat commands `0x01 p v` (OUT) and `0x02 p` (IN), plus `0x00` NOP and `0x03` INFO (protocol 1, firmware 0 = emulator, devices bitmap); other bytes are ignored. Every queued `Iod` interrupt becomes an event, in order. It keeps I15 (`rule_cycles`, default 2 = 1 µs) and takes `service_cycles` per action (default 8 = 4 µs, Q-C4). |
+| `board.rs`, `machine.rs` | `MachineConfig::mailbox: Option<IopConfig>`. **None (the default) is the old IOD**, unchanged: the shipped library still uses `in` / `out` directly until C5. With Some, IN / OUT go to the card, INT and the vector step's (port, data) come from it, and the card and the IOP run cycle by cycle, also during an instruction's wait cycles (skipped while nothing can change). |
+| `cpu.rs` | Two lines: IN and OUT call `board.io_read` / `board.io_write` instead of the IOD directly. With no mailbox they do exactly what they did. (9.5 said "cpu.rs doesn't change": the CPU's behaviour and the hardware don't.) |
+| `hbc2-cli/src/vectors/iod.rs` | `hbc2 vectors iod`: C2's 4 sequences, driving `mailbox.rs`'s chip functions from pin rows (edges found as Logisim does). `designs/iod.py --test` now uses them; the Python `Card` model is removed. |
+
+**Tests**
+
+| Test | Result |
+|---|---|
+| `designs/iod.py --test` (Logisim module against `hbc2 vectors iod`) | **13,740 rows pass** |
+| Two mutants of `mailbox.rs`: EVT never cleared after the vector step; STATUS bit 2 from INT instead of EVT pending | both caught. The first is caught by the vector generator's own checks and by the machine tests. **The second is caught only by Logisim** (10 rows), so the program-level tests alone aren't enough. |
+| `hbc2-core` unit tests (mailbox.rs): the I10 decode, RX lost during the clear, the TX round trip, the event handshake | pass |
+| `hbc2-asm/tests/mailbox.rs`: the same program with `in` / `out` on the old IOD and with the compat protocol through the mailbox (monitor text mode, 20 WRITEs, READ, RTC GET_TIME and IN, a free port's latch, two key events) | **identical**: the event log (port, I) of 3 plug-ins + 2 keys, the RAM results, the screen, the registers. INFO = 1, 0, 0x07. With the rule broken (service 1, rule 0), the MCU writes all 6 plug-in events and the CPU's `evt_clr` loses some; with the rule they all arrive. A halted CPU with a quiet mailbox is idle, and a key press wakes it. |
+| Workspace tests, old IOD (`mailbox: None`) | all pass, unchanged |
+| `cputest.py suite`, `run tests/iod/mbx.has --bench iod / iod_eager` (emutrace rebuilt on the new core) | suite 5 / 5 pass; iod PASS (12 interrupts, 1,398 lines identical to the emulator); iod_eager PASS (8 interrupts, the expected losses) |
+| Speed (a CPU-bound loop, release build) | about 240 MHz emulated with the mailbox, 390 without (the hardware runs at 2 MHz) |
+
+**Open after C3**
+- **Q-C4 defaults** (8 cycles per action, 2 for the rule) are guesses until the firmware is measured in C4.
+- **Native commands** (PUTS, PIXEL, GET_TIME, SD…, 9.3) aren't in the model yet. They'll be added together with the firmware, so both get the same set; INFO's version byte tells them apart.
+- **Not switched on yet:** the IDE, the runner and the compiler tests still use the old IOD (`mailbox: None`). Turning the mailbox on needs the library changes (C5). The IDE's mailbox panel comes then too.
+- **`rst_n` without a power cycle:** the machine has only power-on, which resets the card and the IOP together.

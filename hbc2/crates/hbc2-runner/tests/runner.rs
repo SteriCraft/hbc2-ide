@@ -49,6 +49,7 @@ fn no_peripherals() -> MachineConfig {
         rtc: false,
         keyboard: false,
         eeprom: None,
+        mailbox: None,
     }
 }
 

@@ -9,6 +9,8 @@
 
 use crate::board::Board;
 use crate::cpu::{Cpu, CpuState};
+use crate::iop::{Iop, IopConfig};
+use crate::mailbox::Mailbox;
 use crate::isa::{Flag, HARDWARE_BOOT_CYCLES, RAM_SIZE};
 use crate::peripherals::rtc::DateTime;
 use crate::peripherals::{Eeprom, Keyboard, Monitor, Peripherals, Rtc};
@@ -22,6 +24,10 @@ pub struct MachineConfig {
     pub keyboard: bool,
     /// With an EEPROM, RAM starts empty and is filled by the EEPROM at power-on.
     pub eeprom: Option<Eeprom>,
+    /// The I/O: None = the IOD on the CPU's bus (the old design, and the CPU
+    /// bench's stub); Some = the mailbox card and the I/O processor (the
+    /// ESP32) running the IOD as its protocol.
+    pub mailbox: Option<IopConfig>,
 }
 
 impl Default for MachineConfig {
@@ -31,6 +37,7 @@ impl Default for MachineConfig {
             rtc: true,
             keyboard: true,
             eeprom: None,
+            mailbox: None,
         }
     }
 }
@@ -113,6 +120,8 @@ pub struct Machine {
     pub cpu: Cpu,
     pub board: Board,
     pub peripherals: Peripherals,
+    /// The I/O processor, when the board has a mailbox.
+    pub iop: Iop,
     pub breakpoints: Breakpoints,
     /// RAM content loaded at each power-on (when there is no EEPROM).
     ram_image: Option<Box<[u8]>>,
@@ -139,10 +148,12 @@ impl Machine {
             keyboard: config.keyboard.then(Keyboard::new),
             eeprom: config.eeprom,
         };
+        let board = Board { mailbox: config.mailbox.map(|_| Mailbox::new()), ..Board::default() };
         let mut machine = Machine {
             cpu: Cpu::new(),
-            board: Board::default(),
+            board,
             peripherals,
+            iop: Iop::new(config.mailbox.unwrap_or_default()),
             breakpoints: Breakpoints::default(),
             ram_image: ram_image.map(Box::from),
             ticks: 0,
@@ -163,6 +174,7 @@ impl Machine {
         self.boundary = false;
         self.cpu.reset();
         self.board.reset();
+        self.iop.reset();
         match (&self.ram_image, self.peripherals.eeprom.is_some()) {
             (Some(image), false) => self.board.ram.as_mut_slice().copy_from_slice(image),
             _ => self.board.ram.fill(0),
@@ -218,10 +230,14 @@ impl Machine {
             return self.wait(1);
         }
         let advanced = self.cpu.tick_with(&mut self.board, probe);
-        if let Some(port) = self.board.iod.take_pending_write() {
-            self.peripherals.port_written(port, &mut self.board);
+        if self.board.mailbox.is_some() {
+            self.io_cycle();
+        } else {
+            if let Some(port) = self.board.iod.take_pending_write() {
+                self.peripherals.port_written(port, &mut self.board);
+            }
+            self.board.tick_iod();
         }
-        self.board.tick_iod();
         self.ticks += 1;
         let busy = self.cpu.cycles as u32 - 1;
         if busy > 0 {
@@ -238,9 +254,48 @@ impl Machine {
     fn wait(&mut self, cycles: u32) -> bool {
         self.busy -= cycles;
         self.ticks += cycles as u64;
-        // The CPU drives nothing while it waits: the IOD only follows its queue.
-        self.board.tick_iod();
+        // The CPU drives nothing while it waits: the IOD only follows its
+        // queue; the mailbox and the I/O processor run cycle by cycle.
+        if self.board.mailbox.is_some() {
+            self.io_cycles(cycles);
+        } else {
+            self.board.tick_iod();
+        }
         self.busy == 0 && std::mem::take(&mut self.boundary)
+    }
+
+    /// The end of a step with a mailbox: the `clk` edge, then the I/O
+    /// processor's polling pass.
+    #[inline(always)]
+    fn io_cycle(&mut self) {
+        if let Some(m) = &mut self.board.mailbox {
+            m.clock(self.board.inr);
+        }
+        self.iop.cycle(&mut self.board, &mut self.peripherals);
+        self.board.mailbox_outputs();
+    }
+
+    /// True when more steps without I/O would change nothing on the mailbox
+    /// side (but the I/O processor's ages, see [`Iop::skip`]).
+    fn io_quiet(&self) -> bool {
+        self.board.mailbox.as_ref().is_none_or(|m| m.settled()) && !self.board.inr && self.iop.idle(&self.board)
+    }
+
+    /// `cycles` steps without I/O from the CPU.
+    fn io_cycles(&mut self, mut cycles: u32) {
+        while cycles > 0 {
+            if self.io_quiet() {
+                self.iop.skip(cycles, &self.board);
+                return;
+            }
+            self.io_cycle();
+            cycles -= 1;
+        }
+    }
+
+    /// The board has the mailbox card and the I/O processor.
+    pub fn has_mailbox(&self) -> bool {
+        self.board.mailbox.is_some()
     }
 
     /// Runs until the next instruction boundary: the end of one instruction,
@@ -321,6 +376,14 @@ impl Machine {
         let board = &self.board;
         if self.busy > 0 || !cpu.is_halted() || cpu.state != CpuState::Executing || board.inr {
             return false;
+        }
+        if board.mailbox.is_some() {
+            // The mailbox and the I/O processor have nothing left to do; a
+            // pending event (INT high) only matters when interrupts are on.
+            return self.io_quiet()
+                && (cpu.is_stopped()
+                    || (!board.int
+                        && (cpu.pending_software_interrupt().is_none() || !cpu.flag(Flag::Interrupt))));
         }
         if cpu.is_stopped() {
             // Interrupts are ignored; only the INT line may still follow the queue.

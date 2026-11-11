@@ -1,6 +1,8 @@
-//! The motherboard: RAM, the IOD chip, the buses and the interrupt control lines.
+//! The motherboard: RAM, the I/O (the IOD chip, or the mailbox card in front
+//! of the I/O processor), the buses and the interrupt control lines.
 
 use crate::iod::Iod;
+use crate::mailbox::Mailbox;
 use crate::isa::RAM_SIZE;
 
 /// 64 KiB of RAM.
@@ -68,7 +70,12 @@ impl std::fmt::Debug for Ram {
 #[derive(Clone, Debug, Default)]
 pub struct Board {
     pub ram: Ram,
+    /// The IOD: with no mailbox, the CPU's I/O device (the CPU bench's stub,
+    /// emutrace, the old programs); with one, the I/O processor's state.
     pub iod: Iod,
+    /// The mailbox card (iod-requirements.md I10-I16): when present, IN, OUT
+    /// and the hardware interrupts go through it to the I/O processor.
+    pub mailbox: Option<Mailbox>,
     /// Last value placed on the address bus by an I/O access or an interrupt.
     pub address_bus: u16,
     /// Last value placed on the data bus by an I/O access or an interrupt.
@@ -87,6 +94,40 @@ impl Board {
         self.int = false;
         self.inr = false;
         self.iod.reset();
+        if let Some(m) = &mut self.mailbox {
+            *m = Mailbox::new();
+        }
+    }
+
+    /// IN from the CPU: the mailbox's `bus_data`, or the IOD's latch.
+    #[inline(always)]
+    pub fn io_read(&mut self, port: u8) -> u8 {
+        match &mut self.mailbox {
+            Some(m) => m.cpu_in(port),
+            None => self.iod.port(port),
+        }
+    }
+
+    /// OUT from the CPU: to the mailbox, or the IOD's latch.
+    #[inline(always)]
+    pub fn io_write(&mut self, port: u8, value: u8) {
+        match &mut self.mailbox {
+            Some(m) => m.cpu_out(port, value),
+            None => self.iod.cpu_write(port, value),
+        }
+    }
+
+    /// The mailbox's outputs after a `clk` edge: INT, and in the vector step
+    /// A0-A7 = the event's port (A8-A15 pulled down) and `bus_data` = its data.
+    #[inline(always)]
+    pub(crate) fn mailbox_outputs(&mut self) {
+        if let Some(m) = &self.mailbox {
+            self.int = m.int();
+            if let Some(port) = m.addr_out() {
+                self.address_bus = port as u16;
+                self.data_bus = m.data;
+            }
+        }
     }
 
     /// One clock cycle of the IOD side of the interrupt handshake

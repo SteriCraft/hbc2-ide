@@ -55,6 +55,7 @@ fn bare() -> MachineConfig {
         rtc: false,
         keyboard: false,
         eeprom: None,
+        mailbox: None,
     }
 }
 

@@ -690,6 +690,8 @@ C-min's chips:
    - **Tests:** OUT / IN on the data and status ports, the mirrors and empty ports, both handshake directions, the 1 µs rule and the race it prevents, the vectored interrupt step, reset, no contention.
    - **Timing:** the paths go into `timing.py --section iod`.
    - **Then stop for review.** Done 2026-11-11: iod-decisions.md has the results.
-3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests.
+3. **C3. Emulator:** `mailbox.rs` as built in C2, and the ESP32 protocol model reusing `iod.rs` and the peripherals. C2's sequences become emulator tests. Done 2026-11-11 (iod-decisions.md, C3): compat + NOP + INFO, behind `MachineConfig::mailbox` (off by default until C5).
+**Gianni, 2026-11-11, after C3:** the library part of C5 comes next. For the docs, Claude lists what has to change and Gianni edits them himself, except the I/O diagram (`HBC-2_Input_Output.pdf`), which Claude redraws. C4 waits until some hardware is built (weeks away).
+
 4. **C4. ESP32 firmware:** on the Mega rig first, then the TTGO VGA32. **Check GPIO 36 on the board's schematic before wiring.**
 5. **C5. Library, templates and docs** (9.5).

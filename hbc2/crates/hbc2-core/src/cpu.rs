@@ -606,7 +606,7 @@ impl Cpu {
             O::In => {
                 if mode == M::Reg {
                     let port = self.r(i.r2());
-                    let value = board.iod.port(port);
+                    let value = board.io_read(port);
                     board.address_bus = port as u16;
                     board.data_bus = value;
                     self.set_r(i.r1(), value);
@@ -618,7 +618,7 @@ impl Cpu {
                     let value = self.r(i.r2());
                     board.address_bus = port as u16;
                     board.data_bus = value;
-                    board.iod.cpu_write(port, value);
+                    board.io_write(port, value);
                     probe.io_write(port, value);
                 }
             }

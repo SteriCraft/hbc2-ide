@@ -65,6 +65,7 @@ pub fn build_machine(image: Option<&Image>, peripherals: Peripherals) -> Result<
         rtc: peripherals.rtc,
         keyboard: peripherals.keyboard,
         eeprom: None,
+        mailbox: None,
     };
     let ram = match image {
         None => None,
