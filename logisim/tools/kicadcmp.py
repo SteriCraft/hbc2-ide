@@ -136,6 +136,16 @@ def load_logisim(path: Path, top: str | None) -> Side:
         s.nets[net["name"]] = chips
         if io:
             s.io[net["name"]] = io
+    # Chip models leave VCC / GND unconnected (conventions.md): a power pin
+    # alone on its net belongs to the supply net of its name.
+    for name in list(s.nets):
+        ts = s.nets[name]
+        if len(ts) == 1 and name not in s.io:
+            t = next(iter(ts))
+            supply = s.pin_names.get(t, "").upper()
+            if supply in ("VCC", "GND"):
+                s.nets.setdefault(supply, set()).add(t)
+                del s.nets[name]
     # A bidirectional bus split for simulation: X_in_k + X_out_k -> X_k.
     for name in list(s.nets):
         m = re.fullmatch(r"(.*)_in(_?\d+)", name)
@@ -269,10 +279,10 @@ def match(lg: Side, kc: Side) -> Match:
                         best, best_s = list(zip(lsub, perm)), sc
         else:                                   # greedy for large groups
             pairs = sorted(((score(a, b), a, b) for a in ls for b in ks), reverse=True)
-            used = set()
+            used_l, used_k = set(), set()      # separate: both sides use U1, U2 ...
             for _, a, b in pairs:
-                if a not in used and b not in used:
-                    best.append((a, b)); used |= {a, b}
+                if a not in used_l and b not in used_k:
+                    best.append((a, b)); used_l.add(a); used_k.add(b)
         m.chip.update(best)
 
     # Hill-climb: chip swaps within a type, then pin swaps within a chip,
