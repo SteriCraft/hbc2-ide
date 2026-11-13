@@ -44,3 +44,9 @@ kicad/**/_restore_backup_*/
 kicad/**/~*.lck
 # KiCad per-user project settings
 kicad/**/*.kicad_prl
+# KiCad symbol library backup, project backups, caches
+kicad/**/*.bak
+kicad/**/*-backups/
+kicad/**/fp-info-cache
+# Logisim autosave files
+logisim/**/*.autosave
