@@ -17,9 +17,6 @@ history keeps them). Detailed notes are linked; this file only lists.
 - **ESP32 timing in the emulator:** the I/O processor model answers after 8
   CPU cycles per action (2 for the 1 µs rule). These are guesses: replace
   them with the firmware's measured times.
-- **Reset button in the IDE:** `Machine::reset` models `rst_n` (the CPU
-  and the mailbox card; the ESP32 keeps running and only drops a
-  half-received command). The IDE only has power-on: add a button.
 - **ESP32 boot time in the IDE:** `IopConfig::boot_cycles` is 0 by default
   (programs start at once); the board's is about 1 s. Maybe an option.
 - **Later: load programs over USB.** A small loader in the boot ROM asks the
@@ -38,7 +35,8 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 - Nothing planned. Dropped by Gianni (2026-11-11): bitfields and K&R
   definitions (ABI.md 12), building the C tools from cargo, carrying
-  register contents across loop labels (small gain expected).
+  register contents across loop labels (small gain expected); `fixed.h`
+  (2026-11-13).
 
 ## Hardware
 
@@ -54,9 +52,6 @@ history keeps them). Detailed notes are linked; this file only lists.
   drivers' turn-off overlap, A8–A15 decaying through the pull-downs in the
   vector step (fallback: put the 74HCT541 back), the 165's data hold after
   SH/LD, MBX_SEL rising while SCK is low.
-- **Logisim: reset during a mailbox transfer, at CPU level.** Tested on
-  the `iod` module alone, not on the whole CPU (cputest follows one boot
-  only). iod-decisions.md, "Open".
 
 ### ESP32 (step C4 of io-redesign-proposal.md 9.9, once hardware is built)
 
@@ -67,7 +62,7 @@ history keeps them). Detailed notes are linked; this file only lists.
 
 ### KiCad (`kicad/`, Gianni)
 
-- **Schematics still to draw:** addr, cu, iod, mem (folders `*_TODO`).
-  Check each one against Logisim with `logisim/tools/kicadcmp.py`.
+- **Schematics:** all drawn (cu committed 2026-11-13). What is left
+  before the PCBs is in `kicad/NOTES.md`, "To do before the PCBs".
 - **PCBs** (DIP, sockets for every chip): once the card connector pinout is
   decided.

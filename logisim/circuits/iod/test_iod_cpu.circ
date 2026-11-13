@@ -352,6 +352,28 @@
       <a name="width" val="8"/>
     </comp>
     <comp lib="14" loc="(3200,300)" name="iod"/>
+    <comp lib="0" loc="(2760,420)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rclk_rx"/>
+    </comp>
+    <comp lib="0" loc="(2760,450)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="rclk_evt"/>
+    </comp>
+    <comp lib="0" loc="(2760,480)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="mbx_sel"/>
+    </comp>
+    <comp lib="0" loc="(2760,300)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="bus_data"/>
+      <a name="width" val="8"/>
+    </comp>
+    <comp lib="0" loc="(2760,330)" name="Tunnel">
+      <a name="facing" val="east"/>
+      <a name="label" val="lo"/>
+      <a name="width" val="8"/>
+    </comp>
     <comp lib="0" loc="(2820,220)" name="Tunnel">
       <a name="facing" val="south"/>
       <a name="label" val="ie"/>
@@ -376,16 +398,6 @@
       <a name="facing" val="south"/>
       <a name="label" val="rst_n"/>
     </comp>
-    <comp lib="0" loc="(2760,300)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="bus_data"/>
-      <a name="width" val="8"/>
-    </comp>
-    <comp lib="0" loc="(2760,330)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="lo"/>
-      <a name="width" val="8"/>
-    </comp>
     <comp lib="0" loc="(2760,360)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="sck"/>
@@ -393,18 +405,6 @@
     <comp lib="0" loc="(2760,390)" name="Tunnel">
       <a name="facing" val="east"/>
       <a name="label" val="mosi"/>
-    </comp>
-    <comp lib="0" loc="(2760,420)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="rclk_rx"/>
-    </comp>
-    <comp lib="0" loc="(2760,450)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="rclk_evt"/>
-    </comp>
-    <comp lib="0" loc="(2760,480)" name="Tunnel">
-      <a name="facing" val="east"/>
-      <a name="label" val="mbx_sel"/>
     </comp>
     <comp lib="0" loc="(3220,300)" name="Tunnel">
       <a name="facing" val="west"/>

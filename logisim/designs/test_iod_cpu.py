@@ -26,10 +26,18 @@ The "eager" build (test_iod_cpu_eager.circ) waits 0 ticks: it breaks the
 rule, and a second reply or event written while the CPU's clear is still
 active is lost (I15). The test programs count what arrives.
 
-The output pins are test_cpu's (main's connector, buses, test points, int,
-vec), so cputest's observer reads both benches the same way.
+The "reset" builds (test_iod_cpu_reset_<v>.circ, cputest --bench iod_reset_<v>)
+are the rule-keeping MCU that pulls the CPU's reset once, in the middle of a
+transfer (RESETS below): its ROM gets a `fired` input and a `rst_req` output,
+and rst_req clears the reset RC (the 74161 and the 7474), so rc is low for 16
+osc periods as at power-up. The CPU boots again and runs the program from the
+start; the MCU drops its item on rst_n. cputest follows the second boot.
 
-    python test_iod_cpu.py      # write both, check
+The output pins are test_cpu's (main's connector, buses, test points, int,
+vec), so cputest's observer reads both benches the same way; the reset
+builds add the MCU's state and flags (OBS_RESET).
+
+    python test_iod_cpu.py      # write all, check
 """
 
 import sys
@@ -44,18 +52,27 @@ import cpu as cpu_design  # noqa: E402  (main's pins)
 OUTS = {False: ROOT / "circuits" / "iod" / "test_iod_cpu.circ",
         True: ROOT / "circuits" / "iod" / "test_iod_cpu_eager.circ"}
 OBS = cpu_design.OUTPUTS + [("int", 1), ("vec", 1)]
+OBS_RESET = OBS + [("st", 7), ("fired", 1), ("m_tx", 1), ("m_rx", 1), ("m_evt", 1)]
 RULE_TICKS = 8                                   # 8 x 125 ns = 1 us
+# reset variants: the MCU state where it pulls the reset, and (b7, b6) of the byte it serves (None: any).
+# tx:  in the middle of reading TX (MBX_SEL low, 4 bits shifted), the first byte (0x10);
+# rx:  phase 2 (two replies): reply 1 waiting in RX, reply 2 half shifted into the RX 595;
+# evt: phase 4 (two events, interrupts off): event 1 pending (INT high), event 2 half shifted.
+RESETS = {"tx": ("H3", None), "rx": ("I2_S8H", (0, 1)), "evt": ("I2_S8H", (1, 1))}
+for _v in RESETS:
+    OUTS[("reset", _v)] = ROOT / "circuits" / "iod" / f"test_iod_cpu_reset_{_v}.circ"
 
 
 # ==== the test MCU's state machine ======================================================================
 # ROM address: state (7 bits) | tx_full << 7 | rx_full << 8 | evt_pend << 9 | b7 << 10 | b6 << 11 | rst_n << 12
+#              (reset builds: | fired << 13)
 # ROM data:    next (7 bits) | sck << 7 | mbx_sel << 8 | rclk_rx << 9 | rclk_evt << 10 | in_en << 11 | b_en << 12
-#              | v_en << 13 | v_sel_b << 14 | out_en << 15 | out_load << 16
+#              | v_en << 13 | v_sel_b << 14 | out_en << 15 | out_load << 16 (reset builds: | rst_req << 17)
 OUT_BITS = {"sck": 7, "mbx_sel": 8, "rclk_rx": 9, "rclk_evt": 10, "in_en": 11, "b_en": 12, "v_en": 13,
-            "v_sel_b": 14, "out_en": 15, "out_load": 16}
+            "v_sel_b": 14, "out_en": 15, "out_load": 16, "rst_req": 17}
 
 
-def fsm(wait: int) -> list[int]:
+def fsm(wait: int, reset: str | None = None) -> list[int]:
     names = ["IDLE", "R0", "R1"]
     for b in range(6, -1, -1):
         names += [f"H{b}", f"L{b}"]
@@ -77,10 +94,10 @@ def fsm(wait: int) -> list[int]:
             v |= int(b) << OUT_BITS[k]
         return v
 
-    rom = [0] * (1 << 13)
-    for addr in range(1 << 13):
+    rom = [0] * (1 << (14 if reset else 13))
+    for addr in range(len(rom)):
         st = addr & 0x7F
-        tx, rx, ev, b7, b6, rst = ((addr >> k) & 1 for k in range(7, 13))
+        tx, rx, ev, b7, b6, rst, fired = ((addr >> k) & 1 for k in range(7, 14))
         if st >= len(names):
             rom[addr] = word("IDLE")
             continue
@@ -124,12 +141,20 @@ def fsm(wait: int) -> list[int]:
                     rom[addr] = word("I2_LOAD", v_en=1, v_sel_b=0)          # V = V + 1
                 else:
                     rom[addr] = word("IDLE")
+    if reset:                                    # pull the reset once, in the chosen state
+        state, bits = RESETS[reset]
+        for addr in range(len(rom)):
+            st, b7, b6, fired = addr & 0x7F, addr >> 10 & 1, addr >> 11 & 1, addr >> 13 & 1
+            # not gated by rst_n: the reset it causes drops m_rst_n at once, which would end the
+            # pulse before the osc edge that sets `fired` (it would then fire again at every boot)
+            if st == idx[state] and not fired and (bits is None or bits == (b7, b6)):
+                rom[addr] |= 1 << OUT_BITS["rst_req"]
     return rom
 
 
-def build(eager: bool):
+def build(eager: bool, reset: str | None = None):
     p = Project()
-    t = p.circuit("test_iod_cpu_eager" if eager else "test_iod_cpu")
+    t = p.circuit(f"test_iod_cpu_reset_{reset}" if reset else "test_iod_cpu_eager" if eager else "test_iod_cpu")
     cpu = p.library(ROOT / "cpu.circ")
     iod = p.library(ROOT / "circuits" / "iod" / "iod.circ")
 
@@ -225,10 +250,11 @@ def build(eager: bool):
     t.wire((100, 100), (120, 100))
     t.tunnel((120, 100), "osc", facing="west")
     rc_cnt = t.ttl("74161", (300, 400), facing="south", label="U1")
-    pin_tunnels(t, rc_cnt, {"MR/CLR": "vcc", "CP/CLK": "osc", "D0/A": "gnd", "D1/B": "gnd", "D2/C": "gnd",
+    clr = "rst_req_n" if reset else "vcc"
+    pin_tunnels(t, rc_cnt, {"MR/CLR": clr, "CP/CLK": "osc", "D0/A": "gnd", "D1/B": "gnd", "D2/C": "gnd",
                             "D3/D": "gnd", "CE/ENP": "vcc", "PE/LOAD": "vcc", "CET/ENT": "vcc", "TC/RC0": "rc_tc"})
     rc_ff = t.ttl("7474", (300, 700), facing="south", label="U2")
-    pin_tunnels(t, rc_ff, {"nCLR1": "vcc", "D1": "vcc", "CLK1": "rc_tc", "nPRE1": "vcc", "Q1": "rc",
+    pin_tunnels(t, rc_ff, {"nCLR1": clr, "D1": "vcc", "CLK1": "rc_tc", "nPRE1": "vcc", "Q1": "rc",
                            "nCLR2": "vcc", "D2": "inr", "CLK2": "clk_5", "nPRE2": "vcc", "Q2": "vec"})
     t.text((260, 300), "reset RC: rc rises after 15 osc periods; vec = INR one step late (observed only)")
     split((300, 1000), "clk", 6, [[5]], ["clk_5"], [1])
@@ -238,12 +264,17 @@ def build(eager: bool):
     X, Y = 400, 1700
     t.text((X, Y - 60), f"test MCU: a state machine on osc ({'eager: breaks the 1 us rule' if eager else 'follows the 1 us rule'})")
     register((X + 600, Y), "st_d", "st", "vcc", 7)
-    join((X + 300, Y + 300), "fa", 13, [list(range(7)), [7], [8], [9], [10], [11], [12]],
-         ["st", "m_tx", "m_rx", "m_evt", "b_7", "b_6", "m_rst_n"], [7, 1, 1, 1, 1, 1, 1])
-    rom((X + 600, Y + 300), "fa", "fq", fsm(0 if eager else RULE_TICKS), 13, 17)
-    split((X + 1000, Y + 300), "fq", 17, [list(range(7))] + [[b] for b in range(7, 17)],
-          ["st_d", "sck", "mbx_sel", "rclk_rx", "rclk_evt", "in_en", "b_en", "v_en", "v_sel_b", "out_en", "out_load"],
-          [7] + [1] * 10)
+    a_in = ["st", "m_tx", "m_rx", "m_evt", "b_7", "b_6", "m_rst_n"] + (["fired"] if reset else [])
+    q_out = ["st_d", "sck", "mbx_sel", "rclk_rx", "rclk_evt", "in_en", "b_en", "v_en", "v_sel_b", "out_en",
+             "out_load"] + (["rst_req"] if reset else [])
+    aw, dw = 6 + len(a_in), 6 + len(q_out)
+    join((X + 300, Y + 300), "fa", aw, [list(range(7))] + [[b] for b in range(7, aw)], a_in, [7] + [1] * (aw - 7))
+    rom((X + 600, Y + 300), "fa", "fq", fsm(0 if eager else RULE_TICKS, reset), aw, dw)
+    split((X + 1000, Y + 300), "fq", dw, [list(range(7))] + [[b] for b in range(7, dw)], q_out, [7] + [1] * (dw - 7))
+    if reset:                                    # fired: set by the one rst_req pulse, never cleared
+        t.text((X + 1300, Y - 60), f"reset once: rst_req in state {RESETS[reset][0]} clears the reset RC; fired keeps it from coming back")
+        register((X + 1300, Y), "vcc", "fired", "rst_req", 1)
+        gate_not((X + 1300, Y + 200), "rst_req", "rst_req_n")
     # IN: shift MISO in (IN = IN << 1 | miso)
     Y2 = Y + 800
     register((X + 600, Y2), "in_d", "inr_q", "in_en", 8)
@@ -278,7 +309,7 @@ def build(eager: bool):
     t.wire((4580, 40), (4600, 40))
     t.add("#Wiring", "Ground", (4580, 40), facing="south")
     y = 100
-    for name, w in OBS:
+    for name, w in (OBS_RESET if reset else OBS):
         t.output((4600, y), name, w)
         t.wire((4580, y), (4600, y))
         t.tunnel((4580, y), name, w, facing="east")
@@ -288,7 +319,7 @@ def build(eager: bool):
 
 if __name__ == "__main__":
     bad = 0
-    for eager, out in OUTS.items():
-        p, _ = build(eager)
+    for key, out in OUTS.items():
+        p, _ = build(False, key[1]) if isinstance(key, tuple) else build(key)
         bad += p.save(out)
     sys.exit(1 if bad else 0)

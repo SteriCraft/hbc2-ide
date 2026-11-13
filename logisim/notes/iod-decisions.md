@@ -36,7 +36,15 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 - one and two events per byte (two with interrupts off until the second event waits);
 - the event data checked in the handler.
 
-**Not covered at CPU level: reset in the middle of a transfer.** It is covered at module level (sequence 4). `cputest`'s observer follows one boot: a reset in the middle of a run restarts the 65,548-step boot copy, which the trace and the emulator comparison don't model. It could be added (the test MCU pulling `rc`, and an observer that restarts on a second reset) if wanted.
+**Reset in the middle of a transfer, at CPU level: done 2026-11-14.** Three benches, `test_iod_cpu_reset_tx / _rx / _evt.circ` (`designs/test_iod_cpu.py`, `cputest.py --bench iod_reset_*`): the rule-keeping MCU pulls the CPU's reset once (its ROM's `rst_req` clears the reset RC, a `fired` register keeps it from coming back), and `cputest`'s observer starts again at the second boot; that run is compared with the emulator and checked against `expect[iod]`, and exactly one reset must be seen.
+
+| Bench | Reset at | Result |
+|---|---|---|
+| `iod_reset_tx` | line 16: reading TX (MBX_SEL low, 4 bits shifted), first byte | **PASS**: 137,408 steps, second boot 65,537 copy writes, 1,398 lines identical to the emulator, 12 interrupts, x = 0, y = 0C, c = 0 |
+| `iod_reset_rx` | line 292: phase 2, reply 1 in RX, reply 2 half shifted | **PASS**, the same |
+| `iod_reset_evt` | line 1103: phase 4, event 1 pending (INT high, interrupts off), event 2 half shifted | **PASS**, the same |
+
+In all three: no contention, every control line at its pulled level while `rst_rc` is high (C24, the mid-run reset included), and no stale reply or event after the reset (the program's counts are those of a clean run). Nothing to change on the card. One bench trap found on the way: `rst_req` must not depend on `m_rst_n`, or the reset it causes ends the pulse before `fired` is set and the reset repeats at every boot.
 
 ## Decisions taken while building
 
@@ -53,7 +61,7 @@ The C-min mailbox of iod-requirements.md ("Target design", I10–I16), built 202
 - **85 °C (information):** the IN drivers turn off in up to 121 ns. The overlap with the next step's driver is measured by B5 (a).
 - **The 165's data hold after SH/LD** isn't given by TI. The strobe rises by 410.5 ns and `bus_data` is held to 500, so about 90 ns of margin.
 - **MBX_SEL rising while SCK is low** is a clock edge on the real 165 (CLK and CLK INH are ORed). It shifts a byte already read, which is harmless. The Logisim chip's behaviour there isn't checked.
-- **Reset at CPU level** (above).
+- ~~**Reset at CPU level**~~ done 2026-11-14 (above).
 
 ## C3: the emulator (2026-11-11)
 

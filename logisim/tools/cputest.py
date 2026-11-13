@@ -36,7 +36,10 @@ on the same RAM image and `hbc2 compare`.
 --bench (default cpu): cpu = circuits/cpu/test_cpu.circ (the IOD stub), programs in
 tests/cpu; iod = circuits/iod/test_iod_cpu.circ (the mailbox card and a test MCU that
 follows the firmware rule), iod_eager = test_iod_cpu_eager.circ (the same MCU breaking
-it), programs in tests/iod. On the iod benches the IN data comes from the mailbox, not
+it), programs in tests/iod; iod_reset_tx / _rx / _evt = test_iod_cpu_reset_*.circ (the
+rule-keeping MCU pulls the CPU's reset once in the middle of a transfer: the observer
+starts again at the second boot, and that run is the one compared and checked against
+expect[iod]; the run must see exactly one such reset). On the iod benches the IN data comes from the mailbox, not
 from an IOD the emulator has: every IN step's bus_data is recorded and given to emutrace
 (--in LINE:VALUE), and a program checks itself: its `; expect[BENCH] r=v ...` lines
 (registers a b c d i j x y, hex) must hold on the last trace line.
@@ -67,6 +70,8 @@ PROGRAMS = ROOT / "tests" / "cpu"
 BENCHES = {"cpu": ("circuits/cpu/test_cpu.circ", "test_cpu", ROOT / "tests" / "cpu"),
            "iod": ("circuits/iod/test_iod_cpu.circ", "test_iod_cpu", ROOT / "tests" / "iod"),
            "iod_eager": ("circuits/iod/test_iod_cpu_eager.circ", "test_iod_cpu", ROOT / "tests" / "iod")}
+for _v in ("tx", "rx", "evt"):
+    BENCHES[f"iod_reset_{_v}"] = (f"circuits/iod/test_iod_cpu_reset_{_v}.circ", "test_iod_cpu", ROOT / "tests" / "iod")
 sys.path.insert(0, str(ROOT / "tools"))
 sys.path.insert(0, str(ROOT / "designs"))
 
@@ -169,6 +174,22 @@ class Observer:
         self.halt_since = None
         self.stop_since = None
         self.done = None
+        self.resets: list[dict] = []       # resets after the program started: where, and the MCU's state
+
+    def restart(self, s, E):
+        """A reset after the program started: the trace starts again at the next boot."""
+        self.resets.append({"step": s, "line": len(self.lines), "copies": self.copies,
+                            **{k: E.get(k) for k in ("st", "m_tx", "m_rx", "m_evt", "int")}})
+        self.started = False
+        self.first_f0 = self.rst_release = None
+        self.copies = 0
+        self.lines, self.cur, self.writes, self.spans = [], None, [], []
+        self.cycles, self.entries = [], []
+        self.int_prev = 0
+        self.rises.clear()
+        self.inject, self.inject_cycle, self.ins = [], [], []
+        self.hw = self.sw = 0
+        self.halt_since = self.stop_since = None
 
     def err(self, kind, text):
         self.err_count[kind] += 1
@@ -208,6 +229,8 @@ class Observer:
         W = next((r for r in reversed(rows) if r["clk_wr_n"] == 0), E)
         flags = r0["flag_reg"]
         self.snap.append((s, list(self.regs), self.sp, flags))
+        if E["rst_n"] != 1 and (self.started or self.copies):
+            self.restart(s, E)
         if E["rst_n"] == 1 and self.rst_release is None:
             self.rst_release = s
         if E["rst_n"] != 1:
@@ -473,7 +496,8 @@ def tree_with_rom(image: bytes, workdir: Path, cpu: Path | None = None, bench: s
 
 def bench_columns(bench: str = "cpu"):
     import importlib
-    obs = importlib.import_module(BENCHES[bench][1]).OBS
+    mod = importlib.import_module(BENCHES[bench][1])
+    obs = mod.OBS_RESET if bench.startswith("iod_reset") else mod.OBS
     return [n for n, _ in obs], [w for _, w in obs]
 
 
@@ -574,13 +598,18 @@ def run(prog: Path, outdir: Path, max_lines=0, max_steps=0, name=None, cpu=None,
             cmd += ["--in", a]
         subprocess.run(cmd, check=True, capture_output=True)
         cmp_cycle = subprocess.run([str(HBC2), "compare", str(lg), str(emc)], capture_output=True, text=True)
+    exp_bench = "iod" if bench.startswith("iod_reset") else bench
+    extra = []
+    if bench.startswith("iod_reset") and len(obs.resets) != 1:
+        extra.append(f"reset: {len(obs.resets)} resets after the start, expected 1")
     result = {
+        "resets": obs.resets,
         "name": name, "seconds": round(secs), "steps": obs.step + 1, "rows": obs.nrows, "end": obs.done,
         "reset_release_step": obs.rst_release, "first_fetch_step": obs.first_f0,
         "boot_steps": None if obs.first_f0 is None or obs.rst_release is None else obs.first_f0 - obs.rst_release,
         "boot_copies": obs.copies, "lines": nlines, "hw_int": obs.hw, "sw_int": obs.sw,
         "pull_rows": obs.pull_rows, "contention_rows": obs.contention,
-        "errors": obs.errors + [f"expect: {b}" for b in check_expect(obs.lines, expectations(prog, bench))],
+        "errors": obs.errors + extra + [f"expect: {b}" for b in check_expect(obs.lines, expectations(prog, exp_bench))],
         "bench": bench, "in_steps": len(obs.ins),
         "error_counts": dict(obs.err_count), "reference": ref, "compare_exit": cmp.returncode,
         "compare": cmp.stdout.strip()[-1500:],
