@@ -14,6 +14,11 @@ history keeps them). Detailed notes are linked; this file only lists.
 - **Native ESP32 commands:** text, graphics, VSYNC, GET_TIME done in the
   emulator and the library (2026-11-11, Peripherals/Native/Reference.md).
   Left: BLIT, sprites, SD_READ / SD_WRITE, and the firmware itself (C4).
+- **BLIT (later):** the rectangle form, decided 2026-11-14: `BLIT x y w h`
+  then the pixels (4-bit, 2 per byte). At most 255 bytes of pixels per
+  command, like PUTS, so interrupts stay off no longer than today; the
+  library cuts a bigger image into bands of rows. Spec in
+  Peripherals/Native/Reference.md (opcode `0x40`), emulator, library.
 - **ESP32 timing in the emulator:** the I/O processor model answers after 8
   CPU cycles per action (2 for the 1 µs rule). These are guesses: replace
   them with the firmware's measured times.
