@@ -52,10 +52,10 @@ history keeps them). Detailed notes are linked; this file only lists.
 - **EEPROM programmer** firmware (built with the mem card, order 6).
 - **The I/O card** isn't in the orders yet ("still a stub"): it is designed
   now (C-min, 12 chips, `bom-iod.csv`). Add its order: the 10 kΩ pull-down
-  network (4609X-101-103LF), R1–R5 (33 Ω × 4, 220 Ω), D3 (1N5817), the
+  network (4609X-101-103LF), R1–R5 (33 Ω × 4, 220 Ω), D1 (1N5817), the
   2 × 4 keyed header and IDC ribbon, a PS/2 cable for the TTGO's mouse
   port, and the TTGO VGA32 v1.4. Add a rig map `logisim/rig/iod.map` (U12
-  needs 3.3 V on J5.8 without the TTGO: the Mega's 3.3 V pin).
+  needs 3.3 V on J2.8 without the TTGO: the Mega's 3.3 V pin).
 - **Checks to make on the breadboard** (breadboard-checks.md B5): the IN
   drivers' turn-off overlap, A8–A15 decaying through the pull-downs in the
   vector step (fallback: put the 74HCT541 back), the 165's data hold after

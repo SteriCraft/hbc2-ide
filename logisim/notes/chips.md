@@ -110,9 +110,9 @@ Chosen 2026-11-14 (KiCad clkgen board, kicad/NOTES.md "clkgen: oscillator and re
 | Ref | Part | Value | Role |
 |---|---|---|---|
 | Y1 | ECS-2200BX-040, half-size DIP-8 can | 4.000 MHz, 5 V HCMOS | `osc`; pins 1 NC, 4 GND, 5 OUT, 8 +5V |
-| R3 | resistor | 10 kΩ | RC, +5V → `clkgen_rc` |
+| R4 | resistor | 10 kΩ | RC, +5V → `clkgen_rc` |
 | C9 | electrolytic | 10 µF 16 V | RC, `clkgen_rc` → GND (τ = 100 ms, release about 48 ms) |
-| D1 | 1N4148 | | across R3, cathode on +5V: empties C9 at power-off |
+| D1 | 1N4148 | | across R4, cathode on +5V: empties C9 at power-off |
 | SW3 | tactile push button, NO | | reset button, across C9 through R5 |
 | R5 | resistor | 100 Ω | in series with SW3: 50 mA peak discharge |
 

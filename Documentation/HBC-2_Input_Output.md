@@ -74,15 +74,15 @@ three soldered wires. The full record, with the reasons, is in
 
 | Signal | GPIO | Card | TTGO |
 |---|---|---|---|
-| MOSI, SCK | 12, 14 | J5.1, J5.2 | header pins 1, 2 (shared with the SD card) |
-| MISO | 2 | J5.4 | header pin 4 (shared with the SD card) |
-| `tx_full`, `rx_full` | 34, 39 | J5.5, J5.6 | header pins 5, 6 |
-| GND, 3.3 V | | J5.7, J5.8 | header pins 7, 8 (the TTGO's 3.3 V powers the 74LVC244) |
-| RCLK_EVT | 27 | J6.1 | mouse port pin 1 |
-| GND, 5 V | | J6.3, J6.4 | mouse port pins 3, 4 (the card powers the TTGO through a Schottky diode) |
-| MBX_SEL | 26 | J6.5 | mouse port pin 5 |
-| RCLK_RX | 25 | J7.1 | soldered wire |
-| `evt_pend`, `rst_n` | 35, 36 | J7.2, J7.3 | soldered wires |
+| MOSI, SCK | 12, 14 | J2.1, J2.2 | header pins 1, 2 (shared with the SD card) |
+| MISO | 2 | J2.4 | header pin 4 (shared with the SD card) |
+| `tx_full`, `rx_full` | 34, 39 | J2.5, J2.6 | header pins 5, 6 |
+| GND, 3.3 V | | J2.7, J2.8 | header pins 7, 8 (the TTGO's 3.3 V powers the 74LVC244) |
+| RCLK_EVT | 27 | J4.1 | mouse port pin 1 |
+| GND, 5 V | | J4.3, J4.4 | mouse port pins 3, 4 (the card powers the TTGO through a Schottky diode) |
+| MBX_SEL | 26 | J4.5 | mouse port pin 5 |
+| RCLK_RX | 25 | J1.1 | soldered wire |
+| `evt_pend`, `rst_n` | 35, 36 | J1.2, J1.3 | soldered wires |
 
 MBX_SEL and RCLK_EVT idle high, and RCLK_RX idles low. MBX_SEL and the SD
 card's select are never low at the same time. GPIO0 is spare.

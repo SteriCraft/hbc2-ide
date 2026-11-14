@@ -13,7 +13,7 @@ Electrical findings and open hardware items are in [kicad_electrical_requirement
 | mem | `mem/` | 8 | equivalent |
 | registers | `registers/` | 18 | equivalent (Logisim file `circuits/registers/regs.circ`) |
 | iod | `iod/` | 12 | no wiring error (2026-11-14). The differences are expected: the in/out split of `iod_addr`, the series resistors R1–R5 on U12's outputs, U12 on +3V3, and the new connector nets (TTGO). ERC: 0 errors, 0 warnings. |
-| clkgen | `cu/` (project `hbc2_clkgen`) | 5 | equivalent (Logisim file `circuits/cu/clkgen.circ`). Oscillator Y1, the reset circuit and the Nano driver added 2026-11-14; references renumbered from 1 the same day (the tables below use the new numbers). D1/D2 power input removed (S1). ERC: 0 errors, 0 warnings. |
+| clkgen | `cu/` (project `hbc2_clkgen`) | 5 | equivalent (Logisim file `circuits/cu/clkgen.circ`). Oscillator Y1, the reset circuit and the Nano driver added 2026-11-14; references renumbered from 1 the same day (the tables below use the new numbers). D1/D2 power input removed (S1). Card edge J1 (PCIe x1) since 2026-11-15. ERC: 0 errors, 0 warnings. |
 | cu | `cu/` (project `ctrl_unit/hbc_ctrl_unit`) | 30 | equivalent (Logisim file `circuits/cu/cu.circ`; checked 2026-11-14). The pull resistors (8 networks RN1–RN8 since 2026-11-14) are board extras. |
 
 Every circuit is drawn (cu on 2026-11-13).
@@ -40,13 +40,15 @@ Check a schematic with (run from `logisim/`):
 
 Details are in `kicad_electrical_requirements.md`.
 
-1. ~~**IOD U12 → SN74LVC244A at 3.3 V.**~~ Done 2026-11-14 (H1). It takes its 3.3 V from the TTGO, through J5.8.
+1. ~~**IOD U12 → SN74LVC244A at 3.3 V.**~~ Done 2026-11-14 (H1). It takes its 3.3 V from the TTGO, through J2.8.
 2. ~~**IOD: a 10 kΩ pull-down network on A8–A15**, plus connector pins for them.~~ Done 2026-11-14 (H2). Moved the same day to the motherboard, to save 8 card pins: RN1 removed, iod J4 back to 1 × 08.
 3. ~~**IOD: pull-downs on RCLK_RX and RCLK_EVT, and a pull-up on MBX_SEL.**~~ Not needed (H3): the TTGO's own resistors set those levels (see "IOD: the TTGO VGA32" below).
-4. **Footprints on every board** (H4). Assigned 2026-11-14 on all 9 cards except the connectors (they become one PCIe card edge per card, see "Card slots" below): chips in DIP sockets (`Package_DIP:DIP-14/16/20_W7.62mm_Socket`; AT28C256 `DIP-28_W15.24mm_Socket`, AS6C1008 `DIP-32_W15.24mm_Socket`), 100 nF `Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm`, 47 µF / 10 µF `CP_Radial_D5.0mm_P2.00mm`, resistors `R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal`, 1N5817 `D_DO-41_SOD81_P10.16mm_Horizontal`, 1N4148 `D_DO-35_SOD27_P7.62mm_Horizontal`; clkgen extras (Nano, Y1, RV1, buttons, test points) as in its section. ERC 0 / 0 and nets unchanged on every card. The cu's 60 discrete pull resistors became 8 bussed networks the same day, as ordered (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`): RN1–RN5 pull 36 lines to +5V (RN5 pins 6–9 unused, no-connect), RN6–RN8 pull 24 lines to GND; every line keeps its rail, ERC 0 / 0. Capacitor footprints are provisional: Gianni checks them once the parts are chosen, before the PCBs.
+4. **Footprints on every board** (H4). Assigned 2026-11-14 on all 9 cards; the connectors became one PCIe card edge per card on 2026-11-15 (see "Card slots" below): chips in DIP sockets (`Package_DIP:DIP-14/16/20_W7.62mm_Socket`; AT28C256 `DIP-28_W15.24mm_Socket`, AS6C1008 `DIP-32_W15.24mm_Socket`), 100 nF `Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm`, 47 µF / 10 µF `CP_Radial_D5.0mm_P2.00mm`, resistors `R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal`, 1N5817 `D_DO-41_SOD81_P10.16mm_Horizontal`, 1N4148 `D_DO-35_SOD27_P7.62mm_Horizontal`; clkgen extras (Nano, Y1, RV1, buttons, test points) as in its section. ERC 0 / 0 and nets unchanged on every card. The cu's 60 discrete pull resistors became 8 bussed networks the same day, as ordered (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`): RN1–RN5 pull 36 lines to +5V (RN1 pins 6–9 unused, no-connect; it was RN5 before the 2026-11-15 renumbering), RN6–RN8 pull 24 lines to GND; every line keeps its rail, ERC 0 / 0. Capacitor footprints are provisional: Gianni checks them once the parts are chosen, before the PCBs.
 5. **Supply (S1), decided 2026-11-14:** the cards lose their series Schottky and their TVS; protection moves to the motherboard input. See "Power (S1)" below. Done on all 9 cards on 2026-11-14: D1/D2 removed, power connector GND, +5V, +5V, GND (addr J4, alu J5, flags J5, ir J10, mem J1, registers J7, iod J2, cu J4, clkgen J3). ERC 0 / 0 on each; no other pin changed net.
-6. ~~**Relabel the IOD 595s as SN74AHCT595N.**~~ Done 2026-11-14. Still to do: check the other boards' part labels against `logisim/notes/chips.md` (S3).
-7. **Run KiCad's ERC** on each board.
+6. ~~**Relabel the IOD 595s as SN74AHCT595N.**~~ Done 2026-11-14. Still to do: ~~check the other boards' part labels against `logisim/notes/chips.md` (S3).~~ Done 2026-11-15 on all 9 cards: every chip's value and count match its module's table in chips.md. One label changed: the mem RAM was `AS6C1008-xxP` (the KiCad library name) and is now `AS6C1008`. The iod keeps its two documented exceptions, SN74AHCT595N ×3 and SN74LVC244AN.
+7. ~~**Run KiCad's ERC** on each board.~~ Done 2026-11-15: 0 errors, 0 warnings on the 9 cards and the motherboard.
+
+**Renumbering (Gianni, 2026-11-15):** every board's references were renumbered, consecutive from 1 per type. What changed, and where the docs were updated: clkgen R3 ↔ R4 (the RC resistor is now R4, the Nano's 33 Ω is R3); mem C1 → C3; iod J5 → J2, J6 → J4, J7 → J1 (TTGO cables), D3 → D1, U1 → U2, U2 → U3, U3 → U1 (a 595), C5 → C6, card edge J3; cu U and RN numbers reshuffled (RN1–RN5 still pull up, RN6–RN8 down); motherboard slots J2 flags, J4 alu, J6 registers, J8 ir, J10 addr, J3 cu, J5 mem, J7 iod, J9 clkgen. Nets unchanged.
 8. ~~**clkgen: the 4.000 MHz oscillator module and the reset circuit.**~~ Done 2026-11-14 (H5). See "clkgen: oscillator and reset" below.
 9. **clkgen: the Arduino Nano clock and reset driver**: on the schematic 2026-11-14; the sketch is still to write. See "clkgen: Arduino Nano clock and reset driver" below.
 
@@ -61,7 +63,8 @@ Details are in `kicad_electrical_requirements.md`.
   - The pin numbers match both footprints exactly (checked).
 - **Pinout and slot order:** [slot-pinout.md](slot-pinout.md), drawn on the motherboard on 2026-11-15. Every shared signal has the same pin number on every card that uses it. Sizes: flags x4, alu x8, registers x16, ir x16, addr x16, cu x16, mem x8, iod x4, clkgen x1.
 - **Motherboard: done 2026-11-15.** Its 66 connectors became 9 slots, plus RN1 (A8–A15 pull-downs) and the power input; ERC 0 / 0, nets checked against Logisim (motherboard-netmap.md).
-- **Cards: to do.** Each card's 2.54 mm connectors (except iod J5–J7 and clkgen JP1) become one card-edge connector.
+- **Cards: done 2026-11-15.** Each card's 2.54 mm connectors (except the iod TTGO connectors and clkgen JP1) became one card edge, `HBC2_PCIe_xN` (J1 on every card, J3 on iod) with footprint `Connector_PCBEdge:BUS_PCIexpress_xN`. The slot pins per signal, with each card's own net names, are in [motherboard-netmap.md](motherboard-netmap.md). Checks on every card: edge pins equal its motherboard slot pin for pin, nets unchanged apart from the connectors, ERC 0 / 0, `kicadcmp.py` result unchanged. The old 4-pin power connectors are gone: power comes in on the edge's power pins.
+  - **clkgen: done 2026-11-15.** Old J1 (clock/reset, 5 pins), J2 (clk0–5) and J3 (power) replaced by J1 `HBC2_PCIe_x1`, footprint `Connector_PCBEdge:BUS_PCIexpress_x1`: 11 signals, +5V on B1/B7/B13, GND on A1/A7/A13, the 19 other pins no-connect. All 36 pins match motherboard slot J9 (J67 before the renumbering) (card `clk0`–`clk5` = motherboard `clk_0`–`clk_5`). ERC 0 / 0; no other net changed; kicadcmp unchanged (only `clkgen_rc`, expected). The bulk capacitors C6/C7 moved 10.16 mm right.
 - **Parts:** [pcb-order.md](pcb-order.md).
 
 ## clkgen: oscillator and reset (2026-11-14)
@@ -69,7 +72,7 @@ Details are in `kicad_electrical_requirements.md`.
 | Ref | Part | Value | Pins / nets |
 |---|---|---|---|
 | Y1 | ECS-2200BX-040, half-size DIP-8 can (`Oscillator:CXO_DIP8`, `Oscillator_DIP-8`) | 4.000 MHz, 5 V HCMOS | 1 NC (tied to +5V, safe for a replacement with an enable on pin 1), 4 GND (case), 5 → `clkgen_osc`, 8 +5V |
-| R3 | resistor | 10 kΩ | +5V → `clkgen_rc` |
+| R4 | resistor | 10 kΩ | +5V → `clkgen_rc` |
 | C9 | electrolytic | 10 µF 16 V | + on `clkgen_rc`, − on GND |
 | D1 | 1N4148 | | anode `clkgen_rc`, cathode +5V (empties C9 at power-off) |
 | SW3 | tactile push button, NO | | `clkgen_rc` → R5 → GND |
@@ -78,7 +81,7 @@ Details are in `kicad_electrical_requirements.md`.
 - `clkgen_rc` = U1.1 (74HCT14 input). `clkgen_osc` = U2.3 (FF1 CLK), U4.2 (NAND3), U4.3 (the gate that inverts `osc`).
 - Power-up reset: τ = 100 ms; the 74HCT14 switches at about 1.9 V, about 48 ms. The oscillator starts in 10 ms max, so the clock runs well before the release (C17 needs edges).
 - **Rig tests** happen on breadboards, where the rig drives both nets (no Y1, no C9 there). On the PCB, the old rig connector is gone (Nano driver, below).
-- **Layout:** Y1 close to U2 and U4, with its own 100 nF at pin 8; C9 and R3 near U1.1; SW3 at the board edge. A front-panel button can go on a 2-pin header in parallel with SW3.
+- **Layout:** Y1 close to U2 and U4, with its own 100 nF at pin 8; C9 and R4 near U1.1; SW3 at the board edge. A front-panel button can go on a 2-pin header in parallel with SW3.
 - **Datasheet:** `logisim/circuits/chips/ecs_2100x.pdf` (ECS-2100X series, NRND). It doesn't list the 2200 series; the ECS-2200BX is a 5 V part (confirmed by Gianni, 2026-11-14). Supply range 4.75–5.25 V, symmetry 45–55 % (Q9), rise / fall 5 ns, HCMOS load 50 pF, start-up 10 ms, 0–70 °C.
 - **Supply:** the oscillator needs 4.75 V minimum. With the series Schottky gone (S1), the card gets the motherboard's 5 V less the plane drop.
 
@@ -96,7 +99,7 @@ Goal: slow clocks and step by step from a button, with the boot (65,548 steps) s
 | D2 | 1N5817 | anode +5V, cathode the Nano's 5V pin: the card feeds the Nano, USB can never feed the card (S1) |
 | R6 | 10 kΩ | +5V → A1: power sense. The sketch drives nothing while A1 reads low |
 | JP1 | 3-pin jumper (`Jumper:Jumper_3_Open`, 1×03 header) | 1 = Y1.5, 2 = `clkgen_osc`, 3 = the Nano clock. Selects Y1 (standalone, no Nano) or the Nano |
-| R4 | 33 Ω | D9 (OC1A) → JP1.3: damps the 4 MHz edges |
+| R3 | 33 Ω | D9 (OC1A) → JP1.3: damps the 4 MHz edges |
 | R1 | 10 kΩ | `clkgen_osc` → GND: holds `osc` low while the Nano boots (its pins are inputs) |
 | R2 | 220 Ω | D4 → `clkgen_rc`: the Nano holds the reset (OUTPUT LOW) or lets go (INPUT); limits the current into C9 |
 | SW1 | tactile push button | D5 → GND, STEP (internal pull-up, software debounce) |
@@ -105,7 +108,7 @@ Goal: slow clocks and step by step from a button, with the boot (65,548 steps) s
 | | `clk` feedback | `clk_5` → D2 (INT0): the sketch knows the step phase |
 | | `rst_n` feedback | `rst_n` → D3 (INT1): the sketch sees the reset release |
 
-The Nano's D13 LED shows run / stop. The old rig connector J1 is removed (see "J1" below). After the renumbering, J1 and J2 are the clock / reset output connectors (5 and 6 pins) and J3 the power connector.
+The Nano's D13 LED shows run / stop. The old rig connector J1 is removed (see "J1" below). Since 2026-11-15, J1 is the card edge (PCIe x1) and carries every clock, reset and power line; the old J1/J2/J3 sockets are gone.
 
 **Sketch (to write):**
 - Timer1 in CTC, toggle OC1A on compare: OCR1A = 1 with no prescaler gives exactly 4.000 MHz at 50 % (the 16 MHz crystal); the prescaler and OCR1A give slow rates down to well under 1 Hz. Timer0 (millis) is left alone.
@@ -132,7 +135,7 @@ Budget (estimates): about 0.6 A typical, 1.6 A worst case for the whole CPU. The
 - GND pour on one layer, +5V as a wide pour or a ≥ 3 mm trace (1 mm × 30 cm drops about 0.3 V at 2 A). cu and iod closest to the input.
 - Measure the rail at the farthest card under load. Below about 4.9 V (the oscillator needs 4.75 V): adjustable supply (e.g. Mean Well RS-25-5) set to 5.1 V.
 
-**Things that can feed the CPU from outside:** the Nano (D2 + R6 sense, clkgen) and the TTGO (iod D3). Both are diode-isolated.
+**Things that can feed the CPU from outside:** the Nano (D2 + R6 sense, clkgen) and the TTGO (iod D1). Both are diode-isolated.
 
 ## IOD notes
 
@@ -147,13 +150,13 @@ The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the I/O card, in 
 
 | Card | Cable | TTGO end |
 |---|---|---|
-| J5 (2 × 4, keyed, numbered like the TTGO's header) | straight IDC ribbon | header J2: MOSI, SCK, (SD CS, not connected on the card), MISO, tx_full, rx_full, GND, +3V3 |
-| J6 (1 × 5, numbered like the mini-DIN; pin 2 not connected) | PS/2 cable | mouse port: RCLK_EVT (pin 1), GND (3), +5V_ESP (4), MBX_SEL (5) |
-| J7 (1 × 4) | 3 wires + GND | soldered at IO25 (RCLK_RX), IO35 (evt_pend) and IO36 (rst_n) |
+| J2 (2 × 4, keyed, numbered like the TTGO's header) | straight IDC ribbon | header J2: MOSI, SCK, (SD CS, not connected on the card), MISO, tx_full, rx_full, GND, +3V3 |
+| J4 (1 × 5, numbered like the mini-DIN; pin 2 not connected) | PS/2 cable | mouse port: RCLK_EVT (pin 1), GND (3), +5V_ESP (4), MBX_SEL (5) |
+| J1 (1 × 4) | 3 wires + GND | soldered at IO25 (RCLK_RX), IO35 (evt_pend) and IO36 (rst_n) |
 
 - **U12** (SN74LVC244AN) is powered from the TTGO's 3.3 V. There is no regulator on the card.
 - **Series resistors:** 33 Ω on U12's outputs (R1, R3–R5), and 220 Ω on `rst_n` (R2), because the TTGO's button K1 sits on IO36.
-- **D3** (1N5817) feeds the TTGO from +5V. With the TTGO's own diode on USB, the TTGO can be flashed while the HBC-2 runs.
-- **`iod_int`** moved to J1, the CPU-side connector. It goes to the control unit.
+- **D1** (1N5817) feeds the TTGO from +5V. With the TTGO's own diode on USB, the TTGO can be flashed while the HBC-2 runs.
+- **`iod_int`** is on the card edge (J3, pin A30). It goes to the control unit.
 - **Full record** (pins, reasons, firmware rules): `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card".
-- **`kicadcmp.py`** lists the TTGO-side nets and D3/R1–R5 as board extras or connector nets with no Logisim pin. That is expected.
+- **`kicadcmp.py`** lists the TTGO-side nets and D1/R1–R5 as board extras or connector nets with no Logisim pin. That is expected.

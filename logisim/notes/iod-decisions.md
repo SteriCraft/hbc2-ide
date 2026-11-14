@@ -169,21 +169,21 @@ Gianni drew these changes in `kicad/iod/hbc2_iod.kicad_sch` on 2026-11-14. KiCad
 
 | Signal | GPIO | Card connector | TTGO end | Why |
 |---|---|---|---|---|
-| MOSI | 12 | J5.1 | header J2.1 | shared with the SD card |
-| SCK | 14 | J5.2 | header J2.2 | shared with the SD card |
-| (SD CS) | 13 | J5.3, not connected | header J2.3 | the TTGO's own SD card |
-| MISO | 2 | J5.4 (U12 1Y0 through 33 Ω) | header J2.4 | shared with the SD card; the LVC244 drives it only while MBX_SEL is low |
-| tx_full | 34 | J5.5 (U12 2Y3 through 33 Ω) | header J2.5 | input-only pin |
-| rx_full | 39 | J5.6 (U12 2Y2 through 33 Ω) | header J2.6 | input-only pin |
-| GND, +3V3 | — | J5.7, J5.8 | header J2.7, J2.8 | the TTGO's 3.3 V supplies U12 |
-| RCLK_EVT | 27 | J6.1 | mouse port pin 1 (DAT) | **idle high**: the TTGO pulls it up |
-| GND | — | J6.3 | mouse port pin 3 | |
-| +5V_ESP | — | J6.4 (from D3) | mouse port pin 4 (VCC) | powers the TTGO |
-| MBX_SEL | 26 | J6.5 | mouse port pin 5 (CLK) | idle high from reset (the TTGO's pull-up) |
-| RCLK_RX | 25 | J7.1 | wire soldered at R28's ESP32 end | idle low: the audio RC (420 Ω to GND) is its pull-down |
-| evt_pend | 35 | J7.2 (U12 2Y1 through 33 Ω) | wire soldered at the battery divider's midpoint | the LVC244 overrides 50 kΩ |
-| rst_n | 36 | J7.3 (U12 2Y0 through **220 Ω**) | wire soldered at K1 (S_VP side) | pressing K1 can't short the LVC244 |
-| GND | — | J7.4 | any GND | return for the soldered wires |
+| MOSI | 12 | J2.1 | header J2.1 | shared with the SD card |
+| SCK | 14 | J2.2 | header J2.2 | shared with the SD card |
+| (SD CS) | 13 | J2.3, not connected | header J2.3 | the TTGO's own SD card |
+| MISO | 2 | J2.4 (U12 1Y0 through 33 Ω) | header J2.4 | shared with the SD card; the LVC244 drives it only while MBX_SEL is low |
+| tx_full | 34 | J2.5 (U12 2Y3 through 33 Ω) | header J2.5 | input-only pin |
+| rx_full | 39 | J2.6 (U12 2Y2 through 33 Ω) | header J2.6 | input-only pin |
+| GND, +3V3 | — | J2.7, J2.8 | header J2.7, J2.8 | the TTGO's 3.3 V supplies U12 |
+| RCLK_EVT | 27 | J4.1 | mouse port pin 1 (DAT) | **idle high**: the TTGO pulls it up |
+| GND | — | J4.3 | mouse port pin 3 | |
+| +5V_ESP | — | J4.4 (from D1) | mouse port pin 4 (VCC) | powers the TTGO |
+| MBX_SEL | 26 | J4.5 | mouse port pin 5 (CLK) | idle high from reset (the TTGO's pull-up) |
+| RCLK_RX | 25 | J1.1 | wire soldered at R28's ESP32 end | idle low: the audio RC (420 Ω to GND) is its pull-down |
+| evt_pend | 35 | J1.2 (U12 2Y1 through 33 Ω) | wire soldered at the battery divider's midpoint | the LVC244 overrides 50 kΩ |
+| rst_n | 36 | J1.3 (U12 2Y0 through **220 Ω**) | wire soldered at K1 (S_VP side) | pressing K1 can't short the LVC244 |
+| GND | — | J1.4 | any GND | return for the soldered wires |
 
 The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19, 4, 5, 23 and 15, and the PS/2 keyboard uses 33 (CLK) and 32 (DAT). That makes 21 GPIOs in use, with GPIO0 spare. Nothing goes on GPIO0: it's held low while the board is being flashed, so it can't carry MBX_SEL (that would enable MISO onto GPIO2) or an RCLK.
 
@@ -194,13 +194,13 @@ The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19,
 - **H3's pull resistors are not needed on the card**, because the TTGO's own resistors set every idle level.
 
 **Card changes (KiCad):**
-- **U12 → SN74LVC244AN on +3V3**, which comes from the TTGO through J5.8. C12 decouples it on +3V3. It is the only 3.3 V chip in the HBC-2. There is no regulator on the card: U12 is then powered exactly when the ESP32 is, so it can't back-power the ESP32's pins.
+- **U12 → SN74LVC244AN on +3V3**, which comes from the TTGO through J2.8. C12 decouples it on +3V3. It is the only 3.3 V chip in the HBC-2. There is no regulator on the card: U12 is then powered exactly when the ESP32 is, so it can't back-power the ESP32's pins.
 - **R1–R5:** 33 Ω in series on U12's outputs; 220 Ω on `rst_n` (R2).
-- **D3, a 1N5817:** from +5V to `+5V_ESP` (J6.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
+- **D1, a 1N5817:** from +5V to `+5V_ESP` (J4.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
 - **J1:** the CPU's signals only: `iod_ie`, `iod_rw`, `iod_inr`, `clk`, `clk_wr_n`, `rst_n`, `iod_int`. `iod_int` goes to the control unit (`cu_int`, cu J1.6).
-- **J5:** a 2 × 4 header numbered like the TTGO's J2, for a straight IDC ribbon. Use a keyed (shrouded) header.
-- **J6:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.
-- **J7:** a 1 × 4 header for the soldered wires.
+- **J2** (J5 until the 2026-11-15 renumbering; J6 became J4 and J7 became J1): a 2 × 4 header numbered like the TTGO's J2, for a straight IDC ribbon. Use a keyed (shrouded) header.
+- **J4:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.
+- **J1:** a 1 × 4 header for the soldered wires.
 - **RN1 (moved to the motherboard on 2026-11-14, to save 8 card pins; the text below describes it as it was on the card):** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, symbol `Device:R_Network08`, footprint `Resistor_THT:R_Array_SIP9`). Its common pin is on GND, and its 8 resistors pull `iod_addr8..15` down. A8–A15 reach J4, now 1 × 16.
 - **U3, U6, U9:** relabelled SN74AHCT595N.
 

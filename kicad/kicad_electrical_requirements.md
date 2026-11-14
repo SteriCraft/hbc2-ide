@@ -39,9 +39,9 @@ The registers board uses `circuits/registers/regs.circ`.
 
 ### H1. IOD: the ESP32-side buffer must be an LVC244 at 3.3 V
 
-**Done 2026-11-14.** U12 is an SN74LVC244AN. Its VCC is the TTGO's 3.3 V, through J5.8, with C12 decoupling it on +3V3; there is no regulator on the card. Its outputs go to the TTGO through R1–R5 (33 Ω; 220 Ω on `rst_n`). The text below is the original finding.
+**Done 2026-11-14.** U12 is an SN74LVC244AN. Its VCC is the TTGO's 3.3 V, through J2.8, with C12 decoupling it on +3V3; there is no regulator on the card. Its outputs go to the TTGO through R1–R5 (33 Ω; 220 Ω on `rst_n`). The text below is the original finding.
 
-- KiCad U12 (Logisim U12) is drawn as a **74HCT244 on +5V**. It drives J5 to the ESP32: `iod_miso`, `iod_mcu_tx_full`, `iod_mcu_rx_full`, `iod_mcu_evt_pend`, `iod_mcu_rst_n`.
+- KiCad U12 (Logisim U12) is drawn as a **74HCT244 on +5V**. It drives J2 to the ESP32: `iod_miso`, `iod_mcu_tx_full`, `iod_mcu_rx_full`, `iod_mcu_evt_pend`, `iod_mcu_rst_n`.
 - The design calls for an **SN74LVC244AN powered at 3.3 V** (`logisim/notes/iod-requirements.md`, `chips.md`). Its inputs are 5 V tolerant and its outputs are at 3.3 V.
 - As drawn, 5 V reaches the ESP32's GPIOs, which can damage it.
 - Needed: change the part to 74LVC244, add a 3.3 V net for its VCC, and decouple it on 3.3 V.
@@ -79,7 +79,7 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
   - the connector headers.
 
 ### H5. clkgen: the oscillator and the reset circuit (closed 2026-11-14)
-- **Done:** both are on the board. Y1 = ECS-2200BX-040 (4.000 MHz, half-size DIP-8), and the reset circuit on `clkgen_rc` (U1.1): R3 10 kΩ to +5V, C9 10 µF to GND, D1 1N4148 across R3 (cathode on +5V), SW3 push button to GND through R5 100 Ω (references as renumbered on 2026-11-14). ERC: 0 errors, 0 warnings.
+- **Done:** both are on the board. Y1 = ECS-2200BX-040 (4.000 MHz, half-size DIP-8), and the reset circuit on `clkgen_rc` (U1.1): R4 10 kΩ to +5V, C9 10 µF to GND, D1 1N4148 across R4 (cathode on +5V), SW3 push button to GND through R5 100 Ω (references as renumbered on 2026-11-14). ERC: 0 errors, 0 warnings.
 - Parts, nets and layout notes: `NOTES.md`, "clkgen: oscillator and reset".
 - The oscillator needs 4.75 V minimum: met once the series Schottky is gone (S1). The datasheet on file covers the ECS-2100X only; Gianni confirmed the ECS-2200BX is a 5 V part (2026-11-14).
 - **Nano driver (on the schematic 2026-11-14):** an Arduino Nano in a socket drives `clkgen_osc` (JP1 picks Y1 or the Nano) and the reset, with STEP and RUN / STOP buttons and a speed potentiometer; the old rig connector J1 is removed. The Nano is fed through D2 (1N5817) and senses the card's +5V on A1 (R6). Details: `NOTES.md`, "clkgen: Arduino Nano clock and reset driver".
@@ -110,7 +110,7 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
 
 ### S3. Part labels against the BOM
 
-**IOD done 2026-11-14** (U3, U6 and U9 are labelled SN74AHCT595N). The other boards are still to check.
+**IOD done 2026-11-14** (U1, U6 and U9 since the 2026-11-15 renumbering; labelled SN74AHCT595N). The other boards are still to check.
 
 - The IOD 595s (U3, U6, U9) are labelled **74HCT595**. The part bought is the **SN74AHCT595N**: TI makes no 74HCT595 in DIP. The pinout is the same and the AHCT part is faster.
 - Relabel them so that the PCB's BOM is right.
@@ -145,13 +145,13 @@ The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the card, in a 3D
 
 | Card connector | TTGO end | Signals |
 |---|---|---|
-| J5, 2 × 4 (keyed, numbered like the TTGO's J2) | header J2, straight IDC ribbon | MOSI (IO12), SCK (IO14), not connected (IO13 = SD CS), MISO (IO2), tx_full (IO34), rx_full (IO39), GND, +3V3 |
-| J6, 1 × 5 (numbered like the mini-DIN) | PS/2 mouse port | RCLK_EVT (IO27, pin 1), not connected (pin 2), GND (pin 3), +5V_ESP (pin 4), MBX_SEL (IO26, pin 5) |
-| J7, 1 × 4 | soldered wires | RCLK_RX (IO25), evt_pend (IO35), rst_n (IO36), GND |
+| J2, 2 × 4 (keyed, numbered like the TTGO's J2) | header J2, straight IDC ribbon | MOSI (IO12), SCK (IO14), not connected (IO13 = SD CS), MISO (IO2), tx_full (IO34), rx_full (IO39), GND, +3V3 |
+| J4, 1 × 5 (numbered like the mini-DIN) | PS/2 mouse port | RCLK_EVT (IO27, pin 1), not connected (pin 2), GND (pin 3), +5V_ESP (pin 4), MBX_SEL (IO26, pin 5) |
+| J1, 1 × 4 | soldered wires | RCLK_RX (IO25), evt_pend (IO35), rst_n (IO36), GND |
 
 Electrical points:
-- **Supply:** D3 (1N5817) takes +5V to `+5V_ESP`. The TTGO's own BAT20J on USB VBUS completes a diode OR, so neither supply feeds the other. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
-- **U12 runs from the TTGO's 3.3 V**, so it is powered exactly when the ESP32 is. For rig tests without the TTGO, supply 3.3 V on J5.8 (the Mega's 3.3 V pin).
+- **Supply:** D1 (1N5817) takes +5V to `+5V_ESP`. The TTGO's own BAT20J on USB VBUS completes a diode OR, so neither supply feeds the other. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
+- **U12 runs from the TTGO's 3.3 V**, so it is powered exactly when the ESP32 is. For rig tests without the TTGO, supply 3.3 V on J2.8 (the Mega's 3.3 V pin).
 - **Series resistors:** 33 Ω on U12's outputs against ringing on the cables; 220 Ω on `rst_n`, because the TTGO's button K1 grounds IO36.
 - **ESP32 outputs** (SCK, MOSI, MBX_SEL, RCLK_RX, RCLK_EVT) drive HCT / AHCT inputs at 3.3 V or 5 V; VIH is 2.0 V.
 - **MBX_SEL and RCLK_EVT** rise through the TTGO's 4.7 kΩ pull-ups, so their edges are slow. They are the active edges (TX clear, EVT store). Breadboard check B7.
