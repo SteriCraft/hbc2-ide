@@ -1,4 +1,4 @@
-# Motherboard net map (2026-11-14)
+# Motherboard net map (2026-11-14, slots 2026-11-15)
 
 One line per CPU signal (names from `logisim/cpu.circ`), with the card connector pins it joins. The first card listed drives the signal (for a shared bus it is only the first one listed). Generated from the card schematics: 164 signals, 410 card pins, every pin used exactly once.
 
@@ -7,21 +7,23 @@ Not on the motherboard: iod J5, J6, J7 (cables to the TTGO) and clkgen JP1. Powe
 **On the motherboard itself:**
 - **A8–A15 pull-downs:** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`), common pin on GND, on `bus_addr_hi0..7`. They moved off the iod card on 2026-11-14 (the vector step: the EVT 595 drives A0–A7 and nothing drives A8–A15).
 - The power input (`NOTES.md`, "Power (S1)").
-- The 9 card power connectors (J4, J15, J18, J28, J33, J35, J47, J48, J58), each in its card's frame: GND, +5V, +5V, GND, on `power:GND` / `power:+5V` symbols.
+- The power input (J1, SW1, F1, D1, C1, drawn 2026-11-15) and the slots' power pins: +5V on side B, GND on side A, pins 1, 7, …, 49, 61, 73 ([slot-pinout.md](slot-pinout.md)).
 
-**Motherboard references** (`mb/hbc2_mb.kicad_sch`, 2026-11-14): the schematic has one dashed frame and one KiCad group per card, connectors in card order; the motherboard numbers its connectors 1–66, so the card references in the table below are not the motherboard's. Every pin carries the same net name as on its card (checked against the card netlists).
+**Motherboard slots** (`mb/hbc2_mb.kicad_sch`, finished 2026-11-15): the 66 connectors of 2026-11-14 became 9 PCIe slots (symbols `custom_symbols:HBC2_PCIe_xN`, footprints `hbc2_slots`), pins as in [slot-pinout.md](slot-pinout.md). Every net carries the CPU name of this table, not the card's own name. Checked on 2026-11-15: every slot pin matches the plan, the 159 inter-card nets of `logisim/cpu.circ` (flattened with `tools/netlist.py`) join exactly the same cards on the motherboard (renamed: `bus_addr[0..7]` = `bus_addr_lo0..7`, `bus_addr[8..15]` = `bus_addr_hi0..7`, `alu_n` = `alu_r7`, `ir_r3[0..2]` = `ir_v1_0..2`; iod isn't in cpu.circ, its 5 own nets match this table), ERC 0 / 0.
 
-| Card | Card connector → motherboard reference |
-|---|---|
-| addr | J1 → J1, J2 → J2, J3 → J3, J4 → J4 (power), J5 → J5, J6 → J6, J7 → J7, J8 → J8, J9 → J9, J10 → J10 |
-| alu | J1 → J11, J2 → J12, J3 → J13, J4 → J14, J5 → J15 (power) |
-| flags | J1 → J29, J2 → J30, J3 → J31, J4 → J32, J5 → J33 (power) |
-| ir | J1 → J34, J2 → J36, J3 → J40, J4 → J41, J5 → J42, J6 → J43, J7 → J44, J8 → J45, J9 → J46, J10 → J47 (power) |
-| mem | J1 → J48 (power), J2 → J49, J3 → J50, J4 → J51 |
-| registers | J1 → J52, J2 → J53, J3 → J54, J4 → J55, J5 → J56, J6 → J57, J7 → J58 (power), J8 → J59, J9 → J60, J10 → J61, J11 → J62, J12 → J63, J13 → J64, J14 → J65, J15 → J66 |
-| iod | J1 → J37, J2 → J35 (power), J3 → J38, J4 → J39 |
-| cu | J1 → J22, J2 → J23, J3 → J19, J4 → J28 (power), J5 → J20, J6 → J21, J7 → J24, J8 → J25, J9 → J26, J10 → J27 |
-| clkgen | J1 → J16, J2 → J17, J3 → J18 (power) |
+| Slot | Card | Size |
+|---|---|---|
+| J17 | flags | x4 |
+| J18 | alu | x8 |
+| J12 | registers | x16 |
+| J13 | ir | x16 |
+| J14 | addr | x16 |
+| J15 | cu | x16 |
+| J11 | mem | x8 |
+| J16 | iod | x4 |
+| J67 | clkgen | x1 |
+
+The card pins in the table below are still the cards' own 2.54 mm connectors; they become the card edge (same symbols, footprint `Connector_PCBEdge:BUS_PCIexpress_xN`) when the cards are converted.
 
 **Names that differ from the card's own:**
 - `clk_2` / `clk_3` (clkgen J2.3 / J2.4) go to the cu's `clk0` / `clk1`. `clk_4` feeds flags and registers; `clk_5` feeds iod.

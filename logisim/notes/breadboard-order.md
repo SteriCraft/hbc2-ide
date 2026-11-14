@@ -236,7 +236,7 @@ clkgen + cu + addr built together at full speed (17 boards; the rig is taken dow
 
 ## Not included
 
-- The **PCBs** and their DIP **sockets** (one per chip, 146 + the 8 resistor networks): ordered with the PCBs, once the connector pinout is decided.
+- The **PCBs** and their DIP **sockets** (one per chip, 146 + the 8 resistor networks): ordered with the PCBs, once the connector pinout is decided. Listed in [kicad/pcb-order.md](../../kicad/pcb-order.md), with the PCIe card slots.
 - The IOD (still a stub).
 - The replay firmware and `tools/replay.py` (test-rig.md, "Replay"), the programmer firmware, and the vector exports for clkgen and the mem ROM pattern.
 - Multimeter, oscilloscope, USB cable for the Mega.

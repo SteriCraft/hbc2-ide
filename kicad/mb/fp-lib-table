@@ -1,0 +1,4 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "hbc2_slots")(type "KiCad")(uri "${KIPRJMOD}/../lib/hbc2_slots.pretty")(options "")(descr "HBC-2 PCIe card slots, Amphenol FCI 10018783 (lib/gen_pcie_slots.py)"))
+)

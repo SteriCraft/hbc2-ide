@@ -1,6 +1,6 @@
 # KiCad schematics: status and to-do (2026-11-11, updated 2026-11-14)
 
-Electrical findings and open hardware items are in [kicad_electrical_requirements.md](kicad_electrical_requirements.md).
+Electrical findings and open hardware items are in [kicad_electrical_requirements.md](kicad_electrical_requirements.md). Parts to buy for the PCB stage: [pcb-order.md](pcb-order.md).
 
 ## Schematic status
 
@@ -43,12 +43,26 @@ Details are in `kicad_electrical_requirements.md`.
 1. ~~**IOD U12 → SN74LVC244A at 3.3 V.**~~ Done 2026-11-14 (H1). It takes its 3.3 V from the TTGO, through J5.8.
 2. ~~**IOD: a 10 kΩ pull-down network on A8–A15**, plus connector pins for them.~~ Done 2026-11-14 (H2). Moved the same day to the motherboard, to save 8 card pins: RN1 removed, iod J4 back to 1 × 08.
 3. ~~**IOD: pull-downs on RCLK_RX and RCLK_EVT, and a pull-up on MBX_SEL.**~~ Not needed (H3): the TTGO's own resistors set those levels (see "IOD: the TTGO VGA32" below).
-4. **Footprints on every board** (H4). Assigned 2026-11-14 on all 9 cards except the connectors (wait for the motherboard): chips in DIP sockets (`Package_DIP:DIP-14/16/20_W7.62mm_Socket`; AT28C256 `DIP-28_W15.24mm_Socket`, AS6C1008 `DIP-32_W15.24mm_Socket`), 100 nF `Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm`, 47 µF / 10 µF `CP_Radial_D5.0mm_P2.00mm`, resistors `R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal`, 1N5817 `D_DO-41_SOD81_P10.16mm_Horizontal`, 1N4148 `D_DO-35_SOD27_P7.62mm_Horizontal`; clkgen extras (Nano, Y1, RV1, buttons, test points) as in its section. ERC 0 / 0 and nets unchanged on every card. The cu's 60 discrete pull resistors became 8 bussed networks the same day, as ordered (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`): RN1–RN5 pull 36 lines to +5V (RN5 pins 6–9 unused, no-connect), RN6–RN8 pull 24 lines to GND; every line keeps its rail, ERC 0 / 0. Capacitor footprints are provisional: Gianni checks them once the parts are chosen, before the PCBs.
+4. **Footprints on every board** (H4). Assigned 2026-11-14 on all 9 cards except the connectors (they become one PCIe card edge per card, see "Card slots" below): chips in DIP sockets (`Package_DIP:DIP-14/16/20_W7.62mm_Socket`; AT28C256 `DIP-28_W15.24mm_Socket`, AS6C1008 `DIP-32_W15.24mm_Socket`), 100 nF `Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm`, 47 µF / 10 µF `CP_Radial_D5.0mm_P2.00mm`, resistors `R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal`, 1N5817 `D_DO-41_SOD81_P10.16mm_Horizontal`, 1N4148 `D_DO-35_SOD27_P7.62mm_Horizontal`; clkgen extras (Nano, Y1, RV1, buttons, test points) as in its section. ERC 0 / 0 and nets unchanged on every card. The cu's 60 discrete pull resistors became 8 bussed networks the same day, as ordered (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`): RN1–RN5 pull 36 lines to +5V (RN5 pins 6–9 unused, no-connect), RN6–RN8 pull 24 lines to GND; every line keeps its rail, ERC 0 / 0. Capacitor footprints are provisional: Gianni checks them once the parts are chosen, before the PCBs.
 5. **Supply (S1), decided 2026-11-14:** the cards lose their series Schottky and their TVS; protection moves to the motherboard input. See "Power (S1)" below. Done on all 9 cards on 2026-11-14: D1/D2 removed, power connector GND, +5V, +5V, GND (addr J4, alu J5, flags J5, ir J10, mem J1, registers J7, iod J2, cu J4, clkgen J3). ERC 0 / 0 on each; no other pin changed net.
 6. ~~**Relabel the IOD 595s as SN74AHCT595N.**~~ Done 2026-11-14. Still to do: check the other boards' part labels against `logisim/notes/chips.md` (S3).
 7. **Run KiCad's ERC** on each board.
 8. ~~**clkgen: the 4.000 MHz oscillator module and the reset circuit.**~~ Done 2026-11-14 (H5). See "clkgen: oscillator and reset" below.
 9. **clkgen: the Arduino Nano clock and reset driver**: on the schematic 2026-11-14; the sketch is still to write. See "clkgen: Arduino Nano clock and reset driver" below.
+
+## Card slots: PCIe, through-hole (2026-11-14)
+
+- **Decided by Gianni:** the cards stand vertically in a 3D-printed case and plug into the motherboard through **through-hole PCIe slots**, used as plain connectors (no PCIe protocol). He solders everything by hand.
+- **Card edges:** 1.6 mm cards with a gold-finger edge. The KiCad footprints are `Connector_PCBEdge:BUS_PCIexpress_x1/x4/x8/x16`.
+- **Motherboard footprint:** KiCad has none for the slot. The parts are Amphenol FCI 10018783 (x1 -10010TLF, x4 -11101TLF, x8 -11112TLF, x16 -10013TLF). Their footprints are in `lib/hbc2_slots.pretty`, written by `lib/gen_pcie_slots.py`: the x1 is copied from SamacSys, the x4, x8 and x16 are extrapolated (peg holes to check against a real slot).
+- **Symbols:** `custom_symbols:HBC2_PCIe_x1/x4/x8/x16`, written by `lib/gen_pcie_symbols.py` on 2026-11-14.
+  - Pins are numbered A1…An / B1…Bn, all passive, with names hidden. B is on the left, A on the right, and a gap row marks the key.
+  - The default footprint is the slot. On a card, change it to `Connector_PCBEdge:BUS_PCIexpress_xN`.
+  - The pin numbers match both footprints exactly (checked).
+- **Pinout and slot order:** [slot-pinout.md](slot-pinout.md), drawn on the motherboard on 2026-11-15. Every shared signal has the same pin number on every card that uses it. Sizes: flags x4, alu x8, registers x16, ir x16, addr x16, cu x16, mem x8, iod x4, clkgen x1.
+- **Motherboard: done 2026-11-15.** Its 66 connectors became 9 slots, plus RN1 (A8–A15 pull-downs) and the power input; ERC 0 / 0, nets checked against Logisim (motherboard-netmap.md).
+- **Cards: to do.** Each card's 2.54 mm connectors (except iod J5–J7 and clkgen JP1) become one card-edge connector.
+- **Parts:** [pcb-order.md](pcb-order.md).
 
 ## clkgen: oscillator and reset (2026-11-14)
 
@@ -114,7 +128,7 @@ Budget (estimates): about 0.6 A typical, 1.6 A worst case for the whole CPU. The
 
 **Cards (done on all 9, 2026-11-14):** no series diode and no TVS. The power connector goes straight to +5V / GND; keep the 47 µF and one 100 nF per chip. Pinout GND, +5V, +5V, GND (clkgen J3), so a card turned 180° still gets the right polarity.
 
-**Motherboard input (to design):** barrel jack → switch → fuse T 3.15 A → +5V plane. Across the rail: a unidirectional TVS (P6KE6V8A, 5.8 V stand-off) and 1000 µF 10 V. Reversed polarity drives the TVS forward and blows the fuse or trips the adapter's protection; in normal use only the fuse (about 0.05 V) is in series.
+**Motherboard input (drawn 2026-11-15 on `mb/hbc2_mb.kicad_sch`, bottom right):** J1 → SW1 → F1, then D1 and C1 across the rail, PWR_FLAGs on +5V and GND, ERC 0 / 0. Parts and footprints are in [pcb-order.md](pcb-order.md), "Motherboard". barrel jack → switch → fuse T 3.15 A → +5V plane. Across the rail: a unidirectional TVS (P6KE6V8A, 5.8 V stand-off) and 1000 µF 10 V. Reversed polarity drives the TVS forward and blows the fuse or trips the adapter's protection; in normal use only the fuse (about 0.05 V) is in series.
 - GND pour on one layer, +5V as a wide pour or a ≥ 3 mm trace (1 mm × 30 cm drops about 0.3 V at 2 A). cu and iod closest to the input.
 - Measure the rail at the farthest card under load. Below about 4.9 V (the oscillator needs 4.75 V): adjustable supply (e.g. Mean Well RS-25-5) set to 5.1 V.
 
