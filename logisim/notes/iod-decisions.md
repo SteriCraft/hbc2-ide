@@ -209,6 +209,7 @@ The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19,
 - MBX_SEL and the SD card's CS (GPIO13) are never low at the same time.
 - Set a low drive strength on SCK (`gpio_set_drive_capability`), so the ribbon doesn't ring.
 - No speaker on the TTGO: every RCLK_RX pulse would click through its audio amplifier.
+- Never time out on the mailbox: the CPU clock can be slowed or stopped at any point (the Nano step driver on clkgen, 2026-11-14, kicad/NOTES.md), even in the middle of a transfer.
 
 **Logisim:** no change. The card ends at the ESP32 interface, and the test MCU's idle-low RCLK_EVT gives the same rising edge.
 

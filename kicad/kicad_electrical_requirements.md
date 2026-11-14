@@ -24,7 +24,7 @@ No wiring error on any board.
 
 - **addr:** Logisim splits the low address byte into the 541's output (`addr_bus_addr_lo_N`) and a read-back net (`addr_bus_addr_lo_in_N`). In hardware they are one wire. KiCad has one net per bit, `/addr_bus_addr_loN`, with U30 (latch low 541) as its only driver, and the comparer reports U30's Y pins as "only in KiCad".
 - **iod:** the same split exists for `iod_addr_in` / `iod_addr_out`. Its bits 2–5 go nowhere in Logisim, so the comparer reports "KiCad net not found". The nets are correct in KiCad.
-- **The connector net `Net-(D2-A)`**, reported on every board, is the supply input through D2 (see S1).
+- **The connector net `Net-(D2-A)`** is gone since 2026-11-14: the cards no longer have the series D2 (S1).
 - **The uncommitted change to `addr/hbc2_addr.kicad_sch`** is a re-annotation only (U3–U36 became U1–U34, capacitors renumbered). Connectivity and the comparison result are unchanged.
 
 Possible tool improvement: teach `kicadcmp.py` to merge Logisim `X_in_N` and `X_out_N` into one net when only one of them is wired, so that addr and iod report equivalent.
@@ -76,23 +76,19 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
 - The PCB can't be updated from the schematic until all of them are assigned:
   - DIP sockets for the chips (turned-pin for the 7 microcode EEPROMs on cu);
   - the capacitors;
-  - D1 / D2;
   - the connector headers.
 
-### H5. clkgen: the oscillator and the reset circuit aren't on the board
-- `clkgen_osc` (J1.2) and `clkgen_rc` (J1.1) come in on a header. The board has no oscillator, and no reset resistor, capacitor, button or diode.
-- Logisim leaves these parts out because they are analog (`cu-decisions.md` sections 13 and 14, `chips.md`). The test rig drives both nets, and the parts are fitted afterwards (`test-rig.md`).
-- The design calls for:
-  - a **4.000 MHz HCMOS oscillator module**: 5 V, DIP-8 or DIP-14 can, 45–55 % duty, reference still to choose;
-  - the **reset RC on the 74HCT14 input (U1.1)**: a resistor, a capacitor, a push button across the capacitor, and a diode across the resistor (C17).
-- Options:
-  - put them on the board, with the oscillator on its own 100 nF and close to the clock 74HCT74 (U2) and the 74HCT10 (U4);
-  - or keep J1 and decide where they go (a front panel, for example). The oscillator's 4 MHz edges are fast, so keep that wire short and run a ground next to it.
-- If the oscillator is socketed for the rig tests, J1 can stay as the rig's input.
+### H5. clkgen: the oscillator and the reset circuit (closed 2026-11-14)
+- **Done:** both are on the board. Y1 = ECS-2200BX-040 (4.000 MHz, half-size DIP-8), and the reset circuit on `clkgen_rc` (U1.1): R3 10 kΩ to +5V, C9 10 µF to GND, D1 1N4148 across R3 (cathode on +5V), SW3 push button to GND through R5 100 Ω (references as renumbered on 2026-11-14). ERC: 0 errors, 0 warnings.
+- Parts, nets and layout notes: `NOTES.md`, "clkgen: oscillator and reset".
+- The oscillator needs 4.75 V minimum: met once the series Schottky is gone (S1). **Open:** the datasheet on file covers the ECS-2100X only: confirm the 2200BX is 5 V.
+- **Nano driver (on the schematic 2026-11-14):** an Arduino Nano in a socket drives `clkgen_osc` (JP1 picks Y1 or the Nano) and the reset, with STEP and RUN / STOP buttons and a speed potentiometer; the old rig connector J1 is removed. The Nano is fed through D2 (1N5817) and senses the card's +5V on A1 (R6). Details: `NOTES.md`, "clkgen: Arduino Nano clock and reset driver".
 
 ## Electrical warnings
 
-### S1. Supply drop in the series Schottky diode (all boards)
+### S1. Supply drop in the series Schottky diode (all boards): decided 2026-11-14
+- **Decision:** no series diode and no TVS on the cards; one fuse + unidirectional TVS (P6KE6V8A) + 1000 µF at the motherboard input, power connector pinout GND, +5V, +5V, GND. Outside sources (Nano, TTGO) are diode-isolated. Details and budget: `NOTES.md`, "Power (S1)". Applied to all 9 cards on 2026-11-14 (D1/D2 removed, connector pins rewired, ERC 0 / 0, no other net changed).
+- The original finding:
 - Each board takes its supply on pins 3 and 4 of its power connector, through D2 (Schottky, anode on the connector, cathode on +5V), with D1 (TVS) across +5V/GND.
 - At a few hundred mA, a Schottky drops about 0.3–0.5 V, so the board runs at **about 4.5–4.7 V**.
 - The minimum supply is **4.5 V** for the 74HCT parts, the AT28C256 and the AS6C1008.
@@ -141,7 +137,7 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
 - No floating chip input. Every input is driven, tied, or on a connector.
 - No net with two push-pull outputs, and no push-pull output sharing a net with a tri-state one.
 - Every chip has VCC and GND.
-- Decoupling: one 100 nF per chip, plus one 47 µF 16 V bulk capacitor and a TVS per board.
+- Decoupling: one 100 nF per chip, plus one 47 µF 16 V bulk capacitor per board (the TVS moved to the motherboard input, S1).
 
 ## The TTGO VGA32 wired to the IOD board (2026-11-14)
 

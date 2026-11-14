@@ -103,7 +103,20 @@ The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). 
 | 74HCT74 | dual D flip-flop, set / reset | 7474 | SN74HCT74N | 74HCT74D (Nexperia) | 2 |
 | 74HCT541 | octal buffer, tri-state | 74541 | SN74HCT541N | 74HCT541D (Nexperia) | 1 |
 
-Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74HCT10, C6), the reset generator (74HCT14 + 74HCT74, C17) and the clock buffer (74HCT541). Off the logic: a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty; reference to choose) and the RC (resistor, capacitor, push button, diode).
+Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74HCT10, C6), the reset generator (74HCT14 + 74HCT74, C17) and the clock buffer (74HCT541). Off the logic: a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty) and the RC (resistor, capacitor, push button, diode).
+
+Chosen 2026-11-14 (KiCad clkgen board, kicad/NOTES.md "clkgen: oscillator and reset"):
+
+| Ref | Part | Value | Role |
+|---|---|---|---|
+| Y1 | ECS-2200BX-040, half-size DIP-8 can | 4.000 MHz, 5 V HCMOS | `osc`; pins 1 NC, 4 GND, 5 OUT, 8 +5V |
+| R3 | resistor | 10 kΩ | RC, +5V → `clkgen_rc` |
+| C9 | electrolytic | 10 µF 16 V | RC, `clkgen_rc` → GND (τ = 100 ms, release about 48 ms) |
+| D1 | 1N4148 | | across R3, cathode on +5V: empties C9 at power-off |
+| SW3 | tactile push button, NO | | reset button, across C9 through R5 |
+| R5 | resistor | 100 Ω | in series with SW3: 50 mA peak discharge |
+
+Datasheet: `circuits/chips/ecs_2100x.pdf` (ECS-2100X series, NRND; BX = ±50 ppm, -040 = 4.000 MHz). It doesn't list the 2200 series: confirm the 2200BX is 5 V. VDD 4.75–5.25 V, symmetry 45–55 %, rise / fall 5 ns, 50 pF HCMOS load, start-up 10 ms max.
 
 ### Control unit (cu)
 

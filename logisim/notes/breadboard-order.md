@@ -27,14 +27,14 @@ Rules followed ([chips.md](chips.md), "Rules"): TI DIP parts for every 74HCT chi
 
 | Order | Content | Order € | Running total € |
 |---|---|---|---|
-| 1 | rig, supply, wire, tools, clkgen, ir | 270.95 | 270.95 |
-| 2 | alu | 75.50 | 346.45 |
-| 3 | flags | 14.15 | 360.60 |
-| 4 | regs | 27.15 | 387.75 |
-| 5 | addr | 54.80 | 442.55 |
-| 6 | mem | 73.40 | 515.95 |
-| 7 | cu | 128.25 | **644.20** |
-| 8 | optional integration + debug LEDs | 78.80 | 723.00 |
+| 1 | rig, supply, wire, tools, clkgen, ir | 271.75 | 271.75 |
+| 2 | alu | 75.50 | 347.25 |
+| 3 | flags | 14.15 | 361.40 |
+| 4 | regs | 27.15 | 388.55 |
+| 5 | addr | 54.80 | 443.35 |
+| 6 | mem | 73.40 | 516.75 |
+| 7 | cu | 128.25 | **645.00** |
+| 8 | optional integration + debug LEDs | 78.80 | 723.80 |
 
 **About 645 € excluding VAT for every card tested (about 775 € with 20 % VAT), 725 € with the optional integration**, against 880 € for the whole CPU on breadboards at once: 14 breadboards instead of 40, and no debug LEDs until the integration (the rig reads every output).
 
@@ -81,13 +81,14 @@ The Arduino Mega 2560 is already owned. TI makes no 74HCT595 in DIP, hence the A
 
 | Item | Part | Buy | Supplier reference | €/unit | Line € |
 |---|---|---|---|---|---|
-| 4.000 MHz oscillator, 5 V HCMOS, half-size DIP-8 can, 45–55 % duty (Q9) | ECS-2100AX-040 | 2 | Mouser, manufacturer number ECS-2100AX-040 | 3.00 | 6.00 |
+| 4.000 MHz oscillator, 5 V HCMOS, half-size DIP-8 can, 45–55 % duty (Q9) | ECS-2200BX-040 (chosen 2026-11-14; was ECS-2100AX-040) | 2 | Mouser, manufacturer number ECS-2200BX-040 | 3.00 | 6.00 |
 | Reset R (10 kΩ) and spare pull-ups | Yageo MFR-25FBF52-10K | 25 | Mouser 603-MFR-25FBF52-10K | 0.08 | 2.00 |
 | Reset diode across R | onsemi 1N4148 | 5 | Mouser 512-1N4148 | 0.10 | 0.50 |
 | Reset push button | Omron B3F-1000 | 5 | Mouser 653-B3F-1000 | 0.30 | 1.50 |
-| | | | | **clkgen parts** | **10.00** |
+| Series resistor for the button (100 Ω) | Yageo MFR-25FBF52-100R | 10 | Mouser 603-MFR-25FBF52-100R | 0.08 | 0.80 |
+| | | | | **clkgen parts** | **10.80** |
 
-ECS gives 45–55 % symmetry at 50 % VDD for 1–80 MHz. Octopart marks the part NRND, DigiKey active: check it in the basket (alternative: any 5 V HCMOS half-size can at 45–55 %). Reset RC proposed (C17 gives no values): 10 kΩ from VCC, 10 µF to GND (τ = 100 ms), 1N4148 across R (cathode to VCC), button across C. To confirm before wiring.
+ECS gives 45–55 % symmetry at 50 % VDD for 1–80 MHz. Octopart marks the part NRND, DigiKey active: check it in the basket (alternative: any 5 V HCMOS half-size can at 45–55 %). Reset RC (confirmed 2026-11-14, on the KiCad clkgen board): 10 kΩ from VCC, 10 µF to GND (τ = 100 ms; the reset C is one of the bulk 10 µF above), 1N4148 across R (cathode to VCC), button across C through 100 Ω. The datasheet on file (`circuits/chips/ecs_2100x.pdf`) covers the ECS-2100X only: confirm the 2200BX is 5 V in the basket.
 
 ### Chips: clkgen + ir
 
@@ -100,7 +101,7 @@ ECS gives 45–55 % symmetry at 50 % VDD for 1–80 MHz. Octopart marks the part
 | 74HCT541 | SN74HCT541N | 1 | 3 | 4 | 595-SN74HCT541N | 0.80 | 3.20 |
 | | | **12** | | **22** | | | **20.25** |
 
-**Order 1 total: 41.15 + 199.55 + 10.00 + 20.25 = 270.95 €.**
+**Order 1 total: 41.15 + 199.55 + 10.80 + 20.25 = 271.75 €.**
 
 ## Order 2: alu
 

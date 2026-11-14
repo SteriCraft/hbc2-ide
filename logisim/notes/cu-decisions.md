@@ -574,6 +574,7 @@ Gianni's go-ahead (2026-11-05):
 | Name | **`clkgen`**, not `clk`: Logisim-evolution doesn't allow a pin labelled like its circuit, and the module's output is `clk` |
 | Chips (5) | U1 74HCT74 (FF1 `clk`, FF2 Q2), U2 74HCT10 (`clk_wr_n` = NAND3(`clk_n`, `osc`, Q2); NOT `osc` for FF2; gate 3 spare), U3 74HCT541 (clock buffer), U4 74HCT14 (RC → `rst_rc` → /CLR; 4 gates spare), U5 74HCT74 (reset synchroniser) |
 | Inputs | `clkgen_osc` (the oscillator module's output), `clkgen_rc` (the RC node at the 74HCT14 input: the RC, button and diode are analog) |
+| Off the logic (KiCad, 2026-11-14) | oscillator ECS-2200BX-040 (4.000 MHz, half-size DIP-8); RC: 10 kΩ to +5V, 10 µF to GND, 1N4148 across the resistor, push button across the capacitor through 100 Ω (chips.md, kicad/NOTES.md) |
 | Outputs | `clk` (6 bits: the 541's Y1–Y6, one branch each), `clk_wr_n` (Y7), `clk_mem_wr_n` (Y8), `rst_n`, `rst_early` (FF1's /Q, for `x_n`), `rst_rc` |
 | Clock branches (section 7 item 1: about 5 inputs each) | 0 `ir` (6 × 377), 1 `addr` (6 × 377), 2 `cu` pipeline 574s 1–5, 3 `cu` 574s 6–8 + both 175s + the 377, 4 `regs` (3 × 574) + `flags` (2 × 175), 5 the reset 74 (2 clock inputs) + the IOD. Loads 6, 6, 5, 6, 5, 3: **skew from the loads 4 ns** at 25 °C (5 at 85 °C), `timing.py --section cu` |
 | New global names | `rst_early`, `rst_rc`, and `clk_0` … `clk_5` for the branches (conventions.md, conventions.py) |
