@@ -126,6 +126,8 @@ With the 157s of D16 removed, the slowest way into U6's carry is now the carry-i
 
 ## Need Gianni's review
 
+**Closed 2026-11-14 (Gianni):** 1. SHR is a logical shift, the manual (.odt) is updated; 2. CMP stays unsigned; 3. the tri-state result bus stays (the overlap lasts a few ns at each alu_op change whatever the clock, so a slower clock only makes it a smaller part of the step); 4. 29 chips, modules kept separate (KiCad is drawn so). 5–10 were already closed. Nothing is left open on the ALU.
+
 1. **SHR, manual vs emulator.** The manual (footnote 6) says "SHR is equivalent to ASR, but the bit shifted to the right is discarded, instead of being carried over". Read literally, SHR would keep bit 7 like ASR. The emulator does a *logical* shift (bit 7 = 0) and leaves C alone. I followed the emulator. A logical SHR is the useful one, since ASR already exists, so the manual's wording is probably what needs fixing.
 2. **CMP is unsigned** in the emulator (`a > b` on u8). The manual only says `FR = R1 ? R2`. Signed compares would need different logic (S/F from N xor V); today they need a software trick.
 3. **Tri-state result bus** (D7): brief overlap between buffers when alu_op changes. It's fine at 2 MHz, but if you'd rather avoid any contention, an 8 × 74HCT151 multiplexer costs about 2 more chips.
