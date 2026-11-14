@@ -1,6 +1,6 @@
 # KiCad boards: electrical requirements and open findings
 
-Review of 2026-11-11 for the schematics addr, alu, flags, ir, mem, registers, iod and clkgen (clkgen added later the same day). cu has no schematic yet (see `NOTES.md`).
+Review of 2026-11-11 for the schematics addr, alu, flags, ir, mem, registers, iod and clkgen (clkgen added later the same day). Updated 2026-11-14: cu (drawn 2026-11-13) compares as equivalent; the IOD changes for the TTGO VGA32 closed H1, H2, H3 and S3 on that board.
 
 Two checks were run on each board:
 - **Equivalence with Logisim:** `logisim/tools/kicadcmp.py`.
@@ -16,8 +16,9 @@ Two checks were run on each board:
 | mem | 8 | equivalent |
 | registers (`regs.circ`) | 18 | equivalent |
 | clkgen (`kicad/cu/hbc2_clkgen`, `circuits/cu/clkgen.circ`) | 5 | equivalent |
+| cu (`kicad/cu/ctrl_unit/hbc_ctrl_unit`, `circuits/cu/cu.circ`) | 30 | equivalent (2026-11-14) |
 | addr | 34 | 8 differences, not errors |
-| iod | 12 | 4 warnings, not errors |
+| iod | 12 | no wiring error (2026-11-14; expected differences only, see `NOTES.md`) |
 
 No wiring error on any board.
 
@@ -37,6 +38,9 @@ The registers board uses `circuits/registers/regs.circ`.
 ## Must fix before the PCBs (hardware, not visible in Logisim)
 
 ### H1. IOD: the ESP32-side buffer must be an LVC244 at 3.3 V
+
+**Done 2026-11-14.** U12 is an SN74LVC244AN. Its VCC is the TTGO's 3.3 V, through J5.8, with C12 decoupling it on +3V3; there is no regulator on the card. Its outputs go to the TTGO through R1–R5 (33 Ω; 220 Ω on `rst_n`). The text below is the original finding.
+
 - KiCad U12 (Logisim U12) is drawn as a **74HCT244 on +5V**. It drives J5 to the ESP32: `iod_miso`, `iod_mcu_tx_full`, `iod_mcu_rx_full`, `iod_mcu_evt_pend`, `iod_mcu_rst_n`.
 - The design calls for an **SN74LVC244AN powered at 3.3 V** (`logisim/notes/iod-requirements.md`, `chips.md`). Its inputs are 5 V tolerant and its outputs are at 3.3 V.
 - As drawn, 5 V reaches the ESP32's GPIOs, which can damage it.
@@ -45,6 +49,9 @@ The registers board uses `circuits/registers/regs.circ`.
 - The other direction is fine. The ESP32's 3.3 V outputs (`iod_sck`, `iod_mosi`, `iod_rclk_rx`, `iod_rclk_evt`, `iod_mbx_sel`) feed HCT/AHCT inputs, whose VIH is 2.0 V.
 
 ### H2. IOD: pull-downs on A8–A15
+
+**Done 2026-11-14.** RN1 (10 kΩ × 8 bussed, common pin on GND) pulls `iod_addr8..15` down, and J4 (now 1 × 16) carries A0–A15. Breadboard check B5 (b) still applies.
+
 - Decision D3 / rule I6: in the vector step the IOD drives A0–A7 only, and a **10 kΩ bussed network pulls A8–A15 to 0**. See `io-redesign-proposal.md` 9.9 and `iod-decisions.md` K2.
 - Logisim leaves them out on purpose, because a pull inside the module would fight the address latch.
 - The IOD board has no resistors, and J4 carries A0–A7 only.
@@ -52,6 +59,13 @@ The registers board uses `circuits/registers/regs.circ`.
 - Breadboard check B5 (b) still decides whether the slow edge is acceptable. The fallback is a 74HCT541 with inputs tied low.
 
 ### H3. IOD: pulls on the ESP32 control lines
+
+**Settled 2026-11-14 without parts on the card.** The TTGO sets every idle level itself:
+- **MBX_SEL** (IO26) and **RCLK_EVT** (IO27) come through its mouse port, which pulls them up to 5 V (4.7 kΩ). Both idle high, so an ESP32 reset makes no rising edge.
+- **RCLK_RX** (IO25) is held low by the audio RC (420 Ω to GND).
+
+See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The text below is the original finding.
+
 - `io-redesign-proposal.md` section 9 asks for **pull-downs on RCLK_RX and RCLK_EVT**, so that the ESP32's boot (floating or toggling GPIOs) can't make a storage-clock edge.
 - **MBX_SEL** idles high. It is the 165's CLK INH, the LVC244's MISO enable and the TX clear on its rising edge. A **pull-up** keeps it inactive while the ESP32 boots.
 - None of these resistors is on the board.
@@ -99,6 +113,9 @@ The registers board uses `circuits/registers/regs.circ`.
 - The same rule applies on every shared bus: **one /OE active at a time**. For example, mem has two AT28C256s on `mem_rom_d0..7` and three 541s on the CPU buses.
 
 ### S3. Part labels against the BOM
+
+**IOD done 2026-11-14** (U3, U6 and U9 are labelled SN74AHCT595N). The other boards are still to check.
+
 - The IOD 595s (U3, U6, U9) are labelled **74HCT595**. The part bought is the **SN74AHCT595N**: TI makes no 74HCT595 in DIP. The pinout is the same and the AHCT part is faster.
 - Relabel them so that the PCB's BOM is right.
 - Check the other part labels against `logisim/notes/chips.md` when assigning footprints. Examples: CD74HCT… parts, and the AS6C1008-xxP speed grade.
@@ -126,16 +143,23 @@ The registers board uses `circuits/registers/regs.circ`.
 - Every chip has VCC and GND.
 - Decoupling: one 100 nF per chip, plus one 47 µF 16 V bulk capacitor and a TVS per board.
 
-## ESP32 on the IOD board
+## The TTGO VGA32 wired to the IOD board (2026-11-14)
 
-The ESP32 can go on the IOD PCB, behind the LVC244 (H1). Logisim models only its interface, so `kicadcmp.py` will list it under "board extras" and not compare it.
+The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the card, in a 3D-printed box, and isn't on the PCB. Logisim models only its interface.
 
-- **Signals to the ESP32:** `iod_sck`, `iod_mosi`, `iod_rclk_rx`, `iod_rclk_evt`, `iod_mbx_sel`.
-- **Signals from the LVC244 to the ESP32:** `iod_miso`, `iod_mcu_tx_full`, `iod_mcu_rx_full`, `iod_mcu_evt_pend`, `iod_mcu_rst_n`.
-- **GPIOs:** the mailbox uses 21 of the module's 22 free GPIOs. Those are 0, 2, 4, 5, 12–15, 18, 19, 21–23, 25–27 and 32–36, 39; not 6–11 (flash), 16–17 (PSRAM) or 1/3 (USB serial). Mind the input-only pins (34–39) and the boot-strapping pins (0, 2, 5, 12, 15) when assigning signals.
-- **Module:** a DevKitC-style header footprint or the bare module.
-- **Supply:** 3.3 V shared with the LVC244.
-- **Reset and USB:** expose `iod_mcu_rst_n` and keep the USB port reachable, because programs are to be loaded over USB (`iod-decisions.md`).
+| Card connector | TTGO end | Signals |
+|---|---|---|
+| J5, 2 × 4 (keyed, numbered like the TTGO's J2) | header J2, straight IDC ribbon | MOSI (IO12), SCK (IO14), not connected (IO13 = SD CS), MISO (IO2), tx_full (IO34), rx_full (IO39), GND, +3V3 |
+| J6, 1 × 5 (numbered like the mini-DIN) | PS/2 mouse port | RCLK_EVT (IO27, pin 1), not connected (pin 2), GND (pin 3), +5V_ESP (pin 4), MBX_SEL (IO26, pin 5) |
+| J7, 1 × 4 | soldered wires | RCLK_RX (IO25), evt_pend (IO35), rst_n (IO36), GND |
+
+Electrical points:
+- **Supply:** D3 (1N5817) takes +5V to `+5V_ESP`. The TTGO's own BAT20J on USB VBUS completes a diode OR, so neither supply feeds the other. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
+- **U12 runs from the TTGO's 3.3 V**, so it is powered exactly when the ESP32 is. For rig tests without the TTGO, supply 3.3 V on J5.8 (the Mega's 3.3 V pin).
+- **Series resistors:** 33 Ω on U12's outputs against ringing on the cables; 220 Ω on `rst_n`, because the TTGO's button K1 grounds IO36.
+- **ESP32 outputs** (SCK, MOSI, MBX_SEL, RCLK_RX, RCLK_EVT) drive HCT / AHCT inputs at 3.3 V or 5 V; VIH is 2.0 V.
+- **MBX_SEL and RCLK_EVT** rise through the TTGO's 4.7 kΩ pull-ups, so their edges are slow. They are the active edges (TX clear, EVT store). Breadboard check B7.
+- **Full record** (why each pin, firmware rules): `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card".
 
 ## Method (to re-run)
 

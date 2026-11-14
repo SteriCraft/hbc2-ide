@@ -51,12 +51,17 @@ history keeps them). Detailed notes are linked; this file only lists.
   clkgen and the mem ROM pattern.
 - **EEPROM programmer** firmware (built with the mem card, order 6).
 - **The I/O card** isn't in the orders yet ("still a stub"): it is designed
-  now (C-min, 12 chips, `bom-iod.csv`). Add its order, the 10 kΩ pull-down
-  network, the ESP32 board (TTGO VGA32) and a rig map `logisim/rig/iod.map`.
+  now (C-min, 12 chips, `bom-iod.csv`). Add its order: the 10 kΩ pull-down
+  network (4609X-101-103LF), R1–R5 (33 Ω × 4, 220 Ω), D3 (1N5817), the
+  2 × 4 keyed header and IDC ribbon, a PS/2 cable for the TTGO's mouse
+  port, and the TTGO VGA32 v1.4. Add a rig map `logisim/rig/iod.map` (U12
+  needs 3.3 V on J5.8 without the TTGO: the Mega's 3.3 V pin).
 - **Checks to make on the breadboard** (breadboard-checks.md B5): the IN
   drivers' turn-off overlap, A8–A15 decaying through the pull-downs in the
   vector step (fallback: put the 74HCT541 back), the 165's data hold after
   SH/LD, MBX_SEL rising while SCK is low.
+  B7: the TTGO's cables (slow MBX_SEL / RCLK_EVT edges, SCK ringing,
+  flashing over USB while the HBC-2 runs).
 
 ### ESP32 (step C4 of io-redesign-proposal.md 9.9, once hardware is built)
 
@@ -64,10 +69,17 @@ history keeps them). Detailed notes are linked; this file only lists.
   product ID, first port, number of ports), dropping a half-received
   command on `rst_n`, the events, then the native commands. No plug-in
   events, no mouse, no audio. On the Mega rig first, then the TTGO VGA32.
+- **Pins and rules** (iod-decisions.md, "The TTGO VGA32 wired to the
+  card", 2026-11-14): MBX_SEL on IO26 and RCLK_EVT on IO27 idle high,
+  RCLK_RX on IO25 idles low; MISO IO2, MOSI IO12, SCK IO14; inputs IO34,
+  IO39, IO35, IO36. MBX_SEL and SD CS (IO13) never low together; SCK at a
+  low drive strength; no speaker on the TTGO.
 
 ### KiCad (`kicad/`, Gianni)
 
-- **Schematics:** all drawn (cu committed 2026-11-13). What is left
-  before the PCBs is in `kicad/NOTES.md`, "To do before the PCBs".
+- **Schematics:** all drawn (cu committed 2026-11-13, equivalent to
+  cu.circ). The IOD has the TTGO wiring, the 3.3 V LVC244 and the A8–A15
+  pull-downs since 2026-11-14. What is left before the PCBs is in
+  `kicad/NOTES.md`, "To do before the PCBs".
 - **PCBs** (DIP, sockets for every chip): once the card connector pinout is
   decided.

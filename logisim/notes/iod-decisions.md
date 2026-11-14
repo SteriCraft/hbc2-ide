@@ -149,3 +149,67 @@ The CPU asks which devices exist; the ESP32 announces nothing. The ESP32 doesn't
 - The firmware (C4) must do the same: INFO's descriptors, `rst_n` dropping a partial command.
 - The emulator's ESP32 boots in 0 cycles by default (`boot_cycles`); 2,000,000 would be the board's.
 - ~~The IDE has no reset button yet~~ Done 2026-11-11, Gianni's decision: the IDE's **Reset** button (Ctrl+F5) now calls `Machine::reset`; a new **Restart** button to its right (Ctrl+Shift+F5) does the power cycle (`Machine::power_on`). The runner has `Runner::reset` next to `power_cycle`.
+
+## The TTGO VGA32 wired to the card (Gianni, 2026-11-14)
+
+Gianni drew these changes in `kicad/iod/hbc2_iod.kicad_sch` on 2026-11-14. KiCad's ERC reports 0 errors and 0 warnings, and `kicadcmp.py` reports no wiring error.
+
+**The board.** The LilyGO TTGO VGA32 v1.4 stays. It sits off the I/O card, in a 3D-printed box next to it, and is wired to the card by three cables. It isn't socketed on the card, and no DevKitC is used. The pins below were checked against its schematic: `vga32_v1.4.pdf`, in the LilyGO/FabGL repository on GitHub, folder `Schematic`.
+
+**What the TTGO schematic shows:**
+- **SD card:** GPIO 2 / 12 / 13 / 14. Its pull-ups (R34–R37) are not fitted.
+- **Header J2 (2 × 4, 2.54 mm):** pin 1 IO12, 2 IO14, 3 IO13, 4 IO2, 5 IO34, 6 IO39, 7 GND, 8 +3V3.
+- **PS/2 mouse port:** carries IO26 (CLK) and IO27 (DAT) through MOSFET level shifters, with 4.7 kΩ pull-ups to 5 V on the connector side and 22 kΩ to 3.3 V on the GPIO side. Its pin 4 is the board's +5V.
+- **IO25:** the audio output, through 270 Ω, then 150 Ω to GND, then a 10 µF capacitor to the jack. The jack is DC-blocked.
+- **IO35:** the battery divider (100 kΩ / 100 kΩ).
+- **IO36:** button K1 (10 kΩ pull-up).
+- **IO0:** the auto-program circuit.
+
+**Mailbox pins.** These replace the table in io-redesign-proposal.md 9.4 and 9.8.
+
+| Signal | GPIO | Card connector | TTGO end | Why |
+|---|---|---|---|---|
+| MOSI | 12 | J5.1 | header J2.1 | shared with the SD card |
+| SCK | 14 | J5.2 | header J2.2 | shared with the SD card |
+| (SD CS) | 13 | J5.3, not connected | header J2.3 | the TTGO's own SD card |
+| MISO | 2 | J5.4 (U12 1Y0 through 33 Ω) | header J2.4 | shared with the SD card; the LVC244 drives it only while MBX_SEL is low |
+| tx_full | 34 | J5.5 (U12 2Y3 through 33 Ω) | header J2.5 | input-only pin |
+| rx_full | 39 | J5.6 (U12 2Y2 through 33 Ω) | header J2.6 | input-only pin |
+| GND, +3V3 | — | J5.7, J5.8 | header J2.7, J2.8 | the TTGO's 3.3 V supplies U12 |
+| RCLK_EVT | 27 | J6.1 | mouse port pin 1 (DAT) | **idle high**: the TTGO pulls it up |
+| GND | — | J6.3 | mouse port pin 3 | |
+| +5V_ESP | — | J6.4 (from D3) | mouse port pin 4 (VCC) | powers the TTGO |
+| MBX_SEL | 26 | J6.5 | mouse port pin 5 (CLK) | idle high from reset (the TTGO's pull-up) |
+| RCLK_RX | 25 | J7.1 | wire soldered at R28's ESP32 end | idle low: the audio RC (420 Ω to GND) is its pull-down |
+| evt_pend | 35 | J7.2 (U12 2Y1 through 33 Ω) | wire soldered at the battery divider's midpoint | the LVC244 overrides 50 kΩ |
+| rst_n | 36 | J7.3 (U12 2Y0 through **220 Ω**) | wire soldered at K1 (S_VP side) | pressing K1 can't short the LVC244 |
+| GND | — | J7.4 | any GND | return for the soldered wires |
+
+The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19, 4, 5, 23 and 15, and the PS/2 keyboard uses 33 (CLK) and 32 (DAT). That makes 21 GPIOs in use, with GPIO0 spare. Nothing goes on GPIO0: it's held low while the board is being flashed, so it can't carry MBX_SEL (that would enable MISO onto GPIO2) or an RCLK.
+
+**Why these pins:**
+- **MBX_SEL must be high from reset.** On GPIO25 it would be pulled low while the ESP32 boots, and its rising edge when the firmware takes the pin would clear TX. That would lose the INFO command crt0 sends at start-up.
+- **The mouse port's pull-ups keep MBX_SEL and RCLK_EVT high** through an ESP32 reset. So the RCLK_EVT store happens on the rising edge at the end of a low pulse; the 595's RCLK and the 74's CLK only see rising edges, so this is the same edge as before.
+- **RCLK_RX is idle low**, like the Logisim test MCU, which needs no change.
+- **H3's pull resistors are not needed on the card**, because the TTGO's own resistors set every idle level.
+
+**Card changes (KiCad):**
+- **U12 → SN74LVC244AN on +3V3**, which comes from the TTGO through J5.8. C12 decouples it on +3V3. It is the only 3.3 V chip in the HBC-2. There is no regulator on the card: U12 is then powered exactly when the ESP32 is, so it can't back-power the ESP32's pins.
+- **R1–R5:** 33 Ω in series on U12's outputs; 220 Ω on `rst_n` (R2).
+- **D3, a 1N5817:** from +5V to `+5V_ESP` (J6.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
+- **J1:** the CPU's signals only: `iod_ie`, `iod_rw`, `iod_inr`, `clk`, `clk_wr_n`, `rst_n`, `iod_int`. `iod_int` goes to the control unit (`cu_int`, cu J1.6).
+- **J5:** a 2 × 4 header numbered like the TTGO's J2, for a straight IDC ribbon. Use a keyed (shrouded) header.
+- **J6:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.
+- **J7:** a 1 × 4 header for the soldered wires.
+- **RN1:** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, symbol `Device:R_Network08`, footprint `Resistor_THT:R_Array_SIP9`). Its common pin is on GND, and its 8 resistors pull `iod_addr8..15` down. A8–A15 reach J4, now 1 × 16.
+- **U3, U6, U9:** relabelled SN74AHCT595N.
+
+**Firmware rules:**
+- RCLK_EVT idles high and is pulsed low. RCLK_RX idles low and is pulsed high. MBX_SEL idles high.
+- MBX_SEL and the SD card's CS (GPIO13) are never low at the same time.
+- Set a low drive strength on SCK (`gpio_set_drive_capability`), so the ribbon doesn't ring.
+- No speaker on the TTGO: every RCLK_RX pulse would click through its audio amplifier.
+
+**Logisim:** no change. The card ends at the ESP32 interface, and the test MCU's idle-low RCLK_EVT gives the same rising edge.
+
+**Breadboard check:** B7 in `breadboard-checks.md`.

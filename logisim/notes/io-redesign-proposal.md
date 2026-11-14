@@ -470,6 +470,8 @@ Port assignment stays dynamic, in the same order (monitor 1–5, RTC 6–12, key
 
 ### 9.4 ESP32 board and pins
 
+> **Superseded 2026-11-14.** The pins below are from FabGL's configuration and were never checked. The final wiring, checked against the TTGO's schematic, is in iod-decisions.md, "The TTGO VGA32 wired to the card". MBX_SEL went to GPIO26, RCLK_EVT to 27 and RCLK_RX to 25; the inputs are 34, 39, 35 and 36; GPIO0 is spare.
+
 **Candidate: LilyGO TTGO VGA32 v1.4** (ESP32-WROVER with PSRAM, VGA 6-bit RGB resistor DAC, two PS/2 ports, micro-SD, audio). It's FabGL's reference board. The pin use below is from FabGL's configuration for this board and **must be checked against the board's schematic (vga32_v1.4.pdf) before any wiring**:
 
 | Use | GPIO |
@@ -618,6 +620,8 @@ VGA needs 8, PS/2 keyboard 2, SD 4 and audio 1, so 15 are taken. **Since D7 ther
 | Section 9 (CTRL 595) | 1 out + 4 in | 20 | yes, even with the PS/2 mouse port (22) |
 | GPIO pulses, separate ACK and READY (Q-C3 as first written) | 5 out + 4 in | 24 | **no** |
 | **GPIO pulses, MBX_SEL as ACK, no READY** | 3 out + 4 in | 22 | **yes, exactly, without the mouse port**. On the TTGO: outputs 26, 27 (the mouse port's) and 0 (MBX_SEL: idle high, like GPIO0's boot pull-up); inputs 34, 35, 39 and 36. 36 must be free on the TTGO schematic; if it's the board's button, give up audio (25) instead. **D7: audio is given up anyway; the fourth input goes on 25.** |
+
+> 2026-11-14: the pins in this row changed. See iod-decisions.md, "The TTGO VGA32 wired to the card".
 
 **3. Interrupt channel (vectored kept).** The vector step needs the IOD to drive the low byte of `bus_addr`, which the IVT adds, and `bus_data`, which loads I (F2, F3, I6).
 

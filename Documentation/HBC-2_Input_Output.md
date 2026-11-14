@@ -24,10 +24,9 @@ and commands are in [Peripherals/](Peripherals/README.md).
   The CPU reaches a device port with a command (`OUT`, `IN`) sent through the
   mailbox, not with a plain `in` / `out`.
 
-There is no mouse and no audio. The planned board is a LilyGO TTGO VGA32; the
-mailbox uses its SPI pins (shared with the SD card), its spare outputs and
-four inputs (pins: `logisim/notes/io-redesign-proposal.md`, 9.4, to check
-against the board's schematic).
+There is no mouse and no audio. The ESP32 board is a LilyGO TTGO VGA32 v1.4
+(VGA, PS/2 keyboard, micro-SD). It sits next to the I/O card and is wired to
+it by three cables (see "Wiring the TTGO VGA32" below).
 
 ## The mailbox ports
 
@@ -61,11 +60,32 @@ STATUS:
 | STATUS | 74HCT244 | puts RX_AVAIL, TX_FREE, EVT_PEND on the data bus |
 | EVT | 2 × 74AHCT595 | the event's port (on A0–A7) and data (on D0–D7) during the vector step |
 | Flags | 4 × 74HCT74 | `tx_full`, `rx_full`, `evt_pend`, their clears, `VEC` (INR one step later), `evt_s` (= INT) |
-| Levels | 74LVC244 | 5 V → 3.3 V towards the ESP32: MISO, `tx_full`, `rx_full`, `evt_pend`, `rst_n` |
+| Levels | 74LVC244 (at 3.3 V) | 5 V → 3.3 V towards the ESP32: MISO, `tx_full`, `rx_full`, `evt_pend`, `rst_n` |
 | Pull-downs | 10 kΩ network | hold A8–A15 at 0 during the vector step |
 
 The ESP32 drives SCK, MOSI, MBX_SEL, RCLK_RX and RCLK_EVT, and reads MISO and
 the four flags.
+
+### Wiring the TTGO VGA32
+
+The card reaches the TTGO through its 2 × 4 header, its PS/2 mouse port and
+three soldered wires. The full record, with the reasons, is in
+`logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card".
+
+| Signal | GPIO | Card | TTGO |
+|---|---|---|---|
+| MOSI, SCK | 12, 14 | J5.1, J5.2 | header pins 1, 2 (shared with the SD card) |
+| MISO | 2 | J5.4 | header pin 4 (shared with the SD card) |
+| `tx_full`, `rx_full` | 34, 39 | J5.5, J5.6 | header pins 5, 6 |
+| GND, 3.3 V | | J5.7, J5.8 | header pins 7, 8 (the TTGO's 3.3 V powers the 74LVC244) |
+| RCLK_EVT | 27 | J6.1 | mouse port pin 1 |
+| GND, 5 V | | J6.3, J6.4 | mouse port pins 3, 4 (the card powers the TTGO through a Schottky diode) |
+| MBX_SEL | 26 | J6.5 | mouse port pin 5 |
+| RCLK_RX | 25 | J7.1 | soldered wire |
+| `evt_pend`, `rst_n` | 35, 36 | J7.2, J7.3 | soldered wires |
+
+MBX_SEL and RCLK_EVT idle high, and RCLK_RX idles low. MBX_SEL and the SD
+card's select are never low at the same time. GPIO0 is spare.
 
 ### Sending a byte (CPU → ESP32)
 
