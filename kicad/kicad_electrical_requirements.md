@@ -50,7 +50,7 @@ The registers board uses `circuits/registers/regs.circ`.
 
 ### H2. IOD: pull-downs on A8–A15
 
-**Done 2026-11-14.** RN1 (10 kΩ × 8 bussed, common pin on GND) pulls `iod_addr8..15` down, and J4 (now 1 × 16) carries A0–A15. Breadboard check B5 (b) still applies.
+**Done 2026-11-14, then moved to the motherboard the same day:** the 10 kΩ × 8 bussed network (common pin on GND) sits on the motherboard's `bus_addr_hi0..7`, which saves 8 iod pins; iod J4 is back to A0–A7 (`motherboard-netmap.md`). Breadboard check B5 (b) still applies.
 
 - Decision D3 / rule I6: in the vector step the IOD drives A0–A7 only, and a **10 kΩ bussed network pulls A8–A15 to 0**. See `io-redesign-proposal.md` 9.9 and `iod-decisions.md` K2.
 - Logisim leaves them out on purpose, because a pull inside the module would fight the address latch.
@@ -72,7 +72,7 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
 - Note: if the pull-up on MBX_SEL goes to 5 V, it sits on an ESP32 pin. Pull it to 3.3 V, or put it on the card side only if the ESP32 pin is protected.
 
 ### H4. Footprints on every board
-- No component has a footprint. The only exception is the AS6C1008 (U2) on mem.
+- **2026-11-14:** every component has a footprint except the connectors (they wait for the motherboard). The cu's pull resistors are now 8 SIP-9 networks, as ordered. Capacitor footprints to confirm once the parts are chosen. Details: `NOTES.md` to-do 4.
 - The PCB can't be updated from the schematic until all of them are assigned:
   - DIP sockets for the chips (turned-pin for the 7 microcode EEPROMs on cu);
   - the capacitors;
@@ -81,7 +81,7 @@ See `logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card". The te
 ### H5. clkgen: the oscillator and the reset circuit (closed 2026-11-14)
 - **Done:** both are on the board. Y1 = ECS-2200BX-040 (4.000 MHz, half-size DIP-8), and the reset circuit on `clkgen_rc` (U1.1): R3 10 kΩ to +5V, C9 10 µF to GND, D1 1N4148 across R3 (cathode on +5V), SW3 push button to GND through R5 100 Ω (references as renumbered on 2026-11-14). ERC: 0 errors, 0 warnings.
 - Parts, nets and layout notes: `NOTES.md`, "clkgen: oscillator and reset".
-- The oscillator needs 4.75 V minimum: met once the series Schottky is gone (S1). **Open:** the datasheet on file covers the ECS-2100X only: confirm the 2200BX is 5 V.
+- The oscillator needs 4.75 V minimum: met once the series Schottky is gone (S1). The datasheet on file covers the ECS-2100X only; Gianni confirmed the ECS-2200BX is a 5 V part (2026-11-14).
 - **Nano driver (on the schematic 2026-11-14):** an Arduino Nano in a socket drives `clkgen_osc` (JP1 picks Y1 or the Nano) and the reset, with STEP and RUN / STOP buttons and a speed potentiometer; the old rig connector J1 is removed. The Nano is fed through D2 (1N5817) and senses the card's +5V on A1 (R6). Details: `NOTES.md`, "clkgen: Arduino Nano clock and reset driver".
 
 ## Electrical warnings

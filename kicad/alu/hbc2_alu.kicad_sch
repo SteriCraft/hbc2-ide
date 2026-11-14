@@ -2051,315 +2051,6 @@
 			)
 			(embedded_fonts no)
 		)
-		(symbol "Connector:Conn_01x05_Socket"
-			(pin_names
-				(offset 1.016)
-				(hide yes)
-			)
-			(exclude_from_sim no)
-			(in_bom yes)
-			(on_board yes)
-			(in_pos_files yes)
-			(duplicate_pin_numbers_are_jumpers no)
-			(property "Reference" "J"
-				(at 0 7.62 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Value" "Conn_01x05_Socket"
-				(at 0 -7.62 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Footprint" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Datasheet" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "Description" "Generic connector, single row, 01x05, script generated"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_locked" ""
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_keywords" "connector"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(property "ki_fp_filters" "Connector*:*_1x??_*"
-				(at 0 0 0)
-				(show_name no)
-				(do_not_autoplace no)
-				(hide yes)
-				(effects
-					(font
-						(size 1.27 1.27)
-					)
-				)
-			)
-			(symbol "Conn_01x05_Socket_1_1"
-				(polyline
-					(pts
-						(xy -1.27 5.08) (xy -0.508 5.08)
-					)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 2.54) (xy -0.508 2.54)
-					)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 0) (xy -0.508 0)
-					)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 -2.54) (xy -0.508 -2.54)
-					)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(polyline
-					(pts
-						(xy -1.27 -5.08) (xy -0.508 -5.08)
-					)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 0 4.572)
-					(mid -0.5058 5.08)
-					(end 0 5.588)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 0 2.032)
-					(mid -0.5058 2.54)
-					(end 0 3.048)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 0 -0.508)
-					(mid -0.5058 0)
-					(end 0 0.508)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 0 -3.048)
-					(mid -0.5058 -2.54)
-					(end 0 -2.032)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(arc
-					(start 0 -5.588)
-					(mid -0.5058 -5.08)
-					(end 0 -4.572)
-					(stroke
-						(width 0.1524)
-						(type default)
-					)
-					(fill
-						(type none)
-					)
-				)
-				(pin passive line
-					(at -5.08 5.08 0)
-					(length 3.81)
-					(name "Pin_1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "1"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -5.08 2.54 0)
-					(length 3.81)
-					(name "Pin_2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "2"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -5.08 0 0)
-					(length 3.81)
-					(name "Pin_3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "3"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -5.08 -2.54 0)
-					(length 3.81)
-					(name "Pin_4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "4"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-				(pin passive line
-					(at -5.08 -5.08 0)
-					(length 3.81)
-					(name "Pin_5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-					(number "5"
-						(effects
-							(font
-								(size 1.27 1.27)
-							)
-						)
-					)
-				)
-			)
-			(embedded_fonts no)
-		)
 		(symbol "Connector:Conn_01x06_Socket"
 			(pin_names
 				(offset 1.016)
@@ -11125,16 +10816,6 @@
 		)
 		(uuid "d485073e-0c2d-40bd-a602-97415748c2f9")
 	)
-	(text "alu_n"
-		(exclude_from_sim no)
-		(at 497.332 207.518 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-		)
-		(uuid "d83aa600-9d7d-4afb-878b-ed013cf88ac5")
-	)
 	(text "74HCT08"
 		(exclude_from_sim no)
 		(at 303.53 17.78 0)
@@ -11170,6 +10851,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "009a2855-ed01-4bb9-9e4f-c0c45254a710")
+	)
+	(junction
+		(at 481.33 255.27)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "01daa251-dbec-4c78-9cb2-de262e29c39b")
 	)
 	(junction
 		(at 45.72 21.59)
@@ -11274,6 +10961,12 @@
 		(uuid "3cd04ee4-ba26-47fc-9ed7-63ec7b6ec9fe")
 	)
 	(junction
+		(at 481.33 233.68)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "3d3591ca-4268-429b-8658-3776bd254d79")
+	)
+	(junction
 		(at 283.21 27.94)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -11284,6 +10977,18 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "3eccf37c-d906-474e-aafe-87cb35b4ed7c")
+	)
+	(junction
+		(at 488.95 241.3)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "41466858-69a1-4653-966a-1795c8af7450")
+	)
+	(junction
+		(at 481.33 247.65)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "41652d2f-7a9d-4da0-b5e9-3a871a5bafcb")
 	)
 	(junction
 		(at 265.43 228.6)
@@ -11374,6 +11079,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "62b2caa5-7ea7-47f6-a7a6-36a5e163f5f8")
+	)
+	(junction
+		(at 488.95 255.27)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "64bb1718-4c00-40e7-a21a-19d3068ef34c")
 	)
 	(junction
 		(at 393.7 41.91)
@@ -11508,6 +11219,12 @@
 		(uuid "a56a859c-7796-46b7-93e9-39868c71a54b")
 	)
 	(junction
+		(at 481.33 241.3)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "a849f8af-f1f9-401f-95e6-4c5f088a3650")
+	)
+	(junction
 		(at 278.13 62.23)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -11616,6 +11333,12 @@
 		(uuid "d4c6afa6-144c-4a3f-ae39-513cc15319e9")
 	)
 	(junction
+		(at 488.95 247.65)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "de7301fc-418e-412d-9351-fe9bfcff6fad")
+	)
+	(junction
 		(at 227.33 64.77)
 		(diameter 0)
 		(color 0 0 0 0)
@@ -11668,6 +11391,12 @@
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "f9b66a48-9de2-4e65-8c29-0c144c959e01")
+	)
+	(junction
+		(at 486.41 231.14)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "fd4cf1ec-fc98-40c5-a967-bdbc6b140027")
 	)
 	(junction
 		(at 34.29 41.91)
@@ -14115,15 +13844,6 @@
 		(uuid "f54fc714-adcd-4bc4-b879-a90ce06c340d")
 	)
 	(bus_entry
-		(at 495.3 205.74)
-		(size -2.54 2.54)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "f563e4a7-eaee-4d7e-a1c2-cd7dc8642083")
-	)
-	(bus_entry
 		(at 453.39 260.35)
 		(size -2.54 -2.54)
 		(stroke
@@ -14357,214 +14077,6 @@
 			(type default)
 		)
 		(uuid "06d246c3-9ba9-4cf0-a64e-46ec1e53792c")
-	)
-	(wire
-		(pts
-			(xy 481.33 233.68) (xy 481.33 241.3)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6e024ee6-bac9-465b-a5f3-0b5ec50cc5c6")
-	)
-	(wire
-		(pts
-			(xy 481.33 233.68) (xy 488.95 233.68)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "794e2b7a-af7f-4fee-a2a7-35219f15b48c")
-	)
-	(wire
-		(pts
-			(xy 481.33 241.3) (xy 481.33 247.65)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "7ca085b6-c6eb-4a98-85c2-e946d5c4fd9c")
-	)
-	(wire
-		(pts
-			(xy 481.33 247.65) (xy 481.33 255.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "12e22231-723b-4057-bdb6-401c57e5b32c")
-	)
-	(wire
-		(pts
-			(xy 481.33 255.27) (xy 481.33 260.35)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "970830cc-4b54-43b6-bdc6-93b9e98a47e2")
-	)
-	(wire
-		(pts
-			(xy 481.33 228.6) (xy 481.33 233.68)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a5ca4a32-42c0-4114-aab4-4fa1bc7b4779")
-	)
-	(wire
-		(pts
-			(xy 483.87 228.6) (xy 483.87 231.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "97314d59-5e73-44a8-8f59-7c4d7e030205")
-	)
-	(wire
-		(pts
-			(xy 483.87 231.14) (xy 486.41 231.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "ccf788f9-af44-4df8-8306-34db7e4db856")
-	)
-	(wire
-		(pts
-			(xy 486.41 236.22) (xy 488.95 236.22)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "359fe8ad-e026-4929-a7b8-9fc2fc09ae07")
-	)
-	(wire
-		(pts
-			(xy 486.41 228.6) (xy 486.41 231.14)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "a4ad2bf7-e333-4dfb-95d6-a5cff1758c45")
-	)
-	(wire
-		(pts
-			(xy 486.41 231.14) (xy 486.41 236.22)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "16150f4e-4fde-43d1-9e1d-dde46f78ee8a")
-	)
-	(wire
-		(pts
-			(xy 488.95 236.22) (xy 488.95 241.3)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6a70569f-4e97-406e-968b-bb2cbb675c44")
-	)
-	(wire
-		(pts
-			(xy 488.95 241.3) (xy 488.95 247.65)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "36ce2b91-e381-46fe-951a-5999a65c2d35")
-	)
-	(wire
-		(pts
-			(xy 488.95 247.65) (xy 488.95 255.27)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "3dbc75ac-aadf-4502-a0e1-98927242f40c")
-	)
-	(wire
-		(pts
-			(xy 488.95 255.27) (xy 488.95 260.35)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "69140fb4-3ead-45f5-b9c2-a663261e9557")
-	)
-	(wire
-		(pts
-			(xy 488.95 228.6) (xy 488.95 233.68)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "2c47551c-2d6f-46e1-ba45-2febcab5c1f0")
-	)
-	(junction
-		(at 481.33 233.68)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "3d3591ca-4268-429b-8658-3776bd254d79")
-	)
-	(junction
-		(at 481.33 241.3)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "a849f8af-f1f9-401f-95e6-4c5f088a3650")
-	)
-	(junction
-		(at 481.33 247.65)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "41652d2f-7a9d-4da0-b5e9-3a871a5bafcb")
-	)
-	(junction
-		(at 481.33 255.27)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "01daa251-dbec-4c78-9cb2-de262e29c39b")
-	)
-	(junction
-		(at 486.41 231.14)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "fd4cf1ec-fc98-40c5-a967-bdbc6b140027")
-	)
-	(junction
-		(at 488.95 241.3)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "41466858-69a1-4653-966a-1795c8af7450")
-	)
-	(junction
-		(at 488.95 247.65)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "de7301fc-418e-412d-9351-fe9bfcff6fad")
-	)
-	(junction
-		(at 488.95 255.27)
-		(diameter 0)
-		(color 0 0 0 0)
-		(uuid "64bb1718-4c00-40e7-a21a-19d3068ef34c")
 	)
 	(wire
 		(pts
@@ -14868,6 +14380,16 @@
 	)
 	(wire
 		(pts
+			(xy 481.33 247.65) (xy 481.33 255.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "12e22231-723b-4057-bdb6-401c57e5b32c")
+	)
+	(wire
+		(pts
 			(xy 433.07 153.67) (xy 435.61 153.67)
 		)
 		(stroke
@@ -14955,6 +14477,16 @@
 			(type default)
 		)
 		(uuid "16114ab4-2400-4c7e-8055-2f44bf4a74d5")
+	)
+	(wire
+		(pts
+			(xy 486.41 231.14) (xy 486.41 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "16150f4e-4fde-43d1-9e1d-dde46f78ee8a")
 	)
 	(wire
 		(pts
@@ -15558,6 +15090,16 @@
 	)
 	(wire
 		(pts
+			(xy 488.95 228.6) (xy 488.95 233.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "2c47551c-2d6f-46e1-ba45-2febcab5c1f0")
+	)
+	(wire
+		(pts
 			(xy 156.21 135.89) (xy 158.75 135.89)
 		)
 		(stroke
@@ -15778,6 +15320,16 @@
 	)
 	(wire
 		(pts
+			(xy 486.41 236.22) (xy 488.95 236.22)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "359fe8ad-e026-4929-a7b8-9fc2fc09ae07")
+	)
+	(wire
+		(pts
 			(xy 391.16 146.05) (xy 407.67 146.05)
 		)
 		(stroke
@@ -15845,6 +15397,16 @@
 			(type default)
 		)
 		(uuid "36ac9675-90af-4ce8-bf0a-717a73d66683")
+	)
+	(wire
+		(pts
+			(xy 488.95 241.3) (xy 488.95 247.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "36ce2b91-e381-46fe-951a-5999a65c2d35")
 	)
 	(bus
 		(pts
@@ -15965,6 +15527,16 @@
 			(type default)
 		)
 		(uuid "3ced62cc-ba2e-447c-8f1e-2cf5506b3187")
+	)
+	(wire
+		(pts
+			(xy 488.95 247.65) (xy 488.95 255.27)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "3dbc75ac-aadf-4502-a0e1-98927242f40c")
 	)
 	(wire
 		(pts
@@ -16195,16 +15767,6 @@
 			(type default)
 		)
 		(uuid "47e52364-cdda-4331-942e-4ddecee93189")
-	)
-	(wire
-		(pts
-			(xy 483.87 208.28) (xy 492.76 208.28)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "483ec820-54e9-4958-9839-4f189438c50e")
 	)
 	(wire
 		(pts
@@ -17076,6 +16638,16 @@
 		)
 		(uuid "6871ae11-77da-4ead-90db-d3237cf922c5")
 	)
+	(wire
+		(pts
+			(xy 488.95 255.27) (xy 488.95 260.35)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "69140fb4-3ead-45f5-b9c2-a663261e9557")
+	)
 	(bus
 		(pts
 			(xy 513.08 81.28) (xy 513.08 88.9)
@@ -17105,6 +16677,16 @@
 			(type default)
 		)
 		(uuid "6a091f90-a7da-497b-a390-de85fbbbd8bc")
+	)
+	(wire
+		(pts
+			(xy 488.95 236.22) (xy 488.95 241.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6a70569f-4e97-406e-968b-bb2cbb675c44")
 	)
 	(wire
 		(pts
@@ -17225,6 +16807,16 @@
 			(type default)
 		)
 		(uuid "6df79100-e134-47f0-8f83-f5ce0de63731")
+	)
+	(wire
+		(pts
+			(xy 481.33 233.68) (xy 481.33 241.3)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "6e024ee6-bac9-465b-a5f3-0b5ec50cc5c6")
 	)
 	(wire
 		(pts
@@ -17528,6 +17120,16 @@
 	)
 	(wire
 		(pts
+			(xy 481.33 233.68) (xy 488.95 233.68)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "794e2b7a-af7f-4fee-a2a7-35219f15b48c")
+	)
+	(wire
+		(pts
 			(xy 264.16 90.17) (xy 284.48 90.17)
 		)
 		(stroke
@@ -17585,6 +17187,16 @@
 			(type default)
 		)
 		(uuid "7c7644bd-e37d-49fb-9f22-0e812ef3568c")
+	)
+	(wire
+		(pts
+			(xy 481.33 241.3) (xy 481.33 247.65)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "7ca085b6-c6eb-4a98-85c2-e946d5c4fd9c")
 	)
 	(wire
 		(pts
@@ -18298,6 +17910,26 @@
 	)
 	(wire
 		(pts
+			(xy 481.33 255.27) (xy 481.33 260.35)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "970830cc-4b54-43b6-bdc6-93b9e98a47e2")
+	)
+	(wire
+		(pts
+			(xy 483.87 228.6) (xy 483.87 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "97314d59-5e73-44a8-8f59-7c4d7e030205")
+	)
+	(wire
+		(pts
 			(xy 283.21 22.86) (xy 283.21 27.94)
 		)
 		(stroke
@@ -18676,6 +18308,16 @@
 		)
 		(uuid "a4701d15-edd7-4702-9ae0-37701a592ddf")
 	)
+	(wire
+		(pts
+			(xy 486.41 228.6) (xy 486.41 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "a4ad2bf7-e333-4dfb-95d6-a5cff1758c45")
+	)
 	(bus
 		(pts
 			(xy 172.72 191.77) (xy 172.72 228.6)
@@ -18706,15 +18348,15 @@
 		)
 		(uuid "a5c0bc89-636e-4012-826c-b4803d793746")
 	)
-	(bus
+	(wire
 		(pts
-			(xy 495.3 203.2) (xy 495.3 205.74)
+			(xy 481.33 228.6) (xy 481.33 233.68)
 		)
 		(stroke
 			(width 0)
 			(type default)
 		)
-		(uuid "a5c14f88-7285-4f85-9892-0649aee635a3")
+		(uuid "a5ca4a32-42c0-4114-aab4-4fa1bc7b4779")
 	)
 	(wire
 		(pts
@@ -19615,6 +19257,16 @@
 			(type default)
 		)
 		(uuid "cc32cec7-6fbf-4c21-84c2-a9472a74f7f7")
+	)
+	(wire
+		(pts
+			(xy 483.87 231.14) (xy 486.41 231.14)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "ccf788f9-af44-4df8-8306-34db7e4db856")
 	)
 	(wire
 		(pts
@@ -22286,16 +21938,6 @@
 		)
 		(uuid "651930d4-3525-4d0b-beaa-250f49d64efd")
 	)
-	(label "alu_r[0..7]"
-		(at 495.3 203.2 0)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify left bottom)
-		)
-		(uuid "66a5b8be-279a-437b-ae0e-3694ce116fe8")
-	)
 	(label "alu_b2"
 		(at 109.22 227.33 0)
 		(effects
@@ -22965,16 +22607,6 @@
 			(justify left bottom)
 		)
 		(uuid "9740a578-d675-44bf-a910-3bb9f10e1363")
-	)
-	(label "alu_r7"
-		(at 492.76 208.28 180)
-		(effects
-			(font
-				(size 1.27 1.27)
-			)
-			(justify right bottom)
-		)
-		(uuid "977ae8e8-1c29-4c21-a4ba-932328fe8af9")
 	)
 	(label "alu_a6"
 		(at 326.39 152.4 0)
@@ -24953,7 +24585,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -25069,7 +24701,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 83.82 0)
 			(hide yes)
 			(show_name no)
@@ -25266,7 +24898,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 227.33 44.45 0)
 			(hide yes)
 			(show_name no)
@@ -25951,7 +25583,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 341.63 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -26069,7 +25701,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 158.75 158.75 0)
 			(hide yes)
 			(show_name no)
@@ -26205,7 +25837,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 227.33 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -26339,7 +25971,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 233.68 0)
 			(hide yes)
 			(show_name no)
@@ -26454,7 +26086,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 279.0952 128.27 0)
 			(hide yes)
 			(show_name no)
@@ -26534,7 +26166,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 278.13 0)
 			(hide yes)
 			(show_name no)
@@ -26649,7 +26281,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 43.18 20.6248 0)
 			(hide yes)
 			(show_name no)
@@ -26729,7 +26361,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 213.36 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -26923,7 +26555,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -27275,7 +26907,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 85.09 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -27391,7 +27023,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 224.79 0)
 			(hide yes)
 			(show_name no)
@@ -27756,7 +27388,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 344.17 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -27874,7 +27506,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 407.67 46.99 0)
 			(hide yes)
 			(show_name no)
@@ -27996,7 +27628,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 304.8 0)
 			(hide yes)
 			(show_name no)
@@ -28191,7 +27823,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 278.13 0)
 			(hide yes)
 			(show_name no)
@@ -28306,7 +27938,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 156.21 20.6248 0)
 			(hide yes)
 			(show_name no)
@@ -28464,7 +28096,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:CP_Radial_D5.0mm_P2.00mm"
 			(at 481.33 242.2652 0)
 			(hide yes)
 			(show_name no)
@@ -28623,7 +28255,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 388.62 219.71 0)
 			(hide yes)
 			(show_name no)
@@ -28817,7 +28449,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 110.49 0)
 			(hide yes)
 			(show_name no)
@@ -28933,7 +28565,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 134.62 243.84 0)
 			(hide yes)
 			(show_name no)
@@ -29129,7 +28761,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 227.33 158.75 0)
 			(hide yes)
 			(show_name no)
@@ -29263,7 +28895,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 233.68 0)
 			(hide yes)
 			(show_name no)
@@ -29379,7 +29011,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 304.8 0)
 			(hide yes)
 			(show_name no)
@@ -29811,7 +29443,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 461.01 153.67 0)
 			(hide yes)
 			(show_name no)
@@ -29933,7 +29565,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 85.09 44.45 0)
 			(hide yes)
 			(show_name no)
@@ -30130,7 +29762,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 355.6 154.94 0)
 			(hide yes)
 			(show_name no)
@@ -30509,7 +30141,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 538.48 41.91 0)
 			(hide yes)
 			(show_name no)
@@ -30865,7 +30497,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 353.06 239.0648 0)
 			(hide yes)
 			(show_name no)
@@ -30945,7 +30577,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 336.55 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -31139,7 +30771,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 397.51 239.0648 0)
 			(hide yes)
 			(show_name no)
@@ -31218,7 +30850,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 468.63 129.8448 0)
 			(hide yes)
 			(show_name no)
@@ -31298,7 +30930,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 388.62 210.82 0)
 			(hide yes)
 			(show_name no)
@@ -31569,7 +31201,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 43.18 70.1548 0)
 			(hide yes)
 			(show_name no)
@@ -31726,7 +31358,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 535.94 72.6948 0)
 			(hide yes)
 			(show_name no)
@@ -31769,95 +31401,6 @@
 			(project "hbc2_alu"
 				(path "/3c692080-f610-4c37-a4ef-7796a5ca7a72"
 					(reference "C31")
-					(unit 1)
-				)
-			)
-		)
-	)
-	(symbol
-		(lib_id "Connector:Conn_01x05_Socket")
-		(at 478.79 203.2 180)
-		(unit 1)
-		(body_style 1)
-		(exclude_from_sim no)
-		(in_bom yes)
-		(on_board yes)
-		(in_pos_files yes)
-		(dnp no)
-		(fields_autoplaced yes)
-		(uuid "6f869493-0b78-4ad5-98a8-3dadd2e9f22e")
-		(property "Reference" "J4"
-			(at 479.425 193.04 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Value" "Conn_01x05_Socket"
-			(at 479.425 195.58 0)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Footprint" ""
-			(at 478.79 203.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Datasheet" ""
-			(at 478.79 203.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(property "Description" "Generic connector, single row, 01x05, script generated"
-			(at 478.79 203.2 0)
-			(hide yes)
-			(show_name no)
-			(do_not_autoplace no)
-			(effects
-				(font
-					(size 1.27 1.27)
-				)
-			)
-		)
-		(pin "4"
-			(uuid "2f8cf3f1-8371-4dde-83cb-fca075cf215c")
-		)
-		(pin "2"
-			(uuid "6dfa5368-d321-41d3-ac78-61a470451209")
-		)
-		(pin "3"
-			(uuid "57794c89-6b17-4aa0-a1ee-515a2991641e")
-		)
-		(pin "1"
-			(uuid "f108874f-1b79-40b7-a43a-edddcf217490")
-		)
-		(pin "5"
-			(uuid "47771966-9aeb-4094-8709-23c97ac352bd")
-		)
-		(instances
-			(project "hbc2_alu"
-				(path "/3c692080-f610-4c37-a4ef-7796a5ca7a72"
-					(reference "J4")
 					(unit 1)
 				)
 			)
@@ -32051,7 +31594,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 363.22 80.3148 0)
 			(hide yes)
 			(show_name no)
@@ -32288,7 +31831,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 344.17 201.93 0)
 			(hide yes)
 			(show_name no)
@@ -32404,7 +31947,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 151.13 0)
 			(hide yes)
 			(show_name no)
@@ -32599,7 +32142,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 287.02 0)
 			(hide yes)
 			(show_name no)
@@ -32794,7 +32337,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 34.29 0)
 			(hide yes)
 			(show_name no)
@@ -32910,7 +32453,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -33026,7 +32569,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 92.71 0)
 			(hide yes)
 			(show_name no)
@@ -33220,7 +32763,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 224.79 134.9248 0)
 			(hide yes)
 			(show_name no)
@@ -33379,7 +32922,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 207.01 0)
 			(hide yes)
 			(show_name no)
@@ -33573,7 +33116,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 138.43 253.0348 0)
 			(hide yes)
 			(show_name no)
@@ -33652,7 +33195,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 156.21 134.9248 0)
 			(hide yes)
 			(show_name no)
@@ -33732,7 +33275,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 224.79 0)
 			(hide yes)
 			(show_name no)
@@ -33847,7 +33390,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 59.69 253.0348 0)
 			(hide yes)
 			(show_name no)
@@ -34006,7 +33549,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 388.62 201.93 0)
 			(hide yes)
 			(show_name no)
@@ -34358,7 +33901,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 217.17 324.1548 0)
 			(hide yes)
 			(show_name no)
@@ -34437,7 +33980,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 224.79 77.7748 0)
 			(hide yes)
 			(show_name no)
@@ -34519,7 +34062,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 158.75 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -34731,7 +34274,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 156.21 77.7748 0)
 			(hide yes)
 			(show_name no)
@@ -34811,7 +34354,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 55.88 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -35006,7 +34549,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 304.8 0)
 			(hide yes)
 			(show_name no)
@@ -35122,7 +34665,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 134.62 314.96 0)
 			(hide yes)
 			(show_name no)
@@ -35238,7 +34781,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 25.4 0)
 			(hide yes)
 			(show_name no)
@@ -35353,7 +34896,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 427.99 132.3848 0)
 			(hide yes)
 			(show_name no)
@@ -35667,7 +35210,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 90.17 72.39 0)
 			(hide yes)
 			(show_name no)
@@ -36019,7 +35562,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 295.91 0)
 			(hide yes)
 			(show_name no)
@@ -36134,7 +35677,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 405.13 20.6248 0)
 			(hide yes)
 			(show_name no)
@@ -36214,7 +35757,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 213.36 243.84 0)
 			(hide yes)
 			(show_name no)
@@ -36372,6 +35915,92 @@
 			(project "hbc2_alu"
 				(path "/3c692080-f610-4c37-a4ef-7796a5ca7a72"
 					(reference "#PWR060")
+					(unit 1)
+				)
+			)
+		)
+	)
+	(symbol
+		(lib_id "Connector:Conn_01x04_Socket")
+		(at 478.79 203.2 180)
+		(unit 1)
+		(body_style 1)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(dnp no)
+		(fields_autoplaced yes)
+		(uuid "a91769de-6337-468d-ac70-8c438373b363")
+		(property "Reference" "J4"
+			(at 479.425 193.04 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "Conn_01x04_Socket"
+			(at 479.425 195.58 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" ""
+			(at 478.79 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 478.79 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Generic connector, single row, 01x04, script generated"
+			(at 478.79 203.2 0)
+			(hide yes)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(pin "2"
+			(uuid "a177d0e3-8dd3-454a-aeb5-f71cdbfed726")
+		)
+		(pin "3"
+			(uuid "0788f79e-2ad9-4015-882d-1b05b3468f05")
+		)
+		(pin "1"
+			(uuid "58744730-70aa-480e-9a74-c8facf46f572")
+		)
+		(pin "4"
+			(uuid "e8174ff8-af34-44f1-94af-f3a0e69fdc59")
+		)
+		(instances
+			(project "hbc2_alu"
+				(path "/3c692080-f610-4c37-a4ef-7796a5ca7a72"
+					(reference "J4")
 					(unit 1)
 				)
 			)
@@ -36802,7 +36431,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 297.18 62.23 0)
 			(hide yes)
 			(show_name no)
@@ -36920,7 +36549,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 45.72 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -37054,7 +36683,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 52.07 0)
 			(hide yes)
 			(show_name no)
@@ -37327,7 +36956,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 336.55 52.07 0)
 			(hide yes)
 			(show_name no)
@@ -37442,7 +37071,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 353.06 131.1148 0)
 			(hide yes)
 			(show_name no)
@@ -37522,7 +37151,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 142.24 0)
 			(hide yes)
 			(show_name no)
@@ -37718,7 +37347,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-20_W7.62mm_Socket"
 			(at 158.75 44.45 0)
 			(hide yes)
 			(show_name no)
@@ -38009,7 +37638,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 336.55 43.18 0)
 			(hide yes)
 			(show_name no)
@@ -38127,7 +37756,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 279.4 226.06 0)
 			(hide yes)
 			(show_name no)
@@ -38249,7 +37878,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 349.25 229.87 0)
 			(hide yes)
 			(show_name no)
@@ -38365,7 +37994,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 85.09 53.34 0)
 			(hide yes)
 			(show_name no)
@@ -38559,7 +38188,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 138.43 324.1548 0)
 			(hide yes)
 			(show_name no)
@@ -38716,7 +38345,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 276.86 197.1548 0)
 			(hide yes)
 			(show_name no)
@@ -38796,7 +38425,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 207.01 0)
 			(hide yes)
 			(show_name no)
@@ -38912,7 +38541,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -39027,7 +38656,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 93.98 81.5848 0)
 			(hide yes)
 			(show_name no)
@@ -39185,7 +38814,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 55.88 243.84 0)
 			(hide yes)
 			(show_name no)
@@ -39540,7 +39169,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 45.72 39.37 0)
 			(hide yes)
 			(show_name no)
@@ -39662,7 +39291,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 278.13 0)
 			(hide yes)
 			(show_name no)
@@ -39777,7 +39406,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 224.79 20.6248 0)
 			(hide yes)
 			(show_name no)
@@ -40093,7 +39722,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 295.91 0)
 			(hide yes)
 			(show_name no)
@@ -40209,7 +39838,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 393.7 229.87 0)
 			(hide yes)
 			(show_name no)
@@ -40327,7 +39956,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 538.48 93.98 0)
 			(hide yes)
 			(show_name no)
@@ -40449,7 +40078,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 224.79 0)
 			(hide yes)
 			(show_name no)
@@ -40644,7 +40273,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 168.91 0)
 			(hide yes)
 			(show_name no)
@@ -40760,7 +40389,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 295.91 0)
 			(hide yes)
 			(show_name no)
@@ -40876,7 +40505,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 207.01 0)
 			(hide yes)
 			(show_name no)
@@ -40991,7 +40620,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 59.69 324.1548 0)
 			(hide yes)
 			(show_name no)
@@ -41228,7 +40857,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 344.17 219.71 0)
 			(hide yes)
 			(show_name no)
@@ -41430,7 +41059,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 129.54 287.02 0)
 			(hide yes)
 			(show_name no)
@@ -41547,7 +41176,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 355.6 101.6 0)
 			(hide yes)
 			(show_name no)
@@ -41747,7 +41376,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 329.8952 76.2 0)
 			(hide yes)
 			(show_name no)
@@ -42062,7 +41691,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-16_W7.62mm_Socket"
 			(at 420.37 153.67 0)
 			(hide yes)
 			(show_name no)
@@ -42341,7 +41970,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 535.94 20.6248 0)
 			(hide yes)
 			(show_name no)
@@ -42500,7 +42129,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 233.68 0)
 			(hide yes)
 			(show_name no)
@@ -42694,7 +42323,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 336.55 34.29 0)
 			(hide yes)
 			(show_name no)
@@ -42810,7 +42439,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 208.28 215.9 0)
 			(hide yes)
 			(show_name no)
@@ -42926,7 +42555,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 297.18 120.65 0)
 			(hide yes)
 			(show_name no)
@@ -43042,7 +42671,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 292.1 160.02 0)
 			(hide yes)
 			(show_name no)
@@ -43672,7 +43301,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 217.17 253.0348 0)
 			(hide yes)
 			(show_name no)
@@ -43752,7 +43381,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 297.18 179.07 0)
 			(hide yes)
 			(show_name no)
@@ -43867,7 +43496,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 279.0952 69.85 0)
 			(hide yes)
 			(show_name no)
@@ -43946,7 +43575,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 270.8148 175.26 0)
 			(hide yes)
 			(show_name no)
@@ -44025,7 +43654,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
 			(at 488.95 246.6848 0)
 			(hide yes)
 			(show_name no)
@@ -44105,7 +43734,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Package_DIP:DIP-14_W7.62mm_Socket"
 			(at 50.8 287.02 0)
 			(hide yes)
 			(show_name no)
@@ -44799,82 +44428,77 @@
 	)
 	(group ""
 		(uuid "9c154252-fd2d-4409-8987-ffe587c84c6f")
-		(members "004545cb-fdb5-488f-9bb7-f4459ddaf36e" "045d6ee3-437c-444e-8aca-9f6d605948c6"
-			"0487adc2-54f4-4332-ac8b-4383579f404c" "066bc46b-6baf-4786-8c12-b06bcda81416"
-			"06712a68-73e6-4a23-8a1e-23211ae5c56f" "06d4a95e-c5ba-4525-ad5b-31a72969d5fe"
-			"06ddb871-e860-4573-ae15-4f14bdb8cfab" "0914ad32-71f7-430a-9fd0-30014f9154c2"
+		(members "004545cb-fdb5-488f-9bb7-f4459ddaf36e" "01daa251-dbec-4c78-9cb2-de262e29c39b"
+			"045d6ee3-437c-444e-8aca-9f6d605948c6" "066bc46b-6baf-4786-8c12-b06bcda81416"
+			"06712a68-73e6-4a23-8a1e-23211ae5c56f" "0914ad32-71f7-430a-9fd0-30014f9154c2"
 			"0914deaf-4c56-4d4c-ac36-8e7cbb4a258a" "096c81e4-002a-428b-b152-ff59defd2aa0"
 			"09d2de7f-3490-4ae5-929c-4499e7773238" "0b8b08bf-04ed-4d22-9d64-bee471c0b0ad"
-			"0f4780f8-405a-4581-b405-69bbed74972f" "17a8ab9d-21f6-4b7c-9f27-bc76c8d0f77e"
+			"0f4780f8-405a-4581-b405-69bbed74972f" "12e22231-723b-4057-bdb6-401c57e5b32c"
+			"16150f4e-4fde-43d1-9e1d-dde46f78ee8a" "17a8ab9d-21f6-4b7c-9f27-bc76c8d0f77e"
 			"1832213f-51f8-4dad-b436-cc04f9be6d44" "1a02e2bd-6525-44f1-ac31-ab9b16a4768c"
-			"1add6369-71b2-4932-b99e-c5edbce5ea3a" "1b46a0a4-2fc6-494e-ba27-9ad8174f889f"
-			"1c96ac84-00d1-4220-9eb2-bbca9e771884" "1ef973c6-a6cd-4a33-b409-03d661407f29"
-			"2022b98d-0faf-4db7-94b2-e20af74e2b37" "218331db-cef9-4e01-b7ee-43ddc6868544"
-			"287ba076-5b96-4fb8-a3e6-e45372a10110" "29b01ba6-5298-4124-a8ff-60eb9dd8cb67"
-			"2c497861-2c37-4b0b-9a0c-201c67852e8f" "2d668935-eb9a-4024-babf-14e6707a9983"
-			"36368164-690e-44a1-9f5b-ac4c0975c7e6" "36fb05bd-9613-472a-989d-ea834838dea7"
-			"370fbaca-e0a2-46ca-9b97-a4f13fe460bd" "38d2ec9f-dfe4-4fb3-ac2b-d7eebba94460"
-			"39697f3d-262f-4ebc-938d-8e114bee8b2e" "3a7f9e32-7801-402d-aa84-28a23ea48af8"
-			"3b30950b-0de9-4c74-b833-b43722aaad8e" "3e7dcfd9-1c3d-4258-bb4c-f2590b2150a1"
+			"1add6369-71b2-4932-b99e-c5edbce5ea3a" "1c96ac84-00d1-4220-9eb2-bbca9e771884"
+			"1ef973c6-a6cd-4a33-b409-03d661407f29" "2022b98d-0faf-4db7-94b2-e20af74e2b37"
+			"218331db-cef9-4e01-b7ee-43ddc6868544" "287ba076-5b96-4fb8-a3e6-e45372a10110"
+			"2c47551c-2d6f-46e1-ba45-2febcab5c1f0" "2c497861-2c37-4b0b-9a0c-201c67852e8f"
+			"2d668935-eb9a-4024-babf-14e6707a9983" "359fe8ad-e026-4929-a7b8-9fc2fc09ae07"
+			"36368164-690e-44a1-9f5b-ac4c0975c7e6" "36ce2b91-e381-46fe-951a-5999a65c2d35"
+			"36fb05bd-9613-472a-989d-ea834838dea7" "370fbaca-e0a2-46ca-9b97-a4f13fe460bd"
+			"38d2ec9f-dfe4-4fb3-ac2b-d7eebba94460" "39697f3d-262f-4ebc-938d-8e114bee8b2e"
+			"3a7f9e32-7801-402d-aa84-28a23ea48af8" "3b30950b-0de9-4c74-b833-b43722aaad8e"
+			"3d3591ca-4268-429b-8658-3776bd254d79" "3dbc75ac-aadf-4502-a0e1-98927242f40c"
 			"3ed80fdf-50b0-44e5-9744-3465d3fee563" "3fe07bf8-955c-42a6-a209-6f38ec0c8a97"
+			"41466858-69a1-4653-966a-1795c8af7450" "41652d2f-7a9d-4da0-b5e9-3a871a5bafcb"
 			"427ce378-5511-472d-8f92-a474e1f6279b" "43019e46-77ad-40d3-92cc-5343c34a2b0d"
 			"44ee6f79-b6a5-4877-9148-d5c75f8b16d0" "44f16c96-ee58-41de-b6a5-ae6eee93f888"
 			"44f7d081-bdb5-4b30-833a-85edc488b081" "4638a281-8640-45b3-b29d-68b238ff4904"
-			"468d371c-1513-4745-943b-cee04d61d1e9" "46cf21b2-1621-4e56-871c-5065cab7ae99"
-			"4778e96e-13b2-44d4-aa6b-99a515df1b96" "483ec820-54e9-4958-9839-4f189438c50e"
-			"491b4d95-884f-48be-a554-5f884b6eabaa" "4b668671-6ca5-49f6-a0d4-32ab6a12ff99"
-			"4c26921e-1e25-4260-92d1-9e8183a40161" "4c443a22-46bb-490e-b76f-f8a94b17d8e9"
-			"5151ff36-4c28-4f2d-b515-57a197bac6b6" "516d67f4-2d10-40cb-9cb5-f9beac658654"
-			"52a07120-260c-4f86-ac9a-4eafb87cefb7" "52ca397e-74d3-4f52-863c-6e099e07e856"
-			"54602d82-2287-4b6c-b500-7ac0dd841678" "548ce7ec-bfb0-402b-a87b-6c18b3cb6f14"
-			"54ecc1aa-f3da-41ff-be21-ac6e33c9f587" "563befe1-4f2e-4ef1-8f4d-19af3dd89ad3"
+			"468d371c-1513-4745-943b-cee04d61d1e9" "491b4d95-884f-48be-a554-5f884b6eabaa"
+			"4b668671-6ca5-49f6-a0d4-32ab6a12ff99" "4c26921e-1e25-4260-92d1-9e8183a40161"
+			"4c443a22-46bb-490e-b76f-f8a94b17d8e9" "516d67f4-2d10-40cb-9cb5-f9beac658654"
+			"52a07120-260c-4f86-ac9a-4eafb87cefb7" "54602d82-2287-4b6c-b500-7ac0dd841678"
+			"548ce7ec-bfb0-402b-a87b-6c18b3cb6f14" "54ecc1aa-f3da-41ff-be21-ac6e33c9f587"
 			"573f5cbd-b36d-4cb4-9994-f0b69da3c3de" "584701fd-5792-4105-bc0a-8fb6fdb3ccdd"
 			"5afc8b2e-e331-44c3-8b60-00a3d65dbc90" "5e39e175-4030-4589-939c-3cd309024ced"
-			"5e950e83-eaaa-4d7e-8bad-9435bcbcbdff" "61594138-b399-443b-9fb2-26b9c4dde445"
-			"627a5280-c0f9-4874-ab4e-2b08daae3614" "63257145-990e-4b82-a0cb-1a5f905d8ce2"
-			"6654f041-507f-46ae-aee1-12d7efe300ad" "66a5b8be-279a-437b-ae0e-3694ce116fe8"
-			"685e6a9e-b433-4194-a2c9-259c5d5a7282" "694c1f8d-04dc-4ef0-962c-db8ef5bc3bd1"
-			"694d1fc5-2c47-4542-8918-328358bcdba7" "6a8310c3-1eb1-4b71-bb8a-f33c0db79362"
-			"6ca63be0-47e9-406e-92d3-82578a739702" "6f869493-0b78-4ad5-98a8-3dadd2e9f22e"
-			"708e0a09-ec13-4ec4-b012-df2f604d8f2d" "726be41f-9b06-47e1-bb3f-10ad80ece8ce"
-			"72dafe19-3d52-4036-adcc-8dc5867a0bdc" "7311371c-df64-461c-9a00-0fa71c98e77c"
-			"73db0cfe-d071-436d-b9d0-4432ef4a86d5" "758c733b-eb9d-42eb-a0c6-048a9bb38e48"
-			"77aee547-bd70-4e28-9dc9-b54f15bdbad4" "781379af-c20d-4d81-99e7-d71267923d70"
-			"7f50fc11-153f-436f-910f-df89e535ead9" "8045ee63-2688-4c3d-a23d-df918df1c779"
-			"824a2740-b6cc-4445-9119-8a52f7d50d0a" "8324d40a-68e3-4ce8-80db-05a636558041"
-			"8445da3d-6df0-437b-a8aa-03b4ca18f82b" "88d567e8-09bf-4c3c-959a-361fae793edb"
-			"88e829bd-3a1f-4e29-860a-f17a01d745e4" "89fc4f3e-21dc-4c04-8878-b6733c2ff7f7"
+			"61594138-b399-443b-9fb2-26b9c4dde445" "627a5280-c0f9-4874-ab4e-2b08daae3614"
+			"63257145-990e-4b82-a0cb-1a5f905d8ce2" "64bb1718-4c00-40e7-a21a-19d3068ef34c"
+			"685e6a9e-b433-4194-a2c9-259c5d5a7282" "69140fb4-3ead-45f5-b9c2-a663261e9557"
+			"694c1f8d-04dc-4ef0-962c-db8ef5bc3bd1" "6a70569f-4e97-406e-968b-bb2cbb675c44"
+			"6a8310c3-1eb1-4b71-bb8a-f33c0db79362" "6ca63be0-47e9-406e-92d3-82578a739702"
+			"6e024ee6-bac9-465b-a5f3-0b5ec50cc5c6" "708e0a09-ec13-4ec4-b012-df2f604d8f2d"
+			"726be41f-9b06-47e1-bb3f-10ad80ece8ce" "7311371c-df64-461c-9a00-0fa71c98e77c"
+			"758c733b-eb9d-42eb-a0c6-048a9bb38e48" "77aee547-bd70-4e28-9dc9-b54f15bdbad4"
+			"781379af-c20d-4d81-99e7-d71267923d70" "794e2b7a-af7f-4fee-a2a7-35219f15b48c"
+			"7ca085b6-c6eb-4a98-85c2-e946d5c4fd9c" "8045ee63-2688-4c3d-a23d-df918df1c779"
+			"824a2740-b6cc-4445-9119-8a52f7d50d0a" "8445da3d-6df0-437b-a8aa-03b4ca18f82b"
+			"88d567e8-09bf-4c3c-959a-361fae793edb" "89fc4f3e-21dc-4c04-8878-b6733c2ff7f7"
 			"902a1853-c154-4068-884f-df7ba4c72298" "91a974fe-3125-4763-a76d-c410490f4a3c"
-			"92de126d-2959-44c8-9599-f624f80bd464" "94561522-98a5-4518-99c1-9d2063fb21d8"
-			"951274f5-7d2e-4cc3-80ca-7769b0a47f73" "977ae8e8-1c29-4c21-a4ba-932328fe8af9"
-			"99e29621-1d19-4311-9683-7fcba93ccf5d" "9a6f33ce-ccc5-45aa-a093-d06383b701de"
-			"9c91ba67-d1fe-4605-a8c1-5720305a52cf" "9cfb0846-a5bd-4393-83c0-1f1de244f19f"
-			"9db18590-63f0-41a6-832d-b64fe7ef4bb8" "9dcd920d-6fa0-4044-b683-64edea9cf66b"
-			"a30e0316-cb44-4fb3-8e1e-c08fadd8ffe7" "a5c14f88-7285-4f85-9892-0649aee635a3"
-			"a708bb77-f66a-4b80-9df0-f53feb978163" "a96dd0d5-31de-49fd-8dec-2aebfddd0b00"
-			"aaf605f6-cc36-46ce-bf27-2292cd93ca93" "afa30574-8a4f-4dc1-b5e8-14278d90ec73"
-			"b04547cf-570e-41e7-a2ee-67cc4ec5ed8c" "b08dfafc-536d-4415-ac6f-2e4becf5c226"
-			"b2967ad1-3542-4e7c-b5ac-7da3bd8e67b8" "b39bdb39-7729-48ff-93a2-1f4b9c3e392d"
-			"bbc92fc2-d7ab-489d-bf5a-7f0f5a997699" "c2baea9b-653a-47ef-a2b1-34a005dc73ae"
-			"c4d9165c-736d-4ac0-9e77-b1e8a8ac017c" "c63d40fb-be5c-4c64-a982-e4d08649f977"
-			"c9191c1a-2093-400c-94f9-a1be0d04a4cf" "cd15ad0d-aae1-4aa6-85b8-038fd991e391"
-			"cef78354-a6f7-4375-8cd9-0f958e54a6f2" "d02cc1b7-1278-4fd5-ba86-6e44c61acb54"
-			"d551a85c-6850-4370-b5d4-62bd33711ef4" "d6744a44-a759-41b7-92eb-59b36ac85eb6"
+			"92de126d-2959-44c8-9599-f624f80bd464" "970830cc-4b54-43b6-bdc6-93b9e98a47e2"
+			"97314d59-5e73-44a8-8f59-7c4d7e030205" "99e29621-1d19-4311-9683-7fcba93ccf5d"
+			"9a6f33ce-ccc5-45aa-a093-d06383b701de" "9c91ba67-d1fe-4605-a8c1-5720305a52cf"
+			"9cfb0846-a5bd-4393-83c0-1f1de244f19f" "9db18590-63f0-41a6-832d-b64fe7ef4bb8"
+			"9dcd920d-6fa0-4044-b683-64edea9cf66b" "a30e0316-cb44-4fb3-8e1e-c08fadd8ffe7"
+			"a4ad2bf7-e333-4dfb-95d6-a5cff1758c45" "a5ca4a32-42c0-4114-aab4-4fa1bc7b4779"
+			"a849f8af-f1f9-401f-95e6-4c5f088a3650" "a91769de-6337-468d-ac70-8c438373b363"
+			"a96dd0d5-31de-49fd-8dec-2aebfddd0b00" "aaf605f6-cc36-46ce-bf27-2292cd93ca93"
+			"afa30574-8a4f-4dc1-b5e8-14278d90ec73" "b04547cf-570e-41e7-a2ee-67cc4ec5ed8c"
+			"b08dfafc-536d-4415-ac6f-2e4becf5c226" "b2967ad1-3542-4e7c-b5ac-7da3bd8e67b8"
+			"b39bdb39-7729-48ff-93a2-1f4b9c3e392d" "bbc92fc2-d7ab-489d-bf5a-7f0f5a997699"
+			"c63d40fb-be5c-4c64-a982-e4d08649f977" "c9191c1a-2093-400c-94f9-a1be0d04a4cf"
+			"ccf788f9-af44-4df8-8306-34db7e4db856" "cd15ad0d-aae1-4aa6-85b8-038fd991e391"
+			"d02cc1b7-1278-4fd5-ba86-6e44c61acb54" "d6744a44-a759-41b7-92eb-59b36ac85eb6"
 			"d7232c32-a39e-464e-bce7-5c87d17da4bb" "d731ffbe-4393-4754-9d6f-0e516fd05fcd"
-			"d83aa600-9d7d-4afb-878b-ed013cf88ac5" "d8b7a058-dc73-4376-954d-2039d2858ba2"
-			"d926089e-e15c-4842-abd3-7168954fcb94" "d9cc27b9-1a7e-459d-8522-24d2db834617"
-			"da5613a5-29ee-4ec7-91dc-29d299bea5cf" "db0d6d6a-981a-443b-b73d-c0e0db9aa23b"
-			"db7fc776-9df6-4953-9ea2-dff0c0eeafc3" "dbd0e836-c21b-443f-af71-53f93df3a06f"
+			"d8b7a058-dc73-4376-954d-2039d2858ba2" "d926089e-e15c-4842-abd3-7168954fcb94"
+			"d9cc27b9-1a7e-459d-8522-24d2db834617" "da5613a5-29ee-4ec7-91dc-29d299bea5cf"
+			"db0d6d6a-981a-443b-b73d-c0e0db9aa23b" "db7fc776-9df6-4953-9ea2-dff0c0eeafc3"
+			"dbd0e836-c21b-443f-af71-53f93df3a06f" "de7301fc-418e-412d-9351-fe9bfcff6fad"
 			"decbc36a-1a92-4307-ba97-837f11ae0b65" "df802db0-34dc-4d6c-a14e-37827fd20991"
-			"e56d9358-7d3d-4a19-9fab-e995c297ef9f" "e6a0605a-18b6-4587-ae01-ad0c7673fe84"
-			"e8520424-5ddc-47d5-a46c-b179bd514de9" "e93f1aef-baf7-48bb-ac20-f3d08cadf6d4"
-			"ebba2c87-047e-4a5b-876a-763c298a75f1" "effbe206-e5eb-448c-88f0-8dafefe5f071"
-			"f383e246-52b5-4464-9e7e-216e85a2b783" "f53ad091-08ee-43e4-a0ce-edf6faeb0a66"
-			"f563e4a7-eaee-4d7e-a1c2-cd7dc8642083" "f5bc3deb-94aa-4e9b-9c4c-48bbf0601de1"
+			"e56d9358-7d3d-4a19-9fab-e995c297ef9f" "e8520424-5ddc-47d5-a46c-b179bd514de9"
+			"e93f1aef-baf7-48bb-ac20-f3d08cadf6d4" "ebba2c87-047e-4a5b-876a-763c298a75f1"
+			"effbe206-e5eb-448c-88f0-8dafefe5f071" "f383e246-52b5-4464-9e7e-216e85a2b783"
+			"f53ad091-08ee-43e4-a0ce-edf6faeb0a66" "f5bc3deb-94aa-4e9b-9c4c-48bbf0601de1"
 			"f5be7b05-64ea-425e-9b19-481339d48d34" "f614f3d8-e6cb-4182-aa5d-4ca496215aae"
 			"f79b6c84-a5a5-4290-828d-8b9ceb2d941e" "fb87f878-6cf6-47bf-bad7-0b051d2e12bc"
-			"fbffbd5b-6a58-47bf-87db-3b9cf94ee544" "fd6eda7f-f0e7-4d88-94a4-4130b985843a"
-			"fe9e5bcd-299c-44f5-94dd-055a41518191" "ffbc1d8c-c03d-469c-b0cc-6e020f4d0a50"
+			"fbffbd5b-6a58-47bf-87db-3b9cf94ee544" "fd4cf1ec-fc98-40c5-a967-bdbc6b140027"
+			"fe9e5bcd-299c-44f5-94dd-055a41518191"
 		)
 	)
 	(group ""

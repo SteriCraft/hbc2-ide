@@ -201,7 +201,7 @@ The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19,
 - **J5:** a 2 × 4 header numbered like the TTGO's J2, for a straight IDC ribbon. Use a keyed (shrouded) header.
 - **J6:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.
 - **J7:** a 1 × 4 header for the soldered wires.
-- **RN1:** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, symbol `Device:R_Network08`, footprint `Resistor_THT:R_Array_SIP9`). Its common pin is on GND, and its 8 resistors pull `iod_addr8..15` down. A8–A15 reach J4, now 1 × 16.
+- **RN1 (moved to the motherboard on 2026-11-14, to save 8 card pins; the text below describes it as it was on the card):** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, symbol `Device:R_Network08`, footprint `Resistor_THT:R_Array_SIP9`). Its common pin is on GND, and its 8 resistors pull `iod_addr8..15` down. A8–A15 reach J4, now 1 × 16.
 - **U3, U6, U9:** relabelled SN74AHCT595N.
 
 **Firmware rules:**

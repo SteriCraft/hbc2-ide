@@ -116,7 +116,7 @@ Chosen 2026-11-14 (KiCad clkgen board, kicad/NOTES.md "clkgen: oscillator and re
 | SW3 | tactile push button, NO | | reset button, across C9 through R5 |
 | R5 | resistor | 100 Ω | in series with SW3: 50 mA peak discharge |
 
-Datasheet: `circuits/chips/ecs_2100x.pdf` (ECS-2100X series, NRND; BX = ±50 ppm, -040 = 4.000 MHz). It doesn't list the 2200 series: confirm the 2200BX is 5 V. VDD 4.75–5.25 V, symmetry 45–55 %, rise / fall 5 ns, 50 pF HCMOS load, start-up 10 ms max.
+Datasheet: `circuits/chips/ecs_2100x.pdf` (ECS-2100X series, NRND; BX = ±50 ppm, -040 = 4.000 MHz). It doesn't list the 2200 series; the 2200BX is a 5 V part (confirmed 2026-11-14). VDD 4.75–5.25 V, symmetry 45–55 %, rise / fall 5 ns, 50 pF HCMOS load, start-up 10 ms max.
 
 ### Control unit (cu)
 
