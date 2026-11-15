@@ -495,7 +495,7 @@ RCLK could take 26 or 27, giving up the mouse port, or GPIO 0, which is fine onc
 
 **Not recommended for now:** a second MCU (an Arduino Nano on `0x10–0x1F`). One ESP32 covers VGA, PS/2, SD, Wi-Fi and sound. The decode leaves the select free for later (Q-C9).
 
-**Wi-Fi:** NTP is possible, but Wi-Fi with FabGL's VGA uses a lot of RAM and can disturb the display. Recommendation: NTP once at start-up, then Wi-Fi off. A DS3231 on I²C (two free GPIOs, or the mouse port's) keeps the time without Wi-Fi (Q-C6).
+**Wi-Fi:** NTP is possible, but Wi-Fi with FabGL's VGA uses a lot of RAM and can disturb the display. Recommendation: NTP once at start-up, then Wi-Fi off. No RTC chip: Gianni dropped the DS3231 on 2026-11-15, because he always has Wi-Fi (home network or phone) and the TTGO has no spare GPIOs for I²C (Q-C6).
 
 ### 9.5 Emulator, IDE and shipped code (replaces sections 3–5 for option C)
 
@@ -535,7 +535,7 @@ Section 5b (clean break) is mostly moot: old programs keep working once rebuilt 
 | Q-C3 | CTRL 595 (1 GPIO) or one GPIO per request (4 more GPIOs, −2 chips)? | CTRL 595 on the TTGO VGA32. Separate pulses on a bare DevKit. |
 | Q-C4 | Emulated ESP32 speed. | A configurable service time, default 4 µs per byte (8 cycles), and READY after a configurable start-up delay (default 0 in the IDE, "realistic" 500 ms as an option). Measure the real figures in step C3 and set the defaults from them. |
 | Q-C5 | VGA mode for the old monitor. | 640 × 480 × 16 colours (FabGL VGA16Controller), the 256 × 192 monitor drawn ×2 (512 × 384, centred). Its 42 × 24 text mode is drawn with the 6 × 8 font. A native 80 × 25 terminal as mode 1. |
-| Q-C6 | Time source. | NTP once at start-up, then Wi-Fi off. A DS3231 on I²C later. The RTC device keeps its ports and the one-second interrupt either way. |
+| Q-C6 | Time source. | NTP once at start-up, then Wi-Fi off. **No RTC chip** (Gianni, 2026-11-15: Wi-Fi is always available, and the TTGO has no spare GPIOs for I²C). The time lives in the ESP32 (`GET_TIME` / `SET_TIME`). |
 | Q-C7 | The ESP32 starts later than the CPU (CPU boot copy about 33 ms; ESP32 + FabGL a few hundred ms). | crt0 waits for READY. The MCU sets READY only once its plug-in events are queued, so the existing device wait then finds the devices. **Superseded by D6: crt0 sends INFO, which waits in TX while the ESP32 boots; 2 s timeout.** |
 | Q-C8 | `rst_n` to the MCU. | Yes, as an input. The MCU resets its protocol state and sends the plug-in events again, as the emulator does at power-on. **Superseded by D6: the MCU drops a half-received command and its unread replies, and sends nothing; crt0 asks INFO again.** |
 | Q-C9 | Second I/O processor (Arduino Nano). | Not now. `0x10–0x1F` stays decoded and free. |
