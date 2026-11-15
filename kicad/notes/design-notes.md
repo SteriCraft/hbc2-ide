@@ -85,7 +85,7 @@ Budget (estimates): about 0.6 A typical, 1.6 A worst case for the whole CPU. The
 - GND pour on one layer, +5V as a wide pour or a ≥ 3 mm trace (1 mm × 30 cm drops about 0.3 V at 2 A). cu and iod closest to the input.
 - Measure the rail at the farthest card under load. Below about 4.9 V (the oscillator needs 4.75 V): adjustable supply (e.g. Mean Well RS-25-5) set to 5.1 V.
 
-**Things that can feed the CPU from outside:** the Nano (D2 + R6 sense, clkgen) and the TTGO (iod D1). Both are diode-isolated.
+**Things that can feed the CPU from outside:** the Nano (D2 + R6 sense, clkgen) and the TTGO (iod D1). Both supplies are diode-isolated. The TTGO's signal pins can still feed an unpowered CPU (see "IOD: the TTGO VGA32").
 
 ## IOD notes
 
@@ -96,17 +96,18 @@ Budget (estimates): about 0.6 A typical, 1.6 A worst case for the whole CPU. The
 
 ## IOD: the TTGO VGA32 (2026-11-14)
 
-The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the I/O card, in a 3D-printed box, and is wired to it by three cables:
+The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the I/O card, in a 3D-printed box, and is wired to it by three cables: Dupont female-female wires (short run) on plain vertical 2.54 mm pin headers on the card (Gianni, 2026-11-15). Nothing is keyed: the silkscreen names each pin.
 
 | Card | Cable | TTGO end |
 |---|---|---|
-| J2 (2 × 4, keyed, numbered like the TTGO's header) | straight IDC ribbon | header J2: MOSI, SCK, (SD CS, not connected on the card), MISO, tx_full, rx_full, GND, +3V3 |
-| J4 (1 × 5, numbered like the mini-DIN; pin 2 not connected) | PS/2 cable | mouse port: RCLK_EVT (pin 1), GND (3), +5V_ESP (4), MBX_SEL (5) |
-| J1 (1 × 4) | 3 wires + GND | soldered at IO25 (RCLK_RX), IO35 (evt_pend) and IO36 (rst_n) |
+| J2 (2 × 4, numbered like the TTGO's header) | 8 Dupont wires | header J2: MOSI, SCK, (SD CS, not connected on the card), MISO, tx_full, rx_full, GND, +3V3 |
+| J4 (1 × 5, numbered like the mini-DIN; pin 2 not connected) | cut PS/2 cable, Dupont crimps on pins 1, 3, 4, 5 | mouse port: RCLK_EVT (pin 1), GND (3), +5V_ESP (4), MBX_SEL (5) |
+| J1 (1 × 4) | 3 wires + GND, Dupont ends at the card | soldered at IO25 (RCLK_RX), IO35 (evt_pend) and IO36 (rst_n) |
 
 - **U12** (SN74LVC244AN) is powered from the TTGO's 3.3 V. There is no regulator on the card.
 - **Series resistors:** 33 Ω on U12's outputs (R1, R3–R5), and 220 Ω on `rst_n` (R2), because the TTGO's button K1 sits on IO36.
 - **D1** (1N5817) feeds the TTGO from +5V. With the TTGO's own diode on USB, the TTGO can be flashed while the HBC-2 runs.
+- **Back-powering:** D1 only blocks the supply pin. With the HBC-2 off and the TTGO on USB, the TTGO's pull-ups on MBX_SEL and RCLK_EVT (and SCK / RCLK_RX when driven high) feed +5V through the 74HCT input diodes of U7, U8 and U10. Rule: unplug the Dupont wires (J4 at least) before the HBC-2 is switched off while the TTGO stays on USB. Details and the options not taken: iod-decisions.md, "Back-powering".
 - **`iod_int`** is on the card edge (J3, pin A30). It goes to the control unit.
 - **Full record** (pins, reasons, firmware rules): `logisim/notes/records/iod-decisions.md`, "The TTGO VGA32 wired to the card".
 - **`kicadcmp.py`** lists the TTGO-side nets and D1/R1–R5 as board extras or connector nets with no Logisim pin. That is expected.

@@ -22,7 +22,7 @@ The HBC-2 is built as **9 vertical cards in PCIe slots on a motherboard**. Every
 - **Card edges:** one card edge per card, drawn with the custom symbol `custom_symbols:HBC2_PCIe_xN` and the footprint `Connector_PCBEdge:BUS_PCIexpress_xN`. Each edge matches its motherboard slot pin for pin.
   - The same symbol is used on the motherboard, with the slot footprint `hbc2_slots:PCIe_xN_Slot_Amphenol_…`.
   - Both footprints name their pads A1…/B1…, so the shared symbol connects the same pins on both sides.
-- **Footprints:** every part has one, **except the three TTGO connectors on the iod** (J1, J2, J4). The capacitor footprints are provisional until the parts are chosen.
+- **Footprints:** every part has one (the iod's TTGO connectors J1, J2, J4 since 2026-11-15: plain pin headers for Dupont wires). The capacitor footprints are provisional until the parts are chosen.
 - **Power:**
   - Cards have no diode on their supply. Power comes in on the edge: B = +5V, A = GND, on pins 1, 7, 13 …
   - The only protection is at the motherboard input: barrel jack → switch → fuse T 3.15 A, then a TVS and 1000 µF across the rail.

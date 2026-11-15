@@ -87,9 +87,9 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 
 | Ref | Part | Footprint | Status |
 |---|---|---|---|
-| J2 | 2 × 4 shrouded (keyed) header, 2.54 mm, + a straight IDC ribbon with two 2 × 4 IDC sockets | **none yet** | to choose |
-| J4 | 1 × 5 header + a PS/2 (mini-DIN 6) male cable to the TTGO's mouse port | **none yet** | to choose |
-| J1 | 1 × 4 header + 3 wires and a GND wire, soldered on the TTGO | **none yet** | to choose |
+| J2 | 2 × 4 pin header, 2.54 mm, vertical + 8 Dupont female-female wires (10–15 cm) | `Connector_PinHeader_2.54mm:PinHeader_2x04_P2.54mm_Vertical` | **decided** (2026-11-15); header to choose |
+| J4 | 1 × 5 pin header, vertical + a PS/2 (mini-DIN 6) male cable, cut, with Dupont female crimps | `Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical` | **decided**; cable and crimps to choose |
+| J1 | 1 × 4 pin header, vertical + 3 wires and a GND wire, soldered on the TTGO, Dupont female at the card | `Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical` | **decided** |
 | — | LilyGO TTGO VGA32 **v1.4** | off the card, in its own box | **to buy** (not owned yet) |
 
 ## Motherboard

@@ -15360,7 +15360,7 @@
 				)
 			)
 		)
-		(property "Value" "Conn_01x05_Socket"
+		(property "Value" "TTGO_PS2_Dupont"
 			(at 367.665 48.26 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -15370,7 +15370,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x05_P2.54mm_Vertical"
 			(at 367.03 55.88 0)
 			(hide yes)
 			(show_name no)
@@ -16075,7 +16075,7 @@
 				)
 			)
 		)
-		(property "Value" "02x04_TTGO_ribbon"
+		(property "Value" "TTGO_J2_Dupont"
 			(at 331.47 20.32 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -16085,7 +16085,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_2x04_P2.54mm_Vertical"
 			(at 330.2 26.67 0)
 			(hide yes)
 			(show_name no)
@@ -20100,7 +20100,7 @@
 				)
 			)
 		)
-		(property "Value" "01x04_TTGO_soldered_wires"
+		(property "Value" "TTGO_wires_Dupont"
 			(at 323.215 48.26 0)
 			(show_name no)
 			(do_not_autoplace no)
@@ -20110,7 +20110,7 @@
 				)
 			)
 		)
-		(property "Footprint" ""
+		(property "Footprint" "Connector_PinHeader_2.54mm:PinHeader_1x04_P2.54mm_Vertical"
 			(at 322.58 55.88 0)
 			(hide yes)
 			(show_name no)

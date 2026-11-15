@@ -22,11 +22,12 @@ The circuits themselves are finished. What is left is testing them on real chips
   - B4: ROM tDF overlap at the boot's 7FFF → 8000 and FFFF → 0000;
   - B5: IN driver turn-off overlap, A8–A15 decaying through the pull-downs, the 165's data hold, MBX_SEL rising while SCK is low;
   - B6: the FabGL checks;
-  - B7: the TTGO cables (slow MBX_SEL / RCLK_EVT edges, SCK ringing, flashing over USB while the HBC-2 runs).
+  - B7: the TTGO cables (slow MBX_SEL / RCLK_EVT edges, SCK ringing, flashing over USB while the HBC-2 runs, the +5V rail with the TTGO on USB and the HBC-2 off).
 
 ## ESP32 firmware (iod-decisions.md, Documentation/HBC-2_Input_Output.md)
 
 - The compat commands, NOP, INFO with its descriptors, dropping a half-received command on `rst_n`, the events, then the native commands (on FabGL). Develop on the Mega rig or a plain ESP32 first, then on the TTGO VGA32 v1.4 (not bought yet).
+- Power and reset cases (iod-decisions.md, "Firmware rules" and "Back-powering"): at boot, read a command left waiting in TX (`tx_full`), since a serial monitor's DTR/RTS can reset the ESP32 while the CPU runs; don't drive IO12 / IO14 / IO25 high or use the SD card while `rst_n` is low. Hardware options if the back-powering leak turns out to matter: remove the TTGO's BAT20J (TTGO powered only by the HBC-2), or U7 / U10 → 74AHCT74 (U8 would still leak).
 - Measure the firmware's real response times, and put them in the emulator's I/O processor model (`IopConfig`: today 8 cycles per action and 2 for the 1 µs rule, both guesses).
 
 ## For information (no action planned)

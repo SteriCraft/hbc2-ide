@@ -198,18 +198,37 @@ The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19,
 - **R1–R5:** 33 Ω in series on U12's outputs; 220 Ω on `rst_n` (R2).
 - **D1, a 1N5817:** from +5V to `+5V_ESP` (J4.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
 - **J1:** the CPU's signals only: `iod_ie`, `iod_rw`, `iod_inr`, `clk`, `clk_wr_n`, `rst_n`, `iod_int`. `iod_int` goes to the control unit (`cu_int`, cu J1.6).
-- **J2** (J5 until the 2026-11-15 renumbering; J6 became J4 and J7 became J1): a 2 × 4 header numbered like the TTGO's J2, for a straight IDC ribbon. Use a keyed (shrouded) header.
+- **J2** (J5 until the 2026-11-15 renumbering; J6 became J4 and J7 became J1): a 2 × 4 header numbered like the TTGO's J2.
 - **J4:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.
 - **J1:** a 1 × 4 header for the soldered wires.
+- **Cables (Gianni, 2026-11-15):** plain vertical 2.54 mm pin headers on the card and Dupont female-female wires, a short run. No shrouded header, no IDC ribbon. Footprints `Connector_PinHeader_2.54mm:PinHeader_2x04_P2.54mm_Vertical` (J2), `PinHeader_1x05_P2.54mm_Vertical` (J4), `PinHeader_1x04_P2.54mm_Vertical` (J1); values `TTGO_J2_Dupont`, `TTGO_PS2_Dupont`, `TTGO_wires_Dupont`. Nothing is keyed: put each pin's signal name on the silkscreen. J2's symbol is `Conn_02x04_Top_Bottom`, but the footprint's pads are odd / even (1 and 2 side by side); with single wires only the silkscreen matters. At the TTGO end: J2 needs male pins (solder a 2 × 4 header if its pads are bare), the PS/2 cable is cut and gets Dupont female crimps on pins 1, 3, 4, 5, and the soldered wires get Dupont female ends at the card.
+- **The mouse port stays** even with no mouse: it carries MBX_SEL and RCLK_EVT with the pull-ups that keep them high through an ESP32 reset, and its pin 4 is the only plug-in way to power the TTGO from the card.
+
+**Back-powering (2026-11-15).** D1 only blocks the supply pin. The leak is through the signal pins: a 74HCT input has a protection diode to its VCC, so a line the TTGO holds high feeds the CPU's +5V rail when the HBC-2 is off and the TTGO runs on USB.
+
+| Line from the TTGO | Driven high by | Inputs with a diode to +5V |
+|---|---|---|
+| MBX_SEL | the TTGO's 4.7 kΩ pull-up, always on | U7 pin 3 (74HCT74), U8 pin 15 (74HCT165) |
+| RCLK_EVT | the TTGO's 4.7 kΩ pull-up, always on | U10 pin 11 (74HCT74) |
+| SCK | push-pull; idles low, toggles when the TTGO uses its SD card | U8 pin 2 (74HCT165) |
+| RCLK_RX | push-pull; idles low | U7 pin 11 (74HCT74) |
+| MOSI | push-pull | none (only the AHCT595s) |
+
+U12 runs from the TTGO's 3.3 V and the ESP32's input pins only receive, so neither leaks. The two pull-ups alone give about 1 mA each: no damage, but the CPU chips are partly powered.
+
+- **Decision (Gianni):** keep the TTGO's USB diode. When the TTGO is on USB and the HBC-2 is off (flashing, for example), unplug the Dupont wires (J4 at least, which carries the two pull-ups; all three to be safe). Unplug USB or the wires *before* switching the HBC-2 off. Never plug or unplug the wires while the HBC-2 is on. USB plugged in with the HBC-2 on is fine: D1 and the TTGO's BAT20J make a diode OR, nothing is unpowered.
+- **Options not taken, to keep in mind:** (1) remove the TTGO's BAT20J, so the TTGO only runs from the HBC-2 (flashing then needs the HBC-2 on); (2) U7 and U10 → 74AHCT74 (no diode to VCC), though U8's '165 would still leak, with no AHCT '165 confirmed; (3) the firmware measures below, which don't cover the pull-ups.
 - **RN1 (moved to the motherboard on 2026-11-14, to save 8 card pins; the text below describes it as it was on the card):** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, symbol `Device:R_Network08`, footprint `Resistor_THT:R_Array_SIP9`). Its common pin is on GND, and its 8 resistors pull `iod_addr8..15` down. A8–A15 reach J4, now 1 × 16.
 - **U3, U6, U9:** relabelled SN74AHCT595N.
 
 **Firmware rules:**
 - RCLK_EVT idles high and is pulsed low. RCLK_RX idles low and is pulsed high. MBX_SEL idles high.
 - MBX_SEL and the SD card's CS (GPIO13) are never low at the same time.
-- Set a low drive strength on SCK (`gpio_set_drive_capability`), so the ribbon doesn't ring.
+- Set a low drive strength on SCK (`gpio_set_drive_capability`), so the Dupont wires don't ring.
 - No speaker on the TTGO: every RCLK_RX pulse would click through its audio amplifier.
 - Never time out on the mailbox: the CPU clock can be slowed or stopped at any point (the Nano step driver on clkgen, 2026-11-14, kicad/notes/design-notes.md), even in the middle of a transfer.
+- **The ESP32 can reset while the CPU runs** (2026-11-15): opening a serial monitor toggles DTR/RTS, which resets the ESP32 through the TTGO's auto-program circuit. MBX_SEL and RCLK_EVT stay high through it (the pull-ups). At boot the firmware must look at `tx_full` and read a command left waiting in TX, because the CPU never times out and would hang. Otherwise, set the monitor not to toggle DTR/RTS (PlatformIO `monitor_dtr = 0`, `monitor_rts = 0`).
+- **Back-powering:** while `rst_n` is low (CPU off or in reset), don't drive IO12 (MOSI), IO14 (SCK) or IO25 (RCLK_RX) high, and don't use the SD card (it toggles SCK into U8). This only reduces the leak: the two pull-ups stay (see "Back-powering" above).
 
 **Logisim:** no change. The card ends at the ESP32 interface, and the test MCU's idle-low RCLK_EVT gives the same rising edge.
 
