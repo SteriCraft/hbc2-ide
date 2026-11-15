@@ -89,7 +89,7 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 |---|---|---|---|
 | Y1 | 4.000 MHz oscillator, 5 V HCMOS, half-size DIP-8 | `Oscillator_DIP-8` | **decided:** ECS-2200BX-040 |
 | A1 | Arduino Nano v3 | `Module:Arduino_Nano` | **owned**. Mount it on 2 × 1×15 female headers (to choose) |
-| RV1 | 10 kΩ potentiometer | `Potentiometer_Alps_RK09K_Single_Vertical` | to choose |
+| RV1 | 10 kΩ potentiometer | `Potentiometer_Runtron_RM-065_Vertical` | **decided:** Gianni's blue 103 trimmer from stock (RM-065 style, top screw, pins in a 5 × 5 mm triangle; check pin 2 = wiper against the real part) |
 | SW1–SW3 | 6 mm tactile buttons: STEP, RUN/STOP, RESET | `SW_PUSH_6mm` | to choose (breadboard: Omron B3F-1000) |
 | JP1 | 1 × 3 pin header + jumper | `PinHeader_1x03_P2.54mm_Vertical` | to choose |
 | TP1–TP3 | test points `clkgen_osc`, `clk_5`, `rst_n` | `TestPoint_THTPad_D1.5mm_Drill0.7mm` | pads only, nothing to buy |
@@ -111,7 +111,7 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 | RN1 | 10 kΩ × 8 bussed network, SIP-9 (A8–A15 pull-downs) | | `Resistor_THT:R_Array_SIP9` | **decided:** Bourns 4609X-101-103LF |
 | J1 | DC barrel jack, 2.1 × 5.5 mm, centre + | | `BarrelJack_CUI_PJ-102AH_Horizontal` | **decided:** CUI PJ-102AH. Check that it fits the GST25E05's plug |
 | SW1 | Power switch: a rocker on the case, ≥ 3 A, wired to a 2-pin JST XH header | | `JST_XH_B2B-XH-A_1x02_P2.50mm_Vertical` | rocker to choose. JST B2B-XH-A + XHP-2 housing + crimps |
-| F1 | 5 × 20 mm fuse + 2 PCB clips | T 3.15 A | `Fuseholder_Clip-5x20mm_Keystone_3517_…` | **decided:** Keystone 3517 clips. Buy spare fuses |
+| F1 | 5 × 20 mm fuse in a fuse holder from stock (body 10 × 25 mm, pins 25 mm apart) | T 3.15 A | `hbc2_parts:Fuseholder_Stock_5x20mm_P25.00mm_Body10x25mm` | **decided 2026-11-15:** stock holder, nothing to buy except spare fuses. Pins 1.2 × 0.7 mm blades, drill 1.5 mm round (fits any orientation). Fuse 5 × 20 mm |
 | D1 | Unidirectional TVS diode, drawn with the Zener symbol | P6KE6V8A | `D_DO-15_P12.70mm_Horizontal` | **decided** |
 | C1 | Electrolytic capacitor, 10 mm can, 5 mm pitch | 1000 µF 10 V | `CP_Radial_D10.0mm_P5.00mm` | to choose |
 

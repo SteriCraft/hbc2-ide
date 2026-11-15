@@ -32735,7 +32735,7 @@
 				(justify left)
 			)
 		)
-		(property "Footprint" "Fuse:Fuseholder_Clip-5x20mm_Keystone_3517_Inline_P23.11x6.76mm_D1.70mm_Horizontal"
+		(property "Footprint" "hbc2_parts:Fuseholder_Stock_5x20mm_P25.00mm_Body10x25mm"
 			(at 69.85 149.86 0)
 			(hide yes)
 			(show_name no)
@@ -32757,7 +32757,7 @@
 				)
 			)
 		)
-		(property "Description" "Fuse 5x20 mm, time-lag 3.15 A, in two PCB clips"
+		(property "Description" "Fuse 5x20 mm, time-lag 3.15 A, in stock fuse holder (25 mm pitch)"
 			(at 69.85 149.86 0)
 			(hide yes)
 			(show_name no)
