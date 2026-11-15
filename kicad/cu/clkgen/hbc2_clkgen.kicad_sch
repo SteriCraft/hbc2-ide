@@ -12413,7 +12413,7 @@
 				)
 			)
 		)
-		(property "Value" "1N5817"
+		(property "Value" "1N5819"
 			(at 248.92 85.09 0)
 			(show_name no)
 			(do_not_autoplace no)

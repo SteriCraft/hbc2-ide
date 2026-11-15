@@ -68,7 +68,7 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 | 220 Ω, ¼ W | same | | | | | | | | 1 | 1 | 2 | to choose |
 | 10 kΩ, ¼ W | same | | | | | | | | | 3 | 3 | to choose (breadboard: Yageo MFR-25FBF52-10K) |
 | 100 Ω, ¼ W | same | | | | | | | | | 1 | 1 | to choose (breadboard: Yageo MFR-25FBF52-100R) |
-| 1N5817 Schottky | `D_DO-41_SOD81_P10.16mm` | | | | | | | | 1 | 1 | 2 | to choose |
+| 1N5819 Schottky | `D_DO-41_SOD81_P10.16mm` | | | | | | | | 1 | 1 | 2 | **owned** (10 in stock). Same family as the 1N5817, about 50 mV more drop at our currents (TTGO still gets about 4.55 V) |
 | 1N4148 | `D_DO-35_SOD27_P7.62mm` | | | | | | | | | 1 | 1 | to choose (breadboard: onsemi 1N4148) |
 | Card edge (gold fingers) | `Connector_PCBEdge:BUS_PCIexpress_xN` | x4 | x8 | x16 | x16 | x16 | x16 | x8 | x4 | x1 | 9 | **decided:** part of the PCB |
 

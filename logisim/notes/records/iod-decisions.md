@@ -196,7 +196,7 @@ The other pins stay as FabGL's defaults for this board. VGA uses 21, 22, 18, 19,
 **Card changes (KiCad):**
 - **U12 → SN74LVC244AN on +3V3**, which comes from the TTGO through J2.8. C12 decouples it on +3V3. It is the only 3.3 V chip in the HBC-2. There is no regulator on the card: U12 is then powered exactly when the ESP32 is, so it can't back-power the ESP32's pins.
 - **R1–R5:** 33 Ω in series on U12's outputs; 220 Ω on `rst_n` (R2).
-- **D1, a 1N5817:** from +5V to `+5V_ESP` (J4.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
+- **D1, a 1N5819:** (a 1N5817 at first; changed 2026-11-15 because the 1N5819 is in stock: same family, about 50 mV more drop) from +5V to `+5V_ESP` (J4.4). Together with the TTGO's own BAT20J on USB VBUS, it makes a diode OR. The card never feeds the PC's USB, and USB never feeds the HBC-2, so the TTGO can be flashed while the HBC-2 runs. The TTGO's ME6211 regulator still gives 3.3 V from about 4.3 V.
 - **J1:** the CPU's signals only: `iod_ie`, `iod_rw`, `iod_inr`, `clk`, `clk_wr_n`, `rst_n`, `iod_int`. `iod_int` goes to the control unit (`cu_int`, cu J1.6).
 - **J2** (J5 until the 2026-11-15 renumbering; J6 became J4 and J7 became J1): a 2 × 4 header numbered like the TTGO's J2.
 - **J4:** a 1 × 5 header numbered like the mini-DIN; pin 2 not connected.

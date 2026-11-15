@@ -14,7 +14,7 @@ The circuits themselves are finished. What is left is testing them on real chips
   - the mem ROM pattern: `vectors/mem.rs` `rom_pattern`, to burn into the two AT28C256.
 - **EEPROM programmer firmware:** the Mega with a ZIF socket, built with the mem card (order 6).
 - **iod on the breadboard:**
-  - add its order to breadboard-order.md: the 12 chips, the 33 Ω and 220 Ω resistors, the 1N5817, the TTGO cables, the TTGO VGA32 v1.4;
+  - add its order to breadboard-order.md: the 12 chips, the 33 Ω and 220 Ω resistors, the TTGO cables, the TTGO VGA32 v1.4;
   - add a rig map `rig/iod.map`. Without the TTGO, U12 needs 3.3 V on J2.8, which the Mega's 3.3 V pin can supply.
 - **Scope checks** ([breadboard-checks.md](breadboard-checks.md)):
   - B1: control register → 377 hold times;

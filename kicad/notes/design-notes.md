@@ -46,7 +46,7 @@ Goal: slow clocks and step by step from a button, with the boot (65,548 steps) s
 | Ref | Part | Connection |
 |---|---|---|
 | A1 | Arduino Nano v3 (`MCU_Module:Arduino_Nano_v3.x`, footprint `Module:Arduino_Nano`, in 2 × 1×15 female headers) | 5V pin fed from +5V through D2 (not VIN), both GND |
-| D2 | 1N5817 | anode +5V, cathode the Nano's 5V pin: the card feeds the Nano, USB can never feed the card (S1) |
+| D2 | 1N5819 | anode +5V, cathode the Nano's 5V pin: the card feeds the Nano, USB can never feed the card (S1) |
 | R6 | 10 kΩ | +5V → A1: power sense. The sketch drives nothing while A1 reads low |
 | JP1 | 3-pin jumper (`Jumper:Jumper_3_Open`, 1×03 header) | 1 = Y1.5, 2 = `clkgen_osc`, 3 = the Nano clock. Selects Y1 (standalone, no Nano) or the Nano |
 | R3 | 33 Ω | D9 (OC1A) → JP1.3: damps the 4 MHz edges |
@@ -71,7 +71,7 @@ The Nano's D13 LED shows run / stop. The old rig connector J1 is removed (see "J
 
 **Loads:** the Nano's D2 and D3 pins add one input each (about 10 pF) on `clk_5` and `rst_n`: negligible next to the branch loads.
 
-**Power (S1, settled 2026-11-14):** on a Nano v3, USB feeds the 5V pin through its own Schottky. D2 (1N5817) feeds that pin from the card, so the Nano runs from either side at about 4.7 V and can never power the CPU from USB. If USB is plugged in while the CPU is off, R6 lets the sketch see it and keep D9 and D4 as inputs, so nothing pushes current into the unpowered chips' input clamps.
+**Power (S1, settled 2026-11-14):** on a Nano v3, USB feeds the 5V pin through its own Schottky. D2 (1N5819) feeds that pin from the card, so the Nano runs from either side at about 4.7 V and can never power the CPU from USB. If USB is plugged in while the CPU is off, R6 lets the sketch see it and keep D9 and D4 as inputs, so nothing pushes current into the unpowered chips' input clamps.
 
 **Firmware rule (ESP32):** the CPU can be stopped in the middle of a mailbox transfer, so the ESP32 never times out on the mailbox (iod-decisions.md firmware rules).
 
@@ -106,7 +106,7 @@ The ESP32 board is the LilyGO TTGO VGA32 v1.4. It sits next to the I/O card, in 
 
 - **U12** (SN74LVC244AN) is powered from the TTGO's 3.3 V. There is no regulator on the card.
 - **Series resistors:** 33 Ω on U12's outputs (R1, R3–R5), and 220 Ω on `rst_n` (R2), because the TTGO's button K1 sits on IO36.
-- **D1** (1N5817) feeds the TTGO from +5V. With the TTGO's own diode on USB, the TTGO can be flashed while the HBC-2 runs.
+- **D1** (1N5819) feeds the TTGO from +5V. With the TTGO's own diode on USB, the TTGO can be flashed while the HBC-2 runs.
 - **Back-powering:** D1 only blocks the supply pin. With the HBC-2 off and the TTGO on USB, the TTGO's pull-ups on MBX_SEL and RCLK_EVT (and SCK / RCLK_RX when driven high) feed +5V through the 74HCT input diodes of U7, U8 and U10. Rule: unplug the Dupont wires (J4 at least) before the HBC-2 is switched off while the TTGO stays on USB. Details and the options not taken: iod-decisions.md, "Back-powering".
 - **`iod_int`** is on the card edge (J3, pin A30). It goes to the control unit.
 - **Full record** (pins, reasons, firmware rules): `logisim/notes/records/iod-decisions.md`, "The TTGO VGA32 wired to the card".

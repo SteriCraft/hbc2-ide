@@ -7,7 +7,7 @@ Details for each item are in the notes listed in [README.md](README.md).
 ### Before routing
 
 1. **Choose the capacitors** (100 nF, 47 µF, 10 µF, 1000 µF) and check their footprints. Those footprints are provisional.
-2. **Choose the other open parts:** 33 Ω, 220 Ω, the 1N5817, the potentiometer, the rocker switch, the Nano headers, the JP1 header, the iod's pin headers and Dupont wires / PS/2 cable, and the socket type (turned-pin or open-frame). See [parts.md](parts.md).
+2. **Choose the other open parts:** 33 Ω, 220 Ω, the potentiometer, the rocker switch, the Nano headers, the JP1 header, the iod's pin headers and Dupont wires / PS/2 cable, and the socket type (turned-pin or open-frame). See [parts.md](parts.md).
 3. **Slot footprints x4 / x8 / x16:** get the Amphenol drawing or measure a real slot. Check the peg holes, then print each footprint at 1:1 and lay the slot on it. This only blocks the motherboard.
 4. **Barrel jack:** check that the CUI PJ-102AH fits the GST25E05's plug.
 5. **Mechanical choices for each card:**
@@ -57,3 +57,4 @@ Details for each item are in the notes listed in [README.md](README.md).
   - Part labels checked against chips.md (S3).
   - ERC 0 / 0 on all 10 schematics.
   - iod: J1, J2, J4 get plain vertical pin headers for Dupont wires (Gianni); every part on every board now has a footprint. ERC 0 / 0, netlist unchanged.
+  - iod D1 and clkgen D2: 1N5817 → 1N5819 (Gianni has 10 in stock; same DO-41 footprint).
