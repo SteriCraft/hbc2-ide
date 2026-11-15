@@ -1,6 +1,7 @@
 @echo off
 rem Builds the HBC-2 IDE (debug) with the latest code, then opens it.
 cd /d "%~dp0hbc2"
+powershell -NoProfile -ExecutionPolicy Bypass -File trim-target.ps1
 cargo build -p hbc2-ide
 if errorlevel 1 (
     echo.
