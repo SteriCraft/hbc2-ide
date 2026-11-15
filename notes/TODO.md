@@ -30,10 +30,6 @@ history keeps them). Status: [README.md](README.md).
 
 ## Shell (Gianni's C project `shell_c`, not in the repo)
 
-- **Rewrite it for the new I/O system** (the mailbox, `mbx_out` / `mbx_in`).
-  It only calls the library, which already goes through the mailbox, and
-  it builds unchanged (2026-11-11): what's left is checking each command
-  in the IDE and dropping what no longer fits.
 - **Up arrow:** recall the last command.
 
 ## C compiler (`compiler/`, tracking file `compiler/ROADMAP.md`)
