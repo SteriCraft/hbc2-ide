@@ -79,7 +79,7 @@ The Nano's D13 LED shows run / stop. The old rig connector J1 is removed (see "J
 
 Budget (estimates): about 0.6 A typical, 1.6 A worst case for the whole CPU. The largest are cu (7 EEPROMs always selected, 60 pull-ups: up to about 450 mA) and iod (TTGO VGA32: up to about 450 mA in Wi-Fi bursts). The Mean Well GST25E05 (5 V 4 A) covers it.
 
-**Cards (done on all 9, 2026-11-14):** no series diode and no TVS. The power connector goes straight to +5V / GND; keep the 47 µF and one 100 nF per chip. Pinout GND, +5V, +5V, GND (clkgen J3), so a card turned 180° still gets the right polarity.
+**Cards (done on all 9, 2026-11-14):** no series diode and no TVS. The power connector goes straight to +5V / GND; keep the 47 µF and one decoupling cap per chip. Pinout GND, +5V, +5V, GND (clkgen J3), so a card turned 180° still gets the right polarity.
 
 **Motherboard input (drawn 2026-11-15 on `mb/hbc2_mb.kicad_sch`, bottom right):** J1 → SW1 → F1, then D1 and C1 across the rail, PWR_FLAGs on +5V and GND, ERC 0 / 0. Parts and footprints are in [parts.md](parts.md), "Motherboard". barrel jack → switch → fuse T 3.15 A → +5V plane. Across the rail: a unidirectional TVS (P6KE6V8A, 5.8 V stand-off) and 1000 µF 10 V. Reversed polarity drives the TVS forward and blows the fuse or trips the adapter's protection; in normal use only the fuse (about 0.05 V) is in series.
 - GND pour on one layer, +5V as a wide pour or a ≥ 3 mm trace (1 mm × 30 cm drops about 0.3 V at 2 A). cu and iod closest to the input.

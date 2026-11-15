@@ -12831,7 +12831,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 35.56 142.5448 0)
 			(hide yes)
 			(show_name no)
@@ -12979,7 +12979,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "47nF"
 			(at 394.462 26.416 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -12989,7 +12989,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 391.16 24.4348 0)
 			(hide yes)
 			(show_name no)
@@ -14035,7 +14035,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 209.55 19.3548 0)
 			(hide yes)
 			(show_name no)
@@ -14104,7 +14104,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "47nF"
 			(at 161.29 77.216 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -14114,7 +14114,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 165.1 72.6948 0)
 			(hide yes)
 			(show_name no)
@@ -15211,7 +15211,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 167.64 142.5448 0)
 			(hide yes)
 			(show_name no)
@@ -16182,7 +16182,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 236.22 129.8448 0)
 			(hide yes)
 			(show_name no)
@@ -18322,7 +18322,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "10nF"
 			(at 101.6 79.756 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -18332,7 +18332,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 105.41 75.2348 0)
 			(hide yes)
 			(show_name no)
@@ -18411,7 +18411,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 236.22 72.6948 0)
 			(hide yes)
 			(show_name no)
@@ -18804,7 +18804,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 101.6 142.5448 0)
 			(hide yes)
 			(show_name no)
@@ -19519,7 +19519,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 36.83 89.2048 0)
 			(hide yes)
 			(show_name no)
@@ -19588,7 +19588,7 @@
 				)
 			)
 		)
-		(property "Value" "100nF"
+		(property "Value" "22nF"
 			(at 46.99 23.876 90)
 			(show_name no)
 			(do_not_autoplace no)
@@ -19598,7 +19598,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 50.8 19.3548 0)
 			(hide yes)
 			(show_name no)
@@ -19756,7 +19756,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 95.25 89.2048 0)
 			(hide yes)
 			(show_name no)
@@ -21240,7 +21240,7 @@
 				)
 			)
 		)
-		(property "Footprint" "Capacitor_THT:C_Disc_D5.0mm_W2.5mm_P2.50mm"
+		(property "Footprint" "Capacitor_THT:C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm"
 			(at 151.13 19.3548 0)
 			(hide yes)
 			(show_name no)

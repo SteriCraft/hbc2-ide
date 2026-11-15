@@ -22,14 +22,14 @@ The HBC-2 is built as **9 vertical cards in PCIe slots on a motherboard**. Every
 - **Card edges:** one card edge per card, drawn with the custom symbol `custom_symbols:HBC2_PCIe_xN` and the footprint `Connector_PCBEdge:BUS_PCIexpress_xN`. Each edge matches its motherboard slot pin for pin.
   - The same symbol is used on the motherboard, with the slot footprint `hbc2_slots:PCIe_xN_Slot_Amphenol_…`.
   - Both footprints name their pads A1…/B1…, so the shared symbol connects the same pins on both sides.
-- **Footprints:** every part has one (the iod's TTGO connectors J1, J2, J4 since 2026-11-15: plain pin headers for Dupont wires). The capacitor footprints are provisional until the parts are chosen.
+- **Footprints:** every part has one (the iod's TTGO connectors J1, J2, J4 since 2026-11-15: plain pin headers for Dupont wires). The bulk and reset capacitor footprints are provisional until the parts are chosen; the decoupling caps use the dual-pitch `C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm`.
 - **Power:**
   - Cards have no diode on their supply. Power comes in on the edge: B = +5V, A = GND, on pins 1, 7, 13 …
   - The only protection is at the motherboard input: barrel jack → switch → fuse T 3.15 A, then a TVS and 1000 µF across the rail.
 - **Unused pins:**
   - Every unused input is tied.
   - Every unused output has a no-connect flag.
-  - Every chip has VCC, GND and its own 100 nF.
+  - Every chip has VCC, GND and its own decoupling cap (10–100 nF by chip type, see [parts.md](parts.md)).
 
 ## Notes in this folder
 

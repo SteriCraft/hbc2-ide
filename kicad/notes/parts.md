@@ -60,7 +60,12 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 
 | Part | Footprint | flags | alu | regs | ir | addr | cu | mem | iod | clkgen | Total | Status |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| 100 nF decoupling | `C_Disc_D5.0mm_W2.5mm_P2.50mm` | 16 | 30 | 19 | 8 | 35 | 31 | 9 | 13 | 7 | 168 | to choose (the breadboard part is KEMET C320C104K5R5TA). Footprint provisional |
+| 100 nF decoupling | `C_Rect_L7.0mm_W3.5mm_P2.50mm_P5.00mm` (all values) | 1 | 7 | 2 | | 6 | 8 | 6 | 9 | 4 | 43 | **decided:** 20 from the ceramic kit + 30 to buy, 5 mm pitch (7 spare) |
+| 68 nF decoupling | same | | | 3 | 6 | 6 | 9 | | | 1 | 25 | **decided:** ceramic kit |
+| 47 nF decoupling | same | 3 | 3 | 9 | 1 | 1 | 4 | 1 | 2 | 1 | 25 | **decided:** ceramic kit |
+| 33 nF decoupling | same | 4 | 4 | 4 | | 12 | 1 | | | | 25 | **decided:** ceramic kit |
+| 22 nF decoupling | same | 4 | 8 | | | 8 | 4 | | 1 | | 25 | **decided:** ceramic kit |
+| 10 nF decoupling | same | 4 | 8 | 1 | 1 | 2 | 5 | 2 | 1 | 1 | 25 | **decided:** ceramic kit |
 | 47 µF 16 V electrolytic (bulk) | `CP_Radial_D5.0mm_P2.00mm` | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 1 | 9 | to choose; footprint provisional |
 | 10 µF 16 V electrolytic (reset RC) | `CP_Radial_D5.0mm_P2.00mm` | | | | | | | | | 1 | 1 | to choose |
 | 10 kΩ × 8 bussed network, SIP-9 | `R_Array_SIP9` | | | | | | 8 | | | | 8 | **decided:** Bourns 4609X-101-103LF |
@@ -71,6 +76,12 @@ Buy about 10 % extra of each size. These parts get no socket: the resistor netwo
 | 1N5819 Schottky | `D_DO-41_SOD81_P10.16mm` | | | | | | | | 1 | 1 | 2 | **owned** (10 in stock). Same family as the 1N5817, about 50 mV more drop at our currents (TTGO still gets about 4.55 V) |
 | 1N4148 | `D_DO-35_SOD27_P7.62mm` | | | | | | | | | 1 | 1 | to choose (breadboard: onsemi 1N4148) |
 | Card edge (gold fingers) | `Connector_PCBEdge:BUS_PCIexpress_xN` | x4 | x8 | x16 | x16 | x16 | x16 | x8 | x4 | x1 | 9 | **decided:** part of the PCB |
+
+**Decoupling values (2026-11-15).** One cap per chip, one beside the 47 µF at the card edge, one for Y1: 168 in all. The value is set per chip from what Gianni has: an unbranded ceramic disc kit (50 V, 5 mm pitch, probably Y5V) plus 30× 100 nF to buy. The footprint takes both 2.5 mm and 5 mm pitch. Each chip gets at least its tier's minimum (the clock is 2 MHz):
+
+- 100 nF minimum: AT28C256, AS6C1008, Y1. Also on 100 nF: all 74HCT541, the 595s (AHCT), 244s (one is LVC), the 240 and the 74HCT74s.
+- 47 nF minimum (octal outputs and the card-edge cap): 574 and 377 on 68 nF (plus the clkgen edge cap); 670, 175, 85, 151, 165, clkgen's 74HCT14 and the other edge caps on 47 nF.
+- 22 nF minimum, 10 nF for gates: 153 and 283 on 33 nF; 157, 138 and 86 on 22 nF; the gates (08, 32, 11, 27, 14, 00, 10, and the flags' 86) on 10 nF.
 
 ### clkgen only
 
