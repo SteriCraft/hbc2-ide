@@ -3,7 +3,7 @@
 
 The 8 flags of the HBC-2, bit order C0 E1 I2 N3 S4 Z5 F6 H7. Every way the
 emulator changes them, and why the register is built this way:
-notes/flags-decisions.md.
+notes/records/flags-decisions.md.
 
 Every flag is clocked on every clk edge (no gated clock); a 74HCT153 in
 front of each flip-flop picks its next value. The two halves of a 153 share

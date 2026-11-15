@@ -1,6 +1,6 @@
 # ALU: report (night of 2026-11-04, timing fixes the same day)
 
-The `alu` section covers every ALU instruction of the HBC-2: ADD ADC SUB SBB INC DEC AND OR XOR NOT SHL ASR SHR CMP. Each module was tested against the emulator's own code, and the whole ALU exhaustively (every alu_op, cin, a, b: 2,097,152 rows). Decisions and points to review: [alu-decisions.md](alu-decisions.md). Chip references, sourcing rules and delays: [chips.md](chips.md).
+The `alu` section covers every ALU instruction of the HBC-2: ADD ADC SUB SBB INC DEC AND OR XOR NOT SHL ASR SHR CMP. Each module was tested against the emulator's own code, and the whole ALU exhaustively (every alu_op, cin, a, b: 2,097,152 rows). Decisions and points to review: [alu-decisions.md](alu-decisions.md). Chip references, sourcing rules and delays: [chips.md](../chips.md).
 
 After the datasheet timing, Gianni approved fixes F1–F4 (the ALU gets a full step, plus three hardware changes). They are built: CMP flags from 2 × 74HCT85 (cmp8), INC/DEC with b = 01 from the control unit (arith8 removed), and a carry select in add_sub8.
 
@@ -51,7 +51,7 @@ Values in brackets are what the hardware gives where the emulator doesn't write 
 
 By part number: 74HCT541 × 6, 74HCT86 × 5, 74HCT08 × 3, 74HCT283 × 3, 74HCT32 × 2, 74HCT157 × 2, 74HCT11 × 2, 74HCT85 × 2, 74HCT153 × 1, 74HCT27 × 1, 74HCT138 × 1, 74HCT240 × 1. **Total: 29 chips, 12 part numbers** (28 if flags8 and rmux8 are merged, see decisions D10). With 15 % spares (at least 1 per part), buy 41. Outside the ALU, INC/DEC need a 01 source on the B operand path (likely +1 74HCT541, D16).
 
-Bill of materials, with the DIP and SOIC references to order: [bom-alu.csv](bom-alu.csv). `python designs/alu.py` rewrites it from the circuits, and `python tools/bom.py alu --check notes/bom-alu.csv` says whether it is up to date. Every chip in circuits/alu/ is in chips.md's "Parts in use" table, and no other part number is used.
+Bill of materials, with the DIP and SOIC references to order: [bom-alu.csv](../bom-alu.csv). `python designs/alu.py` rewrites it from the circuits, and `python tools/bom.py alu --check notes/bom-alu.csv` says whether it is up to date. Every chip in circuits/alu/ is in chips.md's "Parts in use" table, and no other part number is used.
 
 ## Worst-case delay, per path
 

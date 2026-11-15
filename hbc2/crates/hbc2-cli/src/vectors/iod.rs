@@ -1,4 +1,4 @@
-//! The I/O mailbox card (logisim/notes/iod-requirements.md I10-I16,
+//! The I/O mailbox card (logisim/notes/records/iod-requirements.md I10-I16,
 //! iod-decisions.md).
 //!
 //! `iod`: four sequences, each starting with a reset (the flip-flops power

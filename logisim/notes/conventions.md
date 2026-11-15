@@ -1,6 +1,6 @@
 # HBC-2 circuit conventions (Logisim-evolution 5.0)
 
-These rules come from the user and apply to every circuit I create or modify. If a rule gets in the way in a specific case, **ask the user** instead of quietly breaking it, and record the decision in open-points.md or ttl-chips.md.
+These rules come from the user and apply to every circuit I create or modify. If a rule gets in the way in a specific case, **ask the user** instead of quietly breaking it, and list the question under "Open questions" in TODO.md, then record the answer in "Settled questions" at the end of this file or in ttl-chips.md.
 
 `tools/conventions.py` checks most of these rules automatically. `circgen`'s `save()` runs it.
 
@@ -70,3 +70,15 @@ These rules come from the user and apply to every circuit I create or modify. If
    - Run it with `logitest.py <file> <circuit> --emu`. A new module needs an entry in `hbc2-cli/src/vectors.rs`. If the behaviour lives inline in cpu.rs, first move it into a pure function in hbc2-core that the CPU calls.
    - **Bus contention is a test failure** (Gianni, 2026-11-04), in every module and every instruction-level test. Logisim shows two drivers that disagree as E; logitest reports any E as `BUS CONTENTION` and the run fails. Logisim lets an E through where the vector says don't care, so every output that is or shows a tri-state bus is always checked: a value, `<FLOAT>`, or "unknown" only when the model can't know the value (power-up). In `hbc2 vectors` list those outputs in `SeqModule::buses` (a don't care there is refused); in Python, `write_sequences(..., buses=)`. When a test covers several sections (the CPU), each internal bus (bus A, bus B, the data bus, the address bus) needs an output pin on the circuit under test, listed the same way. Logisim shows no E when the drivers agree, so drive buses with varied (random) data.
 3. Summarise in a few lines: chips per part number, ports, test result.
+
+## Settled questions
+
+Rule conflicts settled with Gianni (moved from the old open-points.md on 2026-11-15):
+- 2026-11-04: reference model = emulator code via `hbc2 vectors`.
+- 2026-11-04: chip numbering has no exceptions.
+- 2026-11-04: Constant is allowed in modules.
+- 2026-11-04: floating subcircuit inputs are warnings.
+- 2026-11-04: file layout: one module per `circuits/<m>/<m>.circ`, and cpu.circ holds only main and loads libraries.
+- 2026-11-04: folders are functional units (`circuits/alu/add8.circ`), not one folder per module.
+- 2026-11-04: 1-bit taps allowed for every TTL chip whose pins mix inputs and outputs (gates, 74283); see ttl-chips.md.
+- 2026-11-04: add8 became add_sub8 (subtraction by B inversion); the user's earlier add_sub8 test is gone.

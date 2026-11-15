@@ -1,5 +1,5 @@
 //! `mem_cpu`: the address section, the IR and the memory section together
-//! (logisim/circuits/mem/test_mem_cpu.circ, notes/ir-mem-decisions.md M5, M6).
+//! (logisim/circuits/mem/test_mem_cpu.circ, notes/records/ir-mem-decisions.md M5, M6).
 //!
 //! The real CPU runs a random program (every opcode but HLT and INT, random
 //! modes and operands, invalid opcodes included, with hardware interrupts

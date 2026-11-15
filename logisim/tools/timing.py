@@ -282,7 +282,7 @@ def derate(part, nets):
     return tuple(math.ceil(k * max(0, c - 50)) for k in SLOPE[DRIVE[part]])
 
 
-# Register section (designs/regs.py, notes/registers-decisions.md), one 500 ns
+# Register section (designs/regs.py, notes/records/registers-decisions.md), one 500 ns
 # step from the rising edge of clk. Two kinds of extra stages:
 #   ("@", ns, what)        a fixed time in the step; ns may name an oscillator
 #                          edge (OSC: rise1, fall0, fall1, high, period), which
@@ -373,7 +373,7 @@ REGS = {
         ("74HCT670", "hold D, WA after /WE", "all 8 chips"),
     ]),
 }
-# Address section (designs/addr.py, notes/addr-decisions.md), one 500 ns step.
+# Address section (designs/addr.py, notes/records/addr-decisions.md), one 500 ns step.
 # sum = BASE + (OFFSET xor inv) + cin through a 4 x 74HCT283 ripple; the
 # latch, PC and SP (74HCT377) load it on the next edge. The slowest sum bit is
 # bit 15 (the last 283's top sum), and PC's bits 15..9 go through the reset
@@ -446,7 +446,7 @@ ADDR = {
     ]),
     "a_bus": (True, "PC / SP → bus_data (CAL, interrupt entry, RSP)", ["a_bus_oe", "a_bus_q"], []),
 }
-# Memory section (designs/mem.py, notes/ir-mem-decisions.md sections 4-5, M1-M4).
+# Memory section (designs/mem.py, notes/records/ir-mem-decisions.md sections 4-5, M1-M4).
 # The RAM's WE# = clk_mem_wr_n OR mem_we_n; clk_mem_wr_n is /Q2 of the clock
 # generator's FF2 (clk sampled on the osc fall, through the NAND inverter):
 # low from the osc fall at 125 to the one at 375. Minimum delays are 0, t = 0
@@ -510,7 +510,7 @@ MEM = {
         ("74HCT541", "A → Y", "ROM buffer", ("mem_d",)),
     ]),
 }
-# Control unit (designs/cu.py, notes/cu-decisions.md sections 6 and 14): the
+# Control unit (designs/cu.py, notes/records/cu-decisions.md sections 6 and 14): the
 # next microcode word must be at the pipeline 574s' D (setup) by the next
 # edge. The EEPROM address comes from the step register, the IR or bus_data
 # (the bypass), cu_force, and the condition multiplexer; the decode before the

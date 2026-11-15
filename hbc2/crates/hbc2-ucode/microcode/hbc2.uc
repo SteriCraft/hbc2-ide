@@ -1,8 +1,8 @@
-# HBC-2 microcode (control unit, logisim/notes/cu-decisions.md).
+# HBC-2 microcode (control unit, logisim/notes/records/cu-decisions.md).
 #
 # One line = one clock step (500 ns): a list of actions, separated by commas,
 # all done in that step. `hbc2 ucode` compiles this file into the 7 AT28C256
-# images, a listing and the cycle-count table (logisim/notes/cu-decisions.md
+# images, a listing and the cycle-count table (logisim/notes/records/cu-decisions.md
 # section 13 has the design; this header is the language's reference):
 #
 #   bus<-X        X drives bus_data: ram, a (bus A), res (result latch), flags,

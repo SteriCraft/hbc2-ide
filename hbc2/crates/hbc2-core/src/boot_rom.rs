@@ -1,7 +1,7 @@
 //! The boot ROM of the hardware CPU (the Logisim design in `logisim/`).
 //!
 //! After every reset the CPU copies a 64 KiB ROM into RAM, byte for byte
-//! (`logisim/notes/ir-mem-decisions.md`): the ROM holds the program's power-on
+//! (`logisim/notes/records/ir-mem-decisions.md`): the ROM holds the program's power-on
 //! RAM image, the same 64 KiB as `hbc2 asm` writes. The ROM is two AT28C256
 //! (32 KiB each): the low chip holds 0000-7FFF, the high chip 8000-FFFF.
 //! [`split`] gives one file per chip, address 0 of the file at the chip's

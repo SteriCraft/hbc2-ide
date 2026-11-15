@@ -1,9 +1,9 @@
 # Instruction register and memory: report (phase 2, night of 2026-11-05)
 
 The instruction register, the memory section and a combined bench are built and tested. Every timing limit is met at max 25 °C.
-- **Instruction register:** module `ir` in [circuits/ir/ir.circ](../circuits/ir/ir.circ), made by [designs/ir.py](../designs/ir.py).
-- **Memory section:** module `mem` in [circuits/mem/mem.circ](../circuits/mem/mem.circ), made by [designs/mem.py](../designs/mem.py).
-- **Combined bench:** [circuits/mem/test_mem_cpu.circ](../circuits/mem/test_mem_cpu.circ). It runs `addr`, `ir` and `mem` together against the real emulator.
+- **Instruction register:** module `ir` in [circuits/ir/ir.circ](../../circuits/ir/ir.circ), made by [designs/ir.py](../../designs/ir.py).
+- **Memory section:** module `mem` in [circuits/mem/mem.circ](../../circuits/mem/mem.circ), made by [designs/mem.py](../../designs/mem.py).
+- **Combined bench:** [circuits/mem/test_mem_cpu.circ](../../circuits/mem/test_mem_cpu.circ). It runs `addr`, `ir` and `mem` together against the real emulator.
 
 Design, Gianni's answers and the decisions taken during the night (M1–M7): [ir-mem-decisions.md](ir-mem-decisions.md), sections 1–9. Nothing is pushed.
 
@@ -19,7 +19,7 @@ Design, Gianni's answers and the decisions taken during the night (M1–M7): [ir
 | mem | 1 | 74HCT32 | RAM WE# = `clk_mem_wr_n` OR `mem_we_n` |
 | mem | 1 | 74HCT14 | NOT A15, the high ROM's /CE |
 
-Bills of materials: [bom-ir.csv](bom-ir.csv), [bom-mem.csv](bom-mem.csv). The parts are listed in chips.md under "Instruction register" and "Memory". The new delays are 74HCT14 (TI SCLS225G: 20 / 32 / 40 ns, the phase 1 estimate), AS6C1008 and AT28C256.
+Bills of materials: [bom-ir.csv](../bom-ir.csv), [bom-mem.csv](../bom-mem.csv). The parts are listed in chips.md under "Instruction register" and "Memory". The new delays are 74HCT14 (TI SCLS225G: 20 / 32 / 40 ns, the phase 1 estimate), AS6C1008 and AT28C256.
 
 ## What changed since phase 1
 

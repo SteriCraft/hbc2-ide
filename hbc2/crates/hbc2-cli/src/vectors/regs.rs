@@ -1,4 +1,4 @@
-//! The register section (logisim/notes/registers-decisions.md).
+//! The register section (logisim/notes/records/registers-decisions.md).
 //!
 //! - `regs`: the register file, the operand buses and the data bus drivers
 //!   against a model of the section: writes and reads on both ports, every

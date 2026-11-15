@@ -2,7 +2,7 @@
 """Combined bench -> circuits/mem/test_mem_cpu.circ (circuit test_mem_cpu)
 
 The address section, the instruction register and the memory section wired
-as in the CPU (notes/ir-mem-decisions.md M5, M6), driven by
+as in the CPU (notes/records/ir-mem-decisions.md M5, M6), driven by
 `hbc2 vectors mem_cpu`: the real emulator runs a program, and the rows
 drive the sections the way the control unit will (C16, C18-C22):
 

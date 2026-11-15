@@ -245,7 +245,7 @@ All 8 items of addr-report.md's review list accepted as recommended:
 1. The reset relies on the control unit's reset word (C16), 2 × 74HCT08; the self-contained version stays unused.
 2. `rst_n` released synchronously to `clk`: the reset generator is now control-requirements.md **C17** (RC + 74HCT14 + 74HCT74, two-stage synchronizer, asynchronous assert).
 3. The register-operand path's −25 ns at 85 °C is accepted (criterion max 25 °C); 74ACT153 for the BASE multiplexers stays the fallback.
-4. The 377 hold times (/E 5 ns, D 3 ns): **to check on the breadboard with a scope** ([breadboard-checks.md](breadboard-checks.md) B1).
+4. The 377 hold times (/E 5 ns, D 3 ns): **to check on the breadboard with a scope** ([breadboard-checks.md](../breadboard-checks.md) B1).
 5. The address bus as two 8-bit pins plus `addr_bus_addr_lo_in` (A2): kept.
 6. The 74HCT377 references: kept (CD74HCT377E, CD74HCT377M96).
 7. 34 chips: accepted.

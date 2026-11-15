@@ -1,4 +1,4 @@
-//! The memory section (logisim/notes/ir-mem-decisions.md section 4, M1-M4).
+//! The memory section (logisim/notes/records/ir-mem-decisions.md section 4, M1-M4).
 //!
 //! - `mem`: the boot copy of the whole 64 KiB ROM into RAM, then random
 //!   reads, writes and idle steps, then reads of random addresses. The RAM is

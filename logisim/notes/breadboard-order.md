@@ -8,7 +8,7 @@ The purchase is split into successive orders, one per card in the build order be
 
 Rules followed ([chips.md](chips.md), "Rules"): TI DIP parts for every 74HCT chip, never a Nexperia `N` part, no NRND TI variant except the 74HCT10, authorised distributors only. One supplier reference per line, **Mouser** unless stated. The rig's shift registers aren't CPU parts, so the 74HCT rule doesn't bind them (test-rig.md).
 
-**Prices are estimates** (2026-11-10, € excluding VAT, at the quantity of the line), from the Octopart survey of [disponibilite-74hct.md](disponibilite-74hct.md) and distributor pages. Check stock and that each reference is still active in the basket. Mouser delivers free to France above about 50 €: orders 3 and 4 are below it, so buy them together.
+**Prices are estimates** (2026-11-10, € excluding VAT, at the quantity of the line), from the Octopart survey of 2026-11-04 and distributor pages. Check stock and that each reference is still active in the basket. Mouser delivers free to France above about 50 €: orders 3 and 4 are below it, so buy them together.
 
 ## Build order
 
@@ -236,8 +236,8 @@ clkgen + cu + addr built together at full speed (17 boards; the rig is taken dow
 
 ## Not included
 
-- The **PCBs** and their DIP **sockets** (one per chip, 146 + the 8 resistor networks): ordered with the PCBs, once the connector pinout is decided. Listed in [kicad/pcb-order.md](../../kicad/pcb-order.md), with the PCIe card slots.
-- The IOD (still a stub).
+- The **PCBs** and their DIP **sockets** (one per chip, 146 + the 8 resistor networks): ordered with the PCBs. Listed in [kicad/notes/parts.md](../../kicad/notes/parts.md), with the PCIe card slots.
+- The iod (designed since 2026-11-11, order still to add: logisim/notes/TODO.md).
 - The replay firmware and `tools/replay.py` (test-rig.md, "Replay"), the programmer firmware, and the vector exports for clkgen and the mem ROM pattern.
 - Multimeter, oscilloscope, USB cable for the Mega.
 - The 74ACT fallbacks of chips.md.

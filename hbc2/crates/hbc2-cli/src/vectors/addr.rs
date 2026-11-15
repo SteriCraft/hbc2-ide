@@ -1,5 +1,5 @@
 //! The address section: PC, SP, the address adder and the address latch
-//! (logisim/notes/addr-decisions.md).
+//! (logisim/notes/records/addr-decisions.md).
 //!
 //! - `addr`: every BASE / OFFSET / inversion / carry combination, every load
 //!   and output enable, the reset, random sequences, against a model of the

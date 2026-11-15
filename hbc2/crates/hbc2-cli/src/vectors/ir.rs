@@ -1,4 +1,4 @@
-//! The instruction register (logisim/notes/ir-mem-decisions.md section 2).
+//! The instruction register (logisim/notes/records/ir-mem-decisions.md section 2).
 //!
 //! - `ir`: random sequences of byte loads (any set of the four enables, the
 //!   same byte into several registers at once), every field checked with the

@@ -1,4 +1,4 @@
-//! The I/O mailbox card (logisim/notes/iod-requirements.md, "Target design",
+//! The I/O mailbox card (logisim/notes/records/iod-requirements.md, "Target design",
 //! I10-I16): the CPU side of the link to the I/O processor (an ESP32, see
 //! [`crate::iop`]).
 //!

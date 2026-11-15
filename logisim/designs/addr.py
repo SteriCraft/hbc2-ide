@@ -2,7 +2,7 @@
 """Address section -> circuits/addr/addr.circ
 
 PC, SP, the 16-bit address adder and the address latch, with their bus
-drivers. Why it is built this way: notes/addr-decisions.md.
+drivers. Why it is built this way: notes/records/addr-decisions.md.
 
 Everything goes through one adder, sum = BASE + (OFFSET xor inv) + cin:
 

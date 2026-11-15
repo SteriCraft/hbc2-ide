@@ -1,12 +1,12 @@
 # Address section: report (phase 2, night of 2026-11-04)
 
-PC, SP, the 16-bit address adder and the address latch are built and tested: module `addr` in [circuits/addr/addr.circ](../circuits/addr/addr.circ), made by [designs/addr.py](../designs/addr.py). Every timing limit is met at max 25 °C. Design and decisions: [addr-decisions.md](addr-decisions.md) (phase 2 decisions: section 4, A1–A9).
+PC, SP, the 16-bit address adder and the address latch are built and tested: module `addr` in [circuits/addr/addr.circ](../../circuits/addr/addr.circ), made by [designs/addr.py](../../designs/addr.py). Every timing limit is met at max 25 °C. Design and decisions: [addr-decisions.md](addr-decisions.md) (phase 2 decisions: section 4, A1–A9).
 
 Commits: `7eee36f` (Logisim's 74377 checked, 377 delays), `f7ed5d1` (the module, tests, timing), then the notes; pushed after Gianni's review (2026-11-05).
 
 ## Chips
 
-One module, 34 chips (phase 1 planned 32; +2 × 74HCT08 for the reset, A1). Bill of materials: [bom-addr.csv](bom-addr.csv); references in chips.md "Address".
+One module, 34 chips (phase 1 planned 32; +2 × 74HCT08 for the reset, A1). Bill of materials: [bom-addr.csv](../bom-addr.csv); references in chips.md "Address".
 
 | Qty | Part | Role |
 |---|---|---|

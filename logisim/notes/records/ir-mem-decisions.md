@@ -282,7 +282,7 @@ Levels: the AS6C1008 v1.0 datasheet gives VIH = 0.7 × VCC (3.5 V at 5 V). HCT o
 
 ## 9. Gianni's answers (2026-11-05) — phase 2 go-ahead
 
-Phase 2 runs unattended: take the recommended option on any new question, log it here (M1, M2, …), commit after each module, don't push, finish with notes/ir-mem-report.md and its "Need Gianni's review" list.
+Phase 2 runs unattended: take the recommended option on any new question, log it here (M1, M2, …), commit after each module, don't push, finish with notes/records/ir-mem-report.md and its "Need Gianni's review" list.
 
 1. Boot: option A accepted (copy the 64 KiB ROM after every reset).
 2. `addr_cout`, 3. 6 × 377, 6. local bus behind 2 × 541, 8. AS6C1008-55PCN, 9. names `ir`, `mem`, `as6c1008`, `at28c256`: accepted.

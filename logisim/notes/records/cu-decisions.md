@@ -441,7 +441,7 @@ The 74HCT10 had two jobs: `clk_wr_n` = NAND3(`clk_n`, `osc`, Q2), and NOT `osc` 
 | `hbc2/crates/hbc2-ucode/src/` | `source.rs` parser, `generate.rs` + `place.rs` generator, `word.rs` bit layout, `model.rs` datapath model, `check.rs` comparisons with the emulator |
 | `logisim/circuits/cu/microcode/ucode0.bin` … `ucode6.bin` | the 7 AT28C256 images (32 KiB each; EEPROM k = bits 8k..8k+7) |
 | `logisim/circuits/cu/microcode/listing.txt` | every used address: word, source line, next step, condition, the fields that aren't idle |
-| [cu-cycles.md](cu-cycles.md) | cycle counts per instruction × mode (generated) |
+| [cu-cycles.md](../cu-cycles.md) | cycle counts per instruction × mode (generated) |
 
 Rebuild: `hbc2 ucode -o logisim/circuits/cu/microcode --cycles logisim/notes/cu-cycles.md` (add `--check` for the emulator comparisons). Tests: `cargo test -p hbc2-ucode`.
 
@@ -537,7 +537,7 @@ The tests take about 4 s in a debug build; the `--check` version takes about 10 
 
 ### 13.6 Cycle counts
 
-See [cu-cycles.md](cu-cycles.md). **Every count equals section 8's estimate.** A hardware entry takes 9 steps after the boundary, a software one 10. A stop takes 3 steps (no operands) or 4 before the halt loop.
+See [cu-cycles.md](../cu-cycles.md). **Every count equals section 8's estimate.** A hardware entry takes 9 steps after the boundary, a software one 10. A stop takes 3 steps (no operands) or 4 before the halt loop.
 
 ### 13.7 Decisions taken in phase 2
 
@@ -574,7 +574,7 @@ Gianni's go-ahead (2026-11-05):
 | Name | **`clkgen`**, not `clk`: Logisim-evolution doesn't allow a pin labelled like its circuit, and the module's output is `clk` |
 | Chips (5) | U1 74HCT74 (FF1 `clk`, FF2 Q2), U2 74HCT10 (`clk_wr_n` = NAND3(`clk_n`, `osc`, Q2); NOT `osc` for FF2; gate 3 spare), U3 74HCT541 (clock buffer), U4 74HCT14 (RC → `rst_rc` → /CLR; 4 gates spare), U5 74HCT74 (reset synchroniser) |
 | Inputs | `clkgen_osc` (the oscillator module's output), `clkgen_rc` (the RC node at the 74HCT14 input: the RC, button and diode are analog) |
-| Off the logic (KiCad, 2026-11-14) | oscillator ECS-2200BX-040 (4.000 MHz, half-size DIP-8); RC: 10 kΩ to +5V, 10 µF to GND, 1N4148 across the resistor, push button across the capacitor through 100 Ω (chips.md, kicad/NOTES.md) |
+| Off the logic (KiCad, 2026-11-14) | oscillator ECS-2200BX-040 (4.000 MHz, half-size DIP-8); RC: 10 kΩ to +5V, 10 µF to GND, 1N4148 across the resistor, push button across the capacitor through 100 Ω (chips.md, kicad/notes/design-notes.md) |
 | Outputs | `clk` (6 bits: the 541's Y1–Y6, one branch each), `clk_wr_n` (Y7), `clk_mem_wr_n` (Y8), `rst_n`, `rst_early` (FF1's /Q, for `x_n`), `rst_rc` |
 | Clock branches (section 7 item 1: about 5 inputs each) | 0 `ir` (6 × 377), 1 `addr` (6 × 377), 2 `cu` pipeline 574s 1–5, 3 `cu` 574s 6–8 + both 175s + the 377, 4 `regs` (3 × 574) + `flags` (2 × 175), 5 the reset 74 (2 clock inputs) + the IOD. Loads 6, 6, 5, 6, 5, 3: **skew from the loads 4 ns** at 25 °C (5 at 85 °C), `timing.py --section cu` |
 | New global names | `rst_early`, `rst_rc`, and `clk_0` … `clk_5` for the branches (conventions.md, conventions.py) |

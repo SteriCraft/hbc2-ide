@@ -70,7 +70,7 @@ the four flags.
 
 The card reaches the TTGO through its 2 × 4 header, its PS/2 mouse port and
 three soldered wires. The full record, with the reasons, is in
-`logisim/notes/iod-decisions.md`, "The TTGO VGA32 wired to the card".
+`logisim/notes/records/iod-decisions.md`, "The TTGO VGA32 wired to the card".
 
 | Signal | GPIO | Card | TTGO |
 |---|---|---|---|

@@ -1,6 +1,6 @@
 """Add (or replace) the HBC2_PCIe_x1/x4/x8/x16 symbols in kicad/custom_symbols.kicad_sym.
 
-Plain connectors for the card slots (slot-pinout.md): pins numbered A1..An and
+Plain connectors for the card slots (kicad/notes/slot-pinout.md): pins numbered A1..An and
 B1..Bn like the slot footprint (lib/hbc2_slots.pretty) and the card-edge footprint
 (Connector_PCBEdge:BUS_PCIexpress_xN), every pin passive, pin names hidden.
 B pins on the left, A pins on the right, Bn and An on the same row, pin 1 at the

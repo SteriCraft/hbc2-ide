@@ -1,6 +1,6 @@
 # Register section: decisions (2026-11-04)
 
-Module `regs`, in [circuits/registers/regs.circ](../circuits/registers/regs.circ), made by `designs/regs.py`. In scope: the 8 general registers, the write path, the operand latches, the A/B operand selection, the register index selection, the drivers to the data bus and to the address path. Out of scope (ports only): PC, SP, the address adder, the instruction register, memory, the control unit. What they must provide: [pc-sp-requirements.md](pc-sp-requirements.md), [control-requirements.md](control-requirements.md).
+Module `regs`, in [circuits/registers/regs.circ](../../circuits/registers/regs.circ), made by `designs/regs.py`. In scope: the 8 general registers, the write path, the operand latches, the A/B operand selection, the register index selection, the drivers to the data bus and to the address path. Out of scope (ports only): PC, SP, the address adder, the instruction register, memory, the control unit. What they must provide: [pc-sp-requirements.md](pc-sp-requirements.md), [control-requirements.md](control-requirements.md).
 
 Source of truth: `hbc2-core/src/cpu.rs` and the mode lists of `isa.rs` (`INSTRUCTION_TABLE`). Indexes A=0 B=1 C=2 D=3 I=4 J=5 X=6 Y=7. R1 = instruction bits 21..19, R2 = 18..16, R3 = the low 3 bits of V1 (`Instruction::r3`, mode 4 only).
 
@@ -217,7 +217,7 @@ In `main`, `regs_bus_in` and `regs_bus_out` both connect to `bus_data` (same spl
 | U10 | 74HCT574 (model) | operand latch: data bus → bus A |
 | U18 | 74HCT574 (model) | operand latch: data bus → bus B |
 
-Chips are drawn facing south (the datasheet's top view) and wired by tunnels named after the signals, like the flag register. Bill of materials: [bom-regs.csv](bom-regs.csv).
+Chips are drawn facing south (the datasheet's top view) and wired by tunnels named after the signals, like the flag register. Bill of materials: [bom-regs.csv](../bom-regs.csv).
 
 **18 chips**: 74HCT670 × 8, 74HCT153 × 4, 74HCT574 × 3, 74HCT541 × 2, 74HCT32 × 1. (19 with the 74HCT240 of the first version, D5.)
 

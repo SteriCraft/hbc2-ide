@@ -1,10 +1,10 @@
 # Chips: what to buy, how fast they are, what Logisim has
 
-The parts used or considered for the HBC-2, so the next module doesn't have to search again. Pinouts and wiring choices are in [ttl-chips.md](ttl-chips.md). Stock and prices (Octopart, 2026-11-04): [disponibilite-74hct.md](disponibilite-74hct.md).
+The parts used or considered for the HBC-2, so the next module doesn't have to search again. Pinouts and wiring choices are in [ttl-chips.md](ttl-chips.md).
 
 Two tools read the tables below, so keep their column names:
 - `tools/bom.py` reads the tables of **Parts in use** (one per module) and writes a bill of materials, such as [bom-alu.csv](bom-alu.csv). It fails if a circuit uses a chip that isn't listed there.
-- `tools/timing.py` reads **Delays** and prints the path table of [alu-report.md](alu-report.md).
+- `tools/timing.py` reads **Delays** and prints the path table of [alu-report.md](records/alu-report.md).
 
 ## Rules (Gianni, 2026-11-04)
 
@@ -105,7 +105,7 @@ The memories were added on 2026-11-05 (ir-mem-decisions.md section 4, M2–M4). 
 
 Added 2026-11-05 (cu-decisions.md section 14): the clock generator (74HCT74 + 74HCT10, C6), the reset generator (74HCT14 + 74HCT74, C17) and the clock buffer (74HCT541). Off the logic: a **4.000 MHz HCMOS oscillator module** (5 V, DIP-8 or DIP-14 can, 45–55 % duty) and the RC (resistor, capacitor, push button, diode).
 
-Chosen 2026-11-14 (KiCad clkgen board, kicad/NOTES.md "clkgen: oscillator and reset"):
+Chosen 2026-11-14 (KiCad clkgen board, kicad/notes/design-notes.md "clkgen: oscillator and reset"):
 
 | Ref | Part | Value | Role |
 |---|---|---|---|

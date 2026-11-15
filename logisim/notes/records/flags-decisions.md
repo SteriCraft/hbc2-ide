@@ -1,6 +1,6 @@
 # Flag register: what changes the flags, and the design
 
-Module `flags`, in [circuits/flags/flags.circ](../circuits/flags/flags.circ), made by `designs/flags.py`. Built 2026-11-04.
+Module `flags`, in [circuits/flags/flags.circ](../../circuits/flags/flags.circ), made by `designs/flags.py`. Built 2026-11-04.
 
 The source of truth is the emulator: `hbc2/crates/hbc2-core/src/cpu.rs`, plus `Opcode::info().flags` in isa.rs. Bit order: **C0 E1 I2 N3 S4 Z5 F6 H7**.
 
@@ -73,7 +73,7 @@ Two-flag events, two steps each: interrupt entry = 1010 with 0 (I), then 1111 wi
 | U12 | 74HCT86 | inverts I's next value (3 gates spare) |
 | U6 | 74HCT541 | PSF: flags onto the data bus |
 
-**15 chips** ([bom-flags.csv](bom-flags.csv), `python tools/bom.py flags`): 74HCT153 × 4, 74HCT11 × 3, 74HCT138 × 2, 74HCT157 × 2, 74HCT175 × 2, 74HCT86 × 1, 74HCT541 × 1.
+**15 chips** ([bom-flags.csv](../bom-flags.csv), `python tools/bom.py flags`): 74HCT153 × 4, 74HCT11 × 3, 74HCT138 × 2, 74HCT157 × 2, 74HCT175 × 2, 74HCT86 × 1, 74HCT541 × 1.
 
 - **No gated clock.** Every flip-flop takes `clk`; holding is a multiplexer input (the flag's own output on D3).
 - **Pairs.** A 74HCT153's two halves share their select lines, so the flags go in pairs that load together: (C, I), (E, H), (Z, N), (S, F). A pair either has the same ALU load (Z N; S F) or one flag the ALU never writes (I, H), which gets its own value on the ALU input. Each pair's two flags differ in bit 1 of their number, so on a single-flag write `flags_op_1` tells them apart (the 74HCT157s).

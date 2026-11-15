@@ -7,7 +7,7 @@
 - **Cards:** the cards stand vertically in a 3D-printed case. They plug into a horizontal motherboard, like graphics cards in a PC.
 - **Slots:** through-hole PCIe slots, bought as plain connectors. Nothing about PCIe as a protocol is used.
 - **Card edge:** each card has gold fingers on its edge, 1.6 mm thick (the slot takes a 1.57 mm card), with a bevelled edge.
-- **What to buy:** the parts are in [pcb-order.md](pcb-order.md).
+- **What to buy:** the parts are in [parts.md](parts.md).
 
 ## Pin numbering
 
@@ -129,7 +129,7 @@ Tracks that must cross each row of each slot, against the row's gaps on one laye
 **Result:**
 - **Two layers are not enough in practice.** The busiest rows (ir, addr) need 74 crossings against 82 gaps on two layers, which is 90 % use. Every track would also have to find a gap right next to its own x.
 - **The crossings don't depend on the pin plan.** A signal between two neighbouring slots always crosses 3 rows in all, whichever row it sits on.
-- **Recommendation: a 4-layer motherboard.** For example L1 signals, L2 GND plane, L3 signals plus the +5V pour, L4 signals. That gives three signal layers, 123 gaps per row (60 % at worst), and a solid ground under every track. The ground plane also fixes the power-drop concern of "Power (S1)" in NOTES.md.
+- **Recommendation: a 4-layer motherboard.** For example L1 signals, L2 GND plane, L3 signals plus the +5V pour, L4 signals. That gives three signal layers, 123 gaps per row (60 % at worst), and a solid ground under every track. The ground plane also fixes the power-drop concern of "Power (S1)" in design-notes.md.
 - **Before the full layout:** route the data bus and the addr/cu control block across the ir, addr and cu slots.
 - **Free pins:** every pin number now carries a signal on some stretch. A new signal later needs a pin free on both of its cards and along the stretch between them. The "free signal pins" column above counts each card's free pins.
 

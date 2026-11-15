@@ -1,4 +1,4 @@
-//! The control unit (logisim/notes/cu-decisions.md, section 14).
+//! The control unit (logisim/notes/records/cu-decisions.md, section 14).
 //!
 //! The reference is the microcode as built (`hbc2_ucode::build`, the images
 //! written into the at28c256 model) run by the datapath model, which is equal

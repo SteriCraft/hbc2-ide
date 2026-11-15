@@ -3,7 +3,7 @@
 
 Four bytes loaded from the data bus, each with its own load enable, usable
 in any step (control-requirements.md C14, C18). Why it is built this way:
-notes/ir-mem-decisions.md section 2.
+notes/records/ir-mem-decisions.md section 2.
 
     byte 0  o5 o4 o3 o2 o1 o0 m3 m2   -> ir_op (6), ir_mode bits 3..2
     byte 1  m1 m0 a2 a1 a0 b2 b1 b0   -> ir_mode bits 1..0, ir_r1 (a), ir_r2 (b)

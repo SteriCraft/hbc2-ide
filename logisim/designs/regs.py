@@ -3,7 +3,7 @@
 
 The 8 general registers (A B C D I J X Y = 0..7), the write path, the
 operand latches, the A / B operand buses, the index selection and the data
-bus drivers. Why it is built this way: notes/registers-decisions.md.
+bus drivers. Why it is built this way: notes/records/registers-decisions.md.
 
 Storage: two copies of the register file, 4 x 74HCT670 each (words 0-3 and
 4-7, bits 3..0 and 7..4). Every write goes to both copies; copy A is read

@@ -221,7 +221,7 @@ fn software_interrupt_waits_for_sti() {
 fn pending_software_interrupt_takes_i_when_taken() {
     // INT with interrupts off keeps only its port. I changes before STI: the
     // handler gets the new I, and the new I is the one pushed (Q1 in
-    // logisim/notes/addr-decisions.md).
+    // logisim/notes/records/addr-decisions.md).
     let mut m = Image::new()
         .program(&[
             none(O::Cli),

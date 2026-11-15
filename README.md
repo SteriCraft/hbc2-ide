@@ -12,7 +12,8 @@ The HBC-2 is an 8-bit computer with 64 KB of RAM, a 256 * 192 pixels monitor and
 ### Documentation
 Documentation about the computer's design is available [here](https://github.com/SteriCraft/hbc2-ide/tree/main/Documentation).\
 How to build and use the IDE: [hbc2/README.md](hbc2/README.md).\
-The assembly language: [HBC-2 Assembly Language](Documentation/HBC-2%20Assembly%20Language.md).
+The assembly language: [HBC-2 Assembly Language](Documentation/HBC-2%20Assembly%20Language.md).\
+Project status and to-do lists: [notes/](notes/README.md) (software), [logisim/notes/](logisim/notes/README.md) (the CPU in Logisim, breadboards), [kicad/notes/](kicad/notes/README.md) (schematics, PCBs).
 
 
 ## Integrated Development Environment

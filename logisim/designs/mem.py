@@ -3,7 +3,7 @@
 
 64 KiB of RAM and the 64 KiB boot ROM on a local data bus (mem_d), joined
 to the data bus by two 74HCT541. Why it is built this way:
-notes/ir-mem-decisions.md sections 3-4 and M1-M4.
+notes/records/ir-mem-decisions.md sections 3-4 and M1-M4.
 
     RAM   AS6C1008 (128 K x 8, A16 = 0): CE# = 0, CE2 = mem_re, OE# = mem_oe_n,
           WE# = clk_mem_wr_n OR mem_we_n (74HCT32): low about 125-375 ns (M1)

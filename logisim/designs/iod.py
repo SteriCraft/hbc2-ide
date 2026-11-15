@@ -2,8 +2,8 @@
 """I/O mailbox (C-min) -> circuits/iod/iod.circ
 
 The CPU's I/O card: a mailbox of latches and flip-flops in front of an ESP32
-I/O processor (notes/iod-requirements.md "Target design", I10-I16;
-notes/io-redesign-proposal.md sections 9 and 9.8). 12 chips:
+I/O processor (notes/records/iod-requirements.md "Target design", I10-I16;
+notes/records/io-redesign-proposal.md sections 9 and 9.8). 12 chips:
 
     U?  74HCT138   decode: G1 = IE, /G2A = A7, /G2B = A6; A = A0, B = RW, C = A1
                    /Y0 = OUT TX, /Y2 = IN RX, /Y3 = IN STATUS (ports 0x00-0x3F,

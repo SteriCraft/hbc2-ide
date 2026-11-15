@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Control unit -> circuits/cu/cu.circ
 
-The microcode sequencer of notes/cu-decisions.md (sections 1-6, 13, 14):
+The microcode sequencer of notes/records/cu-decisions.md (sections 1-6, 13, 14):
 
     address   A14-A9 opcode, A8-A5 mode, A4-A1 step, A0 cond
               opcode / mode: 3 x 74HCT157, the IR or bus_data while that byte

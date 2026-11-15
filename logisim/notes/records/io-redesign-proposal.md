@@ -162,7 +162,7 @@ Vector numbers `0x00–0xEF` and `0xF8–0xFF` are left to software `INT n` (sys
 | `Documentation/src/HBC-2_IDE_Instruction_Manual.odt` → `HBC-2_Instruction_Manual.pdf` | "256 ports (port #0 reserved for CPU <> IOD)", IOD × 15, queue × 5, INR × 3 | I/O chapter rewritten: port space, the handshake with the snapshot / VEC, the vector is `0xF0 + n`, I = line bitmap, "clear the source before IRT". The CPU instruction pages don't change. |
 | `Documentation/HBC-2_Input_Output_diagram.pdf` (the new sketch, in French) | 244 enabled by INR, A0–A7 only, INT straight from /GS | Fix F1–F4 (VEC flip-flop, high byte, data driver, snapshot). |
 | `hbc2/README.md`, `compiler/ABI.md` §8 (startup) and §10 (handlers), `compiler/ROADMAP.md` step 13, `compiler/lib/README.md`, `TODO.md` (RTC lines) | describe detection, EEPROM, IOD | Updated. |
-| `logisim/notes/iod-requirements.md` | contract | Target chips added (done with this proposal, marked "proposed"). I1–I9 unchanged. |
+| `logisim/notes/records/iod-requirements.md` | contract | Target chips added (done with this proposal, marked "proposed"). I1–I9 unchanged. |
 | `logisim/tests/cpu/*.has`, the bench stub | bench IOD | **No change**: the CPU and its bench stay. |
 
 ## 5b. Compatibility

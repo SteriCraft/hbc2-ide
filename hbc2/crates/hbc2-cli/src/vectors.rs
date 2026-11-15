@@ -124,7 +124,7 @@ fn opt(b: Option<bool>) -> Option<u32> {
 }
 
 // --------------------------------------------------------------------------
-// alu_op: the operation code of the ALU (see logisim/notes/alu-report.md)
+// alu_op: the operation code of the ALU (see logisim/notes/records/alu-report.md)
 // --------------------------------------------------------------------------
 
 /// What the ALU computes for one 4-bit `alu_op`.
@@ -401,7 +401,7 @@ fn write_seq(m: &SeqModule, w: &mut impl Write) -> std::io::Result<()> {
 }
 
 // --------------------------------------------------------------------------
-// The flag register (logisim/notes/flags-decisions.md)
+// The flag register (logisim/notes/records/flags-decisions.md)
 // --------------------------------------------------------------------------
 
 /// flags_op: what the flag register stores on the next clock edge.

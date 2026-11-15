@@ -6,7 +6,7 @@ Not on the motherboard: iod J1, J2, J4 (cables to the TTGO) and clkgen JP1. Powe
 
 **On the motherboard itself:**
 - **A8–A15 pull-downs:** a 10 kΩ × 8 bussed network (Bourns 4609X-101-103LF, `Device:R_Network08`, `Resistor_THT:R_Array_SIP9`), common pin on GND, on `bus_addr_hi0..7`. They moved off the iod card on 2026-11-14 (the vector step: the EVT 595 drives A0–A7 and nothing drives A8–A15).
-- The power input (`NOTES.md`, "Power (S1)").
+- The power input (`design-notes.md`, "Power (S1)").
 - The power input (J1, SW1, F1, D1, C1, drawn 2026-11-15) and the slots' power pins: +5V on side B, GND on side A, pins 1, 7, …, 49, 61, 73 ([slot-pinout.md](slot-pinout.md)).
 
 **Motherboard slots** (`mb/hbc2_mb.kicad_sch`, finished 2026-11-15): the 66 connectors of 2026-11-14 became 9 PCIe slots (symbols `custom_symbols:HBC2_PCIe_xN`, footprints `hbc2_slots`), pins as in [slot-pinout.md](slot-pinout.md). Every net carries the CPU name of this table, not the card's own name. Checked on 2026-11-15: every slot pin matches the plan, the 159 inter-card nets of `logisim/cpu.circ` (flattened with `tools/netlist.py`) join exactly the same cards on the motherboard (renamed: `bus_addr[0..7]` = `bus_addr_lo0..7`, `bus_addr[8..15]` = `bus_addr_hi0..7`, `alu_n` = `alu_r7`, `ir_r3[0..2]` = `ir_v1_0..2`; iod isn't in cpu.circ, its 5 own nets match this table), ERC 0 / 0.

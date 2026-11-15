@@ -1,4 +1,4 @@
-//! Microcode of the HBC-2's hardware control unit (logisim/notes/cu-decisions.md).
+//! Microcode of the HBC-2's hardware control unit (logisim/notes/records/cu-decisions.md).
 //!
 //! - [`source`]: the microcode source language (`microcode/hbc2.uc`);
 //! - [`generate`]: the generator: rules, placement, the 7 AT28C256 images, the
